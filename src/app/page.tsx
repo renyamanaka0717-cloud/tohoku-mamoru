@@ -51,7 +51,7 @@ const DEFAULT_SETTINGS: Settings = { wakeTime: '07:00', sleepTime: '23:00' };
 const TASKS_KEY    = 'tl-tasks-v2';
 const SETTINGS_KEY = 'tl-settings-v2';
 const SHOP_KEY     = 'tl-shop-v1';
-const PX_PER_HOUR  = 100;
+const PX_PER_HOUR  = 33;
 const PX_PER_MIN   = PX_PER_HOUR / 60;
 const DAY_NAMES    = ['日','月','火','水','木','金','土'];
 const DUR_OPTS     = [
@@ -1127,9 +1127,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
   const freeSlots=calcFreeSlots(tasks,date,settings);
   const laterPool=later.filter(t=>!t.completed);
 
-  const pph=dayTasks.length===0?Math.round(PX_PER_HOUR/3):PX_PER_HOUR;
-  const ppm=pph/60;
-  const calcY=(min:number)=>(min-wakeMin)*ppm;
+  const calcY=(min:number)=>(min-wakeMin)*PX_PER_MIN;
 
   // Combined layout: tasks + free slots in time order, no overlaps
   const MIN_CARD_H = 60;
@@ -1147,7 +1145,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
   for(const item of allItems){
     if(item.type==='task'){
       const top=Math.max(item.y,prevBottom+2);
-      const h=Math.max(MIN_CARD_H,(item.t.duration??0)*ppm);
+      const h=Math.max(MIN_CARD_H,(item.t.duration??0)*PX_PER_MIN);
       taskLayout.push({task:item.t,top,h});
       prevBottom=top+h;
       snapshots.push({naturalY:item.y,pb:prevBottom}); // only tasks stretch the axis
@@ -1155,7 +1153,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
       const freeY=Math.max(item.y,prevBottom)+2;
       // 94px = FreeTimeCard の最低コンテンツ高さ（ヘッダー＋大テキスト）、fit タスクボタン 1 行 38px
       const fitsN=laterPool.filter(t=>(t.duration??0)<=item.s.min).length;
-      const cardH=Math.max(94+Math.min(fitsN,3)*38,item.s.min*ppm-4);
+      const cardH=Math.max(94+Math.min(fitsN,3)*38,item.s.min*PX_PER_MIN-4);
       freeLayout.push({slot:item.s,freeY,cardH});
       prevBottom=freeY+cardH;
     }
@@ -1572,9 +1570,7 @@ export default function App() {
       const header=document.querySelector('header');
       const headerBottom=header?header.getBoundingClientRect().bottom:130;
       const wakeMin=toMin(settings.wakeTime);
-      const hasTasks=filteredTasks.some(t=>t.date===date&&!t.isLater&&t.startTime);
-      const dragPpm=(hasTasks?PX_PER_HOUR:Math.round(PX_PER_HOUR/3))/60;
-      const rawMin=wakeMin+(clientY+window.scrollY-headerBottom-16)/dragPpm;
+      const rawMin=wakeMin+(clientY+window.scrollY-headerBottom-16)/PX_PER_MIN;
       const snapped=Math.round(rawMin/5)*5;
       return fromMin(Math.max(wakeMin,Math.min(toMin(settings.sleepTime),snapped)));
     };
