@@ -594,6 +594,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
   let prevBottom=-Infinity;
   const taskLayout:{task:Task;top:number;h:number}[]=[];
   const freeLayout:{slot:FreeSlot;freeY:number;cardH:number}[]=[];
+  const snapshots:{naturalY:number;pb:number}[]=[];
 
   for(const item of allItems){
     if(item.type==='task'){
@@ -608,13 +609,25 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
       freeLayout.push({slot:item.s,freeY,cardH});
       prevBottom=freeY+cardH;
     }
+    snapshots.push({naturalY:item.y,pb:prevBottom});
   }
+
+  // Map any time (minutes) to its actual pixel Y, stretching to avoid overlaps
+  const stretchedCalcY=(min:number)=>{
+    const ny=calcY(min);
+    let latestPb=-Infinity;
+    for(const s of snapshots){
+      if(s.naturalY<ny) latestPb=Math.max(latestPb,s.pb);
+      else break;
+    }
+    return latestPb===-Infinity ? ny : Math.max(ny,latestPb+2);
+  };
 
   const maxBottom=Math.max(
     taskLayout.length?taskLayout[taskLayout.length-1].top+taskLayout[taskLayout.length-1].h:0,
     freeLayout.length?freeLayout[freeLayout.length-1].freeY+freeLayout[freeLayout.length-1].cardH:0,
   );
-  const totalHeight=Math.max(totalMins*PX_PER_MIN,maxBottom+32);
+  const totalHeight=Math.max(stretchedCalcY(sleepMin),maxBottom)+32;
 
   const hours:number[]=[];
   for(let m=wakeMin;m<=sleepMin;m+=60) hours.push(m);
@@ -632,7 +645,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
         const inFree=freeSlots.some(s=>toMin(s.start)<=h&&h<toMin(s.end));
         const hasTask=dayTasks.some(t=>toMin(t.startTime!)===h);
         return (
-          <div key={h} className="absolute flex items-center" style={{top:`${calcY(h)-8}px`,left:0}}>
+          <div key={h} className="absolute flex items-center" style={{top:`${stretchedCalcY(h)-8}px`,left:0}}>
             <button
               onClick={()=>!isWake&&!isSleep&&onAddAtTime(fromMin(h))}
               className={`text-xs w-12 text-right pr-1 leading-none transition-colors ${
@@ -653,7 +666,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
 
       {/* current time */}
       {date===todayStr()&&nowMin>=wakeMin&&nowMin<=sleepMin&&(
-        <div className="absolute flex items-center z-20 gap-1.5" style={{top:`${calcY(nowMin)-12}px`,left:0,right:0}}>
+        <div className="absolute flex items-center z-20 gap-1.5" style={{top:`${stretchedCalcY(nowMin)-12}px`,left:0,right:0}}>
           <div className="bg-gray-900 text-white text-xs font-bold px-2 py-1 rounded-full whitespace-nowrap">{now}</div>
           <button onClick={()=>onAddAtTime(now)} className="w-5 h-5 bg-gray-200 rounded-full flex items-center justify-center text-xs font-bold text-gray-600 shrink-0">+</button>
           <div className="flex-1 h-px bg-gray-300"/>
