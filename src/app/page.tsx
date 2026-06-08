@@ -195,10 +195,32 @@ function TaskModal({task,currentDate,prefillTime,onSave,onDelete,onClose}:{
   const [tags,setTags]        = useState<string[]>(task?.tags??[]);
   const [tagInput,setTagInput]= useState('');
   const [iconOpen,setIconOpen]= useState(false);
+  const [taskDate,setTaskDate]= useState(task?.date??currentDate);
+  const [dateOpen,setDateOpen]= useState(false);
+  const [calVm,setCalVm]      = useState(()=>{
+    const d=new Date((task?.date??currentDate)+'T12:00:00');
+    return {year:d.getFullYear(),month:d.getMonth()};
+  });
 
   const headerIcon = mode==='later' ? icon : autoIcon(name);
 
   const computedEnd = (startTime&&duration>0) ? fromMin(toMin(startTime)+duration) : null;
+
+  const calDays = useMemo(()=>{
+    const {year,month}=calVm;
+    const first=new Date(year,month,1).getDay();
+    const total=new Date(year,month+1,0).getDate();
+    const arr:(string|null)[]=Array(first).fill(null);
+    for(let d=1;d<=total;d++) arr.push(dateToStr(new Date(year,month,d)));
+    return arr;
+  },[calVm]);
+
+  const taskDateLabel=()=>{
+    const today=todayStr();
+    const dt=new Date(taskDate+'T12:00:00');
+    const m=dt.getMonth()+1, d=dt.getDate(), dow=DAY_NAMES[dt.getDay()];
+    return `${taskDate===today?'今日 ':''}${m}月${d}日（${dow}）`;
+  };
 
   const addTag=()=>{
     const t=tagInput.trim();
@@ -217,7 +239,7 @@ function TaskModal({task,currentDate,prefillTime,onSave,onDelete,onClose}:{
       memo,
       icon:mode==='later'?icon:autoIcon(name.trim()),
       completed:task?.completed??false,
-      date:task?.date??currentDate,
+      date:mode==='scheduled'?taskDate:(task?.date??currentDate),
       isLater:mode==='later',
       recurrence:mode==='recurring'?recur:null,
       pinned,
@@ -318,6 +340,61 @@ function TaskModal({task,currentDate,prefillTime,onSave,onDelete,onClose}:{
                   </button>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* 日付選択 (scheduled only) */}
+          {mode==='scheduled'&&(
+            <div className="bg-white mx-3 mt-3 rounded-2xl overflow-hidden">
+              <button className="w-full flex items-center justify-between px-4 py-3"
+                onClick={()=>setDateOpen(o=>!o)}>
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">📅</span>
+                  <span className="text-sm font-semibold text-gray-800">日付</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-sm font-semibold text-gray-700">{taskDateLabel()}</span>
+                  <span className={`text-gray-400 text-xs transition-transform ${dateOpen?'rotate-180':''}`}>∨</span>
+                </div>
+              </button>
+              {dateOpen&&(
+                <div className="border-t border-gray-50 px-3 pb-3">
+                  {/* Month nav */}
+                  <div className="flex items-center justify-between py-2">
+                    <span className="text-sm font-bold text-gray-800">
+                      {calVm.year}年{calVm.month+1}月
+                    </span>
+                    <div className="flex gap-1">
+                      <button onClick={()=>setCalVm(m=>shiftMonth(m.year,m.month,-1))}
+                        className="w-7 h-7 flex items-center justify-center text-gray-500 rounded-lg bg-gray-100 text-sm">‹</button>
+                      <button onClick={()=>setCalVm(m=>shiftMonth(m.year,m.month,1))}
+                        className="w-7 h-7 flex items-center justify-center text-gray-500 rounded-lg bg-gray-100 text-sm">›</button>
+                    </div>
+                  </div>
+                  {/* Day headers */}
+                  <div className="grid grid-cols-7 mb-1">
+                    {DAY_NAMES.map((n,i)=>(
+                      <div key={i} className={`text-center text-[11px] font-semibold py-1 ${i===0?'text-red-400':i===6?'text-blue-400':'text-gray-400'}`}>{n}</div>
+                    ))}
+                  </div>
+                  {/* Calendar grid */}
+                  <div className="grid grid-cols-7">
+                    {calDays.map((d,i)=>{
+                      const isSel=d===taskDate, isToday=d===todayStr();
+                      return (
+                        <button key={i} disabled={!d} onClick={()=>{if(d){setTaskDate(d);setDateOpen(false);}}}
+                          className="flex items-center justify-center py-1">
+                          <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                            !d?'':isSel?'bg-gray-900 text-white':isToday?'bg-gray-100 font-bold text-gray-900':'text-gray-600'
+                          }`}>
+                            {d?new Date(d+'T12:00:00').getDate():''}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
