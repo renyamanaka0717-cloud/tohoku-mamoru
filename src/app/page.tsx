@@ -180,16 +180,10 @@ function TaskModal({task,currentDate,prefillTime,onSave,onDelete,onClose}:{
     return 'scheduled';
   };
 
-  const initEndTime=()=>{
-    if(task?.startTime&&(task.duration??0)>0) return fromMin(toMin(task.startTime)+(task.duration??0));
-    return '';
-  };
-
   const [mode,setMode]        = useState<TaskMode>(initMode());
   const [name,setName]        = useState(task?.name??'');
   const [startTime,setST]     = useState(task?.startTime??prefillTime??'');
-  const [endTime,setET]       = useState(initEndTime());
-  const [duration,setDur]     = useState(task?.duration??30);
+  const [duration,setDur]     = useState(task?.duration??0);
   const [memo,setMemo]        = useState(task?.memo??'');
   const [icon,setIcon]        = useState(task?.icon??'📝');
   const [recur,setRecur]      = useState<'daily'|'weekly'|'monthly'|'yearly'>(
@@ -204,10 +198,7 @@ function TaskModal({task,currentDate,prefillTime,onSave,onDelete,onClose}:{
 
   const headerIcon = mode==='later' ? icon : autoIcon(name);
 
-  // For scheduled/recurring, derive duration from start + end time inputs
-  const computedDur = (mode!=='later'&&startTime&&endTime)
-    ? Math.max(0,toMin(endTime)-toMin(startTime))
-    : 0;
+  const computedEnd = (startTime&&duration>0) ? fromMin(toMin(startTime)+duration) : null;
 
   const addTag=()=>{
     const t=tagInput.trim();
@@ -218,7 +209,7 @@ function TaskModal({task,currentDate,prefillTime,onSave,onDelete,onClose}:{
 
   const save=()=>{
     if(!name.trim()) return;
-    const dur=mode==='later'?duration:computedDur;
+    const dur=duration;
     const base:Omit<Task,'id'>={
       name:name.trim(),
       startTime:mode==='later'?null:(startTime||null),
@@ -270,7 +261,7 @@ function TaskModal({task,currentDate,prefillTime,onSave,onDelete,onClose}:{
             </button>
             <div className="flex-1 min-w-0">
               {(mode==='scheduled'||mode==='recurring')&&startTime&&(
-                <p className="text-xs text-gray-400 mb-0.5">{startTime}{endTime?`〜${endTime}`:''}{mode==='recurring'&&' · 繰り返し'}</p>
+                <p className="text-xs text-gray-400 mb-0.5">{startTime}{computedEnd?`〜${computedEnd}`:''}{mode==='recurring'&&' · 繰り返し'}</p>
               )}
               <input type="text" value={name} onChange={e=>setName(e.target.value)}
                 placeholder="タスク名を入力..."
@@ -330,62 +321,38 @@ function TaskModal({task,currentDate,prefillTime,onSave,onDelete,onClose}:{
             </div>
           )}
 
-          {/* Time: start → end (scheduled/recurring only) */}
+          {/* 開始時刻 (scheduled/recurring only) */}
           {(mode==='scheduled'||mode==='recurring')&&(
             <div className="bg-white mx-3 mt-3 rounded-2xl p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <span className="text-lg">🕐</span>
-                <span className="text-sm font-semibold text-gray-800">時間</span>
-              </div>
-              <div className="flex items-center gap-2 mb-3">
-                <div className="flex flex-col gap-1">
-                  <span className="text-xs text-gray-400">開始</span>
-                  <input type="time" value={startTime} onChange={e=>setST(e.target.value)}
-                    className="border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50 outline-none focus:border-gray-400"/>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">🕐</span>
+                  <span className="text-sm font-semibold text-gray-800">開始時刻</span>
                 </div>
-                <span className="text-gray-300 mt-5 text-lg">〜</span>
-                <div className="flex flex-col gap-1">
-                  <span className="text-xs text-gray-400">終了</span>
-                  <input type="time" value={endTime} onChange={e=>setET(e.target.value)}
-                    disabled={!startTime}
-                    className="border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50 outline-none focus:border-gray-400 disabled:opacity-40"/>
-                </div>
-                {computedDur>0&&(
-                  <span className="text-xs text-gray-400 mt-5 ml-1 whitespace-nowrap">{durLabel(computedDur)}</span>
+                {startTime&&computedEnd&&(
+                  <span className="text-sm font-semibold text-gray-500">{startTime}〜{computedEnd}</span>
                 )}
               </div>
-              {/* Quick preset buttons */}
-              <div className="flex gap-2">
-                {([[15,'＋15分'],[30,'＋30分'],[60,'＋1時間']] as [number,string][]).map(([mins,label])=>(
-                  <button key={mins} onClick={()=>{
-                    if(!startTime) return;
-                    setET(fromMin(toMin(startTime)+mins));
-                  }}
-                    className="px-3 py-1.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-600 active:bg-gray-200">
-                    {label}
-                  </button>
-                ))}
-              </div>
+              <input type="time" value={startTime} onChange={e=>setST(e.target.value)}
+                className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-gray-50 outline-none focus:border-gray-400"/>
             </div>
           )}
 
-          {/* Duration preset buttons — later mode only */}
-          {mode==='later'&&(
-            <div className="bg-white mx-3 mt-3 rounded-2xl p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <span className="text-lg">🕐</span>
-                <span className="text-sm font-semibold text-gray-800">所要時間</span>
-              </div>
-              <div className="flex gap-2 flex-wrap">
-                {DUR_OPTS.map(({v,l})=>(
-                  <button key={v} onClick={()=>setDur(v)}
-                    className={`px-4 py-2 rounded-full text-sm font-semibold ${duration===v?'bg-gray-900 text-white':'bg-gray-100 text-gray-600'}`}>
-                    {l}
-                  </button>
-                ))}
-              </div>
+          {/* 所要時間 — all modes */}
+          <div className="bg-white mx-3 mt-3 rounded-2xl p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-lg">🕐</span>
+              <span className="text-sm font-semibold text-gray-800">所要時間</span>
             </div>
-          )}
+            <div className="flex gap-2 flex-wrap">
+              {DUR_OPTS.map(({v,l})=>(
+                <button key={v} onClick={()=>setDur(v)}
+                  className={`px-4 py-2 rounded-full text-sm font-semibold ${duration===v?'bg-gray-900 text-white':'bg-gray-100 text-gray-600'}`}>
+                  {l}
+                </button>
+              ))}
+            </div>
+          </div>
 
           {/* Pin + Tags */}
           <div className="bg-white mx-3 mt-3 rounded-2xl overflow-hidden">
