@@ -19,6 +19,7 @@ interface Task {
 
 interface Settings { wakeTime: string; sleepTime: string; }
 interface FreeSlot  { start: string; end: string; min: number; }
+interface ShopItem  { id: string; name: string; checked: boolean; }
 
 type TaskMode = 'later' | 'scheduled' | 'recurring';
 
@@ -28,6 +29,7 @@ const ICONS = ['📝','💼','🏃','🍽️','📚','💊','🛒','🏠','💻'
 const DEFAULT_SETTINGS: Settings = { wakeTime: '07:00', sleepTime: '23:00' };
 const TASKS_KEY    = 'tl-tasks-v2';
 const SETTINGS_KEY = 'tl-settings-v2';
+const SHOP_KEY     = 'tl-shop-v1';
 const PX_PER_HOUR  = 72;
 const PX_PER_MIN   = PX_PER_HOUR / 60;
 const DAY_NAMES    = ['日','月','火','水','木','金','土'];
@@ -545,16 +547,85 @@ function LaterSheet({tasks,onToggle,onEdit,onMoveToTimeline,onClose}:{
   );
 }
 
+// ── ShoppingSheet ─────────────────────────────────────────────────────────────
+
+function ShoppingSheet({items,onAdd,onToggle,onDelete,onClose}:{
+  items:ShopItem[];onAdd:(n:string)=>void;onToggle:(id:string)=>void;
+  onDelete:(id:string)=>void;onClose:()=>void;
+}) {
+  const [input,setInput] = useState('');
+  const pending=items.filter(i=>!i.checked);
+  const done=items.filter(i=>i.checked);
+  const add=()=>{ const v=input.trim(); if(!v) return; onAdd(v); setInput(''); };
+
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col" onClick={onClose}>
+      <div className="flex-1"/>
+      <div className="bg-white w-full max-w-md mx-auto rounded-t-3xl max-h-[85vh] flex flex-col shadow-2xl" onClick={e=>e.stopPropagation()}>
+        <div className="flex justify-center pt-3 pb-1 shrink-0"><div className="w-10 h-1 bg-gray-200 rounded-full"/></div>
+        <div className="flex items-center justify-between px-4 py-2 shrink-0">
+          <h2 className="text-base font-bold text-gray-900">🛒 買い物リスト</h2>
+          <button onClick={onClose} className="text-gray-400 text-xl w-8 h-8 flex items-center justify-center">×</button>
+        </div>
+        <div className="px-4 pb-3 shrink-0">
+          <div className="flex gap-2">
+            <input type="text" value={input} onChange={e=>setInput(e.target.value)}
+              onKeyDown={e=>e.key==='Enter'&&add()}
+              placeholder="商品を追加..."
+              className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-gray-400"/>
+            <button onClick={add} disabled={!input.trim()}
+              className="px-4 py-2 bg-gray-900 text-white rounded-xl text-sm font-semibold disabled:opacity-40">追加</button>
+          </div>
+        </div>
+        <div className="overflow-y-auto px-4 pb-10 flex-1">
+          {items.length===0?(
+            <div className="py-12 text-center">
+              <p className="text-4xl mb-2">🛒</p>
+              <p className="text-sm text-gray-400">リストは空です</p>
+            </div>
+          ):(
+            <div className="space-y-2">
+              {pending.map(item=>(
+                <div key={item.id} className="flex items-center gap-3 bg-white border border-gray-100 rounded-2xl shadow-sm px-4 py-3">
+                  <button onClick={()=>onToggle(item.id)}
+                    className="w-5 h-5 rounded border-2 border-gray-300 shrink-0"/>
+                  <p className="flex-1 text-sm font-medium text-gray-800">{item.name}</p>
+                  <button onClick={()=>onDelete(item.id)} className="text-gray-300 text-xl leading-none">×</button>
+                </div>
+              ))}
+              {done.length>0&&<>
+                <p className="text-xs text-gray-300 pt-3 pb-1">購入済み</p>
+                {done.map(item=>(
+                  <div key={item.id} className="flex items-center gap-3 bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3 opacity-60">
+                    <button onClick={()=>onToggle(item.id)}
+                      className="w-5 h-5 rounded border-2 border-gray-900 bg-gray-900 shrink-0 flex items-center justify-center">
+                      <span className="text-white text-[10px] font-bold">✓</span>
+                    </button>
+                    <p className="flex-1 text-sm font-medium text-gray-400 line-through">{item.name}</p>
+                    <button onClick={()=>onDelete(item.id)} className="text-gray-300 text-xl leading-none">×</button>
+                  </div>
+                ))}
+              </>}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── App ───────────────────────────────────────────────────────────────────────
 
 export default function App() {
   const [tasks,setTasks]         = useState<Task[]>([]);
   const [settings,setSettings]   = useState<Settings>(DEFAULT_SETTINGS);
+  const [shopItems,setShopItems] = useState<ShopItem[]>([]);
   const [date,setDate]           = useState(todayStr());
   const [modal,setModal]         = useState<{open:boolean;task:Task|null;prefillTime?:string}>({open:false,task:null});
   const [settingsOpen,setSOp]    = useState(false);
   const [calendarOpen,setCalOp]  = useState(false);
   const [laterOpen,setLaterOpen] = useState(false);
+  const [shopOpen,setShopOpen]   = useState(false);
   const [loaded,setLoaded]       = useState(false);
   const [now,setNow]             = useState(nowStr());
   const [touchY,setTouchY]       = useState(0);
@@ -563,22 +634,30 @@ export default function App() {
     try{
       const t=localStorage.getItem(TASKS_KEY);
       const s=localStorage.getItem(SETTINGS_KEY);
+      const sh=localStorage.getItem(SHOP_KEY);
       if(t) setTasks((JSON.parse(t) as Task[]).map(tk=>({...tk,recurrence:tk.recurrence??null})));
       if(s) setSettings(JSON.parse(s));
+      if(sh) setShopItems(JSON.parse(sh));
     }catch{}
     setLoaded(true);
   },[]);
 
   useEffect(()=>{ if(loaded) localStorage.setItem(TASKS_KEY,JSON.stringify(tasks)); },[tasks,loaded]);
   useEffect(()=>{ if(loaded) localStorage.setItem(SETTINGS_KEY,JSON.stringify(settings)); },[settings,loaded]);
+  useEffect(()=>{ if(loaded) localStorage.setItem(SHOP_KEY,JSON.stringify(shopItems)); },[shopItems,loaded]);
   useEffect(()=>{ const iv=setInterval(()=>setNow(nowStr()),60000); return ()=>clearInterval(iv); },[]);
 
   const laterTasks    = useMemo(()=>tasks.filter(t=>t.isLater),[tasks]);
   const pendingCount  = useMemo(()=>laterTasks.filter(t=>!t.completed).length,[laterTasks]);
+  const shopPending   = useMemo(()=>shopItems.filter(i=>!i.checked).length,[shopItems]);
   const weekDates     = useMemo(()=>getWeekDates(date),[date]);
   const taskDateSet   = useMemo(()=>new Set(tasks.filter(t=>!t.isLater&&t.startTime).map(t=>t.date)),[tasks]);
   const {day,month,year} = useMemo(()=>getDateInfo(date),[date]);
   const today = todayStr();
+
+  const addShopItem  = (name:string) => setShopItems(prev=>[...prev,{id:uid(),name,checked:false}]);
+  const toggleShop   = (id:string)   => setShopItems(prev=>prev.map(i=>i.id===id?{...i,checked:!i.checked}:i));
+  const deleteShop   = (id:string)   => setShopItems(prev=>prev.filter(i=>i.id!==id));
 
   const openAdd  = (prefillTime?:string) => setModal({open:true,task:null,prefillTime});
   const openEdit = (task:Task) => setModal({open:true,task});
@@ -594,7 +673,7 @@ export default function App() {
   };
   const delTask  = (id:string) => setTasks(prev=>prev.filter(t=>t.id!==id));
   const toggle   = (id:string) => setTasks(prev=>prev.map(t=>t.id===id?{...t,completed:!t.completed}:t));
-  const scheduleInSlot=(task:Task,startTime:string)=>setTasks(prev=>prev.map(t=>t.id===task.id?{...t,isLater:false,startTime,date}:t));
+  const scheduleInSlot=(task:Task,startTime:string)=>setModal({open:true,task:{...task,isLater:false,startTime,date}});
   const moveToTimeline=(task:Task)=>setModal({open:true,task:{...task,isLater:false}});
   const carryOver=()=>{
     const next=shiftDate(date,1);
@@ -681,27 +760,24 @@ export default function App() {
           onToggle={toggle} onEdit={openEdit} onSchedule={scheduleInSlot} onAddAtTime={openAdd}/>
       </main>
 
-      {/* ── Bottom bar (あとでやる) ── */}
+      {/* ── Bottom bar ── */}
       <div
-        className="fixed bottom-0 left-0 right-0 z-40 max-w-md mx-auto"
+        className="fixed bottom-0 left-0 right-0 z-40 max-w-md mx-auto bg-white border-t border-gray-100"
         onTouchStart={e=>setTouchY(e.touches[0].clientY)}
         onTouchEnd={e=>{ if(touchY-e.changedTouches[0].clientY>30) setLaterOpen(true); }}
       >
-        <button
-          onClick={()=>setLaterOpen(true)}
-          className="w-full bg-white border-t border-gray-100 flex items-center justify-between px-5 py-3"
-        >
-          <div className="flex items-center gap-2">
+        <div className="flex">
+          <button onClick={()=>setLaterOpen(true)}
+            className="flex-1 flex items-center justify-center gap-2 py-3 border-r border-gray-100 active:bg-gray-50">
             <span className="text-sm font-semibold text-gray-700">あとでやる</span>
-            {pendingCount>0&&(
-              <span className="text-xs bg-gray-900 text-white w-5 h-5 rounded-full flex items-center justify-center font-bold">{pendingCount}</span>
-            )}
-          </div>
-          <div className="flex flex-col items-center gap-0.5">
-            <div className="w-4 h-0.5 bg-gray-300 rounded-full"/>
-            <div className="w-4 h-0.5 bg-gray-300 rounded-full"/>
-          </div>
-        </button>
+            {pendingCount>0&&<span className="text-xs bg-gray-900 text-white w-5 h-5 rounded-full flex items-center justify-center font-bold">{pendingCount}</span>}
+          </button>
+          <button onClick={()=>setShopOpen(true)}
+            className="flex-1 flex items-center justify-center gap-2 py-3 active:bg-gray-50">
+            <span className="text-sm font-semibold text-gray-700">🛒 買い物</span>
+            {shopPending>0&&<span className="text-xs bg-gray-900 text-white w-5 h-5 rounded-full flex items-center justify-center font-bold">{shopPending}</span>}
+          </button>
+        </div>
       </div>
 
       {/* ── FAB ── */}
@@ -716,6 +792,12 @@ export default function App() {
       {laterOpen&&(
         <LaterSheet tasks={laterTasks} onToggle={toggle} onEdit={openEdit}
           onMoveToTimeline={moveToTimeline} onClose={()=>setLaterOpen(false)}/>
+      )}
+
+      {/* ── Shopping sheet ── */}
+      {shopOpen&&(
+        <ShoppingSheet items={shopItems} onAdd={addShopItem} onToggle={toggleShop}
+          onDelete={deleteShop} onClose={()=>setShopOpen(false)}/>
       )}
 
       {/* ── Calendar ── */}
