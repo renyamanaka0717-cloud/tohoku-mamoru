@@ -1,0 +1,32 @@
+# 依存関係（npm install でダウンロードされるファイル）
+/node_modules
+/.pnp
+.pnp.js
+.yarn/install-state.gz
+
+# ビルド結果
+/.next/
+/out/
+
+# 環境変数ファイル（APIキーが入っているため絶対にGitHubにアップしてはいけない）
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# デバッグログ
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS が自動で作るファイル
+.DS_Store
+*.pem
+
+# Vercel
+.vercel
+
+# TypeScript の自動生成ファイル
+*.tsbuildinfo
+next-env.d.ts
