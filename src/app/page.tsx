@@ -35,6 +35,7 @@ interface Task {
   tags?: string[];
   notifications?: number[];     // 開始何分前 (0=開始時, 1440=前日)
   incompleteReminder?: boolean;
+  category?: string;
 }
 
 interface Settings { wakeTime: string; sleepTime: string; }
@@ -60,6 +61,7 @@ const DUR_OPTS     = [
   {v:180,l:'3時間'},{v:240,l:'4時間'},{v:300,l:'5時間'},
 ];
 const NOTIF_OPTS   = [{v:0,l:'開始時'},{v:5,l:'5分前'},{v:10,l:'10分前'},{v:15,l:'15分前'},{v:30,l:'30分前'},{v:60,l:'1時間前'},{v:1440,l:'前日'}];
+const CATEGORIES   = ['仕事','個人'];
 
 // ── Utils ─────────────────────────────────────────────────────────────────────
 
@@ -280,8 +282,8 @@ function autoIcon(name: string): string {
 
 // ── TaskModal ─────────────────────────────────────────────────────────────────
 
-function TaskModal({task,currentDate,prefillTime,onSave,onDelete,onClose}:{
-  task:Task|null; currentDate:string; prefillTime?:string;
+function TaskModal({task,currentDate,prefillTime,prefillCategory,onSave,onDelete,onClose}:{
+  task:Task|null; currentDate:string; prefillTime?:string; prefillCategory?:string;
   onSave:(tasks:Omit<Task,'id'>[])=>void; onDelete?:()=>void; onClose:()=>void;
 }) {
   const initMode=():TaskMode=>{
@@ -313,6 +315,7 @@ function TaskModal({task,currentDate,prefillTime,onSave,onDelete,onClose}:{
   };
   const [customRec,setCustomRec] = useState<CustomRec>(initCR);
   const setCR=<K extends keyof CustomRec>(k:K,v:CustomRec[K])=>setCustomRec(r=>({...r,[k]:v}));
+  const [category,setCategory]   = useState<string|null>(task?.category??prefillCategory??null);
   const [custDurOpen,setCDurOpen] = useState(false);
   const [custDurMin,setCDurMin]  = useState(duration>0&&!DUR_OPTS.find(o=>o.v===duration)?duration:90);
   const [notifications,setNotifs]  = useState<number[]>(task?.notifications??[]);
@@ -392,6 +395,7 @@ function TaskModal({task,currentDate,prefillTime,onSave,onDelete,onClose}:{
       customRec:mode==='recurring'&&recur==='custom'?customRec:undefined,
       notifications:mode!=='later'?notifications:undefined,
       incompleteReminder:mode!=='later'?incompleteRem:false,
+      category:category??undefined,
       pinned,
       tags,
     };
@@ -457,6 +461,16 @@ function TaskModal({task,currentDate,prefillTime,onSave,onDelete,onClose}:{
               ))}
             </div>
           )}
+
+          {/* Category chips */}
+          <div className="flex gap-2 mb-3">
+            {CATEGORIES.map(cat=>(
+              <button key={cat} onClick={()=>setCategory(c=>c===cat?null:cat)}
+                className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${category===cat?'bg-white text-gray-900':'bg-gray-700 text-gray-300'}`}>
+                {cat}
+              </button>
+            ))}
+          </div>
 
           {/* Tabs */}
           <div className="flex bg-gray-800 rounded-xl p-1">
@@ -1344,7 +1358,8 @@ export default function App() {
   const [settings,setSettings]   = useState<Settings>(DEFAULT_SETTINGS);
   const [shopItems,setShopItems] = useState<ShopItem[]>([]);
   const [date,setDate]           = useState(todayStr());
-  const [modal,setModal]         = useState<{open:boolean;task:Task|null;prefillTime?:string}>({open:false,task:null});
+  const [modal,setModal]         = useState<{open:boolean;task:Task|null;prefillTime?:string;prefillCategory?:string}>({open:false,task:null});
+  const [activeCategory,setActiveCat] = useState<string|null>(null);
   const [settingsOpen,setSOp]    = useState(false);
   const [calendarOpen,setCalOp]  = useState(false);
   const [activeTab,setActiveTab] = useState<'later'|'shop'|null>(null);
@@ -1360,7 +1375,7 @@ export default function App() {
       const t=localStorage.getItem(TASKS_KEY);
       const s=localStorage.getItem(SETTINGS_KEY);
       const sh=localStorage.getItem(SHOP_KEY);
-      if(t) setTasks((JSON.parse(t) as Task[]).map(tk=>({...tk,recurrence:tk.recurrence??null,customRec:tk.customRec,pinned:tk.pinned??false,tags:tk.tags??[],notifications:tk.notifications??[],incompleteReminder:tk.incompleteReminder??false})));
+      if(t) setTasks((JSON.parse(t) as Task[]).map(tk=>({...tk,recurrence:tk.recurrence??null,customRec:tk.customRec,pinned:tk.pinned??false,tags:tk.tags??[],notifications:tk.notifications??[],incompleteReminder:tk.incompleteReminder??false,category:tk.category})));
       if(s) setSettings(JSON.parse(s));
       if(sh) setShopItems(JSON.parse(sh));
     }catch{}
@@ -1372,11 +1387,12 @@ export default function App() {
   useEffect(()=>{ if(loaded) localStorage.setItem(SHOP_KEY,JSON.stringify(shopItems)); },[shopItems,loaded]);
   useEffect(()=>{ const iv=setInterval(()=>setNow(nowStr()),60000); return ()=>clearInterval(iv); },[]);
 
-  const laterTasks    = useMemo(()=>tasks.filter(t=>t.isLater),[tasks]);
+  const filteredTasks = useMemo(()=>activeCategory?tasks.filter(t=>t.category===activeCategory):tasks,[tasks,activeCategory]);
+  const laterTasks    = useMemo(()=>filteredTasks.filter(t=>t.isLater),[filteredTasks]);
   const pendingCount  = useMemo(()=>laterTasks.filter(t=>!t.completed).length,[laterTasks]);
   const shopPending   = useMemo(()=>shopItems.filter(i=>!i.checked).length,[shopItems]);
   const weekDates     = useMemo(()=>getWeekDates(date),[date]);
-  const taskDateSet   = useMemo(()=>new Set(tasks.filter(t=>!t.isLater&&t.startTime).map(t=>t.date)),[tasks]);
+  const taskDateSet   = useMemo(()=>new Set(filteredTasks.filter(t=>!t.isLater&&t.startTime).map(t=>t.date)),[filteredTasks]);
   const {day,month,year} = useMemo(()=>getDateInfo(date),[date]);
   const today = todayStr();
 
@@ -1426,7 +1442,7 @@ export default function App() {
   const toggleShop   = (id:string)   => setShopItems(prev=>prev.map(i=>i.id===id?{...i,checked:!i.checked}:i));
   const deleteShop   = (id:string)   => setShopItems(prev=>prev.filter(i=>i.id!==id));
 
-  const openAdd  = (prefillTime?:string) => setModal({open:true,task:null,prefillTime});
+  const openAdd  = (prefillTime?:string) => setModal({open:true,task:null,prefillTime,prefillCategory:activeCategory??undefined});
   const openEdit = (task:Task) => setModal({open:true,task});
   const closeModal = () => setModal({open:false,task:null});
 
@@ -1456,7 +1472,20 @@ export default function App() {
     <div className="max-w-md mx-auto min-h-screen bg-gray-50 font-sans">
       {/* ── Header ── */}
       <header className="sticky top-0 z-30 bg-white shadow-sm">
-        <div className="px-4 pt-4 pb-0">
+        {/* Category filter tabs */}
+        <div className="flex gap-2 px-4 pt-3 pb-1 overflow-x-auto" style={{scrollbarWidth:'none'} as React.CSSProperties}>
+          <button onClick={()=>setActiveCat(null)}
+            className={`shrink-0 px-4 py-1.5 rounded-full text-sm font-semibold transition-colors ${!activeCategory?'bg-gray-900 text-white':'bg-gray-100 text-gray-500'}`}>
+            すべて
+          </button>
+          {CATEGORIES.map(cat=>(
+            <button key={cat} onClick={()=>setActiveCat(c=>c===cat?null:cat)}
+              className={`shrink-0 px-4 py-1.5 rounded-full text-sm font-semibold transition-colors ${activeCategory===cat?'bg-gray-900 text-white':'bg-gray-100 text-gray-500'}`}>
+              {cat}
+            </button>
+          ))}
+        </div>
+        <div className="px-4 pt-2 pb-0">
           {/* Date + nav */}
           <div className="flex items-start justify-between mb-2">
             <div className="flex items-end gap-2">
@@ -1521,7 +1550,7 @@ export default function App() {
 
       {/* ── Timeline ── */}
       <main className="px-3 py-4 pb-24">
-        <Timeline date={date} tasks={tasks} later={laterTasks} settings={settings} now={now}
+        <Timeline date={date} tasks={filteredTasks} later={laterTasks} settings={settings} now={now}
           onToggle={toggle} onEdit={openEdit} onSchedule={scheduleInSlot} onAddAtTime={openAdd}
           onDragStart={startDrag} dragTaskId={dragTask?.id}/>
       </main>
@@ -1554,7 +1583,7 @@ export default function App() {
       {/* ── Bottom sheet ── */}
       {activeTab&&(
         <BottomTabs activeTab={activeTab} onSwitchTab={setActiveTab} onClose={()=>setActiveTab(null)}
-          tasks={tasks} shopItems={shopItems} pendingCount={pendingCount} shopPending={shopPending}
+          tasks={filteredTasks} shopItems={shopItems} pendingCount={pendingCount} shopPending={shopPending}
           onToggle={toggle} onEdit={openEdit} onMoveToTimeline={moveToTimeline}
           onAddShop={addShopItem} onToggleShop={toggleShop} onDeleteShop={deleteShop}
           onDragStart={startDrag}/>
@@ -1593,7 +1622,7 @@ export default function App() {
 
       {/* ── Task Modal ── */}
       {modal.open&&(
-        <TaskModal task={modal.task} currentDate={date} prefillTime={modal.prefillTime}
+        <TaskModal task={modal.task} currentDate={date} prefillTime={modal.prefillTime} prefillCategory={modal.prefillCategory}
           onSave={saveTasks}
           onDelete={modal.task?()=>delTask(modal.task!.id):undefined}
           onClose={closeModal}/>
