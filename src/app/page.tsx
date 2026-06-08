@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -182,7 +182,7 @@ function TaskModal({task,currentDate,prefillTime,onSave,onDelete,onClose}:{
 
   const [mode,setMode]        = useState<TaskMode>(initMode());
   const [name,setName]        = useState(task?.name??'');
-  const [startTime,setST]     = useState(task?.startTime??prefillTime??'');
+  const [startTime,setST]     = useState(task?.startTime??prefillTime??nowStr());
   const [duration,setDur]     = useState(task?.duration??0);
   const [memo,setMemo]        = useState(task?.memo??'');
   const [icon,setIcon]        = useState(task?.icon??'📝');
@@ -676,15 +676,32 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
 // ── BottomTabs ────────────────────────────────────────────────────────────────
 
 function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,shopPending,
-  onToggle,onEdit,onMoveToTimeline,onAddShop,onToggleShop,onDeleteShop
+  onToggle,onEdit,onMoveToTimeline,onAddShop,onToggleShop,onDeleteShop,onDragStart
 }:{
   activeTab:'later'|'shop'; onSwitchTab:(t:'later'|'shop')=>void; onClose:()=>void;
   tasks:Task[]; shopItems:ShopItem[]; pendingCount:number; shopPending:number;
   onToggle:(id:string)=>void; onEdit:(t:Task)=>void; onMoveToTimeline:(t:Task)=>void;
   onAddShop:(n:string)=>void; onToggleShop:(id:string)=>void; onDeleteShop:(id:string)=>void;
+  onDragStart:(t:Task,x:number,y:number)=>void;
 }) {
   const [shopInput,setShopInput] = useState('');
   const [sortDir,setSortDir]     = useState<'asc'|'desc'>('asc');
+  const [pressingId,setPressingId]= useState<string|null>(null);
+  const lpTimer = useRef<ReturnType<typeof setTimeout>|null>(null);
+
+  const startLP=(task:Task,e:React.TouchEvent)=>{
+    const touch=e.touches[0];
+    setPressingId(task.id);
+    lpTimer.current=setTimeout(()=>{
+      if(navigator.vibrate) navigator.vibrate(40);
+      setPressingId(null);
+      onDragStart(task,touch.clientX,touch.clientY);
+    },500);
+  };
+  const cancelLP=()=>{
+    if(lpTimer.current){clearTimeout(lpTimer.current);lpTimer.current=null;}
+    setPressingId(null);
+  };
   const addShop = () => { const v=shopInput.trim(); if(!v) return; onAddShop(v); setShopInput(''); };
 
   const laterTasks  = tasks.filter(t=>t.isLater);
@@ -754,7 +771,14 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
                 </div>
                 <div className="space-y-2">
                   {sortedLater.map(t=>(
-                    <div key={t.id} className="flex items-center gap-2.5 bg-white border border-gray-100 rounded-2xl shadow-sm px-3 py-3">
+                    <div key={t.id}
+                      className={`flex items-center gap-2.5 bg-white border border-gray-100 rounded-2xl shadow-sm px-3 py-3 transition-transform select-none ${pressingId===t.id?'scale-95 shadow-lg border-blue-200':''}`}
+                      onTouchStart={e=>startLP(t,e)}
+                      onTouchEnd={cancelLP}
+                      onTouchMove={cancelLP}>
+                      <div className="flex-col items-center gap-0.5 shrink-0 hidden sm:flex">
+                        <span className="text-gray-200 text-xs leading-none">⠿</span>
+                      </div>
                       <div className="w-7 h-7 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0">
                         {t.pinned
                           ? <span className="text-xs">📌</span>
@@ -901,6 +925,9 @@ export default function App() {
   const [loaded,setLoaded]       = useState(false);
   const [now,setNow]             = useState(nowStr());
   const [touchY,setTouchY]       = useState(0);
+  const [dragTask,setDragTask]   = useState<Task|null>(null);
+  const [dragPos,setDragPos]     = useState({x:0,y:0});
+  const [dropTime,setDropTime]   = useState<string|null>(null);
 
   useEffect(()=>{
     try{
@@ -926,6 +953,44 @@ export default function App() {
   const taskDateSet   = useMemo(()=>new Set(tasks.filter(t=>!t.isLater&&t.startTime).map(t=>t.date)),[tasks]);
   const {day,month,year} = useMemo(()=>getDateInfo(date),[date]);
   const today = todayStr();
+
+  // Drag task from あとでやる to timeline
+  const startDrag=(task:Task,x:number,y:number)=>{
+    setDragTask(task);
+    setDragPos({x,y});
+    setActiveTab(null);
+  };
+
+  useEffect(()=>{
+    if(!dragTask) return;
+    const calcTime=(clientY:number)=>{
+      const header=document.querySelector('header');
+      const headerBottom=header?header.getBoundingClientRect().bottom:130;
+      const wakeMin=toMin(settings.wakeTime);
+      const rawMin=wakeMin+(clientY+window.scrollY-headerBottom-16)/PX_PER_MIN;
+      const snapped=Math.round(rawMin/5)*5;
+      return fromMin(Math.max(wakeMin,Math.min(toMin(settings.sleepTime),snapped)));
+    };
+    const onMove=(e:TouchEvent)=>{
+      e.preventDefault();
+      const t=e.touches[0];
+      setDragPos({x:t.clientX,y:t.clientY});
+      setDropTime(calcTime(t.clientY));
+    };
+    const onEnd=(e:TouchEvent)=>{
+      const t=e.changedTouches[0];
+      const time=calcTime(t.clientY);
+      setTasks(prev=>prev.map(tk=>tk.id===dragTask.id?{...tk,isLater:false,startTime:time,date}:tk));
+      setDragTask(null);
+      setDropTime(null);
+    };
+    document.addEventListener('touchmove',onMove,{passive:false});
+    document.addEventListener('touchend',onEnd);
+    return ()=>{
+      document.removeEventListener('touchmove',onMove);
+      document.removeEventListener('touchend',onEnd);
+    };
+  },[dragTask,settings,date]);
 
   const addShopItem  = (name:string) => setShopItems(prev=>[...prev,{id:uid(),name,checked:false}]);
   const toggleShop   = (id:string)   => setShopItems(prev=>prev.map(i=>i.id===id?{...i,checked:!i.checked}:i));
@@ -1060,7 +1125,34 @@ export default function App() {
         <BottomTabs activeTab={activeTab} onSwitchTab={setActiveTab} onClose={()=>setActiveTab(null)}
           tasks={tasks} shopItems={shopItems} pendingCount={pendingCount} shopPending={shopPending}
           onToggle={toggle} onEdit={openEdit} onMoveToTimeline={moveToTimeline}
-          onAddShop={addShopItem} onToggleShop={toggleShop} onDeleteShop={deleteShop}/>
+          onAddShop={addShopItem} onToggleShop={toggleShop} onDeleteShop={deleteShop}
+          onDragStart={startDrag}/>
+      )}
+
+      {/* ── Drag overlay ── */}
+      {dragTask&&(
+        <div className="fixed inset-0 z-[70] pointer-events-none">
+          {/* Drop time line */}
+          {dropTime&&(
+            <div className="absolute left-0 right-0 flex items-center gap-2 px-14"
+              style={{top:`${dragPos.y}px`}}>
+              <span className="bg-blue-500 text-white text-xs font-bold px-2 py-0.5 rounded-full whitespace-nowrap shrink-0">{dropTime}</span>
+              <div className="flex-1 h-0.5 bg-blue-400 rounded-full"/>
+            </div>
+          )}
+          {/* Floating card */}
+          <div style={{
+            position:'absolute',
+            left:`${Math.max(8,Math.min(dragPos.x-70,window.innerWidth-180))}px`,
+            top:`${dragPos.y-50}px`,
+            transform:'rotate(-3deg) scale(1.05)',
+          }}>
+            <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 px-4 py-3 w-44">
+              <p className="text-sm font-bold text-gray-900 truncate">{dragTask.name}</p>
+              <p className="text-xs text-blue-500 mt-0.5 font-semibold">{dropTime??'ドラッグして配置'}</p>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ── Calendar ── */}
