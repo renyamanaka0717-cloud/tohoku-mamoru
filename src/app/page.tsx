@@ -30,7 +30,7 @@ const DEFAULT_SETTINGS: Settings = { wakeTime: '07:00', sleepTime: '23:00' };
 const TASKS_KEY    = 'tl-tasks-v2';
 const SETTINGS_KEY = 'tl-settings-v2';
 const SHOP_KEY     = 'tl-shop-v1';
-const PX_PER_HOUR  = 72;
+const PX_PER_HOUR  = 100;
 const PX_PER_MIN   = PX_PER_HOUR / 60;
 const DAY_NAMES    = ['日','月','火','水','木','金','土'];
 const DUR_OPTS     = [{v:0,l:'なし'},{v:5,l:'5分'},{v:10,l:'10分'},{v:15,l:'15分'},{v:30,l:'30分'}];
@@ -401,13 +401,26 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
   onSchedule:(t:Task,time:string)=>void;onAddAtTime:(time:string)=>void;
 }) {
   const wakeMin=toMin(settings.wakeTime),sleepMin=toMin(settings.sleepTime);
-  const totalMins=sleepMin-wakeMin,totalHeight=totalMins*PX_PER_MIN;
+  const totalMins=sleepMin-wakeMin;
   const nowMin=toMin(now);
   const calcY=(min:number)=>(min-wakeMin)*PX_PER_MIN;
 
   const dayTasks=tasks.filter(t=>t.date===date&&!t.isLater&&t.startTime).sort((a,b)=>toMin(a.startTime!)-toMin(b.startTime!));
   const freeSlots=calcFreeSlots(tasks,date,settings);
   const laterPool=later.filter(t=>!t.completed);
+
+  // prevent card overlap: push cards down when they would collide
+  const MIN_CARD_H = 60;
+  let prevBottom = -Infinity;
+  const taskLayout = dayTasks.map(task=>{
+    const naturalY = calcY(toMin(task.startTime!));
+    const top = Math.max(naturalY, prevBottom + 2);
+    const h = Math.max(MIN_CARD_H, (task.duration??0)*PX_PER_MIN);
+    prevBottom = top + h;
+    return {task,top,h};
+  });
+  const maxBottom = taskLayout.length ? taskLayout[taskLayout.length-1].top + taskLayout[taskLayout.length-1].h : 0;
+  const totalHeight = Math.max(totalMins*PX_PER_MIN, maxBottom + 32);
 
   const hours:number[]=[];
   for(let m=wakeMin;m<=sleepMin;m+=60) hours.push(m);
@@ -455,8 +468,8 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
       )}
 
       {/* task cards */}
-      {dayTasks.map(task=>(
-        <div key={task.id} className="absolute z-10" style={{top:`${calcY(toMin(task.startTime!))}px`,left:`${CARD_LEFT}px`,right:'0px'}}>
+      {taskLayout.map(({task,top,h})=>(
+        <div key={task.id} className="absolute z-10" style={{top:`${top}px`,left:`${CARD_LEFT}px`,right:'0px',minHeight:`${h}px`}}>
           <TaskCard task={task} onToggle={()=>onToggle(task.id)} onEdit={()=>onEdit(task)}/>
         </div>
       ))}
@@ -484,131 +497,118 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
   );
 }
 
-// ── LaterSheet ────────────────────────────────────────────────────────────────
+// ── BottomTabs ────────────────────────────────────────────────────────────────
 
-function LaterSheet({tasks,onToggle,onEdit,onMoveToTimeline,onClose}:{
-  tasks:Task[];onToggle:(id:string)=>void;onEdit:(t:Task)=>void;
-  onMoveToTimeline:(t:Task)=>void;onClose:()=>void;
+function BottomTabs({activeTab,onSwitchTab,onClose,laterTasks,shopItems,pendingCount,shopPending,
+  onLaterToggle,onLaterEdit,onMoveToTimeline,onAddShop,onToggleShop,onDeleteShop
+}:{
+  activeTab:'later'|'shop'; onSwitchTab:(t:'later'|'shop')=>void; onClose:()=>void;
+  laterTasks:Task[]; shopItems:ShopItem[]; pendingCount:number; shopPending:number;
+  onLaterToggle:(id:string)=>void; onLaterEdit:(t:Task)=>void; onMoveToTimeline:(t:Task)=>void;
+  onAddShop:(n:string)=>void; onToggleShop:(id:string)=>void; onDeleteShop:(id:string)=>void;
 }) {
-  const pending=tasks.filter(t=>!t.completed);
-  const done=tasks.filter(t=>t.completed);
+  const [shopInput,setShopInput] = useState('');
+  const addShop = () => { const v=shopInput.trim(); if(!v) return; onAddShop(v); setShopInput(''); };
+  const laterPending=laterTasks.filter(t=>!t.completed);
+  const laterDone=laterTasks.filter(t=>t.completed);
+  const shopPendingItems=shopItems.filter(i=>!i.checked);
+  const shopDoneItems=shopItems.filter(i=>i.checked);
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col" onClick={onClose}>
       <div className="flex-1"/>
       <div className="bg-white w-full max-w-md mx-auto rounded-t-3xl max-h-[85vh] flex flex-col shadow-2xl" onClick={e=>e.stopPropagation()}>
-        <div className="flex justify-center pt-3 pb-1 shrink-0">
-          <div className="w-10 h-1 bg-gray-200 rounded-full"/>
+        <div className="flex justify-center pt-3 shrink-0"><div className="w-10 h-1 bg-gray-200 rounded-full"/></div>
+        {/* Tab bar */}
+        <div className="flex border-b border-gray-100 shrink-0 mt-1">
+          {([['later','あとでやる',pendingCount],['shop','🛒 買い物',shopPending]] as const).map(([t,label,cnt])=>(
+            <button key={t} onClick={()=>onSwitchTab(t)}
+              className={`flex-1 py-3 text-sm font-semibold flex items-center justify-center gap-1.5 border-b-2 transition-colors ${activeTab===t?'border-gray-900 text-gray-900':'border-transparent text-gray-400'}`}>
+              {label}
+              {cnt>0&&<span className="text-[11px] bg-gray-900 text-white min-w-[18px] h-[18px] rounded-full flex items-center justify-center font-bold px-1">{cnt}</span>}
+            </button>
+          ))}
         </div>
-        <div className="flex items-center justify-between px-4 py-2 shrink-0">
-          <h2 className="text-base font-bold text-gray-900">あとでやる</h2>
-          <button onClick={onClose} className="text-gray-400 text-xl w-8 h-8 flex items-center justify-center">×</button>
-        </div>
-        <div className="overflow-y-auto px-4 pb-10 flex-1">
-          {tasks.length===0?(
-            <div className="py-12 text-center">
-              <p className="text-4xl mb-2">✨</p>
-              <p className="text-sm text-gray-400">あとでやるタスクはありません</p>
-            </div>
-          ):(
-            <div className="space-y-2 pt-1">
-              {pending.map(t=>(
-                <div key={t.id} className="flex items-center gap-2.5 bg-white border border-gray-100 rounded-2xl shadow-sm px-3 py-3">
-                  <div className="w-8 h-8 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center text-base shrink-0">{t.icon}</div>
-                  <div className="flex-1 min-w-0" onClick={()=>onEdit(t)}>
-                    <p className="text-sm font-semibold text-gray-900">{t.name}</p>
-                    {(t.duration??0)>0&&<p className="text-xs text-gray-400">{durLabel(t.duration??0)}</p>}
-                    {t.memo&&<p className="text-xs text-gray-400 truncate">{t.memo}</p>}
-                    <button onClick={e=>{e.stopPropagation();onMoveToTimeline(t);}}
-                      className="mt-2 text-xs font-semibold px-3 py-1.5 border border-gray-200 rounded-xl text-gray-600">
-                      今日のタイムラインへ →
-                    </button>
-                  </div>
-                  <button onClick={()=>onToggle(t.id)} className="w-6 h-6 rounded-full border-2 border-gray-300 shrink-0 flex items-center justify-center"/>
-                </div>
-              ))}
-              {done.length>0&&<>
-                <p className="text-xs text-gray-300 pt-3 pb-1">完了済み</p>
-                {done.map(t=>(
-                  <div key={t.id} className="flex items-center gap-2.5 bg-gray-50 border border-gray-100 rounded-2xl px-3 py-3 opacity-60">
-                    <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-base shrink-0">{t.icon}</div>
-                    <div className="flex-1"><p className="text-sm font-semibold text-gray-400 line-through">{t.name}</p></div>
-                    <button onClick={()=>onToggle(t.id)} className="w-6 h-6 rounded-full border-2 border-gray-900 bg-gray-900 shrink-0 flex items-center justify-center">
-                      <span className="text-white text-[10px] font-bold">✓</span>
-                    </button>
+        {/* あとでやる */}
+        {activeTab==='later'&&(
+          <div className="overflow-y-auto px-4 pb-10 flex-1 pt-2">
+            {laterTasks.length===0?(
+              <div className="py-12 text-center"><p className="text-4xl mb-2">✨</p><p className="text-sm text-gray-400">あとでやるタスクはありません</p></div>
+            ):(
+              <div className="space-y-2">
+                {laterPending.map(t=>(
+                  <div key={t.id} className="flex items-center gap-2.5 bg-white border border-gray-100 rounded-2xl shadow-sm px-3 py-3">
+                    <div className="w-8 h-8 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center text-base shrink-0">{t.icon}</div>
+                    <div className="flex-1 min-w-0" onClick={()=>onLaterEdit(t)}>
+                      <p className="text-sm font-semibold text-gray-900">{t.name}</p>
+                      {(t.duration??0)>0&&<p className="text-xs text-gray-400">{durLabel(t.duration??0)}</p>}
+                      {t.memo&&<p className="text-xs text-gray-400 truncate">{t.memo}</p>}
+                      <button onClick={e=>{e.stopPropagation();onMoveToTimeline(t);}}
+                        className="mt-2 text-xs font-semibold px-3 py-1.5 border border-gray-200 rounded-xl text-gray-600">
+                        今日のタイムラインへ →
+                      </button>
+                    </div>
+                    <button onClick={()=>onLaterToggle(t.id)} className="w-6 h-6 rounded-full border-2 border-gray-300 shrink-0 flex items-center justify-center"/>
                   </div>
                 ))}
-              </>}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── ShoppingSheet ─────────────────────────────────────────────────────────────
-
-function ShoppingSheet({items,onAdd,onToggle,onDelete,onClose}:{
-  items:ShopItem[];onAdd:(n:string)=>void;onToggle:(id:string)=>void;
-  onDelete:(id:string)=>void;onClose:()=>void;
-}) {
-  const [input,setInput] = useState('');
-  const pending=items.filter(i=>!i.checked);
-  const done=items.filter(i=>i.checked);
-  const add=()=>{ const v=input.trim(); if(!v) return; onAdd(v); setInput(''); };
-
-  return (
-    <div className="fixed inset-0 z-50 flex flex-col" onClick={onClose}>
-      <div className="flex-1"/>
-      <div className="bg-white w-full max-w-md mx-auto rounded-t-3xl max-h-[85vh] flex flex-col shadow-2xl" onClick={e=>e.stopPropagation()}>
-        <div className="flex justify-center pt-3 pb-1 shrink-0"><div className="w-10 h-1 bg-gray-200 rounded-full"/></div>
-        <div className="flex items-center justify-between px-4 py-2 shrink-0">
-          <h2 className="text-base font-bold text-gray-900">🛒 買い物リスト</h2>
-          <button onClick={onClose} className="text-gray-400 text-xl w-8 h-8 flex items-center justify-center">×</button>
-        </div>
-        <div className="px-4 pb-3 shrink-0">
-          <div className="flex gap-2">
-            <input type="text" value={input} onChange={e=>setInput(e.target.value)}
-              onKeyDown={e=>e.key==='Enter'&&add()}
-              placeholder="商品を追加..."
-              className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-gray-400"/>
-            <button onClick={add} disabled={!input.trim()}
-              className="px-4 py-2 bg-gray-900 text-white rounded-xl text-sm font-semibold disabled:opacity-40">追加</button>
+                {laterDone.length>0&&<>
+                  <p className="text-xs text-gray-300 pt-3 pb-1">完了済み</p>
+                  {laterDone.map(t=>(
+                    <div key={t.id} className="flex items-center gap-2.5 bg-gray-50 border border-gray-100 rounded-2xl px-3 py-3 opacity-60">
+                      <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-base shrink-0">{t.icon}</div>
+                      <div className="flex-1"><p className="text-sm font-semibold text-gray-400 line-through">{t.name}</p></div>
+                      <button onClick={()=>onLaterToggle(t.id)} className="w-6 h-6 rounded-full border-2 border-gray-900 bg-gray-900 shrink-0 flex items-center justify-center">
+                        <span className="text-white text-[10px] font-bold">✓</span>
+                      </button>
+                    </div>
+                  ))}
+                </>}
+              </div>
+            )}
           </div>
-        </div>
-        <div className="overflow-y-auto px-4 pb-10 flex-1">
-          {items.length===0?(
-            <div className="py-12 text-center">
-              <p className="text-4xl mb-2">🛒</p>
-              <p className="text-sm text-gray-400">リストは空です</p>
+        )}
+        {/* 買い物 */}
+        {activeTab==='shop'&&(
+          <div className="flex flex-col flex-1 overflow-hidden">
+            <div className="px-4 pt-3 pb-2 shrink-0">
+              <div className="flex gap-2">
+                <input type="text" value={shopInput} onChange={e=>setShopInput(e.target.value)}
+                  onKeyDown={e=>e.key==='Enter'&&addShop()}
+                  placeholder="商品を追加..."
+                  className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-gray-400 bg-gray-50"/>
+                <button onClick={addShop} disabled={!shopInput.trim()}
+                  className="px-4 py-2 bg-gray-900 text-white rounded-xl text-sm font-semibold disabled:opacity-40">追加</button>
+              </div>
             </div>
-          ):(
-            <div className="space-y-2">
-              {pending.map(item=>(
-                <div key={item.id} className="flex items-center gap-3 bg-white border border-gray-100 rounded-2xl shadow-sm px-4 py-3">
-                  <button onClick={()=>onToggle(item.id)}
-                    className="w-5 h-5 rounded border-2 border-gray-300 shrink-0"/>
-                  <p className="flex-1 text-sm font-medium text-gray-800">{item.name}</p>
-                  <button onClick={()=>onDelete(item.id)} className="text-gray-300 text-xl leading-none">×</button>
+            <div className="overflow-y-auto px-4 pb-10 flex-1">
+              {shopItems.length===0?(
+                <div className="py-12 text-center"><p className="text-4xl mb-2">🛒</p><p className="text-sm text-gray-400">リストは空です</p></div>
+              ):(
+                <div className="space-y-2">
+                  {shopPendingItems.map(item=>(
+                    <div key={item.id} className="flex items-center gap-3 bg-white border border-gray-100 rounded-2xl shadow-sm px-4 py-3">
+                      <button onClick={()=>onToggleShop(item.id)} className="w-5 h-5 rounded border-2 border-gray-300 shrink-0"/>
+                      <p className="flex-1 text-sm font-medium text-gray-800">{item.name}</p>
+                      <button onClick={()=>onDeleteShop(item.id)} className="text-gray-300 text-xl leading-none">×</button>
+                    </div>
+                  ))}
+                  {shopDoneItems.length>0&&<>
+                    <p className="text-xs text-gray-300 pt-3 pb-1">購入済み</p>
+                    {shopDoneItems.map(item=>(
+                      <div key={item.id} className="flex items-center gap-3 bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3 opacity-60">
+                        <button onClick={()=>onToggleShop(item.id)} className="w-5 h-5 rounded border-2 border-gray-900 bg-gray-900 shrink-0 flex items-center justify-center">
+                          <span className="text-white text-[10px] font-bold">✓</span>
+                        </button>
+                        <p className="flex-1 text-sm font-medium text-gray-400 line-through">{item.name}</p>
+                        <button onClick={()=>onDeleteShop(item.id)} className="text-gray-300 text-xl leading-none">×</button>
+                      </div>
+                    ))}
+                  </>}
                 </div>
-              ))}
-              {done.length>0&&<>
-                <p className="text-xs text-gray-300 pt-3 pb-1">購入済み</p>
-                {done.map(item=>(
-                  <div key={item.id} className="flex items-center gap-3 bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3 opacity-60">
-                    <button onClick={()=>onToggle(item.id)}
-                      className="w-5 h-5 rounded border-2 border-gray-900 bg-gray-900 shrink-0 flex items-center justify-center">
-                      <span className="text-white text-[10px] font-bold">✓</span>
-                    </button>
-                    <p className="flex-1 text-sm font-medium text-gray-400 line-through">{item.name}</p>
-                    <button onClick={()=>onDelete(item.id)} className="text-gray-300 text-xl leading-none">×</button>
-                  </div>
-                ))}
-              </>}
+              )}
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -624,8 +624,7 @@ export default function App() {
   const [modal,setModal]         = useState<{open:boolean;task:Task|null;prefillTime?:string}>({open:false,task:null});
   const [settingsOpen,setSOp]    = useState(false);
   const [calendarOpen,setCalOp]  = useState(false);
-  const [laterOpen,setLaterOpen] = useState(false);
-  const [shopOpen,setShopOpen]   = useState(false);
+  const [activeTab,setActiveTab] = useState<'later'|'shop'|null>(null);
   const [loaded,setLoaded]       = useState(false);
   const [now,setNow]             = useState(nowStr());
   const [touchY,setTouchY]       = useState(0);
@@ -764,19 +763,16 @@ export default function App() {
       <div
         className="fixed bottom-0 left-0 right-0 z-40 max-w-md mx-auto bg-white border-t border-gray-100"
         onTouchStart={e=>setTouchY(e.touches[0].clientY)}
-        onTouchEnd={e=>{ if(touchY-e.changedTouches[0].clientY>30) setLaterOpen(true); }}
+        onTouchEnd={e=>{ if(touchY-e.changedTouches[0].clientY>30) setActiveTab('later'); }}
       >
         <div className="flex">
-          <button onClick={()=>setLaterOpen(true)}
-            className="flex-1 flex items-center justify-center gap-2 py-3 border-r border-gray-100 active:bg-gray-50">
-            <span className="text-sm font-semibold text-gray-700">あとでやる</span>
-            {pendingCount>0&&<span className="text-xs bg-gray-900 text-white w-5 h-5 rounded-full flex items-center justify-center font-bold">{pendingCount}</span>}
-          </button>
-          <button onClick={()=>setShopOpen(true)}
-            className="flex-1 flex items-center justify-center gap-2 py-3 active:bg-gray-50">
-            <span className="text-sm font-semibold text-gray-700">🛒 買い物</span>
-            {shopPending>0&&<span className="text-xs bg-gray-900 text-white w-5 h-5 rounded-full flex items-center justify-center font-bold">{shopPending}</span>}
-          </button>
+          {([['later','あとでやる',pendingCount],['shop','🛒 買い物',shopPending]] as const).map(([tab,label,cnt],i)=>(
+            <button key={tab} onClick={()=>setActiveTab(t=>t===tab?null:tab)}
+              className={`flex-1 flex items-center justify-center gap-2 py-3 transition-colors ${i===0?'border-r border-gray-100':''} ${activeTab===tab?'bg-gray-50':''}`}>
+              <span className={`text-sm font-semibold ${activeTab===tab?'text-gray-900':'text-gray-500'}`}>{label}</span>
+              {cnt>0&&<span className="text-[11px] bg-gray-900 text-white min-w-[18px] h-[18px] rounded-full flex items-center justify-center font-bold px-1">{cnt}</span>}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -788,16 +784,12 @@ export default function App() {
         </button>
       </div>
 
-      {/* ── Later sheet ── */}
-      {laterOpen&&(
-        <LaterSheet tasks={laterTasks} onToggle={toggle} onEdit={openEdit}
-          onMoveToTimeline={moveToTimeline} onClose={()=>setLaterOpen(false)}/>
-      )}
-
-      {/* ── Shopping sheet ── */}
-      {shopOpen&&(
-        <ShoppingSheet items={shopItems} onAdd={addShopItem} onToggle={toggleShop}
-          onDelete={deleteShop} onClose={()=>setShopOpen(false)}/>
+      {/* ── Bottom sheet ── */}
+      {activeTab&&(
+        <BottomTabs activeTab={activeTab} onSwitchTab={setActiveTab} onClose={()=>setActiveTab(null)}
+          laterTasks={laterTasks} shopItems={shopItems} pendingCount={pendingCount} shopPending={shopPending}
+          onLaterToggle={toggle} onLaterEdit={openEdit} onMoveToTimeline={moveToTimeline}
+          onAddShop={addShopItem} onToggleShop={toggleShop} onDeleteShop={deleteShop}/>
       )}
 
       {/* ── Calendar ── */}
