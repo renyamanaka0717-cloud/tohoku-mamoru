@@ -328,20 +328,20 @@ function CalendarPage({date,tasks,onSelect,onClose}:{date:string;tasks:Task[];on
             const isSel=d===date,isToday=d===today;
             return (
               <button key={i} disabled={!d} onClick={()=>{if(d){onSelect(d);}}}
-                className="flex flex-col items-start py-1 px-0.5 rounded-2xl active:bg-gray-50" style={{minHeight:'72px'}}>
+                className="flex flex-col items-start py-1 px-0.5 rounded-2xl active:bg-gray-50" style={{minHeight:'100px'}}>
                 <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold mx-auto ${
                   !d?'':isSel?'bg-gray-900 text-white':isToday?'bg-gray-100 text-gray-900':'text-gray-700'
                 }`}>
                   {d?new Date(d+'T12:00:00').getDate():''}
                 </span>
                 <div className="w-full space-y-px mt-0.5">
-                  {dayTasks.slice(0,2).map((t,ti)=>(
+                  {dayTasks.slice(0,3).map((t,ti)=>(
                     <div key={ti} className={`w-full rounded px-1 overflow-hidden ${isSel?'bg-gray-700':'bg-gray-100'}`}>
                       <p className={`text-[8px] truncate leading-tight py-px ${isSel?'text-white':'text-gray-600'}`}>{t.name}</p>
                     </div>
                   ))}
-                  {dayTasks.length>2&&(
-                    <p className={`text-[8px] text-center leading-tight ${isSel?'text-gray-300':'text-gray-400'}`}>+{dayTasks.length-2}</p>
+                  {dayTasks.length>3&&(
+                    <p className={`text-[8px] text-center leading-tight ${isSel?'text-gray-300':'text-gray-400'}`}>+{dayTasks.length-3}</p>
                   )}
                 </div>
               </button>
@@ -1122,11 +1122,14 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
   const wakeMin=toMin(settings.wakeTime),sleepMin=toMin(settings.sleepTime);
   const totalMins=sleepMin-wakeMin;
   const nowMin=toMin(now);
-  const calcY=(min:number)=>(min-wakeMin)*PX_PER_MIN;
 
   const dayTasks=tasks.filter(t=>t.date===date&&!t.isLater&&t.startTime).sort((a,b)=>toMin(a.startTime!)-toMin(b.startTime!));
   const freeSlots=calcFreeSlots(tasks,date,settings);
   const laterPool=later.filter(t=>!t.completed);
+
+  const pph=dayTasks.length===0?Math.round(PX_PER_HOUR/3):PX_PER_HOUR;
+  const ppm=pph/60;
+  const calcY=(min:number)=>(min-wakeMin)*ppm;
 
   // Combined layout: tasks + free slots in time order, no overlaps
   const MIN_CARD_H = 60;
@@ -1144,7 +1147,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
   for(const item of allItems){
     if(item.type==='task'){
       const top=Math.max(item.y,prevBottom+2);
-      const h=Math.max(MIN_CARD_H,(item.t.duration??0)*PX_PER_MIN);
+      const h=Math.max(MIN_CARD_H,(item.t.duration??0)*ppm);
       taskLayout.push({task:item.t,top,h});
       prevBottom=top+h;
       snapshots.push({naturalY:item.y,pb:prevBottom}); // only tasks stretch the axis
@@ -1152,7 +1155,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
       const freeY=Math.max(item.y,prevBottom)+2;
       // 94px = FreeTimeCard の最低コンテンツ高さ（ヘッダー＋大テキスト）、fit タスクボタン 1 行 38px
       const fitsN=laterPool.filter(t=>(t.duration??0)<=item.s.min).length;
-      const cardH=Math.max(94+Math.min(fitsN,3)*38,item.s.min*PX_PER_MIN-4);
+      const cardH=Math.max(94+Math.min(fitsN,3)*38,item.s.min*ppm-4);
       freeLayout.push({slot:item.s,freeY,cardH});
       prevBottom=freeY+cardH;
     }
@@ -1567,7 +1570,9 @@ export default function App() {
       const header=document.querySelector('header');
       const headerBottom=header?header.getBoundingClientRect().bottom:130;
       const wakeMin=toMin(settings.wakeTime);
-      const rawMin=wakeMin+(clientY+window.scrollY-headerBottom-16)/PX_PER_MIN;
+      const hasTasks=filteredTasks.some(t=>t.date===date&&!t.isLater&&t.startTime);
+      const dragPpm=(hasTasks?PX_PER_HOUR:Math.round(PX_PER_HOUR/3))/60;
+      const rawMin=wakeMin+(clientY+window.scrollY-headerBottom-16)/dragPpm;
       const snapped=Math.round(rawMin/5)*5;
       return fromMin(Math.max(wakeMin,Math.min(toMin(settings.sleepTime),snapped)));
     };
