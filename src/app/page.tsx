@@ -553,11 +553,27 @@ function FreeTimeCard({slot,fits,height,onSchedule}:{slot:FreeSlot;fits:Task[];h
 
 // ── Timeline ──────────────────────────────────────────────────────────────────
 
-function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAddAtTime}:{
+function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAddAtTime,onDragStart,dragTaskId}:{
   date:string;tasks:Task[];later:Task[];settings:Settings;now:string;
   onToggle:(id:string)=>void;onEdit:(t:Task)=>void;
   onSchedule:(t:Task,time:string)=>void;onAddAtTime:(time:string)=>void;
+  onDragStart:(t:Task,x:number,y:number)=>void;dragTaskId?:string;
 }) {
+  const [pressingId,setPressingId] = useState<string|null>(null);
+  const lpTimer = useRef<ReturnType<typeof setTimeout>|null>(null);
+  const startLP=(task:Task,e:React.TouchEvent)=>{
+    const touch=e.touches[0];
+    setPressingId(task.id);
+    lpTimer.current=setTimeout(()=>{
+      navigator.vibrate?.(40);
+      setPressingId(null);
+      onDragStart(task,touch.clientX,touch.clientY);
+    },500);
+  };
+  const cancelLP=()=>{
+    if(lpTimer.current){clearTimeout(lpTimer.current);lpTimer.current=null;}
+    setPressingId(null);
+  };
   const wakeMin=toMin(settings.wakeTime),sleepMin=toMin(settings.sleepTime);
   const totalMins=sleepMin-wakeMin;
   const nowMin=toMin(now);
@@ -645,11 +661,20 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
       )}
 
       {/* task cards */}
-      {taskLayout.map(({task,top,h})=>(
-        <div key={task.id} className="absolute z-10" style={{top:`${top}px`,left:`${CARD_LEFT}px`,right:'0px',minHeight:`${h}px`}}>
-          <TaskCard task={task} onToggle={()=>onToggle(task.id)} onEdit={()=>onEdit(task)}/>
-        </div>
-      ))}
+      {taskLayout.map(({task,top,h})=>{
+        const isDragging=dragTaskId===task.id;
+        const isPressing=pressingId===task.id;
+        return (
+          <div key={task.id} className={`absolute z-10 transition-transform select-none ${isPressing?'scale-95':''}`}
+            style={{top:`${top}px`,left:`${CARD_LEFT}px`,right:'0px',minHeight:`${h}px`,
+              opacity:isDragging?0.25:1, pointerEvents:isDragging?'none':'auto'}}
+            onTouchStart={e=>startLP(task,e)}
+            onTouchEnd={cancelLP}
+            onTouchMove={cancelLP}>
+            <TaskCard task={task} onToggle={()=>onToggle(task.id)} onEdit={()=>onEdit(task)}/>
+          </div>
+        );
+      })}
 
       {/* free time cards */}
       {freeLayout.map(({slot,freeY,cardH},i)=>{
@@ -980,7 +1005,11 @@ export default function App() {
     const onEnd=(e:TouchEvent)=>{
       const t=e.changedTouches[0];
       const time=calcTime(t.clientY);
-      setTasks(prev=>prev.map(tk=>tk.id===dragTask.id?{...tk,isLater:false,startTime:time,date}:tk));
+      // あとでやる drag → schedule on today; timeline drag → move time only
+      setTasks(prev=>prev.map(tk=>tk.id===dragTask.id
+        ? dragTask.isLater ? {...tk,isLater:false,startTime:time,date} : {...tk,startTime:time}
+        : tk
+      ));
       setDragTask(null);
       setDropTime(null);
     };
@@ -1092,7 +1121,8 @@ export default function App() {
       {/* ── Timeline ── */}
       <main className="px-3 py-4 pb-24">
         <Timeline date={date} tasks={tasks} later={laterTasks} settings={settings} now={now}
-          onToggle={toggle} onEdit={openEdit} onSchedule={scheduleInSlot} onAddAtTime={openAdd}/>
+          onToggle={toggle} onEdit={openEdit} onSchedule={scheduleInSlot} onAddAtTime={openAdd}
+          onDragStart={startDrag} dragTaskId={dragTask?.id}/>
       </main>
 
       {/* ── Bottom bar ── */}
