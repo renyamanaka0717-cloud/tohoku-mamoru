@@ -1176,8 +1176,10 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
   );
   const totalHeight=Math.max(stretchedCalcY(sleepMin),maxBottom)+32;
 
+  const hourStep=PX_PER_HOUR<50?120:60;
   const hours:number[]=[];
-  for(let m=wakeMin;m<=sleepMin;m+=60) hours.push(m);
+  for(let m=wakeMin;m<=sleepMin;m+=hourStep) hours.push(m);
+  if(hours[hours.length-1]!==sleepMin) hours.push(sleepMin);
 
   const AXIS_X=52, CARD_LEFT=AXIS_X+16;
 
