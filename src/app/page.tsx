@@ -61,7 +61,7 @@ const DUR_OPTS     = [
   {v:180,l:'3時間'},{v:240,l:'4時間'},{v:300,l:'5時間'},
 ];
 const NOTIF_OPTS   = [{v:0,l:'開始時'},{v:5,l:'5分前'},{v:10,l:'10分前'},{v:15,l:'15分前'},{v:30,l:'30分前'},{v:60,l:'1時間前'},{v:1440,l:'前日'}];
-const CATEGORIES   = ['仕事','個人'];
+const CATEGORIES   = ['個人','仕事'];
 
 // ── Utils ─────────────────────────────────────────────────────────────────────
 
@@ -256,6 +256,157 @@ function MonthCalendar({selected,onSelect,onClose,tasks}:{selected:string;onSele
         <div className="border-t border-gray-100 px-4 py-3 flex justify-end">
           <button onClick={onClose} className="text-sm text-gray-500 font-semibold px-4 py-1.5">閉じる</button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ── CalendarPage ─────────────────────────────────────────────────────────────
+
+function CalendarPage({date,tasks,onSelect,onClose}:{date:string;tasks:Task[];onSelect:(d:string)=>void;onClose:()=>void;}) {
+  const [vm,setVm]=useState(()=>{const d=new Date(date+'T12:00:00');return {year:d.getFullYear(),month:d.getMonth()};});
+  const [catFilter,setCatF]=useState<string|null>(null);
+  const today=todayStr();
+
+  const filtered=useMemo(()=>catFilter?tasks.filter(t=>t.category===catFilter):tasks,[tasks,catFilter]);
+  const tasksByDate=useMemo(()=>{
+    const map=new Map<string,number>();
+    filtered.filter(t=>!t.isLater&&t.startTime).forEach(t=>map.set(t.date,(map.get(t.date)??0)+1));
+    return map;
+  },[filtered]);
+
+  const days=useMemo(()=>{
+    const {year,month}=vm;
+    const first=new Date(year,month,1).getDay();
+    const total=new Date(year,month+1,0).getDate();
+    const arr:(string|null)[]=Array(first).fill(null);
+    for(let d=1;d<=total;d++) arr.push(dateToStr(new Date(year,month,d)));
+    return arr;
+  },[vm]);
+
+  return (
+    <div className="fixed inset-0 z-[80] bg-white flex flex-col">
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-gray-100 bg-white">
+        <button onClick={onClose} className="w-9 h-9 flex items-center justify-center text-xl text-gray-600 font-semibold">‹</button>
+        <div className="flex items-center gap-3">
+          <button onClick={()=>setVm(m=>shiftMonth(m.year,m.month,-1))}
+            className="w-9 h-9 flex items-center justify-center text-gray-500 bg-gray-100 rounded-xl text-sm font-semibold">‹</button>
+          <span className="font-bold text-gray-900 text-base min-w-[7rem] text-center">{vm.year}年{vm.month+1}月</span>
+          <button onClick={()=>setVm(m=>shiftMonth(m.year,m.month,1))}
+            className="w-9 h-9 flex items-center justify-center text-gray-500 bg-gray-100 rounded-xl text-sm font-semibold">›</button>
+        </div>
+        <button onClick={()=>{const d=new Date();setVm({year:d.getFullYear(),month:d.getMonth()});onSelect(today);}}
+          className="text-xs font-bold px-3 py-1.5 bg-gray-900 text-white rounded-full">今日</button>
+      </div>
+
+      {/* Category filter */}
+      <div className="flex gap-2 px-4 py-2 overflow-x-auto border-b border-gray-100" style={{scrollbarWidth:'none'} as React.CSSProperties}>
+        <button onClick={()=>setCatF(null)}
+          className={`shrink-0 px-4 py-1.5 rounded-full text-sm font-semibold ${!catFilter?'bg-gray-900 text-white':'bg-gray-100 text-gray-500'}`}>すべて</button>
+        {CATEGORIES.map(cat=>(
+          <button key={cat} onClick={()=>setCatF(c=>c===cat?null:cat)}
+            className={`shrink-0 px-4 py-1.5 rounded-full text-sm font-semibold ${catFilter===cat?'bg-gray-900 text-white':'bg-gray-100 text-gray-500'}`}>{cat}</button>
+        ))}
+      </div>
+
+      {/* Day headers */}
+      <div className="grid grid-cols-7 px-2 pt-3 pb-1">
+        {DAY_NAMES.map((n,i)=>(
+          <div key={i} className={`text-center text-xs font-semibold ${i===0?'text-red-400':i===6?'text-blue-400':'text-gray-400'}`}>{n}</div>
+        ))}
+      </div>
+
+      {/* Calendar grid */}
+      <div className="flex-1 overflow-y-auto px-2 pb-8">
+        <div className="grid grid-cols-7">
+          {days.map((d,i)=>{
+            const cnt=d?tasksByDate.get(d)??0:0;
+            const isSel=d===date,isToday=d===today;
+            return (
+              <button key={i} disabled={!d} onClick={()=>{if(d){onSelect(d);}}}
+                className="flex flex-col items-center py-2 rounded-2xl active:bg-gray-50" style={{minHeight:'64px'}}>
+                <span className={`w-10 h-10 rounded-full flex items-center justify-center text-base font-semibold ${
+                  !d?'':isSel?'bg-gray-900 text-white':isToday?'bg-gray-100 text-gray-900':'text-gray-700'
+                }`}>
+                  {d?new Date(d+'T12:00:00').getDate():''}
+                </span>
+                {cnt>0&&(
+                  <div className="flex gap-0.5 mt-0.5">
+                    {Array.from({length:Math.min(cnt,3)}).map((_,ti)=>(
+                      <div key={ti} className={`w-1.5 h-1.5 rounded-full ${isSel?'bg-gray-500':'bg-gray-400'}`}/>
+                    ))}
+                  </div>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── SearchPage ────────────────────────────────────────────────────────────────
+
+function SearchPage({tasks,onClose,onSelect}:{tasks:Task[];onClose:()=>void;onSelect:(t:Task)=>void;}) {
+  const [query,setQuery]=useState('');
+  const inputRef=useRef<HTMLInputElement>(null);
+  useEffect(()=>{inputRef.current?.focus();},[]);
+
+  const results=useMemo(()=>{
+    const q=query.trim().toLowerCase();
+    if(!q) return [];
+    return tasks.filter(t=>
+      t.name.toLowerCase().includes(q)||(t.memo??'').toLowerCase().includes(q)
+    ).sort((a,b)=>b.date.localeCompare(a.date)||(a.startTime??'').localeCompare(b.startTime??''));
+  },[tasks,query]);
+
+  const fmtDate=(d:string)=>{
+    const dt=new Date(d+'T12:00:00');
+    return `${dt.getMonth()+1}月${dt.getDate()}日（${DAY_NAMES[dt.getDay()]}）`;
+  };
+
+  return (
+    <div className="fixed inset-0 z-[90] bg-white flex flex-col">
+      {/* Header */}
+      <div className="flex items-center gap-3 px-4 pt-4 pb-3 border-b border-gray-100">
+        <button onClick={onClose} className="text-sm font-semibold text-gray-600 shrink-0">キャンセル</button>
+        <div className="flex-1 flex items-center gap-2 bg-gray-100 rounded-xl px-3 py-2.5">
+          <span className="text-gray-400 text-sm">🔍</span>
+          <input ref={inputRef} type="text" value={query} onChange={e=>setQuery(e.target.value)}
+            placeholder="タスクを検索..."
+            className="flex-1 text-sm bg-transparent outline-none text-gray-900 placeholder-gray-400"/>
+          {query&&<button onClick={()=>setQuery('')} className="text-gray-400 text-lg leading-none">×</button>}
+        </div>
+      </div>
+
+      {/* Results */}
+      <div className="flex-1 overflow-y-auto">
+        {!query?(
+          <div className="py-20 text-center"><p className="text-4xl mb-2">🔍</p><p className="text-sm text-gray-400">タスク名・メモで検索</p></div>
+        ):results.length===0?(
+          <div className="py-20 text-center"><p className="text-4xl mb-2">😔</p><p className="text-sm text-gray-400">「{query}」は見つかりませんでした</p></div>
+        ):(
+          <div>
+            <p className="text-xs text-gray-400 px-4 pt-3 pb-1">{results.length}件</p>
+            {results.map(t=>(
+              <button key={t.id} onClick={()=>onSelect(t)}
+                className="w-full flex items-center gap-3 px-4 py-3.5 border-b border-gray-50 active:bg-gray-50 text-left">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-900">{t.name}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    {t.isLater?'あとでやる':fmtDate(t.date)}
+                    {t.startTime&&` · ${t.startTime}`}
+                    {t.category&&<span className="ml-1 bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full text-[10px]">{t.category}</span>}
+                  </p>
+                  {t.memo&&<p className="text-xs text-gray-300 truncate mt-0.5">{t.memo}</p>}
+                </div>
+                <span className="text-gray-300 text-lg">›</span>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1362,6 +1513,7 @@ export default function App() {
   const [activeCategory,setActiveCat] = useState<string|null>(null);
   const [settingsOpen,setSOp]    = useState(false);
   const [calendarOpen,setCalOp]  = useState(false);
+  const [searchOpen,setSearchOpen] = useState(false);
   const [activeTab,setActiveTab] = useState<'later'|'shop'|null>(null);
   const [loaded,setLoaded]       = useState(false);
   const [now,setNow]             = useState(nowStr());
@@ -1503,6 +1655,8 @@ export default function App() {
               </button>
               <button onClick={()=>setDate(shiftDate(date,1))} className="w-8 h-8 flex items-center justify-center text-gray-600 text-xl font-semibold">›</button>
               <button onClick={()=>setCalOp(true)} className="w-8 h-8 flex items-center justify-center text-gray-400 text-lg">📅</button>
+              <button onClick={()=>setSearchOpen(true)}
+                className="w-8 h-8 flex items-center justify-center text-gray-400 text-base">🔍</button>
               <button onClick={()=>setSOp(!settingsOpen)}
                 className={`w-8 h-8 flex items-center justify-center rounded-xl transition-colors ${settingsOpen?'bg-gray-900 text-white':'text-gray-400'}`}>⚙</button>
             </div>
@@ -1589,6 +1743,14 @@ export default function App() {
           onDragStart={startDrag}/>
       )}
 
+      {/* あとでやる FAB */}
+      {activeTab==='later'&&(
+        <div className="fixed bottom-6 right-4 z-[60]">
+          <button onClick={()=>{setActiveTab(null);openAdd();}}
+            className="w-14 h-14 bg-gray-900 text-white rounded-full text-3xl shadow-2xl flex items-center justify-center active:bg-gray-700 leading-none">+</button>
+        </div>
+      )}
+
       {/* ── Drag overlay ── */}
       {dragTask&&(
         <div className="fixed inset-0 z-[70] pointer-events-none">
@@ -1617,7 +1779,13 @@ export default function App() {
 
       {/* ── Calendar ── */}
       {calendarOpen&&(
-        <MonthCalendar selected={date} onSelect={setDate} onClose={()=>setCalOp(false)} tasks={tasks}/>
+        <CalendarPage date={date} tasks={tasks} onSelect={(d)=>{setDate(d);setCalOp(false);}} onClose={()=>setCalOp(false)}/>
+      )}
+
+      {/* ── Search ── */}
+      {searchOpen&&(
+        <SearchPage tasks={tasks} onClose={()=>setSearchOpen(false)}
+          onSelect={(t)=>{if(!t.isLater)setDate(t.date);setSearchOpen(false);openEdit(t);}}/>
       )}
 
       {/* ── Task Modal ── */}
