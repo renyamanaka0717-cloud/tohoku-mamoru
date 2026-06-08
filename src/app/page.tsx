@@ -316,6 +316,17 @@ function TaskModal({task,currentDate,prefillTime,onSave,onDelete,onClose}:{
   const [custDurOpen,setCDurOpen] = useState(false);
   const [custDurMin,setCDurMin]  = useState(duration>0&&!DUR_OPTS.find(o=>o.v===duration)?duration:90);
   const [notifications,setNotifs]  = useState<number[]>(task?.notifications??[]);
+  const modalSwX=useRef(0), modalSwY=useRef(0);
+  const modeOrder:TaskMode[]=['later','scheduled','recurring'];
+  const onModalSwipe=(e:React.TouchEvent)=>{
+    const dx=e.changedTouches[0].clientX-modalSwX.current;
+    const dy=Math.abs(e.changedTouches[0].clientY-modalSwY.current);
+    if(Math.abs(dx)>60&&Math.abs(dx)>dy){
+      const idx=modeOrder.indexOf(mode);
+      if(dx<0&&idx<2) setMode(modeOrder[idx+1]);
+      else if(dx>0&&idx>0) setMode(modeOrder[idx-1]);
+    }
+  };
   const [incompleteRem,setIncRem]  = useState(task?.incompleteReminder??false);
   const [custNotifOpen,setCNOpen]  = useState(false);
   const [custNotifMin,setCNMin]    = useState(60);
@@ -407,7 +418,9 @@ function TaskModal({task,currentDate,prefillTime,onSave,onDelete,onClose}:{
     <div className="fixed inset-0 z-50 bg-black/60" onClick={onClose}>
       <div className="absolute bottom-0 left-0 right-0 max-w-md mx-auto" onClick={e=>e.stopPropagation()}>
         {/* ── Dark header ── */}
-        <div className="bg-gray-900 rounded-t-3xl px-4 pt-4">
+        <div className="bg-gray-900 rounded-t-3xl px-4 pt-4"
+          onTouchStart={e=>{modalSwX.current=e.touches[0].clientX;modalSwY.current=e.touches[0].clientY;}}
+          onTouchEnd={onModalSwipe}>
           {/* Buttons row */}
           <div className="flex items-center justify-between mb-4">
             <button onClick={onClose} className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center text-white">×</button>
@@ -458,7 +471,9 @@ function TaskModal({task,currentDate,prefillTime,onSave,onDelete,onClose}:{
         </div>
 
         {/* ── White content ── */}
-        <div className="bg-gray-50 max-h-[55vh] overflow-y-auto">
+        <div className="bg-gray-50 max-h-[55vh] overflow-y-auto"
+          onTouchStart={e=>{modalSwX.current=e.touches[0].clientX;modalSwY.current=e.touches[0].clientY;}}
+          onTouchEnd={onModalSwipe}>
           {/* Memo */}
           <div className="bg-white mx-3 mt-3 rounded-2xl p-4">
             <textarea value={memo} onChange={e=>setMemo(e.target.value)}
@@ -1086,6 +1101,17 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
   const [sortDir,setSortDir]     = useState<'asc'|'desc'>('asc');
   const [pressingId,setPressingId]= useState<string|null>(null);
   const lpTimer = useRef<ReturnType<typeof setTimeout>|null>(null);
+  const swX=useRef(0), swY=useRef(0);
+  const tabs:('later'|'shop')[]=['later','shop'];
+  const onSheetSwipe=(e:React.TouchEvent)=>{
+    const dx=e.changedTouches[0].clientX-swX.current;
+    const dy=Math.abs(e.changedTouches[0].clientY-swY.current);
+    if(Math.abs(dx)>70&&Math.abs(dx)>dy){
+      const idx=tabs.indexOf(activeTab);
+      if(dx<0&&idx<1) onSwitchTab('shop');
+      else if(dx>0&&idx>0) onSwitchTab('later');
+    }
+  };
 
   const startLP=(task:Task,e:React.TouchEvent)=>{
     const touch=e.touches[0];
@@ -1133,7 +1159,9 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
   return (
     <div className="fixed inset-0 z-50 flex flex-col" onClick={onClose}>
       <div className="flex-1"/>
-      <div className="bg-white w-full max-w-md mx-auto rounded-t-3xl max-h-[85vh] flex flex-col shadow-2xl" onClick={e=>e.stopPropagation()}>
+      <div className="bg-white w-full max-w-md mx-auto rounded-t-3xl max-h-[85vh] flex flex-col shadow-2xl" onClick={e=>e.stopPropagation()}
+        onTouchStart={e=>{swX.current=e.touches[0].clientX;swY.current=e.touches[0].clientY;}}
+        onTouchEnd={onSheetSwipe}>
         <div className="flex justify-center pt-3 shrink-0"><div className="w-10 h-1 bg-gray-200 rounded-full"/></div>
         {/* Tab bar */}
         <div className="flex border-b border-gray-100 shrink-0 mt-1">
