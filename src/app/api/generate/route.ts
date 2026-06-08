@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
 重要：必ずこのJSON形式のみで返してください。各配列に指定した数のアイテムを入れてください。`
 
     // Gemini APIを呼び出す（無料で使えるモデル）
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
     const result = await model.generateContent(prompt)
     const responseText = result.response.text()
 
