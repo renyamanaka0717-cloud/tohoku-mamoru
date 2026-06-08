@@ -604,9 +604,10 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
       prevBottom=top+h;
       snapshots.push({naturalY:item.y,pb:prevBottom}); // only tasks stretch the axis
     } else {
-      const slotEndY=calcY(toMin(item.s.end));
       const freeY=Math.max(item.y,prevBottom)+2;
-      const cardH=Math.max(60,Math.min(item.s.min*PX_PER_MIN-4,slotEndY-freeY));
+      // 94px = FreeTimeCard の最低コンテンツ高さ（ヘッダー＋大テキスト）、fit タスクボタン 1 行 38px
+      const fitsN=laterPool.filter(t=>(t.duration??0)<=item.s.min).length;
+      const cardH=Math.max(94+Math.min(fitsN,3)*38,item.s.min*PX_PER_MIN-4);
       freeLayout.push({slot:item.s,freeY,cardH});
       prevBottom=freeY+cardH;
     }
