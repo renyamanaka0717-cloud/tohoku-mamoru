@@ -1153,7 +1153,9 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
       const freeY=Math.max(item.y,prevBottom)+2;
       // 94px = FreeTimeCard の最低コンテンツ高さ（ヘッダー＋大テキスト）、fit タスクボタン 1 行 38px
       const fitsN=laterPool.filter(t=>(t.duration??0)<=item.s.min).length;
-      const cardH=Math.max(94+Math.min(fitsN,3)*38,item.s.min*PX_PER_MIN-4);
+      const cardH=dayTasks.length>0
+        ?Math.max(item.s.min*PX_PER_MIN-4,16)
+        :Math.max(94+Math.min(fitsN,3)*38,item.s.min*PX_PER_MIN-4);
       freeLayout.push({slot:item.s,freeY,cardH});
       prevBottom=freeY+cardH;
     }
@@ -1176,10 +1178,8 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
   );
   const totalHeight=Math.max(stretchedCalcY(sleepMin),maxBottom)+32;
 
-  const hourStep=PX_PER_HOUR<50?120:60;
   const hours:number[]=[];
-  for(let m=wakeMin;m<=sleepMin;m+=hourStep) hours.push(m);
-  if(hours[hours.length-1]!==sleepMin) hours.push(sleepMin);
+  for(let m=wakeMin;m<=sleepMin;m+=60) hours.push(m);
 
   const AXIS_X=52, CARD_LEFT=AXIS_X+16;
 
