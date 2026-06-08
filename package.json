@@ -9,7 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@google/generative-ai": "^0.24.0",
+    "groq-sdk": "^0.9.0",
     "next": "^15.3.3",
     "react": "^18",
     "react-dom": "^18"

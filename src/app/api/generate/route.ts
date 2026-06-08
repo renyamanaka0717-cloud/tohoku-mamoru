@@ -1,16 +1,16 @@
-// route.ts: サーバー側でGemini APIを呼び出すコード
+// route.ts: サーバー側でGroq AIを呼び出すコード
 // ※ このファイルはブラウザには送られません。APIキーが外部に漏れないよう、サーバー専用です。
 
 import { NextRequest, NextResponse } from 'next/server'
-import { GoogleGenerativeAI } from '@google/generative-ai'
-
-// Gemini APIクライアントの初期化
-// APIキーは .env.local から自動で読み込まれます
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || '')
+import Groq from 'groq-sdk'
 
 // POSTリクエストを受け取る関数
 export async function POST(request: NextRequest) {
   try {
+    // Groq APIクライアントの初期化（リクエスト時に実行することでビルドエラーを防ぐ）
+    const groq = new Groq({
+      apiKey: process.env.GROQ_API_KEY,
+    })
     // リクエストボディからデータを取得
     const body = await request.json()
     const { keyword, target, purpose } = body
@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Gemini AIへ送るプロンプト（指示文）
+    // AIへ送るプロンプト（指示文）
     const prompt = `あなたはThreadsのSNSマーケティング専門家です。
 以下の条件でThreads投稿用のコンテンツを日本語で生成してください。
 
@@ -55,10 +55,14 @@ export async function POST(request: NextRequest) {
 
 重要：必ずこのJSON形式のみで返してください。各配列に指定した数のアイテムを入れてください。`
 
-    // Gemini APIを呼び出す（無料で使えるモデル）
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
-    const result = await model.generateContent(prompt)
-    const responseText = result.response.text()
+    // Groq AIを呼び出す（無料で使える高速モデル）
+    const completion = await groq.chat.completions.create({
+      model: 'llama-3.3-70b-versatile',
+      messages: [{ role: 'user', content: prompt }],
+      max_tokens: 8000,
+    })
+
+    const responseText = completion.choices[0]?.message?.content || ''
 
     // JSONを取り出す（余計な文字が含まれる場合に対応）
     const jsonMatch = responseText.match(/\{[\s\S]*\}/)
@@ -90,7 +94,6 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Generate API Error:', error)
 
-    // エラーメッセージを返す
     return NextResponse.json(
       {
         error:
