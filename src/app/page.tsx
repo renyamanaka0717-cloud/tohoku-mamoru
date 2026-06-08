@@ -1530,6 +1530,8 @@ export default function App() {
   const [dragTask,setDragTask]   = useState<Task|null>(null);
   const [dragPos,setDragPos]     = useState({x:0,y:0});
   const [dropTime,setDropTime]   = useState<string|null>(null);
+  const mainSwX = useRef(0);
+  const mainSwY = useRef(0);
 
   useEffect(()=>{
     try{
@@ -1714,7 +1716,14 @@ export default function App() {
       </header>
 
       {/* ── Timeline ── */}
-      <main className="px-3 py-4 pb-24">
+      <main className="px-3 py-4 pb-24"
+        onTouchStart={e=>{mainSwX.current=e.touches[0].clientX;mainSwY.current=e.touches[0].clientY;}}
+        onTouchEnd={e=>{
+          if(dragTask) return;
+          const dx=e.changedTouches[0].clientX-mainSwX.current;
+          const dy=e.changedTouches[0].clientY-mainSwY.current;
+          if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)*1.5) setDate(shiftDate(date,dx<0?1:-1));
+        }}>
         <Timeline date={date} tasks={filteredTasks} later={laterTasks} settings={settings} now={now}
           onToggle={toggle} onEdit={openEdit} onSchedule={scheduleInSlot} onAddAtTime={openAdd}
           onDragStart={startDrag} dragTaskId={dragTask?.id}/>
