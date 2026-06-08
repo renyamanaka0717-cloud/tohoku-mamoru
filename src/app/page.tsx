@@ -270,8 +270,11 @@ function CalendarPage({date,tasks,onSelect,onClose}:{date:string;tasks:Task[];on
 
   const filtered=useMemo(()=>catFilter?tasks.filter(t=>t.category===catFilter):tasks,[tasks,catFilter]);
   const tasksByDate=useMemo(()=>{
-    const map=new Map<string,number>();
-    filtered.filter(t=>!t.isLater&&t.startTime).forEach(t=>map.set(t.date,(map.get(t.date)??0)+1));
+    const map=new Map<string,Task[]>();
+    filtered.filter(t=>!t.isLater&&t.startTime).forEach(t=>{
+      if(!map.has(t.date)) map.set(t.date,[]);
+      map.get(t.date)!.push(t);
+    });
     return map;
   },[filtered]);
 
@@ -321,23 +324,26 @@ function CalendarPage({date,tasks,onSelect,onClose}:{date:string;tasks:Task[];on
       <div className="flex-1 overflow-y-auto px-2 pb-8">
         <div className="grid grid-cols-7">
           {days.map((d,i)=>{
-            const cnt=d?tasksByDate.get(d)??0:0;
+            const dayTasks=d?(tasksByDate.get(d)??[]):[];
             const isSel=d===date,isToday=d===today;
             return (
               <button key={i} disabled={!d} onClick={()=>{if(d){onSelect(d);}}}
-                className="flex flex-col items-center py-2 rounded-2xl active:bg-gray-50" style={{minHeight:'64px'}}>
-                <span className={`w-10 h-10 rounded-full flex items-center justify-center text-base font-semibold ${
+                className="flex flex-col items-start py-1 px-0.5 rounded-2xl active:bg-gray-50" style={{minHeight:'72px'}}>
+                <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold mx-auto ${
                   !d?'':isSel?'bg-gray-900 text-white':isToday?'bg-gray-100 text-gray-900':'text-gray-700'
                 }`}>
                   {d?new Date(d+'T12:00:00').getDate():''}
                 </span>
-                {cnt>0&&(
-                  <div className="flex gap-0.5 mt-0.5">
-                    {Array.from({length:Math.min(cnt,3)}).map((_,ti)=>(
-                      <div key={ti} className={`w-1.5 h-1.5 rounded-full ${isSel?'bg-gray-500':'bg-gray-400'}`}/>
-                    ))}
-                  </div>
-                )}
+                <div className="w-full space-y-px mt-0.5">
+                  {dayTasks.slice(0,2).map((t,ti)=>(
+                    <div key={ti} className={`w-full rounded px-1 overflow-hidden ${isSel?'bg-gray-700':'bg-gray-100'}`}>
+                      <p className={`text-[8px] truncate leading-tight py-px ${isSel?'text-white':'text-gray-600'}`}>{t.name}</p>
+                    </div>
+                  ))}
+                  {dayTasks.length>2&&(
+                    <p className={`text-[8px] text-center leading-tight ${isSel?'text-gray-300':'text-gray-400'}`}>+{dayTasks.length-2}</p>
+                  )}
+                </div>
               </button>
             );
           })}
@@ -1785,7 +1791,7 @@ export default function App() {
       {/* ── Search ── */}
       {searchOpen&&(
         <SearchPage tasks={tasks} onClose={()=>setSearchOpen(false)}
-          onSelect={(t)=>{if(!t.isLater)setDate(t.date);setSearchOpen(false);openEdit(t);}}/>
+          onSelect={(t)=>{if(!t.isLater)setDate(t.date);setSearchOpen(false);}}/>
       )}
 
       {/* ── Task Modal ── */}
