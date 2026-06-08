@@ -1,22 +1,25 @@
-// layout.tsx: アプリ全体の共通レイアウト（タイトルやフォントの設定）
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import './globals.css'
 
-// ブラウザのタブに表示されるタイトルと説明
 export const metadata: Metadata = {
-  title: 'Threadsネタ発掘ツール | AIがあなたの投稿ネタを提案',
-  description:
-    'キーワードを入力するだけで、Threads向けの投稿ネタ・投稿文・切り口をAIが自動生成します。',
+  title: '1日タイムライン | 今日のやることを見える化',
+  description: 'ADHD気質の人や、ToDoリストが続かない人向けに、今日やることを時間軸で見える化するタイムラインToDoアプリ。',
 }
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: 'cover',
+}
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ja">
-      <body className="bg-white text-gray-800 antialiased">{children}</body>
+      <body className="bg-gray-50 text-gray-900 antialiased overscroll-none">
+        {children}
+      </body>
     </html>
   )
 }
