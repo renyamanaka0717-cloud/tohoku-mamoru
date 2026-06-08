@@ -5,7 +5,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface CustomRec {
-  frequency: 'day'|'week'|'month'|'year';
+  frequency: 'day'|'week'|'month'|'year'|'hour';
   interval: number;
   weekdays?: number[];           // 0=日…6=土
   monthlyType?: 'date'|'weekday';
@@ -82,7 +82,9 @@ const shiftMonth  = (y:number,m:number,d:number)=>{ let nm=m+d,ny=y; if(nm<0){nm
 const summarizeCustomRec=(r:CustomRec):string=>{
   const WD=['日','月','火','水','木','金','土'];
   let main='';
-  if(r.frequency==='day'){
+  if(r.frequency==='hour'){
+    main=r.interval===1?'毎時':`${r.interval}時間ごと`;
+  } else if(r.frequency==='day'){
     main=r.interval===1?'毎日':`${r.interval}日ごと`;
   } else if(r.frequency==='week'){
     const base=r.interval===1?'毎週':`${r.interval}週間ごと`;
@@ -108,6 +110,15 @@ const summarizeCustomRec=(r:CustomRec):string=>{
     main+=`・〜${dt.getMonth()+1}月${dt.getDate()}日`;
   }
   return main;
+};
+
+const recLabel=(t:Task):string=>{
+  if(t.recurrence==='daily') return '毎日';
+  if(t.recurrence==='weekly') return '毎週';
+  if(t.recurrence==='monthly') return '毎月';
+  if(t.recurrence==='yearly') return '毎年';
+  if(t.recurrence==='custom'&&t.customRec) return summarizeCustomRec(t.customRec);
+  return '';
 };
 
 const generateCustomDates=(base:string,r:CustomRec):string[]=>{
@@ -567,7 +578,19 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,onSave,onDelete
       } else if(recur==='yearly'){
         for(let i=0;i<5;i++) instances.push({...base,date:shiftYearBy(currentDate,i)});
       } else if(recur==='custom'){
-        generateCustomDates(currentDate,customRec).forEach(d=>instances.push({...base,date:d}));
+        if(customRec.frequency==='hour'){
+          const baseMin=base.startTime?toMin(base.startTime):8*60;
+          const maxN=customRec.endType==='count'?(customRec.endCount??20):24;
+          for(let i=0;i<maxN;i++){
+            const totalMin=baseMin+i*customRec.interval*60;
+            const dayOff=Math.floor(totalMin/(24*60));
+            const d=shiftDate(currentDate,dayOff);
+            if(customRec.endType==='date'&&customRec.endDate&&d>customRec.endDate) break;
+            instances.push({...base,date:d,startTime:fromMin(totalMin%(24*60))});
+          }
+        } else {
+          generateCustomDates(currentDate,customRec).forEach(d=>instances.push({...base,date:d}));
+        }
       }
       onSave(instances);
     } else {
@@ -690,17 +713,17 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,onSave,onDelete
                         className="w-11 h-11 rounded-full bg-gray-100 text-xl font-bold text-gray-600 flex items-center justify-center">+</button>
                     </div>
                     <div className="flex gap-2">
-                      {(['day','week','month','year'] as const).map((u,i)=>(
+                      {(['hour','day','week','month','year'] as const).map((u,i)=>(
                         <button key={u} onClick={()=>setCR('frequency',u)}
                           className={`flex-1 py-2.5 rounded-full text-sm font-semibold ${customRec.frequency===u?'bg-gray-900 text-white':'bg-gray-100 text-gray-600'}`}>
-                          {['日','週','月','年'][i]}
+                          {['時','日','週','月','年'][i]}
                         </button>
                       ))}
                     </div>
                   </div>
 
                   {/* ② 実行タイミング */}
-                  {customRec.frequency!=='day'&&(
+                  {customRec.frequency!=='day'&&customRec.frequency!=='hour'&&(
                     <div className="bg-white mx-3 mt-3 rounded-2xl p-4">
                       <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-4">② 実行タイミング</p>
 
@@ -1307,18 +1330,28 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
   const laterDone   = laterTasks.filter(t=>t.completed);
 
   // Pinned tasks always appear first, then sorted by order
-  const sortedLater = (() => {
-    const pinned  = laterPending.filter(t=>t.pinned);
-    const normal  = laterPending.filter(t=>!t.pinned);
+  const normalLater = (() => {
+    const pinned  = laterPending.filter(t=>t.pinned&&!t.recurrence);
+    const normal  = laterPending.filter(t=>!t.pinned&&!t.recurrence);
     const ordered = sortDir==='asc' ? normal : [...normal].reverse();
     return [...pinned,...ordered];
   })();
 
-  const scheduledRaw = tasks.filter(t=>!t.isLater&&t.startTime&&!t.completed)
+  const scheduledRaw = tasks.filter(t=>!t.isLater&&t.startTime&&!t.completed&&!t.recurrence)
     .sort((a,b)=>{
       const cmp=a.date.localeCompare(b.date)||toMin(a.startTime!)-toMin(b.startTime!);
       return sortDir==='asc'?cmp:-cmp;
     });
+
+  // Recurring tasks grouped (one row per series)
+  const recurringMap = new Map<string,Task>();
+  [...laterPending.filter(t=>t.recurrence),
+   ...tasks.filter(t=>!t.isLater&&t.startTime&&!t.completed&&t.recurrence)
+  ].forEach(t=>{
+    const key=`${t.name}||${t.recurrence}||${t.startTime??''}`;
+    if(!recurringMap.has(key)) recurringMap.set(key,t);
+  });
+  const recurringGroups=[...recurringMap.values()];
 
   const shopPendingItems=shopItems.filter(i=>!i.checked);
   const shopDoneItems=shopItems.filter(i=>i.checked);
@@ -1363,39 +1396,25 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
             </div>
 
             {/* あとでやる section */}
-            {laterPending.length>0&&(
+            {normalLater.length>0&&(
               <div className="mb-1">
                 <div className="flex items-center gap-1.5 mb-2">
                   <span className="text-xs text-gray-400">≡</span>
-                  <span className="text-xs text-gray-400 font-medium">あとでやる {laterPending.length}</span>
+                  <span className="text-xs text-gray-400 font-medium">あとでやる {normalLater.length}</span>
                 </div>
                 <div className="space-y-2">
-                  {sortedLater.map(t=>(
+                  {normalLater.map(t=>(
                     <div key={t.id}
                       className={`flex items-center gap-2.5 bg-white border border-gray-100 rounded-2xl shadow-sm px-3 py-3 transition-transform select-none ${pressingId===t.id?'scale-95 shadow-lg border-blue-200':''}`}
                       onTouchStart={e=>startLP(t,e)}
                       onTouchEnd={cancelLP}
                       onTouchMove={cancelLP}>
-                      <div className="flex-col items-center gap-0.5 shrink-0 hidden sm:flex">
-                        <span className="text-gray-200 text-xs leading-none">⠿</span>
-                      </div>
                       <div className="w-7 h-7 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0">
-                        {t.pinned
-                          ? <span className="text-xs">📌</span>
-                          : <span className="text-xs text-gray-400">☑</span>
-                        }
+                        {t.pinned?<span className="text-xs">📌</span>:<span className="text-xs text-gray-400">☑</span>}
                       </div>
                       <div className="flex-1 min-w-0" onClick={()=>onEdit(t)}>
                         <p className="text-sm font-semibold text-gray-900">{t.name}</p>
                         {(t.duration??0)>0&&<p className="text-xs text-gray-400">{durLabel(t.duration??0)}</p>}
-                        {t.memo&&<p className="text-xs text-gray-400 truncate">{t.memo}</p>}
-                        {(t.tags??[]).length>0&&(
-                          <div className="flex flex-wrap gap-1 mt-1">
-                            {(t.tags??[]).map(tag=>(
-                              <span key={tag} className="bg-gray-100 text-gray-500 text-[10px] px-1.5 py-0.5 rounded-full">{tag}</span>
-                            ))}
-                          </div>
-                        )}
                         <button onClick={e=>{e.stopPropagation();onMoveToTimeline(t);}}
                           className="mt-1.5 text-xs font-semibold px-2.5 py-1 border border-gray-200 rounded-lg text-gray-600">
                           今日のタイムラインへ →
@@ -1408,9 +1427,34 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
               </div>
             )}
 
+            {/* 繰り返し section */}
+            {recurringGroups.length>0&&(
+              <div className="mt-3">
+                <div className="flex items-center gap-1.5 mb-2">
+                  <span className="text-xs text-gray-400">↻</span>
+                  <span className="text-xs text-gray-400 font-medium">繰り返し {recurringGroups.length}</span>
+                </div>
+                <div className="space-y-2">
+                  {recurringGroups.map(t=>(
+                    <div key={`${t.name}||${t.recurrence}||${t.startTime??''}`}
+                      className="flex items-center gap-2.5 bg-white border border-gray-100 rounded-2xl shadow-sm px-3 py-3"
+                      onClick={()=>onEdit(t)}>
+                      <div className="w-7 h-7 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0">
+                        <span className="text-xs text-gray-400">↻</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-gray-900">{t.name}</p>
+                        <p className="text-xs text-gray-400">{recLabel(t)}{t.startTime?` ${t.startTime}`:''}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* 時間指定 section */}
             {scheduledRaw.length>0&&(
-              <div className="mt-4">
+              <div className="mt-3">
                 <div className="flex items-center gap-1.5 mb-2">
                   <span className="text-xs text-gray-400">⊙</span>
                   <span className="text-xs text-gray-400 font-medium">時間指定 {scheduledRaw.length}</span>
@@ -1423,14 +1467,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
                       </div>
                       <div className="flex-1 min-w-0" onClick={()=>onEdit(t)}>
                         <p className="text-sm font-semibold text-gray-900">{t.name}</p>
-                        <p className="text-xs text-gray-400">⊙ {t.date.slice(5).replace('-','/')} {t.startTime}</p>
-                        {(t.tags??[]).length>0&&(
-                          <div className="flex flex-wrap gap-1 mt-1">
-                            {(t.tags??[]).map(tag=>(
-                              <span key={tag} className="bg-gray-100 text-gray-500 text-[10px] px-1.5 py-0.5 rounded-full">{tag}</span>
-                            ))}
-                          </div>
-                        )}
+                        <p className="text-xs text-gray-400">{t.date.slice(5).replace('-','/')} {t.startTime}</p>
                       </div>
                       <button onClick={()=>onToggle(t.id)} className="w-6 h-6 rounded-full border-2 border-gray-300 shrink-0"/>
                     </div>
@@ -1440,7 +1477,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
             )}
 
             {/* empty */}
-            {laterPending.length===0&&scheduledRaw.length===0&&(
+            {normalLater.length===0&&scheduledRaw.length===0&&recurringGroups.length===0&&(
               <div className="py-12 text-center"><p className="text-4xl mb-2">✨</p><p className="text-sm text-gray-400">タスクがありません</p></div>
             )}
 
@@ -1532,6 +1569,8 @@ export default function App() {
   const [dropTime,setDropTime]   = useState<string|null>(null);
   const mainSwX = useRef(0);
   const mainSwY = useRef(0);
+  const [recConfirm,setRecConfirm] = useState<Task|null>(null);
+  const [editScope,setEditScope]   = useState<'one'|'all'>('one');
 
   useEffect(()=>{
     try{
@@ -1606,15 +1645,27 @@ export default function App() {
   const deleteShop   = (id:string)   => setShopItems(prev=>prev.filter(i=>i.id!==id));
 
   const openAdd  = (prefillTime?:string) => setModal({open:true,task:null,prefillTime,prefillCategory:activeCategory??undefined});
-  const openEdit = (task:Task) => setModal({open:true,task});
+  const openEdit = (task:Task) => {
+    if(task.recurrence) { setRecConfirm(task); } else { setModal({open:true,task}); }
+  };
   const closeModal = () => setModal({open:false,task:null});
 
   const saveTasks = (data:Omit<Task,'id'>[]) => {
-    const newTasks = data.map(d=>({...d,id:uid()}));
-    setTasks(prev=>modal.task
-      ? prev.map(t=>t.id===modal.task!.id?{...newTasks[0],id:t.id}:t)
-      : [...prev,...newTasks]
-    );
+    if(editScope==='all'&&modal.task){
+      const orig=modal.task, d=data[0];
+      setTasks(prev=>prev.map(t=>
+        t.name===orig.name&&t.recurrence===orig.recurrence&&t.startTime===orig.startTime
+          ?{...t,name:d.name,duration:d.duration,memo:d.memo,icon:d.icon,category:d.category,tags:d.tags,notifications:d.notifications}
+          :t
+      ));
+    } else {
+      const newTasks=data.map(d=>({...d,id:uid()}));
+      setTasks(prev=>modal.task
+        ?prev.map(t=>t.id===modal.task!.id?{...newTasks[0],id:t.id}:t)
+        :[...prev,...newTasks]
+      );
+    }
+    setEditScope('one');
     closeModal();
   };
   const delTask  = (id:string) => setTasks(prev=>prev.filter(t=>t.id!==id));
@@ -1812,6 +1863,24 @@ export default function App() {
           onSave={saveTasks}
           onDelete={modal.task?()=>delTask(modal.task!.id):undefined}
           onClose={closeModal}/>
+      )}
+
+      {/* ── Recurrence edit confirm ── */}
+      {recConfirm&&(
+        <div className="fixed inset-0 z-[200] bg-black/50 flex items-end justify-center" onClick={()=>setRecConfirm(null)}>
+          <div className="bg-white w-full max-w-md rounded-t-3xl px-5 pt-6 pb-10 shadow-2xl" onClick={e=>e.stopPropagation()}>
+            <p className="text-base font-bold text-gray-900 mb-1">繰り返し予定の変更</p>
+            <p className="text-sm text-gray-500 mb-6">「{recConfirm.name}」をどのように変更しますか？</p>
+            <div className="space-y-3">
+              <button onClick={()=>{setEditScope('one');setModal({open:true,task:recConfirm});setRecConfirm(null);}}
+                className="w-full py-3.5 bg-gray-100 rounded-2xl text-sm font-semibold text-gray-900">この予定のみ変更</button>
+              <button onClick={()=>{setEditScope('all');setModal({open:true,task:recConfirm});setRecConfirm(null);}}
+                className="w-full py-3.5 bg-gray-900 rounded-2xl text-sm font-semibold text-white">すべての予定を変更</button>
+              <button onClick={()=>setRecConfirm(null)}
+                className="w-full py-2.5 text-sm text-gray-400 font-semibold">キャンセル</button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
