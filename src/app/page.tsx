@@ -2,8 +2,8 @@
 import { useState } from 'react'
 
 type Result = {
-  patterns: string[]      // バズる投稿の特徴・パターン
-  examples: string[]      // バズった投稿の例（AI生成）
+  analysis: string[]      // 参考投稿の分析
+  patterns: string[]      // バズるパターン
   posts: string[]         // そのまま使える投稿文10個
   hooks: string[]         // 冒頭フック5個
   hashtags: string[]      // ハッシュタグ10個
@@ -12,6 +12,7 @@ type Result = {
 export default function Home() {
   const [keyword, setKeyword] = useState('')
   const [target, setTarget] = useState('')
+  const [references, setReferences] = useState('')   // 参考投稿テキスト
   const [result, setResult] = useState<Result | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -25,7 +26,7 @@ export default function Home() {
       const res = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ keyword, target }),
+        body: JSON.stringify({ keyword, target, references: references.trim() }),
       })
       if (!res.ok) { const d = await res.json(); throw new Error(d.error) }
       setResult(await res.json())
@@ -42,15 +43,19 @@ export default function Home() {
     setTimeout(() => setCopied(null), 2000)
   }
 
-  const Section = ({ title, emoji, items, id }: { title: string; emoji: string; items: string[]; id: string }) => (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-5">
+  const Section = ({
+    title, emoji, items, id, highlight
+  }: {
+    title: string; emoji: string; items: string[]; id: string; highlight?: boolean
+  }) => (
+    <div className={`rounded-2xl border shadow-sm p-5 mb-5 ${highlight ? 'bg-purple-50 border-purple-200' : 'bg-white border-gray-100'}`}>
       <h2 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
         <span className="text-xl">{emoji}</span>{title}
         <span className="ml-auto text-xs font-normal text-gray-400">{items.length}件</span>
       </h2>
       <ul className="space-y-2">
         {items.map((item, i) => (
-          <li key={i} className="flex items-start justify-between gap-3 p-3 bg-gray-50 rounded-xl">
+          <li key={i} className="flex items-start justify-between gap-3 p-3 bg-white rounded-xl border border-gray-100">
             <div className="flex gap-2 min-w-0">
               <span className="text-gray-400 text-sm shrink-0 w-4">{i + 1}.</span>
               <span className="text-sm text-gray-700 whitespace-pre-wrap break-words">{item}</span>
@@ -77,7 +82,7 @@ export default function Home() {
           </div>
           <div>
             <h1 className="font-bold text-gray-900">Threadsバズ分析ツール</h1>
-            <p className="text-xs text-gray-400">AIがバズパターンを分析してそのまま使える文章を作成</p>
+            <p className="text-xs text-gray-400">バズ投稿を参考にAIが投稿文を自動生成</p>
           </div>
         </div>
       </header>
@@ -85,6 +90,8 @@ export default function Home() {
       <div className="max-w-2xl mx-auto px-4 py-6">
         {/* 入力フォーム */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-6">
+
+          {/* キーワード */}
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1.5">
               ジャンル・キーワード <span className="text-red-400">*</span>
@@ -93,10 +100,12 @@ export default function Home() {
               type="text"
               value={keyword}
               onChange={e => setKeyword(e.target.value)}
-              placeholder="例：副業、ダイエット、ハンドメイド、節約"
+              placeholder="例：副業、ダイエット、ハンドメイド"
               className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300 transition"
             />
           </div>
+
+          {/* ターゲット */}
           <div className="mb-5">
             <label className="block text-sm font-medium text-gray-700 mb-1.5">
               ターゲット読者 <span className="text-red-400">*</span>
@@ -109,9 +118,29 @@ export default function Home() {
               className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300 transition"
             />
           </div>
+
+          {/* 参考投稿（任意） */}
+          <div className="mb-5 p-4 bg-amber-50 rounded-xl border border-amber-200">
+            <label className="block text-sm font-medium text-amber-800 mb-1">
+              🔥 参考にしたいバズ投稿を貼り付け
+              <span className="ml-2 text-xs font-normal text-amber-600">（任意・貼るとより精度UP）</span>
+            </label>
+            <p className="text-xs text-amber-600 mb-2">
+              Threadsでバズっている投稿のテキストをコピーしてここに貼り付けてください。複数ある場合は改行して入れてください。
+            </p>
+            <textarea
+              value={references}
+              onChange={e => setReferences(e.target.value)}
+              placeholder={"例：\n月5万円の副業を半年で達成した方法を公開します。\nやったことは3つだけ。...\n\n---\n\n（別の投稿があればここに追加）"}
+              rows={5}
+              className="w-full border border-amber-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300 transition bg-white resize-none"
+            />
+          </div>
+
           {error && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600">{error}</div>
           )}
+
           <button
             onClick={handleGenerate}
             disabled={loading}
@@ -123,9 +152,9 @@ export default function Home() {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
                 </svg>
-                バズパターンを分析中...（10〜20秒）
+                {references.trim() ? 'バズ投稿を分析中...' : 'パターンを分析中...'}（10〜20秒）
               </span>
-            ) : '🔍 バズパターンを分析する'}
+            ) : references.trim() ? '🔥 バズ投稿を分析して生成する' : '✨ バズパターンを分析する'}
           </button>
         </div>
 
@@ -134,13 +163,15 @@ export default function Home() {
           <>
             <div className="mb-5 p-4 bg-purple-50 rounded-2xl border border-purple-100 text-center">
               <p className="text-sm text-purple-700 font-medium">
-                「{keyword}」×「{target}」のバズパターンを分析しました
+                「{keyword}」×「{target}」の分析が完了しました
               </p>
-              <p className="text-xs text-purple-400 mt-1">右の「コピー」ボタンでそのまま使えます</p>
+              <p className="text-xs text-purple-400 mt-1">「コピー」ボタンでそのままThreadsに投稿できます</p>
             </div>
 
-            <Section title="バズる投稿の特徴・パターン" emoji="📊" items={result.patterns} id="patterns" />
-            <Section title="バズった投稿の例" emoji="🔥" items={result.examples} id="examples" />
+            {result.analysis.length > 0 && (
+              <Section title="参考投稿の分析結果" emoji="🔍" items={result.analysis} id="analysis" highlight />
+            )}
+            <Section title="このジャンルのバズるパターン" emoji="📊" items={result.patterns} id="patterns" />
             <Section title="そのまま使える投稿文" emoji="✍️" items={result.posts} id="posts" />
             <Section title="冒頭フック（最初の一文）" emoji="🪝" items={result.hooks} id="hooks" />
             <Section title="ハッシュタグ" emoji="#️⃣" items={result.hashtags} id="hashtags" />
