@@ -602,6 +602,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
       const h=Math.max(MIN_CARD_H,(item.t.duration??0)*PX_PER_MIN);
       taskLayout.push({task:item.t,top,h});
       prevBottom=top+h;
+      snapshots.push({naturalY:item.y,pb:prevBottom}); // only tasks stretch the axis
     } else {
       const slotEndY=calcY(toMin(item.s.end));
       const freeY=Math.max(item.y,prevBottom)+2;
@@ -609,7 +610,6 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
       freeLayout.push({slot:item.s,freeY,cardH});
       prevBottom=freeY+cardH;
     }
-    snapshots.push({naturalY:item.y,pb:prevBottom});
   }
 
   // Map any time (minutes) to its actual pixel Y, stretching to avoid overlaps
