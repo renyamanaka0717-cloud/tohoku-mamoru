@@ -1,14 +1,12 @@
-// route.ts: サーバー側でClaude APIを呼び出すコード
+// route.ts: サーバー側でGemini APIを呼び出すコード
 // ※ このファイルはブラウザには送られません。APIキーが外部に漏れないよう、サーバー専用です。
 
 import { NextRequest, NextResponse } from 'next/server'
-import Anthropic from '@anthropic-ai/sdk'
+import { GoogleGenerativeAI } from '@google/generative-ai'
 
-// Claude APIクライアントの初期化
+// Gemini APIクライアントの初期化
 // APIキーは .env.local から自動で読み込まれます
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-})
+const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || '')
 
 // POSTリクエストを受け取る関数
 export async function POST(request: NextRequest) {
@@ -33,7 +31,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Claude AIへ送るプロンプト（指示文）
+    // Gemini AIへ送るプロンプト（指示文）
     const prompt = `あなたはThreadsのSNSマーケティング専門家です。
 以下の条件でThreads投稿用のコンテンツを日本語で生成してください。
 
@@ -42,8 +40,8 @@ export async function POST(request: NextRequest) {
 - ターゲット：${target}
 - 投稿目的：${purpose}
 
-以下の7つのカテゴリでコンテンツを生成し、必ずJSONフォーマットで返してください。
-余計な説明文は不要です。JSONのみを返してください。
+以下の7つのカテゴリでコンテンツを生成し、必ずJSONフォーマットのみで返してください。
+説明文や前置きは一切不要です。JSONのみを返してください。
 
 {
   "ideas": ["投稿ネタを30個。「〇〇について」という形式で短く書く"],
@@ -55,23 +53,12 @@ export async function POST(request: NextRequest) {
   "hashtags": ["ハッシュタグを20個。#から始まる形式で"]
 }
 
-重要：必ずこのJSON形式で返してください。各配列に指定した数のアイテムを入れてください。`
+重要：必ずこのJSON形式のみで返してください。各配列に指定した数のアイテムを入れてください。`
 
-    // Claude APIを呼び出す
-    const message = await anthropic.messages.create({
-      model: 'claude-opus-4-8',      // 使用するClaudeモデル
-      max_tokens: 8000,               // 最大トークン数（長い回答でも対応）
-      messages: [
-        {
-          role: 'user',
-          content: prompt,
-        },
-      ],
-    })
-
-    // Claude APIのレスポンスからテキストを取得
-    const responseText =
-      message.content[0].type === 'text' ? message.content[0].text : ''
+    // Gemini APIを呼び出す（無料で使えるモデル）
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
+    const result = await model.generateContent(prompt)
+    const responseText = result.response.text()
 
     // JSONを取り出す（余計な文字が含まれる場合に対応）
     const jsonMatch = responseText.match(/\{[\s\S]*\}/)
@@ -101,23 +88,9 @@ export async function POST(request: NextRequest) {
     // 正常なレスポンスを返す
     return NextResponse.json(parsed)
   } catch (error) {
-    // エラーの種類に応じたメッセージを返す
-    if (error instanceof Anthropic.APIError) {
-      if (error.status === 401) {
-        return NextResponse.json(
-          { error: 'APIキーが無効です。.env.local のAPIキーを確認してください。' },
-          { status: 500 }
-        )
-      }
-      if (error.status === 429) {
-        return NextResponse.json(
-          { error: 'APIの利用制限に達しました。しばらく待ってからお試しください。' },
-          { status: 500 }
-        )
-      }
-    }
-
     console.error('Generate API Error:', error)
+
+    // エラーメッセージを返す
     return NextResponse.json(
       {
         error:
