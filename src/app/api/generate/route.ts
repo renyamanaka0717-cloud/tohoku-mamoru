@@ -1,106 +1,63 @@
-// route.ts: サーバー側でGroq AIを呼び出すコード
-// ※ このファイルはブラウザには送られません。APIキーが外部に漏れないよう、サーバー専用です。
-
 import { NextRequest, NextResponse } from 'next/server'
 import Groq from 'groq-sdk'
 
-// POSTリクエストを受け取る関数
 export async function POST(request: NextRequest) {
   try {
-    // Groq APIクライアントの初期化（リクエスト時に実行することでビルドエラーを防ぐ）
-    const groq = new Groq({
-      apiKey: process.env.GROQ_API_KEY,
-    })
-    // リクエストボディからデータを取得
-    const body = await request.json()
-    const { keyword, target, purpose } = body
+    const groq = new Groq({ apiKey: process.env.GROQ_API_KEY })
+    const { keyword, target } = await request.json()
 
-    // 入力値のチェック（空の場合はエラーを返す）
-    if (!keyword || !target || !purpose) {
-      return NextResponse.json(
-        { error: 'キーワード、ターゲット、目的は必須です' },
-        { status: 400 }
-      )
+    if (!keyword || !target) {
+      return NextResponse.json({ error: 'キーワードとターゲットは必須です' }, { status: 400 })
+    }
+    if (keyword.length > 100 || target.length > 100) {
+      return NextResponse.json({ error: '入力が長すぎます' }, { status: 400 })
     }
 
-    // 安全のために入力値の長さを制限（長すぎる入力を弾く）
-    if (keyword.length > 100 || target.length > 100 || purpose.length > 50) {
-      return NextResponse.json(
-        { error: '入力が長すぎます。短くしてお試しください。' },
-        { status: 400 }
-      )
-    }
-
-    // AIへ送るプロンプト（指示文）
     const prompt = `あなたはThreadsのSNSマーケティング専門家です。
-以下の条件でThreads投稿用のコンテンツを日本語で生成してください。
+「${keyword}」ジャンルで「${target}」向けにバズる投稿について分析・生成してください。
 
-【条件】
-- キーワード：${keyword}
-- ターゲット：${target}
-- 投稿目的：${purpose}
-
-以下の7つのカテゴリでコンテンツを生成し、必ずJSONフォーマットのみで返してください。
-説明文や前置きは一切不要です。JSONのみを返してください。
+以下のJSONフォーマットのみで返してください。説明文は不要です。
 
 {
-  "ideas": ["投稿ネタを30個。「〇〇について」という形式で短く書く"],
-  "angles": ["伸びやすい切り口を10個。「〜の視点から」「〜と比較すると」などの形式で"],
-  "hooks": ["冒頭文フックを20個。読者が思わず続きを読みたくなる最初の1〜2文"],
-  "posts": ["そのまま使える投稿文を20個。150文字前後で、Threadsで実際に投稿できる完成した文章"],
-  "questions": ["コメントがつきやすい質問文を10個。フォロワーに問いかける形式で"],
-  "profileTexts": ["プロフィール誘導文を10個。「プロフィールはこちら→」のように誘導する文"],
-  "hashtags": ["ハッシュタグを20個。#から始まる形式で"]
+  "patterns": [
+    "このジャンルでバズる投稿の特徴・パターンを5個。例：「〇〇系の投稿は〜という特徴がある」という形式で"
+  ],
+  "examples": [
+    "実際にバズりそうな投稿の例を5個。150文字前後の完成した投稿文で、いいねやコメントが集まりやすいもの"
+  ],
+  "posts": [
+    "ターゲットに刺さるそのまま使える投稿文を10個。150文字前後で、Threadsに投稿できる完成した文章"
+  ],
+  "hooks": [
+    "思わず読み進めたくなる冒頭の一文を5個。インパクトがあり、続きが気になる文章"
+  ],
+  "hashtags": [
+    "#から始まるハッシュタグを10個"
+  ]
 }
 
-重要：必ずこのJSON形式のみで返してください。各配列に指定した数のアイテムを入れてください。`
+必ずJSON形式のみで返してください。`
 
-    // Groq AIを呼び出す（無料で使える高速モデル）
     const completion = await groq.chat.completions.create({
       model: 'llama-3.3-70b-versatile',
       messages: [{ role: 'user', content: prompt }],
-      max_tokens: 8000,
+      max_tokens: 4000,
     })
 
-    const responseText = completion.choices[0]?.message?.content || ''
+    const text = completion.choices[0]?.message?.content || ''
+    const match = text.match(/\{[\s\S]*\}/)
+    if (!match) throw new Error('AIの応答を解析できませんでした。もう一度お試しください。')
 
-    // JSONを取り出す（余計な文字が含まれる場合に対応）
-    const jsonMatch = responseText.match(/\{[\s\S]*\}/)
-    if (!jsonMatch) {
-      throw new Error('AIの応答を解析できませんでした。もう一度お試しください。')
+    const parsed = JSON.parse(match[0])
+    for (const key of ['patterns', 'examples', 'posts', 'hooks', 'hashtags']) {
+      if (!Array.isArray(parsed[key])) throw new Error('AIの応答形式が正しくありません。もう一度お試しください。')
     }
 
-    // JSONをパース（テキストをオブジェクトに変換）
-    const parsed = JSON.parse(jsonMatch[0])
-
-    // 必要なキーがすべて存在するか確認
-    const requiredKeys = [
-      'ideas',
-      'angles',
-      'hooks',
-      'posts',
-      'questions',
-      'profileTexts',
-      'hashtags',
-    ]
-    for (const key of requiredKeys) {
-      if (!Array.isArray(parsed[key])) {
-        throw new Error('AIの応答形式が正しくありません。もう一度お試しください。')
-      }
-    }
-
-    // 正常なレスポンスを返す
     return NextResponse.json(parsed)
   } catch (error) {
-    console.error('Generate API Error:', error)
-
+    console.error('API Error:', error)
     return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : 'サーバーエラーが発生しました。もう一度お試しください。',
-      },
+      { error: error instanceof Error ? error.message : 'サーバーエラーが発生しました。' },
       { status: 500 }
     )
   }
