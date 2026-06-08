@@ -14,7 +14,9 @@ interface Task {
   completed: boolean;
   date: string;
   isLater: boolean;
-  recurrence?: 'daily' | 'weekly' | null;
+  recurrence?: 'daily' | 'weekly' | 'monthly' | 'yearly' | null;
+  pinned?: boolean;
+  tags?: string[];
 }
 
 interface Settings { wakeTime: string; sleepTime: string; }
@@ -37,17 +39,19 @@ const DUR_OPTS     = [{v:0,l:'なし'},{v:5,l:'5分'},{v:10,l:'10分'},{v:15,l:'
 
 // ── Utils ─────────────────────────────────────────────────────────────────────
 
-const toMin    = (t: string) => { const [h,m]=t.split(':').map(Number); return h*60+m; };
-const fromMin  = (m: number) => `${String(Math.floor(m/60)%24).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`;
-const dateToStr= (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-const todayStr = () => dateToStr(new Date());
-const nowStr   = () => { const d=new Date(); return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; };
-const shiftDate= (s: string, n: number) => { const d=new Date(s+'T12:00:00'); d.setDate(d.getDate()+n); return dateToStr(d); };
-const uid      = () => `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-const durLabel = (m: number) => m<=0?'':m>=60?`${Math.floor(m/60)}時間${m%60?`${m%60}分`:''}` :`${m}分`;
-const getDateInfo= (s: string) => { const d=new Date(s+'T12:00:00'); return {day:d.getDate(),month:d.getMonth()+1,year:d.getFullYear()}; };
-const getWeekDates=(s:string)=>{ const d=new Date(s+'T12:00:00'),dow=d.getDay(); return Array.from({length:7},(_,i)=>{const c=new Date(d);c.setDate(d.getDate()-dow+i);return dateToStr(c);}); };
-const shiftMonth=(y:number,m:number,d:number)=>{ let nm=m+d,ny=y; if(nm<0){nm=11;ny--;}if(nm>11){nm=0;ny++;} return {year:ny,month:nm}; };
+const toMin       = (t: string) => { const [h,m]=t.split(':').map(Number); return h*60+m; };
+const fromMin     = (m: number) => `${String(Math.floor(m/60)%24).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`;
+const dateToStr   = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const todayStr    = () => dateToStr(new Date());
+const nowStr      = () => { const d=new Date(); return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; };
+const shiftDate   = (s: string, n: number) => { const d=new Date(s+'T12:00:00'); d.setDate(d.getDate()+n); return dateToStr(d); };
+const shiftMonthBy= (s: string, n: number) => { const d=new Date(s+'T12:00:00'); d.setMonth(d.getMonth()+n); return dateToStr(d); };
+const shiftYearBy = (s: string, n: number) => { const d=new Date(s+'T12:00:00'); d.setFullYear(d.getFullYear()+n); return dateToStr(d); };
+const uid         = () => `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+const durLabel    = (m: number) => m<=0?'':m>=60?`${Math.floor(m/60)}時間${m%60?`${m%60}分`:''}` :`${m}分`;
+const getDateInfo = (s: string) => { const d=new Date(s+'T12:00:00'); return {day:d.getDate(),month:d.getMonth()+1,year:d.getFullYear()}; };
+const getWeekDates= (s:string)=>{ const d=new Date(s+'T12:00:00'),dow=d.getDay(); return Array.from({length:7},(_,i)=>{const c=new Date(d);c.setDate(d.getDate()-dow+i);return dateToStr(c);}); };
+const shiftMonth  = (y:number,m:number,d:number)=>{ let nm=m+d,ny=y; if(nm<0){nm=11;ny--;}if(nm>11){nm=0;ny++;} return {year:ny,month:nm}; };
 
 // ── Free slots ────────────────────────────────────────────────────────────────
 
@@ -176,35 +180,69 @@ function TaskModal({task,currentDate,prefillTime,onSave,onDelete,onClose}:{
     return 'scheduled';
   };
 
-  const [mode,setMode]       = useState<TaskMode>(initMode());
-  const [name,setName]       = useState(task?.name??'');
-  const [startTime,setST]    = useState(task?.startTime??prefillTime??'');
-  const [duration,setDur]    = useState(task?.duration??30);
-  const [memo,setMemo]       = useState(task?.memo??'');
-  const [icon,setIcon]       = useState(task?.icon??'📝');
-  const [recur,setRecur]     = useState<'daily'|'weekly'>((task?.recurrence==='weekly')?'weekly':'daily');
+  const initEndTime=()=>{
+    if(task?.startTime&&(task.duration??0)>0) return fromMin(toMin(task.startTime)+(task.duration??0));
+    return '';
+  };
+
+  const [mode,setMode]        = useState<TaskMode>(initMode());
+  const [name,setName]        = useState(task?.name??'');
+  const [startTime,setST]     = useState(task?.startTime??prefillTime??'');
+  const [endTime,setET]       = useState(initEndTime());
+  const [duration,setDur]     = useState(task?.duration??30);
+  const [memo,setMemo]        = useState(task?.memo??'');
+  const [icon,setIcon]        = useState(task?.icon??'📝');
+  const [recur,setRecur]      = useState<'daily'|'weekly'|'monthly'|'yearly'>(
+    task?.recurrence==='weekly'?'weekly':
+    task?.recurrence==='monthly'?'monthly':
+    task?.recurrence==='yearly'?'yearly':'daily'
+  );
+  const [pinned,setPinned]    = useState(task?.pinned??false);
+  const [tags,setTags]        = useState<string[]>(task?.tags??[]);
+  const [tagInput,setTagInput]= useState('');
   const [iconOpen,setIconOpen]= useState(false);
 
   const headerIcon = mode==='later' ? icon : autoIcon(name);
 
+  // For scheduled/recurring, derive duration from start + end time inputs
+  const computedDur = (mode!=='later'&&startTime&&endTime)
+    ? Math.max(0,toMin(endTime)-toMin(startTime))
+    : 0;
+
+  const addTag=()=>{
+    const t=tagInput.trim();
+    if(!t||tags.includes(t)) return;
+    setTags(prev=>[...prev,t]);
+    setTagInput('');
+  };
+
   const save=()=>{
     if(!name.trim()) return;
+    const dur=mode==='later'?duration:computedDur;
     const base:Omit<Task,'id'>={
       name:name.trim(),
       startTime:mode==='later'?null:(startTime||null),
-      duration,
+      duration:dur,
       memo,
       icon:mode==='later'?icon:autoIcon(name.trim()),
       completed:task?.completed??false,
       date:task?.date??currentDate,
       isLater:mode==='later',
       recurrence:mode==='recurring'?recur:null,
+      pinned,
+      tags,
     };
     if(mode==='recurring'&&!task){
-      const step=recur==='daily'?1:7;
-      const days=recur==='daily'?14:28;
       const instances:Omit<Task,'id'>[]=[];
-      for(let i=0;i<days;i+=step) instances.push({...base,date:shiftDate(currentDate,i)});
+      if(recur==='daily'){
+        for(let i=0;i<14;i++) instances.push({...base,date:shiftDate(currentDate,i)});
+      } else if(recur==='weekly'){
+        for(let i=0;i<4;i++) instances.push({...base,date:shiftDate(currentDate,i*7)});
+      } else if(recur==='monthly'){
+        for(let i=0;i<12;i++) instances.push({...base,date:shiftMonthBy(currentDate,i)});
+      } else if(recur==='yearly'){
+        for(let i=0;i<5;i++) instances.push({...base,date:shiftYearBy(currentDate,i)});
+      }
       onSave(instances);
     } else {
       onSave([base]);
@@ -232,7 +270,7 @@ function TaskModal({task,currentDate,prefillTime,onSave,onDelete,onClose}:{
             </button>
             <div className="flex-1 min-w-0">
               {(mode==='scheduled'||mode==='recurring')&&startTime&&(
-                <p className="text-xs text-gray-400 mb-0.5">{startTime}{mode==='recurring'&&' · 繰り返し'}</p>
+                <p className="text-xs text-gray-400 mb-0.5">{startTime}{endTime?`〜${endTime}`:''}{mode==='recurring'&&' · 繰り返し'}</p>
               )}
               <input type="text" value={name} onChange={e=>setName(e.target.value)}
                 placeholder="タスク名を入力..."
@@ -281,66 +319,116 @@ function TaskModal({task,currentDate,prefillTime,onSave,onDelete,onClose}:{
                 <span className="text-lg">🔄</span>
                 <span className="text-sm font-semibold text-gray-800">繰り返し</span>
               </div>
-              <div className="flex gap-2">
-                {([['daily','毎日'],['weekly','毎週']] as ['daily'|'weekly',string][]).map(([r,l])=>(
+              <div className="flex gap-2 flex-wrap">
+                {([['daily','毎日'],['weekly','毎週'],['monthly','毎月'],['yearly','毎年']] as ['daily'|'weekly'|'monthly'|'yearly',string][]).map(([r,l])=>(
                   <button key={r} onClick={()=>setRecur(r)}
                     className={`px-4 py-2 rounded-full text-sm font-semibold ${recur===r?'bg-gray-900 text-white':'bg-gray-100 text-gray-600'}`}>
                     {l}
                   </button>
                 ))}
-                <span className="px-3 py-2 rounded-full text-sm text-gray-300 bg-gray-100 flex items-center gap-1">毎月<span className="text-[10px] bg-gray-200 px-1 rounded">PRO</span></span>
               </div>
             </div>
           )}
 
-          {/* Time */}
+          {/* Time: start → end (scheduled/recurring only) */}
           {(mode==='scheduled'||mode==='recurring')&&(
             <div className="bg-white mx-3 mt-3 rounded-2xl p-4">
               <div className="flex items-center gap-2 mb-3">
                 <span className="text-lg">🕐</span>
-                <span className="text-sm font-semibold text-gray-800">開始時刻</span>
+                <span className="text-sm font-semibold text-gray-800">時間</span>
               </div>
-              <input type="time" value={startTime} onChange={e=>setST(e.target.value)}
-                className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-gray-50 outline-none focus:border-gray-400"/>
+              <div className="flex items-center gap-2 mb-3">
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs text-gray-400">開始</span>
+                  <input type="time" value={startTime} onChange={e=>setST(e.target.value)}
+                    className="border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50 outline-none focus:border-gray-400"/>
+                </div>
+                <span className="text-gray-300 mt-5 text-lg">〜</span>
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs text-gray-400">終了</span>
+                  <input type="time" value={endTime} onChange={e=>setET(e.target.value)}
+                    disabled={!startTime}
+                    className="border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50 outline-none focus:border-gray-400 disabled:opacity-40"/>
+                </div>
+                {computedDur>0&&(
+                  <span className="text-xs text-gray-400 mt-5 ml-1 whitespace-nowrap">{durLabel(computedDur)}</span>
+                )}
+              </div>
+              {/* Quick preset buttons */}
+              <div className="flex gap-2">
+                {([[15,'＋15分'],[30,'＋30分'],[60,'＋1時間']] as [number,string][]).map(([mins,label])=>(
+                  <button key={mins} onClick={()=>{
+                    if(!startTime) return;
+                    setET(fromMin(toMin(startTime)+mins));
+                  }}
+                    className="px-3 py-1.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-600 active:bg-gray-200">
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 
-          {/* Duration */}
-          <div className="bg-white mx-3 mt-3 rounded-2xl p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-lg">🕐</span>
-              <span className="text-sm font-semibold text-gray-800">所要時間</span>
-            </div>
-            <div className="flex gap-2 flex-wrap">
-              {DUR_OPTS.map(({v,l})=>(
-                <button key={v} onClick={()=>setDur(v)}
-                  className={`px-4 py-2 rounded-full text-sm font-semibold ${duration===v?'bg-gray-900 text-white':'bg-gray-100 text-gray-600'}`}>
-                  {l}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* PRO features */}
-          <div className="bg-white mx-3 mt-3 rounded-2xl overflow-hidden">
-            {[
-              {ic:'☆',label:'ピン留め',desc:'リストの上部に固定表示'},
-              {ic:'🏷️',label:'タグ',desc:'PROにアップグレード'},
-            ].map(({ic,label,desc})=>(
-              <div key={label} className="flex items-center justify-between p-4 border-b border-gray-50 last:border-0">
-                <div className="flex items-center gap-3">
-                  <span className="text-xl w-8 text-center">{ic}</span>
-                  <div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-sm font-semibold text-gray-800">{label}</span>
-                      <span className="text-[10px] bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded font-bold">★ PRO</span>
-                    </div>
-                    <p className="text-xs text-gray-400">{desc}</p>
-                  </div>
-                </div>
-                <span className="text-gray-200 text-lg">›</span>
+          {/* Duration preset buttons — later mode only */}
+          {mode==='later'&&(
+            <div className="bg-white mx-3 mt-3 rounded-2xl p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-lg">🕐</span>
+                <span className="text-sm font-semibold text-gray-800">所要時間</span>
               </div>
-            ))}
+              <div className="flex gap-2 flex-wrap">
+                {DUR_OPTS.map(({v,l})=>(
+                  <button key={v} onClick={()=>setDur(v)}
+                    className={`px-4 py-2 rounded-full text-sm font-semibold ${duration===v?'bg-gray-900 text-white':'bg-gray-100 text-gray-600'}`}>
+                    {l}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Pin + Tags */}
+          <div className="bg-white mx-3 mt-3 rounded-2xl overflow-hidden">
+            {/* Pin toggle */}
+            <div className="flex items-center justify-between p-4 border-b border-gray-50">
+              <div className="flex items-center gap-3">
+                <span className="text-xl w-8 text-center">📌</span>
+                <div>
+                  <p className="text-sm font-semibold text-gray-800">ピン留め</p>
+                  <p className="text-xs text-gray-400">リストの上部に固定表示</p>
+                </div>
+              </div>
+              <button onClick={()=>setPinned(p=>!p)}
+                className={`w-12 h-6 rounded-full transition-colors relative shrink-0 ${pinned?'bg-gray-900':'bg-gray-200'}`}>
+                <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${pinned?'left-[22px]':'left-0.5'}`}/>
+              </button>
+            </div>
+
+            {/* Tags */}
+            <div className="p-4">
+              <div className="flex items-center gap-3 mb-3">
+                <span className="text-xl w-8 text-center">🏷️</span>
+                <p className="text-sm font-semibold text-gray-800">タグ</p>
+              </div>
+              {tags.length>0&&(
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {tags.map(t=>(
+                    <span key={t} className="inline-flex items-center gap-1 bg-gray-100 text-gray-700 text-xs font-medium px-2.5 py-1 rounded-full">
+                      {t}
+                      <button onClick={()=>setTags(prev=>prev.filter(x=>x!==t))} className="text-gray-400 leading-none ml-0.5">×</button>
+                    </span>
+                  ))}
+                </div>
+              )}
+              <div className="flex gap-2">
+                <input type="text" value={tagInput} onChange={e=>setTagInput(e.target.value)}
+                  onKeyDown={e=>e.key==='Enter'&&addTag()}
+                  placeholder="タグを入力して追加..."
+                  className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50 outline-none focus:border-gray-400"/>
+                <button onClick={addTag} disabled={!tagInput.trim()}
+                  className="px-3 py-2 bg-gray-900 text-white rounded-xl text-sm font-semibold disabled:opacity-40">追加</button>
+              </div>
+            </div>
           </div>
 
           {/* Delete */}
@@ -376,6 +464,13 @@ function TaskCard({task,onToggle,onEdit}:{task:Task;onToggle:()=>void;onEdit:()=
         )}
         <p className={`text-sm font-semibold leading-snug ${task.completed?'line-through text-gray-400':'text-gray-900'}`}>{task.name}</p>
         {task.memo&&<p className="text-xs text-gray-400 mt-0.5 truncate">{task.memo}</p>}
+        {(task.tags??[]).length>0&&(
+          <div className="flex flex-wrap gap-1 mt-1">
+            {(task.tags??[]).map(tag=>(
+              <span key={tag} className="bg-gray-100 text-gray-500 text-[10px] px-1.5 py-0.5 rounded-full">{tag}</span>
+            ))}
+          </div>
+        )}
       </div>
       <button onClick={e=>{e.stopPropagation();onToggle();}}
         className={`w-6 h-6 rounded-full border-2 shrink-0 flex items-center justify-center transition-colors ${task.completed?'border-gray-900 bg-gray-900':'border-gray-300'}`}>
@@ -478,7 +573,6 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
         const hasTask=dayTasks.some(t=>toMin(t.startTime!)===h);
         return (
           <div key={h} className="absolute flex items-center" style={{top:`${calcY(h)-8}px`,left:0}}>
-            {/* tappable time label */}
             <button
               onClick={()=>!isWake&&!isSleep&&onAddAtTime(fromMin(h))}
               className={`text-xs w-12 text-right pr-1 leading-none transition-colors ${
@@ -549,21 +643,23 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
   const [sortDir,setSortDir]     = useState<'asc'|'desc'>('asc');
   const addShop = () => { const v=shopInput.trim(); if(!v) return; onAddShop(v); setShopInput(''); };
 
-  // あとでやる section: isLater tasks
   const laterTasks  = tasks.filter(t=>t.isLater);
   const laterPending= laterTasks.filter(t=>!t.completed);
   const laterDone   = laterTasks.filter(t=>t.completed);
 
-  // 時間指定 section: scheduled tasks (not isLater, has startTime)
+  // Pinned tasks always appear first, then sorted by order
+  const sortedLater = (() => {
+    const pinned  = laterPending.filter(t=>t.pinned);
+    const normal  = laterPending.filter(t=>!t.pinned);
+    const ordered = sortDir==='asc' ? normal : [...normal].reverse();
+    return [...pinned,...ordered];
+  })();
+
   const scheduledRaw = tasks.filter(t=>!t.isLater&&t.startTime&&!t.completed)
     .sort((a,b)=>{
       const cmp=a.date.localeCompare(b.date)||toMin(a.startTime!)-toMin(b.startTime!);
       return sortDir==='asc'?cmp:-cmp;
     });
-
-  const sortedLater = sortDir==='asc'
-    ? [...laterPending]
-    : [...laterPending].reverse();
 
   const shopPendingItems=shopItems.filter(i=>!i.checked);
   const shopDoneItems=shopItems.filter(i=>i.checked);
@@ -594,7 +690,6 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
         {/* ── あとでやる tab ── */}
         {activeTab==='later'&&(
           <div className="overflow-y-auto px-4 pb-10 flex-1">
-            {/* sort buttons + title */}
             <div className="flex items-center justify-between pt-3 pb-2">
               <h3 className="text-sm font-bold text-gray-900">
                 あとでやる
@@ -617,12 +712,22 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
                   {sortedLater.map(t=>(
                     <div key={t.id} className="flex items-center gap-2.5 bg-white border border-gray-100 rounded-2xl shadow-sm px-3 py-3">
                       <div className="w-7 h-7 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0">
-                        <span className="text-xs text-gray-400">☑</span>
+                        {t.pinned
+                          ? <span className="text-xs">📌</span>
+                          : <span className="text-xs text-gray-400">☑</span>
+                        }
                       </div>
                       <div className="flex-1 min-w-0" onClick={()=>onEdit(t)}>
                         <p className="text-sm font-semibold text-gray-900">{t.name}</p>
                         {(t.duration??0)>0&&<p className="text-xs text-gray-400">{durLabel(t.duration??0)}</p>}
                         {t.memo&&<p className="text-xs text-gray-400 truncate">{t.memo}</p>}
+                        {(t.tags??[]).length>0&&(
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {(t.tags??[]).map(tag=>(
+                              <span key={tag} className="bg-gray-100 text-gray-500 text-[10px] px-1.5 py-0.5 rounded-full">{tag}</span>
+                            ))}
+                          </div>
+                        )}
                         <button onClick={e=>{e.stopPropagation();onMoveToTimeline(t);}}
                           className="mt-1.5 text-xs font-semibold px-2.5 py-1 border border-gray-200 rounded-lg text-gray-600">
                           今日のタイムラインへ →
@@ -651,6 +756,13 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
                       <div className="flex-1 min-w-0" onClick={()=>onEdit(t)}>
                         <p className="text-sm font-semibold text-gray-900">{t.name}</p>
                         <p className="text-xs text-gray-400">⊙ {t.date.slice(5).replace('-','/')} {t.startTime}</p>
+                        {(t.tags??[]).length>0&&(
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {(t.tags??[]).map(tag=>(
+                              <span key={tag} className="bg-gray-100 text-gray-500 text-[10px] px-1.5 py-0.5 rounded-full">{tag}</span>
+                            ))}
+                          </div>
+                        )}
                       </div>
                       <button onClick={()=>onToggle(t.id)} className="w-6 h-6 rounded-full border-2 border-gray-300 shrink-0"/>
                     </div>
@@ -751,7 +863,7 @@ export default function App() {
       const t=localStorage.getItem(TASKS_KEY);
       const s=localStorage.getItem(SETTINGS_KEY);
       const sh=localStorage.getItem(SHOP_KEY);
-      if(t) setTasks((JSON.parse(t) as Task[]).map(tk=>({...tk,recurrence:tk.recurrence??null})));
+      if(t) setTasks((JSON.parse(t) as Task[]).map(tk=>({...tk,recurrence:tk.recurrence??null,pinned:tk.pinned??false,tags:tk.tags??[]})));
       if(s) setSettings(JSON.parse(s));
       if(sh) setShopItems(JSON.parse(sh));
     }catch{}
@@ -822,9 +934,7 @@ export default function App() {
                 今日
               </button>
               <button onClick={()=>setDate(shiftDate(date,1))} className="w-8 h-8 flex items-center justify-center text-gray-600 text-xl font-semibold">›</button>
-              {/* Calendar icon */}
               <button onClick={()=>setCalOp(true)} className="w-8 h-8 flex items-center justify-center text-gray-400 text-lg">📅</button>
-              {/* Settings */}
               <button onClick={()=>setSOp(!settingsOpen)}
                 className={`w-8 h-8 flex items-center justify-center rounded-xl transition-colors ${settingsOpen?'bg-gray-900 text-white':'text-gray-400'}`}>⚙</button>
             </div>
