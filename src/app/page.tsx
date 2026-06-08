@@ -67,10 +67,12 @@ function calcFreeSlots(tasks: Task[], date: string, s: Settings): FreeSlot[] {
 
 // ── MonthCalendar ─────────────────────────────────────────────────────────────
 
-function MonthCalendar({selected,onSelect,onClose}:{selected:string;onSelect:(d:string)=>void;onClose:()=>void;}) {
+function MonthCalendar({selected,onSelect,onClose,tasks}:{selected:string;onSelect:(d:string)=>void;onClose:()=>void;tasks:Task[];}) {
   const init = new Date(selected+'T12:00:00');
   const [vm,setVm] = useState({year:init.getFullYear(),month:init.getMonth()});
   const today = todayStr();
+
+  const taskDates = useMemo(()=>new Set(tasks.filter(t=>!t.isLater&&t.startTime).map(t=>t.date)),[tasks]);
 
   const days = useMemo(()=>{
     const {year,month}=vm;
@@ -95,14 +97,17 @@ function MonthCalendar({selected,onSelect,onClose}:{selected:string;onSelect:(d:
             <div key={i} className={`text-center text-xs font-semibold py-1 ${i===0?'text-red-400':i===6?'text-blue-400':'text-gray-400'}`}>{n}</div>
           ))}
         </div>
-        <div className="grid grid-cols-7 gap-y-1">
+        <div className="grid grid-cols-7">
           {days.map((d,i)=>(
-            <button key={i} onClick={()=>{if(d){onSelect(d);onClose();}}}
-              className={`h-9 w-9 mx-auto rounded-full flex items-center justify-center text-sm font-medium ${
-                !d?'':d===selected?'bg-gray-900 text-white':d===today?'bg-gray-100 font-bold text-gray-900':'text-gray-600'
-              }`}>
-              {d?new Date(d+'T12:00:00').getDate():''}
-            </button>
+            <div key={i} className="flex flex-col items-center py-0.5">
+              <button onClick={()=>{if(d){onSelect(d);onClose();}}}
+                className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-medium ${
+                  !d?'':d===selected?'bg-gray-900 text-white':d===today?'bg-gray-100 font-bold text-gray-900':'text-gray-600'
+                }`}>
+                {d?new Date(d+'T12:00:00').getDate():''}
+              </button>
+              <div className={`w-1.5 h-1.5 rounded-full ${d&&taskDates.has(d)?(d===selected?'bg-gray-400':'bg-gray-400'):'bg-transparent'}`}/>
+            </div>
           ))}
         </div>
       </div>
@@ -334,26 +339,29 @@ function TaskCard({task,onToggle,onEdit}:{task:Task;onToggle:()=>void;onEdit:()=
 
 // ── FreeTimeCard ──────────────────────────────────────────────────────────────
 
-function FreeTimeCard({slot,fits,height,onSchedule}:{slot:FreeSlot;fits:Task[];height:number;onSchedule:(t:Task,time:string)=>void;}) {
+function FreeTimeCard({slot,fits,onSchedule}:{slot:FreeSlot;fits:Task[];onSchedule:(t:Task,time:string)=>void;}) {
   const h=Math.floor(slot.min/60), m=slot.min%60;
+  const label=`${h>0?`${h}時間`:''}${m>0?`${m}分`:''}`;
   return (
-    <div className="bg-gray-100 rounded-2xl px-4 pt-3 pb-4" style={{minHeight:`${height}px`}}>
-      <div className="flex items-center gap-1 mb-1.5">
-        <span className="text-xs">🕐</span>
-        <span className="text-xs text-gray-400 font-medium">空き時間</span>
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <div className="flex-1 h-px bg-gray-200"/>
+        <span className="text-xs text-gray-400 font-medium whitespace-nowrap">空き {label}</span>
+        <div className="flex-1 h-px bg-gray-200"/>
       </div>
-      <p className="font-black text-gray-800 leading-none mb-3">
-        {h>0&&<span className="text-[2rem]">{h}時間</span>}
-        {m>0&&<span className="text-[2rem] ml-0.5">{m}分</span>}
-      </p>
-      <div className="flex flex-wrap gap-2">
-        {fits.map(t=>(
-          <button key={t.id} onClick={()=>onSchedule(t,slot.start)}
-            className="inline-flex items-center gap-1.5 bg-white rounded-full px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm">
-            <span>{t.icon}</span><span>{t.name}</span>
+      {fits.map(t=>(
+        <div key={t.id} className="flex items-center gap-2.5 bg-white rounded-2xl border border-gray-100 shadow-sm px-3 py-2.5">
+          <div className="w-8 h-8 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center text-base shrink-0">{t.icon}</div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-gray-900 truncate">{t.name}</p>
+            {(t.duration??0)>0&&<p className="text-xs text-gray-400">{durLabel(t.duration??0)}</p>}
+          </div>
+          <button onClick={()=>onSchedule(t,slot.start)}
+            className="text-xs font-bold px-3 py-1.5 bg-gray-900 text-white rounded-xl shrink-0">
+            入れる
           </button>
-        ))}
-      </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -428,11 +436,10 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
 
       {/* free time cards */}
       {freeSlots.map((slot,i)=>{
-        const h=Math.max(80,slot.min*PX_PER_MIN-4);
         const fits=laterPool.filter(t=>(t.duration??0)<=slot.min).slice(0,3);
         return (
           <div key={i} className="absolute z-10" style={{top:`${calcY(toMin(slot.start))+2}px`,left:`${CARD_LEFT}px`,right:'0px'}}>
-            <FreeTimeCard slot={slot} fits={fits} height={h} onSchedule={onSchedule}/>
+            <FreeTimeCard slot={slot} fits={fits} onSchedule={onSchedule}/>
           </div>
         );
       })}
@@ -543,6 +550,7 @@ export default function App() {
   const laterTasks    = useMemo(()=>tasks.filter(t=>t.isLater),[tasks]);
   const pendingCount  = useMemo(()=>laterTasks.filter(t=>!t.completed).length,[laterTasks]);
   const weekDates     = useMemo(()=>getWeekDates(date),[date]);
+  const taskDateSet   = useMemo(()=>new Set(tasks.filter(t=>!t.isLater&&t.startTime).map(t=>t.date)),[tasks]);
   const {day,month,year} = useMemo(()=>getDateInfo(date),[date]);
   const today = todayStr();
 
@@ -628,11 +636,12 @@ export default function App() {
               const d=weekDates[i];
               const isSel=d===date, isToday=d===today;
               return (
-                <button key={i} onClick={()=>setDate(d)} className="flex flex-col items-center gap-1 py-1">
+                <button key={i} onClick={()=>setDate(d)} className="flex flex-col items-center py-1">
                   <span className={`text-[11px] font-medium ${i===0?'text-red-400':i===6?'text-blue-400':'text-gray-400'}`}>{name}</span>
                   <span className={`w-8 h-8 flex items-center justify-center rounded-full text-sm font-bold transition-colors ${isSel?'bg-gray-900 text-white':isToday?'bg-gray-100 text-gray-900':'text-gray-600'}`}>
                     {new Date(d+'T12:00:00').getDate()}
                   </span>
+                  <div className={`w-1.5 h-1.5 rounded-full ${taskDateSet.has(d)?(isSel?'bg-gray-400':'bg-gray-400'):'bg-transparent'}`}/>
                 </button>
               );
             })}
@@ -685,7 +694,7 @@ export default function App() {
 
       {/* ── Calendar ── */}
       {calendarOpen&&(
-        <MonthCalendar selected={date} onSelect={setDate} onClose={()=>setCalOp(false)}/>
+        <MonthCalendar selected={date} onSelect={setDate} onClose={()=>setCalOp(false)} tasks={tasks}/>
       )}
 
       {/* ── Task Modal ── */}
