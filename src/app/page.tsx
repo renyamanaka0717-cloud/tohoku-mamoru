@@ -4,6 +4,21 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
+interface CustomRec {
+  frequency: 'day'|'week'|'month'|'year';
+  interval: number;
+  weekdays?: number[];           // 0=日…6=土
+  monthlyType?: 'date'|'weekday';
+  dayOfMonth?: number|'last';
+  weekNumber?: number|'last';    // 1–4 | 'last'
+  weekday?: number;              // 0–6
+  yearMonth?: number;            // 1–12
+  yearDay?: number;              // 1–31, 0=月末
+  endType: 'never'|'date'|'count';
+  endDate?: string;
+  endCount?: number;
+}
+
 interface Task {
   id: string;
   name: string;
@@ -15,8 +30,7 @@ interface Task {
   date: string;
   isLater: boolean;
   recurrence?: 'daily' | 'weekly' | 'monthly' | 'yearly' | 'custom' | null;
-  recurEvery?: number;
-  recurUnit?: 'day'|'week'|'month'|'year';
+  customRec?: CustomRec;
   pinned?: boolean;
   tags?: string[];
   notifications?: number[];     // 開始何分前 (0=開始時, 1440=前日)
@@ -62,6 +76,93 @@ const durLabel    = (m: number) => m<=0?'':m>=60?`${Math.floor(m/60)}時間${m%6
 const getDateInfo = (s: string) => { const d=new Date(s+'T12:00:00'); return {day:d.getDate(),month:d.getMonth()+1,year:d.getFullYear()}; };
 const getWeekDates= (s:string)=>{ const d=new Date(s+'T12:00:00'),dow=d.getDay(); return Array.from({length:7},(_,i)=>{const c=new Date(d);c.setDate(d.getDate()-dow+i);return dateToStr(c);}); };
 const shiftMonth  = (y:number,m:number,d:number)=>{ let nm=m+d,ny=y; if(nm<0){nm=11;ny--;}if(nm>11){nm=0;ny++;} return {year:ny,month:nm}; };
+
+const summarizeCustomRec=(r:CustomRec):string=>{
+  const WD=['日','月','火','水','木','金','土'];
+  let main='';
+  if(r.frequency==='day'){
+    main=r.interval===1?'毎日':`${r.interval}日ごと`;
+  } else if(r.frequency==='week'){
+    const base=r.interval===1?'毎週':`${r.interval}週間ごと`;
+    const days=(r.weekdays??[]).sort((a,b)=>a-b).map(d=>WD[d]).join('・');
+    main=days?`${base}の${days}`:base;
+  } else if(r.frequency==='month'){
+    const base=r.interval===1?'毎月':`${r.interval}ヶ月ごと`;
+    if(r.monthlyType==='weekday'){
+      const wn=r.weekNumber==='last'?'最終':`第${r.weekNumber}`;
+      main=`${base}${wn}${WD[r.weekday??1]}曜日`;
+    } else {
+      const d=r.dayOfMonth==='last'?'月末':`${r.dayOfMonth??1}日`;
+      main=`${base}${d}`;
+    }
+  } else {
+    const base=r.interval===1?'毎年':`${r.interval}年ごと`;
+    const d=r.yearDay===0?'末':`${r.yearDay??1}日`;
+    main=`${base}${r.yearMonth??1}月${d}`;
+  }
+  if(r.endType==='count'&&r.endCount) main+=`・${r.endCount}回で終了`;
+  else if(r.endType==='date'&&r.endDate){
+    const dt=new Date(r.endDate+'T12:00:00');
+    main+=`・〜${dt.getMonth()+1}月${dt.getDate()}日`;
+  }
+  return main;
+};
+
+const generateCustomDates=(base:string,r:CustomRec):string[]=>{
+  const dates:string[]=[],maxN=r.endType==='count'?(r.endCount??20):52;
+  const endD=r.endType==='date'?r.endDate??'':'';
+  const push=(d:string)=>{ if(d>=base&&dates.length<maxN&&(!endD||d<=endD)) dates.push(d); };
+  if(r.frequency==='day'){
+    for(let i=0;dates.length<maxN;i++){
+      const d=shiftDate(base,i*r.interval);
+      if(endD&&d>endD) break;
+      push(d);
+    }
+  } else if(r.frequency==='week'){
+    const wds=(r.weekdays?.length?[...r.weekdays]:[new Date(base+'T12:00:00').getDay()]).sort((a,b)=>a-b);
+    const bd=new Date(base+'T12:00:00');
+    const ws=new Date(bd);ws.setDate(bd.getDate()-bd.getDay());
+    for(let w=0;dates.length<maxN&&w<200;w++){
+      const wsD=new Date(ws);wsD.setDate(ws.getDate()+w*r.interval*7);
+      if(endD&&dateToStr(wsD)>endD) break;
+      for(const wd of wds){ const day=new Date(wsD);day.setDate(wsD.getDate()+wd);push(dateToStr(day)); }
+    }
+  } else if(r.frequency==='month'){
+    for(let m=0;dates.length<maxN&&m<300;m++){
+      const md=shiftMonthBy(base,m*r.interval);
+      const mD=new Date(md+'T12:00:00');
+      const yr=mD.getFullYear(),mo=mD.getMonth();
+      let cand:string|null=null;
+      if(r.monthlyType==='weekday'){
+        const wd=r.weekday??0,wn=r.weekNumber??1;
+        if(wn==='last'){
+          const ld=new Date(yr,mo+1,0);const diff=(ld.getDay()-wd+7)%7;ld.setDate(ld.getDate()-diff);
+          if(ld.getMonth()===mo) cand=dateToStr(ld);
+        } else {
+          const fd=new Date(yr,mo,1);const diff=(wd-fd.getDay()+7)%7;
+          const nth=fd.getDate()+diff+((wn as number)-1)*7;
+          const t=new Date(yr,mo,nth);if(t.getMonth()===mo) cand=dateToStr(t);
+        }
+      } else {
+        const dom=r.dayOfMonth??new Date(base+'T12:00:00').getDate();
+        if(dom==='last'){ cand=dateToStr(new Date(yr,mo+1,0)); }
+        else { const t=new Date(yr,mo,dom as number);cand=dateToStr(t.getMonth()!==mo?new Date(yr,mo+1,0):t); }
+      }
+      if(cand){ if(endD&&cand>endD) break; push(cand); }
+    }
+  } else {
+    const ym=(r.yearMonth??new Date(base+'T12:00:00').getMonth()+1)-1;
+    const yd=r.yearDay===0?new Date(new Date(base+'T12:00:00').getFullYear(),ym+1,0).getDate():r.yearDay??new Date(base+'T12:00:00').getDate();
+    for(let y=0;dates.length<maxN;y++){
+      const bd=shiftYearBy(base,y*r.interval);
+      const t=new Date(new Date(bd+'T12:00:00').getFullYear(),ym,yd);
+      const cand=dateToStr(t);
+      if(endD&&cand>endD) break;
+      push(cand);
+    }
+  }
+  return dates;
+};
 
 // ── Free slots ────────────────────────────────────────────────────────────────
 
@@ -202,8 +303,18 @@ function TaskModal({task,currentDate,prefillTime,onSave,onDelete,onClose}:{
     task?.recurrence==='yearly'?'yearly':
     task?.recurrence==='custom'?'custom':'daily'
   );
-  const [recurEvery,setRecurEvery]  = useState(task?.recurEvery??2);
-  const [recurUnit,setRecurUnit]    = useState<'day'|'week'|'month'|'year'>(task?.recurUnit??'day');
+  const initCR=():CustomRec=>{
+    if(task?.customRec) return task.customRec;
+    const d=new Date(currentDate+'T12:00:00');
+    return {frequency:'week',interval:1,weekdays:[d.getDay()],monthlyType:'date',
+      dayOfMonth:d.getDate(),weekNumber:Math.min(4,Math.ceil(d.getDate()/7)),weekday:d.getDay(),
+      yearMonth:d.getMonth()+1,yearDay:d.getDate(),endType:'never',endCount:10,
+      endDate:shiftMonthBy(currentDate,3)};
+  };
+  const [customRec,setCustomRec] = useState<CustomRec>(initCR);
+  const setCR=<K extends keyof CustomRec>(k:K,v:CustomRec[K])=>setCustomRec(r=>({...r,[k]:v}));
+  const [custDurOpen,setCDurOpen] = useState(false);
+  const [custDurMin,setCDurMin]  = useState(duration>0&&!DUR_OPTS.find(o=>o.v===duration)?duration:90);
   const [notifications,setNotifs]  = useState<number[]>(task?.notifications??[]);
   const [incompleteRem,setIncRem]  = useState(task?.incompleteReminder??false);
   const [custNotifOpen,setCNOpen]  = useState(false);
@@ -267,8 +378,7 @@ function TaskModal({task,currentDate,prefillTime,onSave,onDelete,onClose}:{
       date:mode==='scheduled'?taskDate:(task?.date??currentDate),
       isLater:mode==='later',
       recurrence:mode==='recurring'?recur:null,
-      recurEvery:mode==='recurring'&&recur==='custom'?recurEvery:undefined,
-      recurUnit:mode==='recurring'&&recur==='custom'?recurUnit:undefined,
+      customRec:mode==='recurring'&&recur==='custom'?customRec:undefined,
       notifications:mode!=='later'?notifications:undefined,
       incompleteReminder:mode!=='later'?incompleteRem:false,
       pinned,
@@ -276,7 +386,6 @@ function TaskModal({task,currentDate,prefillTime,onSave,onDelete,onClose}:{
     };
     if(mode==='recurring'&&!task){
       const instances:Omit<Task,'id'>[]=[];
-      const n=recurEvery||1;
       if(recur==='daily'){
         for(let i=0;i<14;i++) instances.push({...base,date:shiftDate(currentDate,i)});
       } else if(recur==='weekly'){
@@ -286,14 +395,7 @@ function TaskModal({task,currentDate,prefillTime,onSave,onDelete,onClose}:{
       } else if(recur==='yearly'){
         for(let i=0;i<5;i++) instances.push({...base,date:shiftYearBy(currentDate,i)});
       } else if(recur==='custom'){
-        for(let i=0;i<20;i++){
-          let d:string;
-          if(recurUnit==='day') d=shiftDate(currentDate,i*n);
-          else if(recurUnit==='week') d=shiftDate(currentDate,i*n*7);
-          else if(recurUnit==='month') d=shiftMonthBy(currentDate,i*n);
-          else d=shiftYearBy(currentDate,i*n);
-          instances.push({...base,date:d});
-        }
+        generateCustomDates(currentDate,customRec).forEach(d=>instances.push({...base,date:d}));
       }
       onSave(instances);
     } else {
@@ -366,36 +468,172 @@ function TaskModal({task,currentDate,prefillTime,onSave,onDelete,onClose}:{
 
           {/* Recurring settings */}
           {mode==='recurring'&&(
-            <div className="bg-white mx-3 mt-3 rounded-2xl p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <span className="text-lg">🔄</span>
-                <span className="text-sm font-semibold text-gray-800">繰り返し間隔</span>
-              </div>
-              <div className="flex gap-2 flex-wrap">
-                {([['daily','毎日'],['weekly','毎週'],['monthly','毎月'],['yearly','毎年'],['custom','カスタム']] as ['daily'|'weekly'|'monthly'|'yearly'|'custom',string][]).map(([r,l])=>(
-                  <button key={r} onClick={()=>setRecur(r)}
-                    className={`px-4 py-2 rounded-full text-sm font-semibold ${recur===r?'bg-gray-900 text-white':'bg-gray-100 text-gray-600'}`}>
-                    {l}
-                  </button>
-                ))}
-              </div>
-              {recur==='custom'&&(
-                <div className="mt-3 flex items-center gap-2 flex-wrap">
-                  <span className="text-sm text-gray-600">毎</span>
-                  <input type="number" value={recurEvery} min={1}
-                    onChange={e=>setRecurEvery(Math.max(1,Number(e.target.value)))}
-                    className="w-16 border border-gray-200 rounded-xl px-3 py-2 text-sm text-center outline-none"/>
-                  <div className="flex gap-1.5">
-                    {([['day','日'],['week','週'],['month','月'],['year','年']] as ['day'|'week'|'month'|'year',string][]).map(([u,l])=>(
-                      <button key={u} onClick={()=>setRecurUnit(u)}
-                        className={`px-3 py-1.5 rounded-full text-sm font-semibold ${recurUnit===u?'bg-gray-900 text-white':'bg-gray-100 text-gray-600'}`}>
-                        {l}
-                      </button>
-                    ))}
-                  </div>
+            <>
+              {/* Type selector */}
+              <div className="bg-white mx-3 mt-3 rounded-2xl p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-lg">🔄</span>
+                  <span className="text-sm font-semibold text-gray-800">繰り返し</span>
                 </div>
+                <div className="flex gap-2 overflow-x-auto pb-0.5" style={{scrollbarWidth:'none',WebkitOverflowScrolling:'touch'} as React.CSSProperties}>
+                  {(['daily','weekly','monthly','yearly','custom'] as const).map((r,i)=>(
+                    <button key={r} onClick={()=>setRecur(r)}
+                      className={`shrink-0 px-4 py-2 rounded-full text-sm font-semibold ${recur===r?'bg-gray-900 text-white':'bg-gray-100 text-gray-600'}`}>
+                      {['毎日','毎週','毎月','毎年','カスタム'][i]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Custom 3-block UI */}
+              {recur==='custom'&&(
+                <>
+                  {/* Summary */}
+                  <div className="mx-3 mt-3 bg-gray-900 rounded-2xl px-4 py-3">
+                    <p className="text-white text-sm font-bold">{summarizeCustomRec(customRec)}</p>
+                  </div>
+
+                  {/* ① 間隔 */}
+                  <div className="bg-white mx-3 mt-3 rounded-2xl p-4">
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-4">① 間隔</p>
+                    <div className="flex items-center justify-center gap-5 mb-4">
+                      <button onClick={()=>setCR('interval',Math.max(1,customRec.interval-1))}
+                        className="w-11 h-11 rounded-full bg-gray-100 text-xl font-bold text-gray-600 flex items-center justify-center">−</button>
+                      <span className="text-4xl font-black text-gray-900 min-w-[2.5rem] text-center">{customRec.interval}</span>
+                      <button onClick={()=>setCR('interval',customRec.interval+1)}
+                        className="w-11 h-11 rounded-full bg-gray-100 text-xl font-bold text-gray-600 flex items-center justify-center">+</button>
+                    </div>
+                    <div className="flex gap-2">
+                      {(['day','week','month','year'] as const).map((u,i)=>(
+                        <button key={u} onClick={()=>setCR('frequency',u)}
+                          className={`flex-1 py-2.5 rounded-full text-sm font-semibold ${customRec.frequency===u?'bg-gray-900 text-white':'bg-gray-100 text-gray-600'}`}>
+                          {['日','週','月','年'][i]}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* ② 実行タイミング */}
+                  {customRec.frequency!=='day'&&(
+                    <div className="bg-white mx-3 mt-3 rounded-2xl p-4">
+                      <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-4">② 実行タイミング</p>
+
+                      {customRec.frequency==='week'&&(
+                        <div className="flex gap-1.5">
+                          {DAY_NAMES.map((n,i)=>(
+                            <button key={i} onClick={()=>{
+                              const wds=customRec.weekdays??[];
+                              setCR('weekdays',wds.includes(i)?wds.filter(x=>x!==i):[...wds,i]);
+                            }}
+                              className={`flex-1 h-10 rounded-full text-sm font-semibold ${(customRec.weekdays??[]).includes(i)?'bg-gray-900 text-white':'bg-gray-100 text-gray-600'}`}>
+                              {n}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      {customRec.frequency==='month'&&(
+                        <>
+                          <div className="flex gap-2 mb-4">
+                            <button onClick={()=>setCR('monthlyType','date')}
+                              className={`flex-1 py-2 rounded-full text-sm font-semibold ${customRec.monthlyType!=='weekday'?'bg-gray-900 text-white':'bg-gray-100 text-gray-600'}`}>
+                              日付で指定
+                            </button>
+                            <button onClick={()=>setCR('monthlyType','weekday')}
+                              className={`flex-1 py-2 rounded-full text-sm font-semibold ${customRec.monthlyType==='weekday'?'bg-gray-900 text-white':'bg-gray-100 text-gray-600'}`}>
+                              曜日で指定
+                            </button>
+                          </div>
+                          {customRec.monthlyType!=='weekday'?(
+                            <div className="flex gap-2 overflow-x-auto pb-0.5" style={{scrollbarWidth:'none'} as React.CSSProperties}>
+                              {([1,5,10,15,20,25,'last' as const]).map(d=>(
+                                <button key={String(d)} onClick={()=>setCR('dayOfMonth',d)}
+                                  className={`shrink-0 px-3 py-2 rounded-full text-sm font-semibold ${customRec.dayOfMonth===d?'bg-gray-900 text-white':'bg-gray-100 text-gray-600'}`}>
+                                  {d==='last'?'月末':`${d}日`}
+                                </button>
+                              ))}
+                            </div>
+                          ):(
+                            <div className="space-y-3">
+                              <div className="flex gap-1.5 overflow-x-auto pb-0.5" style={{scrollbarWidth:'none'} as React.CSSProperties}>
+                                {([1,2,3,4,'last' as const]).map(wn=>(
+                                  <button key={String(wn)} onClick={()=>setCR('weekNumber',wn)}
+                                    className={`shrink-0 flex-1 py-2 rounded-full text-sm font-semibold min-w-[3rem] ${customRec.weekNumber===wn?'bg-gray-900 text-white':'bg-gray-100 text-gray-600'}`}>
+                                    {wn==='last'?'最終':`第${wn}`}
+                                  </button>
+                                ))}
+                              </div>
+                              <div className="flex gap-1.5">
+                                {DAY_NAMES.map((n,i)=>(
+                                  <button key={i} onClick={()=>setCR('weekday',i)}
+                                    className={`flex-1 h-9 rounded-full text-sm font-semibold ${customRec.weekday===i?'bg-gray-900 text-white':'bg-gray-100 text-gray-600'}`}>
+                                    {n}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      )}
+
+                      {customRec.frequency==='year'&&(
+                        <div className="space-y-3">
+                          <div>
+                            <p className="text-xs text-gray-400 mb-2">月</p>
+                            <div className="flex gap-1.5 overflow-x-auto pb-0.5" style={{scrollbarWidth:'none'} as React.CSSProperties}>
+                              {Array.from({length:12},(_,i)=>(
+                                <button key={i} onClick={()=>setCR('yearMonth',i+1)}
+                                  className={`shrink-0 w-12 h-10 rounded-full text-sm font-semibold ${customRec.yearMonth===i+1?'bg-gray-900 text-white':'bg-gray-100 text-gray-600'}`}>
+                                  {i+1}月
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-400 mb-2">日</p>
+                            <div className="flex gap-1.5 overflow-x-auto pb-0.5" style={{scrollbarWidth:'none'} as React.CSSProperties}>
+                              {[1,5,10,15,20,25,0].map(d=>(
+                                <button key={d} onClick={()=>setCR('yearDay',d)}
+                                  className={`shrink-0 px-3 py-2 rounded-full text-sm font-semibold ${customRec.yearDay===d?'bg-gray-900 text-white':'bg-gray-100 text-gray-600'}`}>
+                                  {d===0?'末':`${d}日`}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* ③ 終了条件 */}
+                  <div className="bg-white mx-3 mt-3 rounded-2xl p-4">
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-4">③ 終了条件</p>
+                    <div className="flex gap-2 mb-4">
+                      {([['never','終了なし'],['date','指定日まで'],['count','回数で終了']] as const).map(([t,l])=>(
+                        <button key={t} onClick={()=>setCR('endType',t)}
+                          className={`flex-1 py-2 rounded-full text-xs font-semibold ${customRec.endType===t?'bg-gray-900 text-white':'bg-gray-100 text-gray-600'}`}>
+                          {l}
+                        </button>
+                      ))}
+                    </div>
+                    {customRec.endType==='date'&&(
+                      <input type="date" value={customRec.endDate??''} onChange={e=>setCR('endDate',e.target.value)}
+                        className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-gray-50 outline-none w-full"/>
+                    )}
+                    {customRec.endType==='count'&&(
+                      <div className="flex items-center gap-3">
+                        <button onClick={()=>setCR('endCount',Math.max(1,(customRec.endCount??10)-1))}
+                          className="w-10 h-10 rounded-full bg-gray-100 text-xl font-bold text-gray-600 flex items-center justify-center">−</button>
+                        <span className="text-2xl font-black text-gray-900">{customRec.endCount??10}</span>
+                        <button onClick={()=>setCR('endCount',(customRec.endCount??10)+1)}
+                          className="w-10 h-10 rounded-full bg-gray-100 text-xl font-bold text-gray-600 flex items-center justify-center">+</button>
+                        <span className="text-sm text-gray-600">回で終了</span>
+                      </div>
+                    )}
+                  </div>
+                </>
               )}
-            </div>
+            </>
           )}
 
           {/* 日付選択 (scheduled only) */}
@@ -476,14 +714,28 @@ function TaskModal({task,currentDate,prefillTime,onSave,onDelete,onClose}:{
               <span className="text-lg">🕐</span>
               <span className="text-sm font-semibold text-gray-800">所要時間</span>
             </div>
-            <div className="flex gap-2 flex-wrap">
+            <div className="flex gap-2 overflow-x-auto pb-0.5" style={{scrollbarWidth:'none',WebkitOverflowScrolling:'touch'} as React.CSSProperties}>
               {DUR_OPTS.map(({v,l})=>(
-                <button key={v} onClick={()=>setDur(v)}
-                  className={`px-4 py-2 rounded-full text-sm font-semibold ${duration===v?'bg-gray-900 text-white':'bg-gray-100 text-gray-600'}`}>
+                <button key={v} onClick={()=>{setDur(v);setCDurOpen(false);}}
+                  className={`shrink-0 px-4 py-2 rounded-full text-sm font-semibold ${duration===v&&!custDurOpen?'bg-gray-900 text-white':'bg-gray-100 text-gray-600'}`}>
                   {l}
                 </button>
               ))}
+              <button onClick={()=>setCDurOpen(o=>!o)}
+                className={`shrink-0 px-4 py-2 rounded-full text-sm font-semibold ${custDurOpen?'bg-gray-900 text-white':'bg-gray-100 text-gray-600'}`}>
+                カスタム
+              </button>
             </div>
+            {custDurOpen&&(
+              <div className="flex items-center gap-2 mt-3">
+                <input type="number" value={custDurMin} min={1}
+                  onChange={e=>setCDurMin(Math.max(1,Number(e.target.value)))}
+                  className="w-20 border border-gray-200 rounded-xl px-3 py-2 text-sm text-center outline-none"/>
+                <span className="text-sm text-gray-600">分</span>
+                <button onClick={()=>{setDur(custDurMin);setCDurOpen(false);}}
+                  className="px-4 py-2 bg-gray-900 text-white rounded-xl text-sm font-semibold">設定</button>
+              </div>
+            )}
           </div>
 
           {/* 通知 (scheduled/recurring only) */}
@@ -493,15 +745,15 @@ function TaskModal({task,currentDate,prefillTime,onSave,onDelete,onClose}:{
                 <span className="text-lg">🔔</span>
                 <span className="text-sm font-semibold text-gray-800">通知</span>
               </div>
-              <div className="flex flex-wrap gap-2 px-4 pb-3">
+              <div className="flex gap-2 overflow-x-auto pb-0.5 px-4 mb-3" style={{scrollbarWidth:'none',WebkitOverflowScrolling:'touch'} as React.CSSProperties}>
                 {NOTIF_OPTS.map(({v,l})=>(
                   <button key={v} onClick={()=>toggleNotif(v)}
-                    className={`px-3 py-1.5 rounded-full text-sm font-semibold ${notifications.includes(v)?'bg-gray-900 text-white':'bg-gray-100 text-gray-600'}`}>
+                    className={`shrink-0 px-3 py-1.5 rounded-full text-sm font-semibold ${notifications.includes(v)?'bg-gray-900 text-white':'bg-gray-100 text-gray-600'}`}>
                     {l}
                   </button>
                 ))}
                 <button onClick={()=>setCNOpen(o=>!o)}
-                  className={`px-3 py-1.5 rounded-full text-sm font-semibold ${custNotifOpen?'bg-gray-900 text-white':'bg-gray-100 text-gray-600'}`}>
+                  className={`shrink-0 px-3 py-1.5 rounded-full text-sm font-semibold ${custNotifOpen?'bg-gray-900 text-white':'bg-gray-100 text-gray-600'}`}>
                   カスタム
                 </button>
               </div>
@@ -1080,7 +1332,7 @@ export default function App() {
       const t=localStorage.getItem(TASKS_KEY);
       const s=localStorage.getItem(SETTINGS_KEY);
       const sh=localStorage.getItem(SHOP_KEY);
-      if(t) setTasks((JSON.parse(t) as Task[]).map(tk=>({...tk,recurrence:tk.recurrence??null,pinned:tk.pinned??false,tags:tk.tags??[],notifications:tk.notifications??[],incompleteReminder:tk.incompleteReminder??false})));
+      if(t) setTasks((JSON.parse(t) as Task[]).map(tk=>({...tk,recurrence:tk.recurrence??null,customRec:tk.customRec,pinned:tk.pinned??false,tags:tk.tags??[],notifications:tk.notifications??[],incompleteReminder:tk.incompleteReminder??false})));
       if(s) setSettings(JSON.parse(s));
       if(sh) setShopItems(JSON.parse(sh));
     }catch{}
