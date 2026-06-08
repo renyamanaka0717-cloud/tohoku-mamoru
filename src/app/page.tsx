@@ -144,6 +144,25 @@ function MonthCalendar({selected,onSelect,onClose,tasks}:{selected:string;onSele
   );
 }
 
+function autoIcon(name: string): string {
+  const n = name;
+  if (/食|飯|昼|夕|朝|ご飯|食事|弁当|外食|レストラン|カフェ|ランチ|ディナー/.test(n)) return '🍽️';
+  if (/運動|走|ジョギング|ランニング|筋トレ|ジム|スポーツ|泳|水泳|トレーニング/.test(n)) return '🏃';
+  if (/仕事|会議|ミーティング|打ち合わせ|報告|プレゼン|業務|出社|退社|資料/.test(n)) return '💼';
+  if (/読書|本|勉強|学習|テスト|試験|宿題|課題|授業|講義/.test(n)) return '📚';
+  if (/薬|病院|診察|通院|クリニック|歯医者/.test(n)) return '💊';
+  if (/買い物|ショッピング|スーパー|購入/.test(n)) return '🛒';
+  if (/掃除|洗濯|片付|家事|料理|炊事/.test(n)) return '🏠';
+  if (/パソコン|PC|コード|プログラム|開発|デザイン/.test(n)) return '💻';
+  if (/電話|通話|連絡|メール|LINE|チャット/.test(n)) return '📞';
+  if (/音楽|歌|ピアノ|ギター|練習/.test(n)) return '🎵';
+  if (/お風呂|シャワー|入浴|風呂/.test(n)) return '🛁';
+  if (/犬|猫|ペット|散歩/.test(n)) return '🐕';
+  if (/目標|ゴール|確認|チェック/.test(n)) return '🎯';
+  if (/起床|起き|起きる/.test(n)) return '⭐';
+  return '📝';
+}
+
 // ── TaskModal ─────────────────────────────────────────────────────────────────
 
 function TaskModal({task,currentDate,prefillTime,onSave,onDelete,onClose}:{
@@ -166,7 +185,7 @@ function TaskModal({task,currentDate,prefillTime,onSave,onDelete,onClose}:{
   const [recur,setRecur]     = useState<'daily'|'weekly'>((task?.recurrence==='weekly')?'weekly':'daily');
   const [iconOpen,setIconOpen]= useState(false);
 
-  const headerIcon = mode==='scheduled'?'🕐':mode==='recurring'?'🔄':icon;
+  const headerIcon = mode==='later' ? icon : autoIcon(name);
 
   const save=()=>{
     if(!name.trim()) return;
@@ -175,7 +194,7 @@ function TaskModal({task,currentDate,prefillTime,onSave,onDelete,onClose}:{
       startTime:mode==='later'?null:(startTime||null),
       duration,
       memo,
-      icon:headerIcon,
+      icon:mode==='later'?icon:autoIcon(name.trim()),
       completed:task?.completed??false,
       date:task?.date??currentDate,
       isLater:mode==='later',
@@ -409,18 +428,38 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
   const freeSlots=calcFreeSlots(tasks,date,settings);
   const laterPool=later.filter(t=>!t.completed);
 
-  // prevent card overlap: push cards down when they would collide
+  // Combined layout: tasks + free slots in time order, no overlaps
   const MIN_CARD_H = 60;
-  let prevBottom = -Infinity;
-  const taskLayout = dayTasks.map(task=>{
-    const naturalY = calcY(toMin(task.startTime!));
-    const top = Math.max(naturalY, prevBottom + 2);
-    const h = Math.max(MIN_CARD_H, (task.duration??0)*PX_PER_MIN);
-    prevBottom = top + h;
-    return {task,top,h};
-  });
-  const maxBottom = taskLayout.length ? taskLayout[taskLayout.length-1].top + taskLayout[taskLayout.length-1].h : 0;
-  const totalHeight = Math.max(totalMins*PX_PER_MIN, maxBottom + 32);
+  type TLItem = {type:'task';t:Task;y:number}|{type:'free';s:FreeSlot;y:number};
+  const allItems:TLItem[] = [
+    ...dayTasks.map(t=>({type:'task' as const,t,y:calcY(toMin(t.startTime!))})),
+    ...freeSlots.map(s=>({type:'free' as const,s,y:calcY(toMin(s.start))})),
+  ].sort((a,b)=>a.y-b.y);
+
+  let prevBottom=-Infinity;
+  const taskLayout:{task:Task;top:number;h:number}[]=[];
+  const freeLayout:{slot:FreeSlot;freeY:number;cardH:number}[]=[];
+
+  for(const item of allItems){
+    if(item.type==='task'){
+      const top=Math.max(item.y,prevBottom+2);
+      const h=Math.max(MIN_CARD_H,(item.t.duration??0)*PX_PER_MIN);
+      taskLayout.push({task:item.t,top,h});
+      prevBottom=top+h;
+    } else {
+      const slotEndY=calcY(toMin(item.s.end));
+      const freeY=Math.max(item.y,prevBottom)+2;
+      const cardH=Math.max(60,Math.min(item.s.min*PX_PER_MIN-4,slotEndY-freeY));
+      freeLayout.push({slot:item.s,freeY,cardH});
+      prevBottom=freeY+cardH;
+    }
+  }
+
+  const maxBottom=Math.max(
+    taskLayout.length?taskLayout[taskLayout.length-1].top+taskLayout[taskLayout.length-1].h:0,
+    freeLayout.length?freeLayout[freeLayout.length-1].freeY+freeLayout[freeLayout.length-1].cardH:0,
+  );
+  const totalHeight=Math.max(totalMins*PX_PER_MIN,maxBottom+32);
 
   const hours:number[]=[];
   for(let m=wakeMin;m<=sleepMin;m+=60) hours.push(m);
@@ -475,14 +514,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
       ))}
 
       {/* free time cards */}
-      {freeSlots.map((slot,i)=>{
-        const slotMin=toMin(slot.start);
-        const prevBottom=taskLayout.reduce((acc,{task,top,h})=>{
-          const endMin=toMin(task.startTime!)+(task.duration??0);
-          return endMin<=slotMin?Math.max(acc,top+h):acc;
-        },-Infinity);
-        const freeY=Math.max(calcY(slotMin),prevBottom)+2;
-        const cardH=Math.max(80,slot.min*PX_PER_MIN-4);
+      {freeLayout.map(({slot,freeY,cardH},i)=>{
         const fits=laterPool.filter(t=>(t.duration??0)<=slot.min).slice(0,3);
         return (
           <div key={i} className="absolute z-10" style={{top:`${freeY}px`,left:`${CARD_LEFT}px`,right:'0px'}}>
@@ -550,7 +582,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
         <div className="flex justify-center pt-3 shrink-0"><div className="w-10 h-1 bg-gray-200 rounded-full"/></div>
         {/* Tab bar */}
         <div className="flex border-b border-gray-100 shrink-0 mt-1">
-          {([['later','あとでやる',pendingCount],['shop','🛒 買い物',shopPending]] as const).map(([t,label,cnt])=>(
+          {([['later','あとでやる',pendingCount],['shop','買い物リスト',shopPending]] as const).map(([t,label,cnt])=>(
             <button key={t} onClick={()=>onSwitchTab(t)}
               className={`flex-1 py-3 text-sm font-semibold flex items-center justify-center gap-1.5 border-b-2 transition-colors ${activeTab===t?'border-gray-900 text-gray-900':'border-transparent text-gray-400'}`}>
               {label}
@@ -851,7 +883,7 @@ export default function App() {
         onTouchEnd={e=>{ if(touchY-e.changedTouches[0].clientY>30) setActiveTab('later'); }}
       >
         <div className="flex">
-          {([['later','あとでやる',pendingCount],['shop','🛒 買い物',shopPending]] as const).map(([tab,label,cnt],i)=>(
+          {([['later','あとでやる',pendingCount],['shop','買い物リスト',shopPending]] as const).map(([tab,label,cnt],i)=>(
             <button key={tab} onClick={()=>setActiveTab(t=>t===tab?null:tab)}
               className={`flex-1 flex items-center justify-center gap-2 py-3 transition-colors ${i===0?'border-r border-gray-100':''} ${activeTab===tab?'bg-gray-50':''}`}>
               <span className={`text-sm font-semibold ${activeTab===tab?'text-gray-900':'text-gray-500'}`}>{label}</span>
