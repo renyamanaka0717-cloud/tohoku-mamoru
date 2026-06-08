@@ -14,9 +14,13 @@ interface Task {
   completed: boolean;
   date: string;
   isLater: boolean;
-  recurrence?: 'daily' | 'weekly' | 'monthly' | 'yearly' | null;
+  recurrence?: 'daily' | 'weekly' | 'monthly' | 'yearly' | 'custom' | null;
+  recurEvery?: number;
+  recurUnit?: 'day'|'week'|'month'|'year';
   pinned?: boolean;
   tags?: string[];
+  notifications?: number[];     // 開始何分前 (0=開始時, 1440=前日)
+  incompleteReminder?: boolean;
 }
 
 interface Settings { wakeTime: string; sleepTime: string; }
@@ -35,7 +39,13 @@ const SHOP_KEY     = 'tl-shop-v1';
 const PX_PER_HOUR  = 100;
 const PX_PER_MIN   = PX_PER_HOUR / 60;
 const DAY_NAMES    = ['日','月','火','水','木','金','土'];
-const DUR_OPTS     = [{v:0,l:'なし'},{v:5,l:'5分'},{v:10,l:'10分'},{v:15,l:'15分'},{v:30,l:'30分'}];
+const DUR_OPTS     = [
+  {v:0,l:'なし'},
+  {v:5,l:'5分'},{v:10,l:'10分'},{v:15,l:'15分'},{v:30,l:'30分'},{v:45,l:'45分'},
+  {v:60,l:'1時間'},{v:90,l:'1時間半'},{v:120,l:'2時間'},
+  {v:180,l:'3時間'},{v:240,l:'4時間'},{v:300,l:'5時間'},
+];
+const NOTIF_OPTS   = [{v:0,l:'開始時'},{v:5,l:'5分前'},{v:10,l:'10分前'},{v:15,l:'15分前'},{v:30,l:'30分前'},{v:60,l:'1時間前'},{v:1440,l:'前日'}];
 
 // ── Utils ─────────────────────────────────────────────────────────────────────
 
@@ -186,11 +196,18 @@ function TaskModal({task,currentDate,prefillTime,onSave,onDelete,onClose}:{
   const [duration,setDur]     = useState(task?.duration??0);
   const [memo,setMemo]        = useState(task?.memo??'');
   const [icon,setIcon]        = useState(task?.icon??'📝');
-  const [recur,setRecur]      = useState<'daily'|'weekly'|'monthly'|'yearly'>(
+  const [recur,setRecur]      = useState<'daily'|'weekly'|'monthly'|'yearly'|'custom'>(
     task?.recurrence==='weekly'?'weekly':
     task?.recurrence==='monthly'?'monthly':
-    task?.recurrence==='yearly'?'yearly':'daily'
+    task?.recurrence==='yearly'?'yearly':
+    task?.recurrence==='custom'?'custom':'daily'
   );
+  const [recurEvery,setRecurEvery]  = useState(task?.recurEvery??2);
+  const [recurUnit,setRecurUnit]    = useState<'day'|'week'|'month'|'year'>(task?.recurUnit??'day');
+  const [notifications,setNotifs]  = useState<number[]>(task?.notifications??[]);
+  const [incompleteRem,setIncRem]  = useState(task?.incompleteReminder??false);
+  const [custNotifOpen,setCNOpen]  = useState(false);
+  const [custNotifMin,setCNMin]    = useState(60);
   const [pinned,setPinned]    = useState(task?.pinned??false);
   const [tags,setTags]        = useState<string[]>(task?.tags??[]);
   const [tagInput,setTagInput]= useState('');
@@ -222,6 +239,14 @@ function TaskModal({task,currentDate,prefillTime,onSave,onDelete,onClose}:{
     return `${taskDate===today?'今日 ':''}${m}月${d}日（${dow}）`;
   };
 
+  const toggleNotif=(v:number)=>setNotifs(prev=>prev.includes(v)?prev.filter(x=>x!==v):[...prev,v].sort((a,b)=>a-b));
+  const addCustNotif=()=>{
+    if(custNotifMin>0&&!notifications.includes(custNotifMin)){
+      setNotifs(prev=>[...prev,custNotifMin].sort((a,b)=>a-b));
+    }
+    setCNOpen(false);
+  };
+
   const addTag=()=>{
     const t=tagInput.trim();
     if(!t||tags.includes(t)) return;
@@ -242,19 +267,33 @@ function TaskModal({task,currentDate,prefillTime,onSave,onDelete,onClose}:{
       date:mode==='scheduled'?taskDate:(task?.date??currentDate),
       isLater:mode==='later',
       recurrence:mode==='recurring'?recur:null,
+      recurEvery:mode==='recurring'&&recur==='custom'?recurEvery:undefined,
+      recurUnit:mode==='recurring'&&recur==='custom'?recurUnit:undefined,
+      notifications:mode!=='later'?notifications:undefined,
+      incompleteReminder:mode!=='later'?incompleteRem:false,
       pinned,
       tags,
     };
     if(mode==='recurring'&&!task){
       const instances:Omit<Task,'id'>[]=[];
+      const n=recurEvery||1;
       if(recur==='daily'){
         for(let i=0;i<14;i++) instances.push({...base,date:shiftDate(currentDate,i)});
       } else if(recur==='weekly'){
-        for(let i=0;i<4;i++) instances.push({...base,date:shiftDate(currentDate,i*7)});
+        for(let i=0;i<8;i++) instances.push({...base,date:shiftDate(currentDate,i*7)});
       } else if(recur==='monthly'){
         for(let i=0;i<12;i++) instances.push({...base,date:shiftMonthBy(currentDate,i)});
       } else if(recur==='yearly'){
         for(let i=0;i<5;i++) instances.push({...base,date:shiftYearBy(currentDate,i)});
+      } else if(recur==='custom'){
+        for(let i=0;i<20;i++){
+          let d:string;
+          if(recurUnit==='day') d=shiftDate(currentDate,i*n);
+          else if(recurUnit==='week') d=shiftDate(currentDate,i*n*7);
+          else if(recurUnit==='month') d=shiftMonthBy(currentDate,i*n);
+          else d=shiftYearBy(currentDate,i*n);
+          instances.push({...base,date:d});
+        }
       }
       onSave(instances);
     } else {
@@ -330,16 +369,32 @@ function TaskModal({task,currentDate,prefillTime,onSave,onDelete,onClose}:{
             <div className="bg-white mx-3 mt-3 rounded-2xl p-4">
               <div className="flex items-center gap-2 mb-3">
                 <span className="text-lg">🔄</span>
-                <span className="text-sm font-semibold text-gray-800">繰り返し</span>
+                <span className="text-sm font-semibold text-gray-800">繰り返し間隔</span>
               </div>
               <div className="flex gap-2 flex-wrap">
-                {([['daily','毎日'],['weekly','毎週'],['monthly','毎月'],['yearly','毎年']] as ['daily'|'weekly'|'monthly'|'yearly',string][]).map(([r,l])=>(
+                {([['daily','毎日'],['weekly','毎週'],['monthly','毎月'],['yearly','毎年'],['custom','カスタム']] as ['daily'|'weekly'|'monthly'|'yearly'|'custom',string][]).map(([r,l])=>(
                   <button key={r} onClick={()=>setRecur(r)}
                     className={`px-4 py-2 rounded-full text-sm font-semibold ${recur===r?'bg-gray-900 text-white':'bg-gray-100 text-gray-600'}`}>
                     {l}
                   </button>
                 ))}
               </div>
+              {recur==='custom'&&(
+                <div className="mt-3 flex items-center gap-2 flex-wrap">
+                  <span className="text-sm text-gray-600">毎</span>
+                  <input type="number" value={recurEvery} min={1}
+                    onChange={e=>setRecurEvery(Math.max(1,Number(e.target.value)))}
+                    className="w-16 border border-gray-200 rounded-xl px-3 py-2 text-sm text-center outline-none"/>
+                  <div className="flex gap-1.5">
+                    {([['day','日'],['week','週'],['month','月'],['year','年']] as ['day'|'week'|'month'|'year',string][]).map(([u,l])=>(
+                      <button key={u} onClick={()=>setRecurUnit(u)}
+                        className={`px-3 py-1.5 rounded-full text-sm font-semibold ${recurUnit===u?'bg-gray-900 text-white':'bg-gray-100 text-gray-600'}`}>
+                        {l}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -430,6 +485,58 @@ function TaskModal({task,currentDate,prefillTime,onSave,onDelete,onClose}:{
               ))}
             </div>
           </div>
+
+          {/* 通知 (scheduled/recurring only) */}
+          {(mode==='scheduled'||mode==='recurring')&&(
+            <div className="bg-white mx-3 mt-3 rounded-2xl overflow-hidden">
+              <div className="flex items-center gap-2 px-4 pt-4 pb-3">
+                <span className="text-lg">🔔</span>
+                <span className="text-sm font-semibold text-gray-800">通知</span>
+              </div>
+              <div className="flex flex-wrap gap-2 px-4 pb-3">
+                {NOTIF_OPTS.map(({v,l})=>(
+                  <button key={v} onClick={()=>toggleNotif(v)}
+                    className={`px-3 py-1.5 rounded-full text-sm font-semibold ${notifications.includes(v)?'bg-gray-900 text-white':'bg-gray-100 text-gray-600'}`}>
+                    {l}
+                  </button>
+                ))}
+                <button onClick={()=>setCNOpen(o=>!o)}
+                  className={`px-3 py-1.5 rounded-full text-sm font-semibold ${custNotifOpen?'bg-gray-900 text-white':'bg-gray-100 text-gray-600'}`}>
+                  カスタム
+                </button>
+              </div>
+              {custNotifOpen&&(
+                <div className="flex items-center gap-2 px-4 pb-3">
+                  <input type="number" value={custNotifMin} min={1}
+                    onChange={e=>setCNMin(Math.max(1,Number(e.target.value)))}
+                    className="w-20 border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none text-center"/>
+                  <span className="text-sm text-gray-600">分前</span>
+                  <button onClick={addCustNotif}
+                    className="px-3 py-2 bg-gray-900 text-white rounded-xl text-sm font-semibold">追加</button>
+                </div>
+              )}
+              {notifications.filter(v=>!NOTIF_OPTS.find(o=>o.v===v)).length>0&&(
+                <div className="flex flex-wrap gap-2 px-4 pb-3">
+                  {notifications.filter(v=>!NOTIF_OPTS.find(o=>o.v===v)).map(v=>(
+                    <span key={v} className="inline-flex items-center gap-1 bg-gray-900 text-white text-xs font-semibold px-2.5 py-1.5 rounded-full">
+                      {v}分前
+                      <button onClick={()=>setNotifs(prev=>prev.filter(x=>x!==v))} className="opacity-70 leading-none ml-0.5">×</button>
+                    </span>
+                  ))}
+                </div>
+              )}
+              <div className="flex items-center justify-between px-4 pb-4 border-t border-gray-50 pt-3">
+                <div>
+                  <p className="text-sm font-semibold text-gray-800">未完了リマインダー</p>
+                  <p className="text-xs text-gray-400">タスクが未完了の場合に通知</p>
+                </div>
+                <button onClick={()=>setIncRem(r=>!r)}
+                  className={`w-12 h-6 rounded-full transition-colors relative shrink-0 ${incompleteRem?'bg-gray-900':'bg-gray-200'}`}>
+                  <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${incompleteRem?'left-[22px]':'left-0.5'}`}/>
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Pin + Tags */}
           <div className="bg-white mx-3 mt-3 rounded-2xl overflow-hidden">
@@ -973,7 +1080,7 @@ export default function App() {
       const t=localStorage.getItem(TASKS_KEY);
       const s=localStorage.getItem(SETTINGS_KEY);
       const sh=localStorage.getItem(SHOP_KEY);
-      if(t) setTasks((JSON.parse(t) as Task[]).map(tk=>({...tk,recurrence:tk.recurrence??null,pinned:tk.pinned??false,tags:tk.tags??[]})));
+      if(t) setTasks((JSON.parse(t) as Task[]).map(tk=>({...tk,recurrence:tk.recurrence??null,pinned:tk.pinned??false,tags:tk.tags??[],notifications:tk.notifications??[],incompleteReminder:tk.incompleteReminder??false})));
       if(s) setSettings(JSON.parse(s));
       if(sh) setShopItems(JSON.parse(sh));
     }catch{}
