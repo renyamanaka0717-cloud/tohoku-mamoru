@@ -1096,21 +1096,26 @@ function TaskCard({task,onToggle,onEdit}:{task:Task;onToggle:()=>void;onEdit:()=
 
 function FreeTimeCard({slot,fits,height,onSchedule}:{slot:FreeSlot;fits:Task[];height:number;onSchedule:(t:Task,time:string)=>void;}) {
   const h=Math.floor(slot.min/60), m=slot.min%60;
-  return (
-    <div className="bg-gray-100 rounded-2xl px-4 pt-3 pb-4" style={{minHeight:`${height}px`}}>
-      <div className="flex items-center gap-1 mb-1.5">
-        <span className="text-xs">🕐</span>
-        <span className="text-xs text-gray-400 font-medium">空き時間</span>
+  const durStr=`${h>0?h+'時間':''}${m>0?m+'分':''}`;
+  if(height<52){
+    return (
+      <div className="bg-gray-100 rounded-xl px-3 flex items-center gap-1.5" style={{height:`${height}px`}}>
+        <span className="text-[10px]">🕐</span>
+        <span className="text-[10px] text-gray-400 font-medium truncate">空き {durStr}</span>
       </div>
-      <p className="font-black text-gray-800 leading-none mb-3">
-        {h>0&&<span className="text-[2rem]">{h}時間</span>}
-        {m>0&&<span className="text-[2rem] ml-0.5"> {m}分</span>}
-      </p>
-      <div className="flex flex-wrap gap-2">
-        {fits.map(t=>(
+    );
+  }
+  return (
+    <div className="bg-gray-100 rounded-2xl px-4 pt-3 pb-3" style={{minHeight:`${height}px`}}>
+      <div className="flex items-center gap-1 mb-1">
+        <span className="text-xs">🕐</span>
+        <span className="text-xs text-gray-400 font-medium">空き時間 {durStr}</span>
+      </div>
+      <div className="flex flex-wrap gap-1.5 mt-1">
+        {fits.slice(0,3).map(t=>(
           <button key={t.id} onClick={()=>onSchedule(t,slot.start)}
-            className="inline-flex items-center gap-1.5 bg-white rounded-full px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm">
-            <span className="w-3.5 h-3.5 border border-gray-300 rounded-sm shrink-0"/>
+            className="inline-flex items-center gap-1 bg-white rounded-full px-2.5 py-1 text-xs font-medium text-gray-700 shadow-sm">
+            <span className="w-3 h-3 border border-gray-300 rounded-sm shrink-0"/>
             <span>{t.name}</span>
           </button>
         ))}
@@ -1177,7 +1182,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
       // 94px = FreeTimeCard の最低コンテンツ高さ（ヘッダー＋大テキスト）、fit タスクボタン 1 行 38px
       const fitsN=laterPool.filter(t=>(t.duration??0)<=item.s.min).length;
       const cardH=dayTasks.length>0
-        ?Math.max(item.s.min*PX_PER_MIN-4,16)
+        ?Math.max(Math.round(item.s.min*PX_PER_MIN/3),24)
         :Math.max(94+Math.min(fitsN,3)*38,item.s.min*PX_PER_MIN-4);
       freeLayout.push({slot:item.s,freeY,cardH});
       prevBottom=freeY+cardH;
@@ -1427,6 +1432,30 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
               </div>
             )}
 
+            {/* 時間指定 section */}
+            {scheduledRaw.length>0&&(
+              <div className="mt-3">
+                <div className="flex items-center gap-1.5 mb-2">
+                  <span className="text-xs text-gray-400">⊙</span>
+                  <span className="text-xs text-gray-400 font-medium">時間指定 {scheduledRaw.length}</span>
+                </div>
+                <div className="space-y-2">
+                  {scheduledRaw.map(t=>(
+                    <div key={t.id} className="flex items-center gap-2.5 bg-white border border-gray-100 rounded-2xl shadow-sm px-3 py-3">
+                      <div className="w-7 h-7 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0">
+                        <span className="text-xs text-gray-400">⊙</span>
+                      </div>
+                      <div className="flex-1 min-w-0" onClick={()=>onEdit(t)}>
+                        <p className="text-sm font-semibold text-gray-900">{t.name}</p>
+                        <p className="text-xs text-gray-400">{t.date.slice(5).replace('-','/')} {t.startTime}</p>
+                      </div>
+                      <button onClick={()=>onToggle(t.id)} className="w-6 h-6 rounded-full border-2 border-gray-300 shrink-0"/>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* 繰り返し section */}
             {recurringGroups.length>0&&(
               <div className="mt-3">
@@ -1446,30 +1475,6 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
                         <p className="text-sm font-semibold text-gray-900">{t.name}</p>
                         <p className="text-xs text-gray-400">{recLabel(t)}{t.startTime?` ${t.startTime}`:''}</p>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* 時間指定 section */}
-            {scheduledRaw.length>0&&(
-              <div className="mt-3">
-                <div className="flex items-center gap-1.5 mb-2">
-                  <span className="text-xs text-gray-400">⊙</span>
-                  <span className="text-xs text-gray-400 font-medium">時間指定 {scheduledRaw.length}</span>
-                </div>
-                <div className="space-y-2">
-                  {scheduledRaw.map(t=>(
-                    <div key={t.id} className="flex items-center gap-2.5 bg-white border border-gray-100 rounded-2xl shadow-sm px-3 py-3">
-                      <div className="w-7 h-7 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0">
-                        <span className="text-xs text-gray-400">⊙</span>
-                      </div>
-                      <div className="flex-1 min-w-0" onClick={()=>onEdit(t)}>
-                        <p className="text-sm font-semibold text-gray-900">{t.name}</p>
-                        <p className="text-xs text-gray-400">{t.date.slice(5).replace('-','/')} {t.startTime}</p>
-                      </div>
-                      <button onClick={()=>onToggle(t.id)} className="w-6 h-6 rounded-full border-2 border-gray-300 shrink-0"/>
                     </div>
                   ))}
                 </div>
@@ -1571,6 +1576,7 @@ export default function App() {
   const mainSwY = useRef(0);
   const [recConfirm,setRecConfirm] = useState<Task|null>(null);
   const [editScope,setEditScope]   = useState<'one'|'all'>('one');
+  const [overTrash,setOverTrash]   = useState(false);
 
   useEffect(()=>{
     try{
@@ -1615,22 +1621,29 @@ export default function App() {
       const snapped=Math.round(rawMin/5)*5;
       return fromMin(Math.max(wakeMin,Math.min(toMin(settings.sleepTime),snapped)));
     };
+    const TRASH_H=100;
+    const isInTrash=(y:number)=>y>window.innerHeight-TRASH_H;
     const onMove=(e:TouchEvent)=>{
       e.preventDefault();
       const t=e.touches[0];
       setDragPos({x:t.clientX,y:t.clientY});
-      setDropTime(calcTime(t.clientY));
+      setOverTrash(isInTrash(t.clientY));
+      if(!isInTrash(t.clientY)) setDropTime(calcTime(t.clientY));
     };
     const onEnd=(e:TouchEvent)=>{
       const t=e.changedTouches[0];
-      const time=calcTime(t.clientY);
-      // あとでやる drag → schedule on today; timeline drag → move time only
-      setTasks(prev=>prev.map(tk=>tk.id===dragTask.id
-        ? dragTask.isLater ? {...tk,isLater:false,startTime:time,date} : {...tk,startTime:time}
-        : tk
-      ));
+      if(isInTrash(t.clientY)){
+        setTasks(prev=>prev.filter(tk=>tk.id!==dragTask.id));
+      } else {
+        const time=calcTime(t.clientY);
+        setTasks(prev=>prev.map(tk=>tk.id===dragTask.id
+          ? dragTask.isLater ? {...tk,isLater:false,startTime:time,date} : {...tk,startTime:time}
+          : tk
+        ));
+      }
       setDragTask(null);
       setDropTime(null);
+      setOverTrash(false);
     };
     document.addEventListener('touchmove',onMove,{passive:false});
     document.addEventListener('touchend',onEnd);
@@ -1823,25 +1836,32 @@ export default function App() {
       {/* ── Drag overlay ── */}
       {dragTask&&(
         <div className="fixed inset-0 z-[70] pointer-events-none">
-          {/* Drop time line */}
-          {dropTime&&(
-            <div className="absolute left-0 right-0 flex items-center gap-2 px-14"
-              style={{top:`${dragPos.y}px`}}>
-              <span className="bg-blue-500 text-white text-xs font-bold px-2 py-0.5 rounded-full whitespace-nowrap shrink-0">{dropTime}</span>
+          {/* Drop time line — starts after axis area (68px) */}
+          {dropTime&&!overTrash&&(
+            <div className="absolute right-0 flex items-center gap-2"
+              style={{top:`${dragPos.y}px`,left:'68px'}}>
               <div className="flex-1 h-0.5 bg-blue-400 rounded-full"/>
+              <span className="bg-blue-500 text-white text-xs font-bold px-2 py-0.5 rounded-full whitespace-nowrap shrink-0 mr-2">{dropTime}</span>
             </div>
           )}
           {/* Floating card */}
-          <div style={{
-            position:'absolute',
-            left:`${Math.max(8,Math.min(dragPos.x-70,window.innerWidth-180))}px`,
-            top:`${dragPos.y-50}px`,
-            transform:'rotate(-3deg) scale(1.05)',
-          }}>
-            <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 px-4 py-3 w-44">
-              <p className="text-sm font-bold text-gray-900 truncate">{dragTask.name}</p>
-              <p className="text-xs text-blue-500 mt-0.5 font-semibold">{dropTime??'ドラッグして配置'}</p>
+          {!overTrash&&(
+            <div style={{
+              position:'absolute',
+              left:`${Math.max(8,Math.min(dragPos.x-70,window.innerWidth-180))}px`,
+              top:`${dragPos.y-60}px`,
+              transform:'rotate(-3deg) scale(1.05)',
+            }}>
+              <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 px-4 py-3 w-44">
+                <p className="text-sm font-bold text-gray-900 truncate">{dragTask.name}</p>
+                <p className="text-xs text-blue-500 mt-0.5 font-semibold">{dropTime??'ドラッグして配置'}</p>
+              </div>
             </div>
+          )}
+          {/* Trash zone */}
+          <div className={`absolute bottom-0 left-0 right-0 h-24 flex flex-col items-center justify-center gap-1 transition-colors ${overTrash?'bg-red-500':'bg-red-100'}`}>
+            <span className="text-2xl">{overTrash?'🗑️':'🗑️'}</span>
+            <span className={`text-xs font-bold ${overTrash?'text-white':'text-red-400'}`}>ここで削除</span>
           </div>
         </div>
       )}
