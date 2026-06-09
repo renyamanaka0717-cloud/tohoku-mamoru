@@ -1177,13 +1177,14 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
 
   // Combined layout: tasks + free slots in time order, no overlaps
   const MIN_CARD_H = 60;
+  const WAKE_CARD_H=52, SLEEP_CARD_H=52;
   type TLItem = {type:'task';t:Task;y:number}|{type:'free';s:FreeSlot;y:number};
   const allItems:TLItem[] = [
     ...dayTasks.map(t=>({type:'task' as const,t,y:calcY(toMin(t.startTime!))})),
     ...freeSlots.map(s=>({type:'free' as const,s,y:calcY(toMin(s.start))})),
   ].sort((a,b)=>a.y-b.y);
 
-  let prevBottom=-Infinity;
+  let prevBottom=WAKE_CARD_H;
   const taskLayout:{task:Task;top:number;h:number}[]=[];
   const freeLayout:{slot:FreeSlot;freeY:number;cardH:number}[]=[];
 
@@ -1220,7 +1221,8 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
     taskLayout.length?taskLayout[taskLayout.length-1].top+taskLayout[taskLayout.length-1].h:0,
     freeLayout.length?freeLayout[freeLayout.length-1].freeY+freeLayout[freeLayout.length-1].cardH:0,
   );
-  const totalHeight=Math.max(calcY(sleepMin),maxBottom)+32;
+  const sleepCardTop=Math.max(maxBottom+16,calcY(sleepMin));
+  const totalHeight=sleepCardTop+SLEEP_CARD_H+32;
 
   // Piecewise linear time→Y mapping using card layout as anchor points
   const rawAnchors:[number,number][]=[[wakeMin,0]];
@@ -1228,7 +1230,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
     const sm=toMin(task.startTime!);
     rawAnchors.push([sm,top],[sm+(task.duration??0),top+h]);
   }
-  rawAnchors.push([sleepMin,totalHeight-32]);
+  rawAnchors.push([sleepMin,sleepCardTop]);
   rawAnchors.sort((a,b)=>a[0]-b[0]);
   const anchors:[number,number][]=[];
   for(const [m,y] of rawAnchors){
@@ -1245,6 +1247,15 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
     }
     return calcY(min);
   };
+
+  // 同時刻タスクのグループ化（重複ラベル排除・中心位置計算用）
+  const taskGroups=new Map<string,{top:number;bottom:number}>();
+  for(const {task,top,h} of taskLayout){
+    const st=task.startTime!;
+    const e=taskGroups.get(st);
+    if(!e) taskGroups.set(st,{top,bottom:top+h});
+    else taskGroups.set(st,{top:Math.min(e.top,top),bottom:Math.max(e.bottom,top+h)});
+  }
 
   const AXIS_X=52, CARD_LEFT=AXIS_X+16;
 
@@ -1277,29 +1288,37 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
       {/* vertical line */}
       <div className="absolute w-px bg-gray-200" style={{left:`${AXIS_X}px`,top:0,height:`${totalHeight}px`}}/>
 
-      {/* wake/sleep markers */}
+      {/* wake/sleep axis icons (no text — time is in the cards) */}
       <div className="absolute flex items-center" style={{top:`${layoutCalcY(wakeMin)-8}px`,left:0}}>
-        <span className="text-xs w-12 text-right pr-1 leading-none text-gray-400">{settings.wakeTime}</span>
-        <div className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-sm -ml-3.5 z-10 shadow-sm">☀️</div>
-      </div>
-      <div className="absolute flex items-center" style={{top:`${layoutCalcY(sleepMin)-8}px`,left:0}}>
-        <span className="text-xs w-12 text-right pr-1 leading-none text-gray-400">{settings.sleepTime}</span>
-        <div className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-sm -ml-3.5 z-10 shadow-sm">🌙</div>
-      </div>
-
-      {/* task start time labels */}
-      {taskLayout.map(({task,top})=>(
-        <div key={`tl-${task.id}`} className="absolute flex items-center" style={{top:`${top-8}px`,left:0}}>
-          <span className="text-xs w-12 text-right pr-1 leading-none text-gray-400">{task.startTime}</span>
+        <div className="w-12 flex justify-end pr-1">
+          <div className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-sm z-10 shadow-sm">☀️</div>
         </div>
-      ))}
+      </div>
+      <div className="absolute flex items-center" style={{top:`${sleepCardTop-8}px`,left:0}}>
+        <div className="w-12 flex justify-end pr-1">
+          <div className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-sm z-10 shadow-sm">🌙</div>
+        </div>
+      </div>
 
-      {/* free slot hourly labels on left axis */}
+      {/* task start time labels — 1 per startTime group, center-aligned, skip wake/sleep */}
+      {[...taskGroups.entries()].map(([st,{top,bottom}])=>{
+        const stMin=toMin(st);
+        if(stMin===wakeMin||stMin===sleepMin) return null;
+        const centerY=(top+bottom)/2;
+        return (
+          <div key={`tl-${st}`} className="absolute flex items-center" style={{top:`${centerY-8}px`,left:0}}>
+            <span className="text-xs w-12 text-right pr-1 leading-none text-gray-400">{st}</span>
+          </div>
+        );
+      })}
+
+      {/* free slot hourly labels on left axis — skip wake/sleep */}
       {freeLayout.flatMap(({slot,freeY,cardH})=>{
         const startMin=toMin(slot.start);
         const endMin=toMin(slot.end);
         const labels:number[]=[];
         for(let m=Math.ceil(startMin/60)*60;m<=endMin;m+=60){
+          if(m===wakeMin||m===sleepMin) continue;
           const y=freeY+(m-startMin)*PX_PER_MIN;
           if(y>=freeY&&y<=freeY+cardH) labels.push(m);
         }
@@ -1321,6 +1340,28 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
           <div className="flex-1 h-px bg-gray-300"/>
         </div>
       )}
+
+      {/* wake card */}
+      <div className="absolute z-10" style={{top:'0px',left:`${CARD_LEFT}px`,right:'0px'}}>
+        <div className="flex items-center gap-2.5 bg-white rounded-2xl border border-gray-100 shadow-sm px-3 py-2.5">
+          <div className="w-8 h-8 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0 text-base leading-none">☀️</div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[11px] text-gray-400 leading-none mb-0.5">{settings.wakeTime}</p>
+            <p className="text-sm font-semibold text-gray-900">起床</p>
+          </div>
+        </div>
+      </div>
+
+      {/* sleep card */}
+      <div className="absolute z-10" style={{top:`${sleepCardTop}px`,left:`${CARD_LEFT}px`,right:'0px'}}>
+        <div className="flex items-center gap-2.5 bg-white rounded-2xl border border-gray-100 shadow-sm px-3 py-2.5">
+          <div className="w-8 h-8 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0 text-base leading-none">🌙</div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[11px] text-gray-400 leading-none mb-0.5">{settings.sleepTime}</p>
+            <p className="text-sm font-semibold text-gray-900">就寝</p>
+          </div>
+        </div>
+      </div>
 
       {/* task cards */}
       {taskLayout.map(({task,top,h})=>{
@@ -1732,7 +1773,7 @@ export default function App() {
   const toggleShop   = (id:string)   => setShopItems(prev=>prev.map(i=>i.id===id?{...i,checked:!i.checked}:i));
   const deleteShop   = (id:string)   => setShopItems(prev=>prev.filter(i=>i.id!==id));
 
-  const openAdd  = (prefillTime?:string) => setModal({open:true,task:null,prefillTime,prefillCategory:activeCategory??undefined});
+  const openAdd  = (prefillTime?:string) => setModal({open:true,task:null,prefillTime,prefillCategory:activeCategory??'個人'});
   const openEdit = (task:Task) => {
     if(task.recurrence) { setRecConfirm(task); } else { setModal({open:true,task}); }
   };
