@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -1126,10 +1126,11 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
   onToggle:(id:string)=>void;onEdit:(t:Task)=>void;
   onSchedule:(t:Task,time:string)=>void;onAddAtTime:(time:string)=>void;
   onDragStart:(t:Task,x:number,y:number)=>void;dragTaskId?:string;
-  layoutRef?:{current:{hourRows:{hourMin:number;rowHeight:number;top:number}[];wakeMin:number;BASE:number}|null};
+  layoutRef?:{current:{hourRows:{hourMin:number;rowHeight:number;top:number}[];wakeMin:number;BASE:number;container:HTMLDivElement|null}|null};
 }) {
   const [pressingId,setPressingId] = useState<string|null>(null);
   const lpTimer = useRef<ReturnType<typeof setTimeout>|null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const startLP=(task:Task,e:React.TouchEvent)=>{
     const touch=e.touches[0];
     setPressingId(task.id);
@@ -1212,8 +1213,10 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
     return totalHeight-32;
   };
 
-  // Expose layout data so parent drag handler can do accurate time↔Y inverse
-  if(layoutRef) layoutRef.current={hourRows,wakeMin,BASE:BASE_SLOT_HEIGHT};
+  // Expose layout data (including actual DOM container) after every render
+  useLayoutEffect(()=>{
+    if(layoutRef) layoutRef.current={hourRows,wakeMin,BASE:BASE_SLOT_HEIGHT,container:containerRef.current};
+  });
 
   // Layout items: rowCalcY as baseline, prevBottom+CARD_GAP as floor
   let prevBottom=-Infinity;
@@ -1241,7 +1244,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
   const AXIS_X=52, CARD_LEFT=AXIS_X+16;
 
   return (
-    <div data-timeline className="relative" style={{height:`${totalHeight+32}px`,minHeight:'400px'}}>
+    <div ref={containerRef} className="relative" style={{height:`${totalHeight+32}px`,minHeight:'400px'}}>
       {/* vertical line */}
       <div className="absolute w-px bg-gray-200" style={{left:`${AXIS_X}px`,top:0,height:`${totalHeight}px`}}/>
 
@@ -1603,7 +1606,7 @@ export default function App() {
   const [dropTime,setDropTime]   = useState<string|null>(null);
   const mainSwX = useRef(0);
   const mainSwY = useRef(0);
-  const tlLayoutRef = useRef<{hourRows:{hourMin:number;rowHeight:number;top:number}[];wakeMin:number;BASE:number}|null>(null);
+  const tlLayoutRef = useRef<{hourRows:{hourMin:number;rowHeight:number;top:number}[];wakeMin:number;BASE:number;container:HTMLDivElement|null}|null>(null);
   const [recConfirm,setRecConfirm] = useState<Task|null>(null);
   const [editScope,setEditScope]   = useState<'one'|'all'>('one');
   const [overTrash,setOverTrash]   = useState(false);
@@ -1646,30 +1649,21 @@ export default function App() {
     const calcTime=(clientY:number)=>{
       const wMin=toMin(settings.wakeTime);
       const sMin=toMin(settings.sleepTime);
-      // Use actual timeline container position — no magic offsets needed
-      const tlEl=document.querySelector('[data-timeline]');
-      const tlRect=tlEl?.getBoundingClientRect();
-      const relY=tlRect?clientY-tlRect.top:0;
       const layout=tlLayoutRef.current;
-      if(layout&&tlRect){
-        const{hourRows,BASE}=layout;
-        for(let i=0;i<hourRows.length;i++){
-          const row=hourRows[i];
-          const nextTop=i<hourRows.length-1?hourRows[i+1].top:row.top+row.rowHeight;
-          if(relY>=row.top&&relY<nextTop){
-            const frac=Math.min(relY-row.top,BASE)/BASE;
-            const snapped=Math.round((row.hourMin+frac*60)/5)*5;
-            return fromMin(Math.max(wMin,Math.min(sMin,snapped)));
-          }
+      if(!layout?.container) return fromMin(wMin);
+      const rect=layout.container.getBoundingClientRect();
+      const relY=clientY-rect.top;
+      const{hourRows,BASE}=layout;
+      for(let i=0;i<hourRows.length;i++){
+        const row=hourRows[i];
+        const nextTop=i<hourRows.length-1?hourRows[i+1].top:row.top+row.rowHeight;
+        if(relY>=row.top&&relY<nextTop){
+          const frac=Math.min(relY-row.top,BASE)/BASE;
+          const snapped=Math.round((row.hourMin+frac*60)/5)*5;
+          return fromMin(Math.max(wMin,Math.min(sMin,snapped)));
         }
-        return fromMin(sMin);
       }
-      // fallback
-      const header=document.querySelector('header');
-      const headerBottom=header?header.getBoundingClientRect().bottom:130;
-      const fallbackY=clientY+window.scrollY-headerBottom-16;
-      const snapped=Math.round((wMin+fallbackY/PX_PER_MIN)/5)*5;
-      return fromMin(Math.max(wMin,Math.min(sMin,snapped)));
+      return fromMin(sMin);
     };
     const TRASH_H=100;
     const isInTrash=(y:number)=>y>window.innerHeight-TRASH_H;
