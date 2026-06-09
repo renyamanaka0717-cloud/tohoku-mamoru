@@ -1116,7 +1116,7 @@ function FreeTimeCard({slot,fits,height,onSchedule,onHeightChange}:{
   },[]);
   const h=Math.floor(slot.min/60), m=slot.min%60;
   return (
-    <div ref={divRef} className="bg-gray-100 rounded-2xl px-4 pt-3 pb-3">
+    <div ref={divRef} className="bg-gray-100 rounded-2xl px-4 pt-3 pb-3" style={{minHeight:`${height}px`}}>
       <div className="flex items-center gap-1 mb-1.5">
         <span className="text-xs">🕐</span>
         <span className="text-xs text-gray-400 font-medium">空き時間</span>
@@ -1187,7 +1187,8 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
   const taskLayout:{task:Task;top:number;h:number}[]=[];
   const freeLayout:{slot:FreeSlot;freeY:number;cardH:number}[]=[];
 
-  for(const item of allItems){
+  for(let idx=0;idx<allItems.length;idx++){
+    const item=allItems[idx];
     if(item.type==='task'){
       const top=Math.max(item.y,prevBottom+2);
       const h=Math.max(MIN_CARD_H,(item.t.duration??0)*PX_PER_MIN);
@@ -1198,7 +1199,17 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
       const fitsN=laterPool.filter(t=>(t.duration??0)<=item.s.min).length;
       const measuredH=freeCardHeights[item.s.start];
       const contentH=fitsN>0?94+fitsN*38:60;
-      const cardH=measuredH??contentH;
+      // 次のタスクの自然なY位置まで伸ばす
+      let nextTaskNaturalY=0;
+      for(let j=idx+1;j<allItems.length;j++){
+        if(allItems[j].type==='task'){
+          nextTaskNaturalY=calcY(toMin(allItems[j].t.startTime!));
+          break;
+        }
+      }
+      const fillH=nextTaskNaturalY>freeY?nextTaskNaturalY-freeY-2:0;
+      const targetH=Math.max(contentH,fillH);
+      const cardH=measuredH??targetH;
       freeLayout.push({slot:item.s,freeY,cardH});
       prevBottom=freeY+cardH;
     }
