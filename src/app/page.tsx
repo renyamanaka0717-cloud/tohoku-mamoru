@@ -1174,7 +1174,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
     } else {
       const freeY=Math.max(item.y,prevBottom+CARD_GAP);
       const fitsN=laterPool.filter(t=>(t.duration??0)<=item.s.min).length;
-      const contentH=80+Math.min(fitsN,3)*36;
+      const contentH=96+Math.min(fitsN,3)*36;
       const cardH=Math.max(contentH,item.s.min*PX_PER_MIN);
       freeLayout.push({slot:item.s,freeY,cardH});
       prevBottom=freeY+cardH;
@@ -1203,6 +1203,10 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
     if(anchors.length>0&&anchors[anchors.length-1][0]===m){
       anchors[anchors.length-1][1]=Math.max(anchors[anchors.length-1][1],y);
     } else { anchors.push([m,y]); }
+  }
+  // Enforce monotonically non-decreasing Y (pushed-down cards can create inverted anchors)
+  for(let i=1;i<anchors.length;i++){
+    if(anchors[i][1]<anchors[i-1][1]) anchors[i][1]=anchors[i-1][1];
   }
   const layoutCalcY=(min:number):number=>{
     if(min<=anchors[0][0]) return anchors[0][1];
