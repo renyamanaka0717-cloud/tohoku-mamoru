@@ -1241,7 +1241,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
   const AXIS_X=52, CARD_LEFT=AXIS_X+16;
 
   return (
-    <div className="relative" style={{height:`${totalHeight+32}px`,minHeight:'400px'}}>
+    <div data-timeline className="relative" style={{height:`${totalHeight+32}px`,minHeight:'400px'}}>
       {/* vertical line */}
       <div className="absolute w-px bg-gray-200" style={{left:`${AXIS_X}px`,top:0,height:`${totalHeight}px`}}/>
 
@@ -1644,13 +1644,14 @@ export default function App() {
   useEffect(()=>{
     if(!dragTask) return;
     const calcTime=(clientY:number)=>{
-      const header=document.querySelector('header');
-      const headerBottom=header?header.getBoundingClientRect().bottom:130;
-      const relY=clientY+window.scrollY-headerBottom-16;
       const wMin=toMin(settings.wakeTime);
       const sMin=toMin(settings.sleepTime);
+      // Use actual timeline container position — no magic offsets needed
+      const tlEl=document.querySelector('[data-timeline]');
+      const tlRect=tlEl?.getBoundingClientRect();
+      const relY=tlRect?clientY-tlRect.top:0;
       const layout=tlLayoutRef.current;
-      if(layout){
+      if(layout&&tlRect){
         const{hourRows,BASE}=layout;
         for(let i=0;i<hourRows.length;i++){
           const row=hourRows[i];
@@ -1664,7 +1665,10 @@ export default function App() {
         return fromMin(sMin);
       }
       // fallback
-      const snapped=Math.round((wMin+relY/PX_PER_MIN)/5)*5;
+      const header=document.querySelector('header');
+      const headerBottom=header?header.getBoundingClientRect().bottom:130;
+      const fallbackY=clientY+window.scrollY-headerBottom-16;
+      const snapped=Math.round((wMin+fallbackY/PX_PER_MIN)/5)*5;
       return fromMin(Math.max(wMin,Math.min(sMin,snapped)));
     };
     const TRASH_H=100;
