@@ -1765,7 +1765,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags}:{
             {TAG_COLORS.map(c=>(
               <button key={c.bg} onClick={()=>setNewTagColor(c.bg)}
                 style={{backgroundColor:c.bg}}
-                className={`w-7 h-7 rounded-full transition-all ${newTagColor===c.bg?'ring-2 ring-gray-800 ring-offset-1 scale-110':''}`}/>
+                className={`w-7 h-7 rounded-full border border-gray-200 transition-all ${newTagColor===c.bg?'ring-2 ring-gray-800 ring-offset-1 scale-110':''}`}/>
             ))}
           </div>
           <div className="flex gap-2 items-center">
@@ -1799,7 +1799,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags}:{
                         {TAG_COLORS.map(c=>(
                           <button key={c.bg} onClick={()=>setEditColor(c.bg)}
                             style={{backgroundColor:c.bg}}
-                            className={`w-6 h-6 rounded-full transition-all ${editColor===c.bg?'ring-2 ring-gray-800 ring-offset-1 scale-110':''}`}/>
+                            className={`w-6 h-6 rounded-full border border-gray-200 transition-all ${editColor===c.bg?'ring-2 ring-gray-800 ring-offset-1 scale-110':''}`}/>
                         ))}
                       </div>
                       <input autoFocus value={editVal}
