@@ -1116,7 +1116,7 @@ function FreeTimeCard({slot,fits,height,onSchedule,onHeightChange}:{
   },[]);
   const h=Math.floor(slot.min/60), m=slot.min%60;
   return (
-    <div ref={divRef} className="bg-gray-100 rounded-2xl px-4 pt-3 pb-3" style={{minHeight:`${height}px`}}>
+    <div ref={divRef} className="bg-gray-100 rounded-2xl px-4 pt-3 pb-3">
       <div className="flex items-center gap-1 mb-1.5">
         <span className="text-xs">🕐</span>
         <span className="text-xs text-gray-400 font-medium">空き時間</span>
@@ -1198,8 +1198,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
       const fitsN=laterPool.filter(t=>(t.duration??0)<=item.s.min).length;
       const measuredH=freeCardHeights[item.s.start];
       const contentH=fitsN>0?94+fitsN*38:60;
-      const timeH=item.s.min*PX_PER_MIN-4;
-      const cardH=measuredH??Math.max(contentH,timeH);
+      const cardH=measuredH??contentH;
       freeLayout.push({slot:item.s,freeY,cardH});
       prevBottom=freeY+cardH;
     }
@@ -1216,9 +1215,6 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
   for(const {task,top,h} of taskLayout){
     const sm=toMin(task.startTime!);
     rawAnchors.push([sm,top],[sm+(task.duration??0),top+h]);
-  }
-  for(const {slot,freeY,cardH} of freeLayout){
-    rawAnchors.push([toMin(slot.start),freeY],[toMin(slot.end),freeY+cardH]);
   }
   rawAnchors.push([sleepMin,totalHeight-32]);
   rawAnchors.sort((a,b)=>a[0]-b[0]);
