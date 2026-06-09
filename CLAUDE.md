@@ -1,287 +1,396 @@
 # CLAUDE.md — tohoku-mamoru
 
-## Project Overview
+## プロジェクト概要
 
-**1日タイムライン** — a Japanese, mobile-first daily timeline task manager designed for iPhone (Safari).
-Single-page Next.js app. All UI and labels are in Japanese. No user accounts; everything is localStorage.
-
----
-
-## Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| Framework | Next.js 15 (App Router) |
-| Language | TypeScript (strict) |
-| Styling | Tailwind CSS 3 (utility-only, no component library) |
-| AI | Groq API (`llama-3.3-70b-versatile`) via `/api/generate` |
-| Storage | `localStorage` only (no database) |
-| Runtime | Browser / iOS Safari |
+**1日タイムライン** — iPhone (Safari) 向けの日本語・モバイルファーストな1日タイムライン型タスク管理アプリ。
+Next.js 単一ページ構成。UIラベルはすべて日本語。ユーザーアカウントなし、データはすべて localStorage。
 
 ---
 
-## File Structure
+## 使用技術
+
+| 層 | 技術 |
+|----|------|
+| フレームワーク | Next.js 15 (App Router) |
+| 言語 | TypeScript (strict) |
+| スタイル | Tailwind CSS 3（ユーティリティのみ、コンポーネントライブラリ不使用）|
+| AI | Groq API `llama-3.3-70b-versatile` — `/api/generate` 経由（メインUIとは独立）|
+| ストレージ | `localStorage` のみ（DBなし）|
+| 動作環境 | ブラウザ / iOS Safari |
+
+---
+
+## ディレクトリ構成
 
 ```
-src/
-  app/
-    page.tsx          ← ENTIRE frontend (1900+ lines, single file)
-    layout.tsx        ← HTML shell, viewport meta, font
-    globals.css       ← Tailwind directives + iOS scroll fix + line-clamp
-    api/
-      generate/
-        route.ts      ← Groq AI endpoint (Threads post generation, unused in main UI)
-.env.local.example    ← GROQ_API_KEY template
+/home/user/tohoku-mamoru/
+├── src/
+│   └── app/
+│       ├── page.tsx        ← フロントエンド全体（1,950行超、単一ファイル）
+│       ├── layout.tsx      ← HTML シェル、viewport meta、フォント
+│       ├── globals.css     ← Tailwind + iOS スクロール修正 + line-clamp
+│       └── api/
+│           └── generate/
+│               └── route.ts  ← Groq AI エンドポイント（Threads投稿生成）
+├── CLAUDE.md
+├── package.json
+├── tsconfig.json
+├── tailwind.config.ts
+├── next.config.js
+└── .env.local.example      ← GROQ_API_KEY テンプレート
 ```
 
-> **All product code lives in `src/app/page.tsx`.**
-> Do not split into multiple files unless the user explicitly requests it.
+> **プロダクトコードはすべて `src/app/page.tsx` 1ファイルに集約されている。**
+> ユーザーから明示的に指示されない限り、複数ファイルに分割しないこと。
 
 ---
 
-## Development Commands
+## 開発コマンド
 
 ```bash
-npm run dev      # local dev server (http://localhost:3000)
-npm run build    # production build (run before every push to catch type errors)
-npm run lint     # ESLint check
+npm run dev      # 開発サーバー起動 (http://localhost:3000)
+npm run build    # プロダクションビルド（コミット前に必ず実行して型エラーを確認）
+npm run lint     # ESLint チェック
 ```
 
-Always run `npm run build` before committing. Type errors fail the build.
+**コミット前に必ず `npm run build` を実行すること。型エラーがあるとビルドが失敗する。**
 
 ---
 
-## Git Branch
+## Git ブランチ
 
-Active development branch: `claude/daily-timeline-todo-app-uvvUQ`
-Push target: `origin claude/daily-timeline-todo-app-uvvUQ`
+- 開発ブランチ: `claude/daily-timeline-todo-app-uvvUQ`
+- プッシュ先: `origin claude/daily-timeline-todo-app-uvvUQ`
 
 ---
 
-## Architecture: Everything in page.tsx
+## アーキテクチャ：page.tsx の全体構造
 
-### Component Tree
+### コンポーネントツリー
 
 ```
-App (main)
-├── MonthCalendar       modal — month grid picker
-├── CalendarPage        full-screen month view
-├── SearchPage          full-screen task search
-├── TaskModal           task create/edit sheet (3 modes)
-├── TaskCard            single task row
-├── FreeTimeCard        free-slot suggestion card
-├── Timeline            hour-based scrollable timeline
-└── BottomTabs          bottom sheet: あとでやる + 買い物リスト
+App（メイン）
+├── MonthCalendar       モーダル — 月グリッドカレンダー
+├── CalendarPage        フルスクリーン月ビュー
+├── SearchPage          フルスクリーンタスク検索
+├── TaskModal           タスク作成/編集シート（3モード）
+├── TaskCard            タスク1行カード
+├── FreeTimeCard        空き時間提案カード
+├── Timeline            時間軸スクロールタイムライン
+└── BottomTabs          ボトムシート：あとでやる＋買い物リスト
 ```
 
-### Data Types
+### データ型
 
 ```typescript
 interface Task {
   id: string
   name: string
   startTime: string | null   // "HH:MM" or null
-  duration: number           // minutes; 0 = no duration
+  duration: number           // 分; 0 = 未設定
   memo: string
   icon: string
   completed: boolean
   date: string               // "YYYY-MM-DD"
-  isLater: boolean           // true = in あとでやる tray, not on timeline
+  isLater: boolean           // true = あとでやるトレイ
   recurrence?: 'daily'|'weekly'|'monthly'|'yearly'|'custom'|null
   customRec?: CustomRec
   pinned?: boolean
   tags?: string[]
-  notifications?: number[]   // minutes before start; 0=exact, 1440=prev day
+  notifications?: number[]   // 開始N分前; 0=開始時刻, 1440=前日
   incompleteReminder?: boolean
   category?: string          // '個人' | '仕事' | undefined
 }
 
 interface Settings {
-  wakeTime: string           // "HH:MM"
-  sleepTime: string          // "HH:MM"
+  wakeTime: string   // "HH:MM"
+  sleepTime: string  // "HH:MM"
 }
 
-interface FreeSlot {
-  start: string              // "HH:MM"
-  end: string                // "HH:MM"
-  min: number                // duration in minutes
-}
-
-interface ShopItem {
-  id: string
-  name: string
-  checked: boolean
-}
+interface FreeSlot { start: string; end: string; min: number }
+interface ShopItem  { id: string; name: string; checked: boolean }
 ```
 
-### localStorage Keys
+### localStorage キー
 
-| Key | Content |
-|-----|---------|
-| `tl-tasks-v2` | `Task[]` (full array) |
+| キー | 内容 |
+|------|------|
+| `tl-tasks-v2` | `Task[]` 全件 |
 | `tl-settings-v2` | `Settings` |
 | `tl-shop-v1` | `ShopItem[]` |
 
-Saved on every state change via `useEffect`.
+state 変化のたびに `useEffect` で保存。
 
-### Key Constants
+### 主要定数
 
 ```typescript
-PX_PER_HOUR = 40            // base pixels per hour in timeline
-PX_PER_MIN  = 40/60         // ≈ 0.667 px/min
-BASE_SLOT_HEIGHT = 40       // min row height per hour
-CARD_GAP = 12               // vertical gap between cards (px)
-MIN_CARD_H = 72             // minimum task card height (px)
-CATEGORIES = ['個人', '仕事']
+PX_PER_HOUR      = 40       // 1時間あたりの基準ピクセル
+PX_PER_MIN       = 40/60    // 1分あたり ≈ 0.667px
+BASE_SLOT_HEIGHT = 40       // 1時間行の最小高さ (px)
+CARD_GAP         = 12       // カード間の縦方向ギャップ (px)
+MIN_CARD_H       = 72       // タスクカードの最小高さ (px)
+AXIS_X           = 52       // 時間軸線のX座標
+CARD_LEFT        = 68       // カード開始X座標 (AXIS_X + 16)
+CATEGORIES       = ['個人', '仕事']
 ```
 
 ---
 
-## Timeline Layout System
+## タイムラインレイアウトシステム（最重要・最複雑）
 
-This is the most complex part of the codebase. Understand it before touching any layout code.
+**このシステムを理解せずにレイアウト関連のコードを触らないこと。**
 
-### Row-Based Layout
+### 行ベースレイアウト
 
-Each hour has an `HourRow`:
+各時間には `HourRow` が1つある：
+
 ```typescript
 type HourRow = { hourMin: number; rowHeight: number; top: number }
 ```
 
-- `top` is cumulative (sum of all previous rowHeights)
-- `rowHeight` = `max(BASE_SLOT_HEIGHT, tallest_card_bottom + CARD_GAP)` for that hour
-- Free-time cards are content-height only: `96 + min(fitsN, 3) * 36` px
+- `top` は累積値（それ以前の行の `rowHeight` の合計）
+- `rowHeight` = `max(BASE_SLOT_HEIGHT, 最も下のカードの底 + CARD_GAP)`
+- 空き時間カードの高さ = `96 + min(fitsN, 3) * 36` px（内容基準、duration比例ではない）
 
-**Critical:** rows expand to fit their cards. A free-time card can make an hour row 200+ px tall. All Y calculations must use `hourRows`, never `min * PX_PER_MIN`.
+**重要:** 行はカードに合わせて拡張される。空き時間カードで1行が200px超になることがある。
+**Y計算には必ず `hourRows` を使うこと。`min * PX_PER_MIN` は使ってはいけない。**
 
-### Time ↔ Y Conversion
+### 時刻 ↔ Y 変換
 
 ```typescript
-// Time → Y (inside Timeline component)
+// 時刻 → Y（Timeline 内部の rowCalcY）
 rowCalcY(min) = row.top + (min - row.hourMin) / 60 * BASE_SLOT_HEIGHT
 
-// Y → Time (calcTime in parent useEffect)
+// Y → 時刻（親コンポーネントの calcTime、ドラッグ時）
 relY = (clientY + window.scrollY) - dragContainerTopRef.current
-// then walk hourRows: frac = min(relY - row.top, BASE) / BASE
+// hourRows を走査: frac = min(relY - row.top, BASE) / BASE
 ```
 
 ### layoutRef
 
-Timeline exposes its internal data to the parent via `layoutRef`:
+Timeline が内部データを親のドラッグハンドラへ渡すためのref：
+
 ```typescript
-layoutRef.current = { hourRows, wakeMin, BASE: BASE_SLOT_HEIGHT, container: HTMLDivElement }
-```
-Set via `useLayoutEffect` (no deps) after every render.
-
----
-
-## Drag & Drop System
-
-Long-press (500ms) on a task card initiates drag. Works from both the Timeline and BottomTabs tray.
-
-### Key Implementation Details
-
-1. **Drag start** (`startDrag` in App):
-   - Captures `containerDocTop = rect.top + window.scrollY` into `dragContainerTopRef` (page coordinate — scroll-independent)
-   - Sets `dragTask`, `dragPos`, closes `activeTab`
-
-2. **During drag** (`useEffect` on `dragTask`):
-   - `touchmove` + `touchend` on `document` with `{passive: false}` → `e.preventDefault()` stops scroll
-   - `calcTime(clientY)` converts finger position to snapped time (5-min intervals)
-   - Formula: `relY = (clientY + window.scrollY) - dragContainerTopRef.current`
-
-3. **Drop line rendering** (inside Timeline container):
-   - Line Y = `rowCalcY(toMin(dropTime))` — derived from the snapped time, NOT from raw `relY`
-   - This is critical: raw `relY` ≠ `rowCalcY(T)` when the finger is inside an expanded row
-   - Line and time-badge are `position: absolute` inside the container (same coordinate system as time labels)
-
-4. **Drop**: applies `calcTime(changedTouches[0].clientY)` as new `startTime`
-
-5. **Trash**: drag to bottom 100px of screen → delete task on release
-
-### Why dragLine Must Be Inside the Container
-
-The blue drop line is rendered inside the scrollable Timeline container (not a `fixed` overlay). This ensures it shares the same coordinate origin as the hour labels — misalignment is structurally impossible.
-
----
-
-## TaskModal Modes
-
-The modal has three modes selectable by swipe or tab:
-
-| Mode | Japanese | Behavior |
-|------|----------|----------|
-| `later` | あとでやる | No time; adds to tray |
-| `scheduled` | 時間指定 | Specific date + start time |
-| `recurring` | 繰り返し | Generates multiple Task instances |
-
-Recurring tasks:
-- Presets: daily / weekly / monthly / yearly
-- Custom (`CustomRec`): any frequency, interval, weekday selection, month-day rules, end conditions
-- On save: generates up to 52 instances, each as a separate `Task` with the same recurrence metadata
-- Edit dialog: "this occurrence only" vs "all occurrences"
-
----
-
-## Features Implemented
-
-- [x] Daily timeline with hour-based scrollable layout
-- [x] Task cards with icon, time range, duration bar, tags
-- [x] Free-time slot detection and display
-- [x] Long-press drag from tray or timeline to reschedule
-- [x] Drag-to-trash (delete)
-- [x] Drop line + time badge aligned with time labels
-- [x] あとでやる (later) tray with sort, pin, move-to-timeline
-- [x] 買い物リスト (shopping list)
-- [x] Task creation/editing: name, icon, duration, memo, tags, category, notifications
-- [x] Recurring tasks (preset + custom rules)
-- [x] Category filter tabs (個人 / 仕事)
-- [x] Week strip date navigation with swipe
-- [x] Month calendar picker
-- [x] Full-screen search
-- [x] Settings: wake/sleep time, carry-over incomplete tasks
-- [x] Current time indicator
-- [x] Free-slot quick-assign buttons
-- [x] Auto-icon from task name (regex patterns)
-- [x] localStorage persistence
-- [x] Haptic feedback on long-press (navigator.vibrate)
-
----
-
-## Known Patterns & Gotchas
-
-### Coordinate System (Most Common Bug Area)
-- `clientY` = viewport-relative (changes with scroll)
-- `pageY = clientY + window.scrollY` = document-relative (scroll-independent)
-- `getBoundingClientRect().top` = viewport-relative (changes with scroll)
-- `containerDocTop = rect.top + scrollY` = document-relative (stable)
-- Always use `pageY` math when comparing touch events to container-internal positions
-
-### Expanded Rows
-- When `rowHeight > BASE_SLOT_HEIGHT`, `calcTime` clamps `frac` to 1 for positions beyond BASE
-- This means `relY` inside an expanded row maps to the next hour boundary
-- **Never use raw `relY` as a line Y position** — always convert through `rowCalcY(toMin(time))`
-
-### React Timing
-- `useEffect` runs after paint — there is a ~1 frame gap after `setDragTask` before the touchmove listener is attached
-- `useLayoutEffect` (no deps array) in Timeline always runs synchronously after render
-
-### iOS Safari Specifics
-- `overscroll-none` on body prevents pull-to-refresh
-- `-webkit-overflow-scrolling: touch` for momentum scrolling
-- viewport: `maximum-scale=1` prevents zoom
-- `navigator.vibrate` for haptic (silently fails on unsupported devices)
-- `{passive: false}` required on touchmove to call `preventDefault`
-
-### Single-File Constraint
-All UI code is in `page.tsx`. Do not refactor into separate files unless the user explicitly asks.
-
----
-
-## Environment Variables
-
-```
-GROQ_API_KEY=   # Required only for /api/generate (AI post generation, not core app)
+layoutRef.current = {
+  hourRows,
+  wakeMin,
+  BASE: BASE_SLOT_HEIGHT,
+  container: HTMLDivElement  // Timeline ルートdivへの参照
+}
 ```
 
-The main timeline app works without any API key.
+`useLayoutEffect`（deps なし）でレンダリング後に毎回同期セットされる。
+
+---
+
+## ドラッグ&ドロップシステム
+
+タスクカードの長押し（500ms）でドラッグ開始。Timeline・BottomTabs の両方から動作。
+
+### 実装の要点
+
+1. **ドラッグ開始** (`startDrag` in App):
+   - `containerDocTop = rect.top + window.scrollY` をページ座標で `dragContainerTopRef` に保存（スクロール不変値）
+   - `dragTask`, `dragPos` セット、`activeTab` をクローズ
+
+2. **ドラッグ中** (`useEffect` on `dragTask`):
+   - `touchmove` + `touchend` を `{passive: false}` で `document` に登録 → `e.preventDefault()` でスクロール阻止
+   - `calcTime(clientY)` で指の位置を5分刻みの時刻に変換
+   - 計算式: `relY = (clientY + window.scrollY) - dragContainerTopRef.current`
+
+3. **ドロップライン描画**（Timeline コンテナ内部）:
+   - ラインY = `rowCalcY(toMin(dropTime))` — 生の `relY` ではなく **スナップ後の時刻から逆算**
+   - **重要:** 拡張行では `relY ≠ rowCalcY(T)` になる。生の `relY` をライン位置に使ってはいけない
+   - ライン・時刻バッジは共にコンテナ内の `position: absolute`（時間ラベルと同じ座標系）
+
+4. **ドロップ**: `calcTime(changedTouches[0].clientY)` を新しい `startTime` として適用
+
+5. **ゴミ箱**: 画面下端100px にドラッグ → リリースでタスク削除
+
+### ドロップラインをコンテナ内に描画しなければならない理由
+
+青いドロップラインは `fixed` オーバーレイではなくスクロール可能な Timeline コンテナ内に描画する。
+これにより時間ラベルと全く同じ座標系・親要素を共有でき、構造的にズレが起きない。
+
+---
+
+## TaskModal の3モード
+
+| モード | 日本語 | 動作 |
+|--------|--------|------|
+| `later` | あとでやる | 時刻なし、トレイへ追加 |
+| `scheduled` | 時間指定 | 特定日付＋開始時刻 |
+| `recurring` | 繰り返し | 複数のTask インスタンスを生成 |
+
+繰り返しタスク：
+- プリセット: 毎日 / 毎週 / 毎月 / 毎年
+- カスタム (`CustomRec`): 頻度・間隔・曜日・月日ルール・終了条件
+- 保存時: 最大52件のインスタンスを個別 `Task` として生成（同じ recurrence メタデータを持つ）
+- 編集ダイアログ: 「この予定のみ」vs「すべての予定」
+
+---
+
+## 完成している機能
+
+- [x] 時間軸ベースのスクロール可能な日別タイムライン
+- [x] タスクカード（アイコン・時間範囲・所要時間バー・タグ）
+- [x] 空き時間スロット自動検出・表示
+- [x] 長押しドラッグでスケジュール変更（タイムライン・あとでやるトレイ両対応）
+- [x] ドラッグでゴミ箱（削除）
+- [x] ドロップライン＋時刻バッジ（Timeline コンテナ内描画）
+- [x] あとでやるトレイ（ソート・ピン・タイムラインへ移動）
+- [x] 買い物リスト
+- [x] タスク作成/編集（名前・アイコン・所要時間・メモ・タグ・カテゴリ・通知）
+- [x] 繰り返しタスク（プリセット＋カスタムルール）
+- [x] カテゴリフィルタータブ（個人 / 仕事）
+- [x] 週ストリップ日付ナビゲーション（スワイプ対応）
+- [x] 月カレンダーピッカー
+- [x] フルスクリーン検索
+- [x] 設定（起床・就寝時刻、未完了タスクの翌日繰り越し）
+- [x] 現在時刻インジケーター
+- [x] 空きスロットへのクイック割り当てボタン
+- [x] タスク名からのアイコン自動推定（正規表現パターン）
+- [x] localStorage 永続化
+- [x] 長押し時のハプティクフィードバック（navigator.vibrate）
+
+---
+
+## 現在の不具合
+
+以下の4件が未解決で優先対応が必要：
+
+### 不具合1: 空き時間カードと左側の時間表示が重なる
+- **症状**: 空き時間カードが拡張行内に描画されるとき、隣接する時間ラベルと視覚的に重なって見える
+- **根本原因**: `getCardH` が常に最低96pxを返すため、どんな短い空き時間でも行を大きく拡張する。行が拡張されると上下の時間ラベルとカードが近接しすぎる
+
+### 不具合2: 空き時間カードが40px以下の場合でも行を拡張してしまう
+- **症状**: 短い空き時間（例: 30分 ≒ 20px相当）でも行高さが変わり、レイアウトが崩れる
+- **根本原因**: `getCardH` が slot の実際の時間長さに関係なく固定の大きな高さを返す。`rowHeight` の計算で空き時間カードが常に行を押し広げる
+
+### 不具合3: ドラッグ時のガイド線と時間表示がズレることがある
+- **症状**: 青いガイド線の視覚的位置と、右端に表示される時刻バッジの時刻が一致しない
+- **現状**: 直前のセッションで `rowCalcY(toMin(dropTime))` 方式に修正済みだが、
+  拡張行の中で指が動いたとき `calcTime` が次の時間境界にスナップするため、
+  ラインが突然ジャンプして見える可能性がある
+
+### 不具合4: 下方向へドラッグした時の時間ズレ
+- **症状**: カードを下方向にドラッグすると、青いラインが示す位置と計算される時刻にズレが生じる
+- **根本原因（調査済み）**:
+  1. `useEffect` が `touchmove` リスナーを登録するまでの数フレームの間に自然スクロールが発生し `containerDocTop` がずれる
+  2. 拡張行の内部では `relY ≠ rowCalcY(T)` となるため、同じ `relY` でも `calcTime` と `rowCalcY` の逆算が一致しない
+- **現在の実装**: `dragContainerTopRef` にページ座標を保存、`relY = (clientY + window.scrollY) - containerDocTop` で計算。ラインは `rowCalcY(toMin(dropTime))` で位置決め
+
+---
+
+## 修正済みの内容（このセッションで解決）
+
+| 問題 | 修正内容 |
+|------|----------|
+| `querySelector('[data-timeline]')` 取得失敗時にフォールバック式で約95分ズレ | `containerRef` + `useLayoutEffect` 方式に変更 |
+| ドラッグ開始時の viewport 座標キャッシュが後続スクロールで陳腐化 | ページ座標（`rect.top + scrollY`）で保存し毎 move で `clientY + scrollY` を使用 |
+| 青いドロップラインを `fixed` オーバーレイに描画 → viewport/コンテナ座標系不一致 | Timeline コンテナ内部に移動（同一座標系・同一親要素） |
+| ライン位置に生の `relY` を使用 → 拡張行で位置ズレ | `rowCalcY(toMin(dropTime))` で時刻から逆算 |
+| カードの重なり | `CARD_GAP=12` 導入、`prevBottom + CARD_GAP` フロア保証 |
+
+---
+
+## 触ってはいけない部分
+
+### 座標系ロジック（壊れやすい）
+- `rowCalcY` / `calcTime` の計算式
+- `dragContainerTopRef` の設定タイミング（`startDrag` の同期処理内）
+- `useLayoutEffect` の deps なし設定（毎レンダリング後に同期実行が必要）
+- ドロップライン描画を `fixed` オーバーレイに戻してはいけない
+
+### localStorage キー
+- `tl-tasks-v2` / `tl-settings-v2` / `tl-shop-v1` のキー名は変えないこと
+- スキーマを変える場合はキーバージョンをインクリメントすること
+
+### 単一ファイル制約
+- ユーザーから明示的に指示されない限り `page.tsx` を分割しないこと
+
+---
+
+## UIルール
+
+- **言語**: UIラベルはすべて日本語
+- **デザイン**: iPhone Safari 向けモバイルファースト（max-width: md = 448px）
+- **スタイル**: Tailwind ユーティリティのみ使用（コンポーネントライブラリ禁止）
+- **絵文字**: アイコンには絵文字を使用（ICONS 配列定義済み）
+- **タッチ**: タップ/長押し/スワイプ中心のインタラクション（マウスは考慮不要）
+- **色**:
+  - アクティブ・強調: `bg-gray-900 text-white`（黒）
+  - ドロップライン: `bg-blue-400 / bg-blue-500`
+  - 空き時間カード: `bg-gray-100`
+  - 未来のタスク: `text-gray-400`
+- **フォント**: system-ui sans-serif（layout.tsx で指定）
+- **アニメーション**: Tailwind の `transition-colors` / `scale-95`（長押し中）のみ
+
+---
+
+## 今後の優先順位
+
+### 優先度 高（現在の不具合修正）
+
+1. **不具合2を先に修正**: 空き時間カードの行高さ拡張ロジックを見直す
+   - `slot.min * PX_PER_MIN <= BASE_SLOT_HEIGHT`（≤60分）の場合は free card を表示しない or 行を拡張しない
+   - これにより不具合1（重なり）も同時に改善される見込み
+
+2. **不具合1の残存を確認**: 2の修正後に重なりが残る場合は、`freeY` 計算に余白を追加
+
+3. **不具合3・4の再確認**: 不具合2の修正後にレイアウトが安定してから再テスト
+
+### 優先度 中（UX改善）
+
+- ドラッグ中の時刻スナップをより滑らかに（拡張行内でのジャンプを減らす）
+- 空き時間カードの表示閾値調整（現在 10分以上で表示）
+- スワイプ日付切り替えのアニメーション追加
+
+### 優先度 低（新機能）
+
+- タスク完了アニメーション
+- 統計・レポート画面
+- データエクスポート機能
+- ウィジェット連携（iOS ショートカット）
+
+---
+
+## 環境変数
+
+```
+GROQ_API_KEY=   # /api/generate (AI投稿生成) のみ必要。メインアプリには不要
+```
+
+---
+
+## パターンと注意事項
+
+### 座標系（最もバグが発生しやすい箇所）
+
+```
+clientY         = viewport 相対（スクロールで変化）
+pageY           = clientY + window.scrollY（ドキュメント相対・スクロール不変）
+rect.top        = viewport 相対（変化する）
+containerDocTop = rect.top + scrollY（ドキュメント相対・安定）
+```
+
+touch イベントとコンテナ内座標を比較するときは **必ずページ座標で計算すること**。
+
+### 拡張行での注意
+
+- `rowHeight > BASE_SLOT_HEIGHT` の行では、`calcTime` は `frac` を1にクランプ → 次の時間境界にスナップ
+- 行の下部（BASE を超えた領域）に指があると、その時間帯より早い時刻が返ることがある
+- **生の `relY` をライン位置に使ってはいけない** — 必ず `rowCalcY(toMin(time))` を経由すること
+
+### React タイミング
+
+- `useEffect` はペイント後に非同期実行 → `setDragTask` から touchmove リスナー登録まで約1フレームのギャップがある
+- `useLayoutEffect`（deps なし）は Timeline 内でレンダリング後に毎回同期実行される
+
+### iOS Safari 固有
+
+- `overscroll-none` でプルリフレッシュを防止
+- `-webkit-overflow-scrolling: touch` でモメンタムスクロール
+- `maximum-scale=1` でズーム防止
+- `navigator.vibrate` はハプティクフィードバック（非対応デバイスでは無視）
+- touchmove で `e.preventDefault()` を呼ぶには `{passive: false}` が必須
