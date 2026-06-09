@@ -1690,8 +1690,8 @@ function SettingsRow({icon,iconBg,title,desc,onClick,isLast=false}:{
   );
 }
 
-function SettingsScreen({settings,onSettings,onClose,onCarryOver,globalTags,onGlobalTags}:{
-  settings:Settings; onSettings:(s:Settings)=>void; onClose:()=>void; onCarryOver:()=>void;
+function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags}:{
+  settings:Settings; onSettings:(s:Settings)=>void; onClose:()=>void;
   globalTags:string[]; onGlobalTags:(tags:string[])=>void;
 }) {
   const [sub,setSub]       = useState<string|null>(null);
@@ -1851,12 +1851,6 @@ function SettingsScreen({settings,onSettings,onClose,onCarryOver,globalTags,onGl
               onChange={e=>onSettings({...settings,sleepTime:e.target.value})}
               className="border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50"/>
           </div>
-        </div>
-        <div className="mt-4">
-          <button onClick={onCarryOver}
-            className="w-full py-3.5 bg-gray-900 text-white rounded-2xl text-[15px] font-semibold">
-            未完了タスクを翌日へ繰り越し →
-          </button>
         </div>
       </div>
     </div>
@@ -2255,7 +2249,7 @@ export default function App() {
 
       {/* ── Settings Screen ── */}
       {settingsOpen&&(
-        <SettingsScreen settings={settings} onSettings={setSettings} onClose={()=>setSOp(false)} onCarryOver={carryOver} globalTags={globalTags} onGlobalTags={setGlobalTags}/>
+        <SettingsScreen settings={settings} onSettings={setSettings} onClose={()=>setSOp(false)} globalTags={globalTags} onGlobalTags={setGlobalTags}/>
       )}
 
       {/* ── Recurrence edit confirm ── */}
