@@ -1116,12 +1116,12 @@ function FreeTimeCard({slot,fits,height,onSchedule,onHeightChange}:{
   },[]);
   const h=Math.floor(slot.min/60), m=slot.min%60;
   return (
-    <div ref={divRef} className="bg-gray-100 rounded-2xl px-4 pt-3 pb-3" style={{minHeight:`${height}px`}}>
-      <div className="flex items-center gap-1 mb-1.5">
+    <div ref={divRef} className="bg-gray-100 rounded-2xl p-6" style={{minHeight:`${height}px`}}>
+      <div className="flex items-center gap-1 mb-4">
         <span className="text-xs">🕐</span>
         <span className="text-xs text-gray-400 font-medium">空き時間</span>
       </div>
-      <p className="font-semibold text-gray-700 leading-none mb-2.5">
+      <p className="font-semibold text-gray-700 leading-none mb-4">
         {h>0&&<><span className="text-xl">{h}</span><span className="text-xs ml-0.5">時間</span></>}
         {m>0&&<><span className="text-xl ml-1">{m}</span><span className="text-xs ml-0.5">分</span></>}
       </p>
@@ -1190,24 +1190,25 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
   for(let idx=0;idx<allItems.length;idx++){
     const item=allItems[idx];
     if(item.type==='task'){
-      const top=Math.max(item.y,prevBottom+2);
+      const top=Math.max(item.y,prevBottom+16);
       const h=Math.max(MIN_CARD_H,(item.t.duration??0)*PX_PER_MIN);
       taskLayout.push({task:item.t,top,h});
       prevBottom=top+h;
     } else {
-      const freeY=Math.max(item.y,prevBottom)+2;
-      const fitsN=laterPool.filter(t=>(t.duration??0)<=item.s.min).length;
+      const freeY=Math.max(item.y,prevBottom)+16;
+      const fitsN=laterPool.length;
       const measuredH=freeCardHeights[item.s.start];
-      const contentH=fitsN>0?94+fitsN*38:60;
+      const contentH=fitsN>0?100+fitsN*32:60;
       // 次のタスクの自然なY位置まで伸ばす（なければ就寝時刻まで）
       let nextTaskNaturalY=calcY(sleepMin);
       for(let j=idx+1;j<allItems.length;j++){
-        if(allItems[j].type==='task'){
-          nextTaskNaturalY=calcY(toMin(allItems[j].t.startTime!));
+        const next=allItems[j];
+        if(next.type==='task'){
+          nextTaskNaturalY=calcY(toMin(next.t.startTime!));
           break;
         }
       }
-      const fillH=nextTaskNaturalY>freeY?nextTaskNaturalY-freeY-2:0;
+      const fillH=nextTaskNaturalY>freeY?nextTaskNaturalY-freeY-16:0;
       const targetH=Math.max(contentH,fillH);
       const cardH=measuredH??targetH;
       freeLayout.push({slot:item.s,freeY,cardH});
@@ -1245,9 +1246,6 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
     return calcY(min);
   };
 
-  const hours:number[]=[];
-  for(let m=wakeMin;m<=sleepMin;m+=60) hours.push(m);
-
   const AXIS_X=52, CARD_LEFT=AXIS_X+16;
 
   // anchors の逆引き（Y座標→時刻）を App のドラッグハンドラに渡す
@@ -1279,29 +1277,40 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
       {/* vertical line */}
       <div className="absolute w-px bg-gray-200" style={{left:`${AXIS_X}px`,top:0,height:`${totalHeight}px`}}/>
 
-      {/* hour marks */}
-      {hours.map(h=>{
-        const isWake=h===wakeMin, isSleep=h===sleepMin;
-        const inFree=freeSlots.some(s=>toMin(s.start)<=h&&h<toMin(s.end));
-        const hasTask=dayTasks.some(t=>toMin(t.startTime!)===h);
-        return (
-          <div key={h} className="absolute flex items-center" style={{top:`${layoutCalcY(h)-8}px`,left:0}}>
-            <button
-              onClick={()=>!isWake&&!isSleep&&onAddAtTime(fromMin(h))}
-              className={`text-xs w-12 text-right pr-1 leading-none transition-colors ${
-                isWake||isSleep?'text-gray-400 cursor-default':'text-gray-400 active:text-gray-900'
-              }`}>
-              {fromMin(h)}
+      {/* wake/sleep markers */}
+      <div className="absolute flex items-center" style={{top:`${layoutCalcY(wakeMin)-8}px`,left:0}}>
+        <span className="text-xs w-12 text-right pr-1 leading-none text-gray-400">{settings.wakeTime}</span>
+        <div className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-sm -ml-3.5 z-10 shadow-sm">☀️</div>
+      </div>
+      <div className="absolute flex items-center" style={{top:`${layoutCalcY(sleepMin)-8}px`,left:0}}>
+        <span className="text-xs w-12 text-right pr-1 leading-none text-gray-400">{settings.sleepTime}</span>
+        <div className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-sm -ml-3.5 z-10 shadow-sm">🌙</div>
+      </div>
+
+      {/* task start time labels */}
+      {taskLayout.map(({task,top})=>(
+        <div key={`tl-${task.id}`} className="absolute flex items-center" style={{top:`${top-8}px`,left:0}}>
+          <span className="text-xs w-12 text-right pr-1 leading-none text-gray-400">{task.startTime}</span>
+        </div>
+      ))}
+
+      {/* free slot hourly labels on left axis */}
+      {freeLayout.flatMap(({slot,freeY,cardH})=>{
+        const startMin=toMin(slot.start);
+        const endMin=toMin(slot.end);
+        const labels:number[]=[];
+        for(let m=Math.ceil(startMin/60)*60;m<=endMin;m+=60){
+          const y=freeY+(m-startMin)*PX_PER_MIN;
+          if(y>=freeY&&y<=freeY+cardH) labels.push(m);
+        }
+        return labels.map(m=>(
+          <div key={`fh-${m}`} className="absolute flex items-center" style={{top:`${freeY+(m-startMin)*PX_PER_MIN-8}px`,left:0}}>
+            <button onClick={()=>onAddAtTime(fromMin(m))}
+              className="text-xs w-12 text-right pr-1 leading-none text-gray-400 active:text-gray-900 transition-colors">
+              {fromMin(m)}
             </button>
-            {(isWake||isSleep)?(
-              <div className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-sm -ml-3.5 z-10 shadow-sm">
-                {isWake?'☀️':'🌙'}
-              </div>
-            ):(
-              <div className={`w-2.5 h-2.5 rounded-full border-2 -ml-1.5 z-10 ${inFree||hasTask?'border-transparent bg-transparent':'border-gray-200 bg-white'}`}/>
-            )}
           </div>
-        );
+        ));
       })}
 
       {/* current time */}
@@ -1331,7 +1340,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
 
       {/* free time cards */}
       {freeLayout.map(({slot,freeY,cardH},i)=>{
-        const fits=laterPool.filter(t=>(t.duration??0)<=slot.min);
+        const fits=laterPool;
         return (
           <div key={i} className="absolute z-10" style={{top:`${freeY}px`,left:`${CARD_LEFT}px`,right:'0px'}}>
             <FreeTimeCard slot={slot} fits={fits} height={cardH} onSchedule={onSchedule}
