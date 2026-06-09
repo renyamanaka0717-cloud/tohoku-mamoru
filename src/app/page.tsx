@@ -1121,11 +1121,12 @@ function FreeTimeCard({slot,fits,height,onSchedule}:{slot:FreeSlot;fits:Task[];h
 
 // ── Timeline ──────────────────────────────────────────────────────────────────
 
-function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAddAtTime,onDragStart,dragTaskId}:{
+function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAddAtTime,onDragStart,dragTaskId,layoutRef}:{
   date:string;tasks:Task[];later:Task[];settings:Settings;now:string;
   onToggle:(id:string)=>void;onEdit:(t:Task)=>void;
   onSchedule:(t:Task,time:string)=>void;onAddAtTime:(time:string)=>void;
   onDragStart:(t:Task,x:number,y:number)=>void;dragTaskId?:string;
+  layoutRef?:{current:{hourRows:{hourMin:number;rowHeight:number;top:number}[];wakeMin:number;BASE:number}|null};
 }) {
   const [pressingId,setPressingId] = useState<string|null>(null);
   const lpTimer = useRef<ReturnType<typeof setTimeout>|null>(null);
@@ -1210,6 +1211,9 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
     }
     return totalHeight-32;
   };
+
+  // Expose layout data so parent drag handler can do accurate time↔Y inverse
+  if(layoutRef) layoutRef.current={hourRows,wakeMin,BASE:BASE_SLOT_HEIGHT};
 
   // Layout items: rowCalcY as baseline, prevBottom+CARD_GAP as floor
   let prevBottom=-Infinity;
@@ -1599,6 +1603,7 @@ export default function App() {
   const [dropTime,setDropTime]   = useState<string|null>(null);
   const mainSwX = useRef(0);
   const mainSwY = useRef(0);
+  const tlLayoutRef = useRef<{hourRows:{hourMin:number;rowHeight:number;top:number}[];wakeMin:number;BASE:number}|null>(null);
   const [recConfirm,setRecConfirm] = useState<Task|null>(null);
   const [editScope,setEditScope]   = useState<'one'|'all'>('one');
   const [overTrash,setOverTrash]   = useState(false);
@@ -1641,10 +1646,26 @@ export default function App() {
     const calcTime=(clientY:number)=>{
       const header=document.querySelector('header');
       const headerBottom=header?header.getBoundingClientRect().bottom:130;
-      const wakeMin=toMin(settings.wakeTime);
-      const rawMin=wakeMin+(clientY+window.scrollY-headerBottom-16)/PX_PER_MIN;
-      const snapped=Math.round(rawMin/5)*5;
-      return fromMin(Math.max(wakeMin,Math.min(toMin(settings.sleepTime),snapped)));
+      const relY=clientY+window.scrollY-headerBottom-16;
+      const wMin=toMin(settings.wakeTime);
+      const sMin=toMin(settings.sleepTime);
+      const layout=tlLayoutRef.current;
+      if(layout){
+        const{hourRows,BASE}=layout;
+        for(let i=0;i<hourRows.length;i++){
+          const row=hourRows[i];
+          const nextTop=i<hourRows.length-1?hourRows[i+1].top:row.top+row.rowHeight;
+          if(relY>=row.top&&relY<nextTop){
+            const frac=Math.min(relY-row.top,BASE)/BASE;
+            const snapped=Math.round((row.hourMin+frac*60)/5)*5;
+            return fromMin(Math.max(wMin,Math.min(sMin,snapped)));
+          }
+        }
+        return fromMin(sMin);
+      }
+      // fallback
+      const snapped=Math.round((wMin+relY/PX_PER_MIN)/5)*5;
+      return fromMin(Math.max(wMin,Math.min(sMin,snapped)));
     };
     const TRASH_H=100;
     const isInTrash=(y:number)=>y>window.innerHeight-TRASH_H;
@@ -1813,7 +1834,7 @@ export default function App() {
         }}>
         <Timeline date={date} tasks={filteredTasks} later={laterTasks} settings={settings} now={now}
           onToggle={toggle} onEdit={openEdit} onSchedule={scheduleInSlot} onAddAtTime={openAdd}
-          onDragStart={startDrag} dragTaskId={dragTask?.id}/>
+          onDragStart={startDrag} dragTaskId={dragTask?.id} layoutRef={tlLayoutRef}/>
       </main>
 
       {/* ── Bottom bar ── */}
