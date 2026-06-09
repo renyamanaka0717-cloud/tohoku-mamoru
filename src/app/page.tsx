@@ -1121,12 +1121,12 @@ function FreeTimeCard({slot,fits,height,onSchedule}:{slot:FreeSlot;fits:Task[];h
 
 // ── Timeline ──────────────────────────────────────────────────────────────────
 
-function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAddAtTime,onDragStart,dragTaskId,dragLineY,dropTime,layoutRef}:{
+function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAddAtTime,onDragStart,dragTaskId,dropTime,layoutRef}:{
   date:string;tasks:Task[];later:Task[];settings:Settings;now:string;
   onToggle:(id:string)=>void;onEdit:(t:Task)=>void;
   onSchedule:(t:Task,time:string)=>void;onAddAtTime:(time:string)=>void;
   onDragStart:(t:Task,x:number,y:number)=>void;dragTaskId?:string;
-  dragLineY?:number|null;dropTime?:string|null;
+  dropTime?:string|null;
   layoutRef?:{current:{hourRows:{hourMin:number;rowHeight:number;top:number}[];wakeMin:number;BASE:number;container:HTMLDivElement|null}|null};
 }) {
   const [pressingId,setPressingId] = useState<string|null>(null);
@@ -1318,11 +1318,11 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
         </div>
       )}
 
-      {/* Drag drop line — rendered INSIDE the container so it shares the same
-          coordinate space as the time labels. dragLineY is container-relative. */}
-      {dragLineY!=null&&dropTime&&(
+      {/* Drag drop line — position derived from dropTime via rowCalcY so it
+          always aligns with time labels regardless of expanded row heights. */}
+      {dropTime&&(
         <div className="absolute z-30 right-0 flex items-center pointer-events-none"
-          style={{top:`${dragLineY}px`,left:`${AXIS_X}px`}}>
+          style={{top:`${rowCalcY(toMin(dropTime))}px`,left:`${AXIS_X}px`}}>
           <div className="flex-1 h-0.5 bg-blue-400 rounded-full"/>
           <span className="bg-blue-500 text-white text-xs font-bold px-2 py-0.5 rounded-full whitespace-nowrap shrink-0 mr-2 ml-2">{dropTime}</span>
         </div>
@@ -1615,7 +1615,6 @@ export default function App() {
   const [dragTask,setDragTask]   = useState<Task|null>(null);
   const [dragPos,setDragPos]     = useState({x:0,y:0});
   const [dropTime,setDropTime]   = useState<string|null>(null);
-  const [dragLineY,setDragLineY] = useState<number|null>(null);
   const mainSwX = useRef(0);
   const mainSwY = useRef(0);
   const tlLayoutRef = useRef<{hourRows:{hourMin:number;rowHeight:number;top:number}[];wakeMin:number;BASE:number;container:HTMLDivElement|null}|null>(null);
@@ -1691,13 +1690,7 @@ export default function App() {
       const t=e.touches[0];
       setDragPos({x:t.clientX,y:t.clientY});
       setOverTrash(isInTrash(t.clientY));
-      if(!isInTrash(t.clientY)){
-        const relY=(t.clientY+window.scrollY)-dragContainerTopRef.current;
-        setDragLineY(relY);
-        setDropTime(calcTime(t.clientY));
-      } else {
-        setDragLineY(null);
-      }
+      if(!isInTrash(t.clientY)) setDropTime(calcTime(t.clientY));
     };
     const onEnd=(e:TouchEvent)=>{
       const t=e.changedTouches[0];
@@ -1712,7 +1705,6 @@ export default function App() {
       }
       setDragTask(null);
       setDropTime(null);
-      setDragLineY(null);
       setOverTrash(false);
     };
     document.addEventListener('touchmove',onMove,{passive:false});
@@ -1859,7 +1851,7 @@ export default function App() {
         <Timeline date={date} tasks={filteredTasks} later={laterTasks} settings={settings} now={now}
           onToggle={toggle} onEdit={openEdit} onSchedule={scheduleInSlot} onAddAtTime={openAdd}
           onDragStart={startDrag} dragTaskId={dragTask?.id}
-          dragLineY={dragLineY} dropTime={dropTime} layoutRef={tlLayoutRef}/>
+          dropTime={dropTime} layoutRef={tlLayoutRef}/>
       </main>
 
       {/* ── Bottom bar ── */}
