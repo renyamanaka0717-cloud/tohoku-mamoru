@@ -1096,22 +1096,17 @@ function TaskCard({task,onToggle,onEdit}:{task:Task;onToggle:()=>void;onEdit:()=
 
 function FreeTimeCard({slot,fits,height,onSchedule}:{slot:FreeSlot;fits:Task[];height:number;onSchedule:(t:Task,time:string)=>void;}) {
   const h=Math.floor(slot.min/60), m=slot.min%60;
-  const durStr=`${h>0?h+'時間':''}${m>0?m+'分':''}`;
-  if(height<52){
-    return (
-      <div className="bg-gray-100 rounded-xl px-3 flex items-center gap-1.5" style={{height:`${height}px`}}>
-        <span className="text-[10px]">🕐</span>
-        <span className="text-[10px] text-gray-400 font-medium truncate">空き {durStr}</span>
-      </div>
-    );
-  }
   return (
     <div className="bg-gray-100 rounded-2xl px-4 pt-3 pb-3" style={{minHeight:`${height}px`}}>
-      <div className="flex items-center gap-1 mb-1">
+      <div className="flex items-center gap-1 mb-1.5">
         <span className="text-xs">🕐</span>
-        <span className="text-xs text-gray-400 font-medium">空き時間 {durStr}</span>
+        <span className="text-xs text-gray-400 font-medium">空き時間</span>
       </div>
-      <div className="flex flex-wrap gap-1.5 mt-1">
+      <p className="font-semibold text-gray-700 leading-none mb-2.5">
+        {h>0&&<><span className="text-xl">{h}</span><span className="text-xs ml-0.5">時間</span></>}
+        {m>0&&<><span className="text-xl ml-1">{m}</span><span className="text-xs ml-0.5">分</span></>}
+      </p>
+      <div className="flex flex-wrap gap-1.5">
         {fits.slice(0,3).map(t=>(
           <button key={t.id} onClick={()=>onSchedule(t,slot.start)}
             className="inline-flex items-center gap-1 bg-white rounded-full px-2.5 py-1 text-xs font-medium text-gray-700 shadow-sm">
@@ -1182,7 +1177,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
       // 94px = FreeTimeCard の最低コンテンツ高さ（ヘッダー＋大テキスト）、fit タスクボタン 1 行 38px
       const fitsN=laterPool.filter(t=>(t.duration??0)<=item.s.min).length;
       const cardH=dayTasks.length>0
-        ?Math.max(Math.round(item.s.min*PX_PER_MIN/3),24)
+        ?Math.max(item.s.min*PX_PER_MIN-4,32)
         :Math.max(94+Math.min(fitsN,3)*38,item.s.min*PX_PER_MIN-4);
       freeLayout.push({slot:item.s,freeY,cardH});
       prevBottom=freeY+cardH;
