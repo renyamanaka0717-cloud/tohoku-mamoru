@@ -51,6 +51,7 @@ const DEFAULT_SETTINGS: Settings = { wakeTime: '07:00', sleepTime: '23:00' };
 const TASKS_KEY    = 'tl-tasks-v2';
 const SETTINGS_KEY = 'tl-settings-v2';
 const SHOP_KEY     = 'tl-shop-v1';
+const TAGS_KEY     = 'tl-tags-v1';
 const PX_PER_HOUR  = 40;
 const PX_PER_MIN   = PX_PER_HOUR / 60;
 const DAY_NAMES    = ['日','月','火','水','木','金','土'];
@@ -1689,52 +1690,209 @@ function SettingsRow({icon,iconBg,title,desc,onClick,isLast=false}:{
   );
 }
 
-function SettingsScreen({settings,onSettings,onClose,onCarryOver}:{
+function SettingsScreen({settings,onSettings,onClose,onCarryOver,globalTags,onGlobalTags}:{
   settings:Settings; onSettings:(s:Settings)=>void; onClose:()=>void; onCarryOver:()=>void;
+  globalTags:string[]; onGlobalTags:(tags:string[])=>void;
 }) {
-  const [sub,setSub] = useState<string|null>(null);
+  const [sub,setSub]       = useState<string|null>(null);
+  const [tagInput,setTagInput] = useState('');
+  const [editIdx,setEditIdx]   = useState<number|null>(null);
+  const [editVal,setEditVal]   = useState('');
 
-  if(sub==='wakeSleep') {
-    return (
-      <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
-        <div className="bg-white border-b border-gray-200 px-4 py-3.5 flex items-center">
-          <button onClick={()=>setSub(null)} className="flex items-center gap-0.5 text-gray-900 min-w-[80px]">
-            <span className="text-[22px] leading-none">‹</span>
-            <span className="text-[15px]">設定</span>
-          </button>
-          <h2 className="flex-1 text-center text-[17px] font-semibold text-gray-900 -mx-4">起床・就寝</h2>
-          <div className="min-w-[80px]"/>
+  const back = () => setSub(null);
+
+  const subHeader = (title:string) => (
+    <div className="bg-white border-b border-gray-200 px-4 py-3.5 flex items-center shrink-0">
+      <button onClick={back} className="flex items-center gap-0.5 text-gray-900 min-w-[80px]">
+        <span className="text-[22px] leading-none">‹</span>
+        <span className="text-[15px]">設定</span>
+      </button>
+      <h2 className="flex-1 text-center text-[17px] font-semibold text-gray-900 -mx-4">{title}</h2>
+      <div className="min-w-[80px]"/>
+    </div>
+  );
+
+  const comingSoon = (icon:string, msg:string) => (
+    <div className="flex flex-col items-center justify-center pt-20 gap-3">
+      <span className="text-5xl">{icon}</span>
+      <p className="text-[17px] font-semibold text-gray-900">準備中</p>
+      <p className="text-sm text-gray-400 text-center px-8 leading-relaxed">{msg}</p>
+    </div>
+  );
+
+  const addTag = () => {
+    const t = tagInput.trim();
+    if(!t || globalTags.includes(t)) return;
+    onGlobalTags([...globalTags, t]);
+    setTagInput('');
+  };
+  const deleteTag = (i:number) => onGlobalTags(globalTags.filter((_,idx)=>idx!==i));
+  const startEdit = (i:number) => { setEditIdx(i); setEditVal(globalTags[i]); };
+  const commitEdit = () => {
+    if(editIdx===null) return;
+    const v = editVal.trim();
+    if(v && !globalTags.some((t,i)=>t===v&&i!==editIdx)){
+      onGlobalTags(globalTags.map((t,i)=>i===editIdx?v:t));
+    }
+    setEditIdx(null);
+  };
+
+  if(sub==='stats') return (
+    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
+      {subHeader('統計')}
+      <div className="flex-1 overflow-y-auto px-4 pb-8">{comingSoon('📊','タスク完了の統計機能は近日公開予定です')}</div>
+    </div>
+  );
+
+  if(sub==='tags') return (
+    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
+      {subHeader('タグ')}
+      <div className="flex-1 overflow-y-auto px-4 pb-8">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">新しいタグ</p>
+        <div className="bg-white rounded-2xl shadow-sm px-4 py-3 flex gap-2 items-center">
+          <input
+            value={tagInput}
+            onChange={e=>setTagInput(e.target.value)}
+            onKeyDown={e=>e.key==='Enter'&&addTag()}
+            placeholder="タグ名を入力"
+            className="flex-1 text-[15px] bg-transparent outline-none text-gray-900 placeholder-gray-300"
+          />
+          <button onClick={addTag}
+            className="px-4 py-1.5 bg-gray-900 text-white text-sm font-semibold rounded-xl shrink-0">追加</button>
         </div>
-        <div className="flex-1 overflow-y-auto px-4 pb-8">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">時間設定</p>
-          <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
-            <div className="px-4 py-4 border-b border-gray-100 flex items-center justify-between">
-              <p className="text-[15px] font-medium text-gray-900">起床時間</p>
-              <input type="time" value={settings.wakeTime}
-                onChange={e=>onSettings({...settings,wakeTime:e.target.value})}
-                className="border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50"/>
+
+        {globalTags.length>0&&(
+          <>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">タグ一覧</p>
+            <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
+              {globalTags.map((tag,i)=>(
+                <div key={i} className={`px-4 py-3 flex items-center gap-3${i<globalTags.length-1?' border-b border-gray-100':''}`}>
+                  <span className="text-orange-400 shrink-0">🏷️</span>
+                  {editIdx===i ? (
+                    <input autoFocus value={editVal}
+                      onChange={e=>setEditVal(e.target.value)}
+                      onBlur={commitEdit}
+                      onKeyDown={e=>e.key==='Enter'&&commitEdit()}
+                      className="flex-1 text-[15px] border-b border-gray-300 outline-none bg-transparent text-gray-900 py-0.5"/>
+                  ) : (
+                    <span className="flex-1 text-[15px] text-gray-900">{tag}</span>
+                  )}
+                  <div className="flex gap-1 shrink-0">
+                    <button onClick={()=>editIdx===i?commitEdit():startEdit(i)}
+                      className="text-xs text-blue-500 font-medium px-2 py-1">
+                      {editIdx===i?'確定':'編集'}
+                    </button>
+                    <button onClick={()=>deleteTag(i)}
+                      className="text-xs text-red-400 font-medium px-2 py-1">削除</button>
+                  </div>
+                </div>
+              ))}
             </div>
-            <div className="px-4 py-4 flex items-center justify-between">
-              <p className="text-[15px] font-medium text-gray-900">就寝時間</p>
-              <input type="time" value={settings.sleepTime}
-                onChange={e=>onSettings({...settings,sleepTime:e.target.value})}
-                className="border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50"/>
-            </div>
+          </>
+        )}
+        {globalTags.length===0&&(
+          <p className="text-sm text-gray-400 text-center mt-10">タグがまだありません</p>
+        )}
+      </div>
+    </div>
+  );
+
+  if(sub==='recurring') return (
+    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
+      {subHeader('繰り返しタスク')}
+      <div className="flex-1 overflow-y-auto px-4 pb-8">{comingSoon('🔁','繰り返しタスクの一覧・管理機能は近日公開予定です')}</div>
+    </div>
+  );
+
+  if(sub==='notifications') return (
+    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
+      {subHeader('通知')}
+      <div className="flex-1 overflow-y-auto px-4 pb-8">{comingSoon('🔔','通知設定は近日公開予定です')}</div>
+    </div>
+  );
+
+  if(sub==='display') return (
+    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
+      {subHeader('表示設定')}
+      <div className="flex-1 overflow-y-auto px-4 pb-8">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">外観</p>
+        <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
+          <div className="px-4 py-3.5 flex items-center justify-between">
+            <p className="text-[15px] font-medium text-gray-900">テーマ</p>
+            <span className="text-[15px] text-gray-400">ライト</span>
           </div>
-          <div className="mt-4">
-            <button onClick={onCarryOver}
-              className="w-full py-3.5 bg-gray-900 text-white rounded-2xl text-[15px] font-semibold">
-              未完了タスクを翌日へ繰り越し →
-            </button>
+        </div>
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">言語</p>
+        <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
+          <div className="px-4 py-3.5 flex items-center justify-between">
+            <p className="text-[15px] font-medium text-gray-900">言語</p>
+            <span className="text-[15px] text-gray-400">日本語</span>
           </div>
         </div>
       </div>
-    );
-  }
+    </div>
+  );
+
+  if(sub==='wakeSleep') return (
+    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
+      {subHeader('起床・就寝')}
+      <div className="flex-1 overflow-y-auto px-4 pb-8">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">時間設定</p>
+        <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
+          <div className="px-4 py-4 border-b border-gray-100 flex items-center justify-between">
+            <p className="text-[15px] font-medium text-gray-900">起床時間</p>
+            <input type="time" value={settings.wakeTime}
+              onChange={e=>onSettings({...settings,wakeTime:e.target.value})}
+              className="border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50"/>
+          </div>
+          <div className="px-4 py-4 flex items-center justify-between">
+            <p className="text-[15px] font-medium text-gray-900">就寝時間</p>
+            <input type="time" value={settings.sleepTime}
+              onChange={e=>onSettings({...settings,sleepTime:e.target.value})}
+              className="border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50"/>
+          </div>
+        </div>
+        <div className="mt-4">
+          <button onClick={onCarryOver}
+            className="w-full py-3.5 bg-gray-900 text-white rounded-2xl text-[15px] font-semibold">
+            未完了タスクを翌日へ繰り越し →
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  if(sub==='account') return (
+    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
+      {subHeader('アカウント連携')}
+      <div className="flex-1 overflow-y-auto px-4 pb-8">{comingSoon('🔗','アカウント連携機能は近日公開予定です')}</div>
+    </div>
+  );
+
+  if(sub==='calendar') return (
+    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
+      {subHeader('カレンダー連携')}
+      <div className="flex-1 overflow-y-auto px-4 pb-8">{comingSoon('📅','カレンダー連携機能は近日公開予定です')}</div>
+    </div>
+  );
+
+  if(sub==='premium') return (
+    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
+      {subHeader('プレミアム')}
+      <div className="flex-1 overflow-y-auto px-4 pb-8">{comingSoon('⭐','プレミアムプランは近日公開予定です')}</div>
+    </div>
+  );
+
+  if(sub==='faq') return (
+    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
+      {subHeader('よくある質問')}
+      <div className="flex-1 overflow-y-auto px-4 pb-8">{comingSoon('❓','よくある質問は近日公開予定です')}</div>
+    </div>
+  );
 
   return (
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
-      <div className="bg-[#F2F2F7] px-4 pt-14 pb-2 flex items-center justify-between">
+      <div className="bg-[#F2F2F7] px-4 pt-14 pb-2 flex items-center justify-between shrink-0">
         <div className="w-14"/>
         <h1 className="text-[34px] font-bold text-gray-900">設定</h1>
         <button onClick={onClose}
@@ -1744,32 +1902,32 @@ function SettingsScreen({settings,onSettings,onClose,onCarryOver}:{
 
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-4">統計</p>
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
-          <SettingsRow icon="📊" iconBg="bg-green-500" title="統計" desc="タスク完了の統計を確認" isLast/>
+          <SettingsRow icon="📊" iconBg="bg-green-500" title="統計" desc="タスク完了の統計を確認" onClick={()=>setSub('stats')} isLast/>
         </div>
 
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">一般</p>
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
-          <SettingsRow icon="🏷️" iconBg="bg-orange-400" title="タグ" desc="タグを管理"/>
-          <SettingsRow icon="🔁" iconBg="bg-blue-500" title="繰り返しタスク" desc="繰り返しタスクを管理"/>
-          <SettingsRow icon="🔔" iconBg="bg-red-500" title="通知" desc="通知設定"/>
-          <SettingsRow icon="🎨" iconBg="bg-purple-500" title="表示設定" desc="外観、言語など"/>
+          <SettingsRow icon="🏷️" iconBg="bg-orange-400" title="タグ" desc="タグを管理" onClick={()=>setSub('tags')}/>
+          <SettingsRow icon="🔁" iconBg="bg-blue-500" title="繰り返しタスク" desc="繰り返しタスクを管理" onClick={()=>setSub('recurring')}/>
+          <SettingsRow icon="🔔" iconBg="bg-red-500" title="通知" desc="通知設定" onClick={()=>setSub('notifications')}/>
+          <SettingsRow icon="🎨" iconBg="bg-purple-500" title="表示設定" desc="外観、言語など" onClick={()=>setSub('display')}/>
           <SettingsRow icon="🌅" iconBg="bg-amber-400" title="起床・就寝" desc="起床時間、就寝時間を設定" onClick={()=>setSub('wakeSleep')} isLast/>
         </div>
 
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">アカウント</p>
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
-          <SettingsRow icon="🔗" iconBg="bg-indigo-500" title="アカウント連携" desc="連携サービスを管理"/>
-          <SettingsRow icon="📅" iconBg="bg-red-400" title="カレンダー連携" desc="カレンダーと同期" isLast/>
+          <SettingsRow icon="🔗" iconBg="bg-indigo-500" title="アカウント連携" desc="連携サービスを管理" onClick={()=>setSub('account')}/>
+          <SettingsRow icon="📅" iconBg="bg-red-400" title="カレンダー連携" desc="カレンダーと同期" onClick={()=>setSub('calendar')} isLast/>
         </div>
 
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">サブスクリプション</p>
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
-          <SettingsRow icon="⭐" iconBg="bg-amber-400" title="プレミアム" desc="プランを管理" isLast/>
+          <SettingsRow icon="⭐" iconBg="bg-amber-400" title="プレミアム" desc="プランを管理" onClick={()=>setSub('premium')} isLast/>
         </div>
 
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">その他</p>
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
-          <SettingsRow icon="❓" iconBg="bg-gray-400" title="よくある質問" isLast/>
+          <SettingsRow icon="❓" iconBg="bg-gray-400" title="よくある質問" onClick={()=>setSub('faq')} isLast/>
         </div>
 
       </div>
@@ -1783,6 +1941,7 @@ export default function App() {
   const [tasks,setTasks]         = useState<Task[]>([]);
   const [settings,setSettings]   = useState<Settings>(DEFAULT_SETTINGS);
   const [shopItems,setShopItems] = useState<ShopItem[]>([]);
+  const [globalTags,setGlobalTags] = useState<string[]>([]);
   const [date,setDate]           = useState(todayStr());
   const [modal,setModal]         = useState<{open:boolean;task:Task|null;prefillTime?:string;prefillCategory?:string}>({open:false,task:null});
   const [activeCategory,setActiveCat] = useState<string|null>(null);
@@ -1808,9 +1967,11 @@ export default function App() {
       const t=localStorage.getItem(TASKS_KEY);
       const s=localStorage.getItem(SETTINGS_KEY);
       const sh=localStorage.getItem(SHOP_KEY);
+      const tg=localStorage.getItem(TAGS_KEY);
       if(t) setTasks((JSON.parse(t) as Task[]).map(tk=>({...tk,recurrence:tk.recurrence??null,customRec:tk.customRec,pinned:tk.pinned??false,tags:tk.tags??[],notifications:tk.notifications??[],incompleteReminder:tk.incompleteReminder??false,category:tk.category})));
       if(s) setSettings(JSON.parse(s));
       if(sh) setShopItems(JSON.parse(sh));
+      if(tg) setGlobalTags(JSON.parse(tg));
     }catch{}
     setLoaded(true);
   },[]);
@@ -1818,6 +1979,7 @@ export default function App() {
   useEffect(()=>{ if(loaded) localStorage.setItem(TASKS_KEY,JSON.stringify(tasks)); },[tasks,loaded]);
   useEffect(()=>{ if(loaded) localStorage.setItem(SETTINGS_KEY,JSON.stringify(settings)); },[settings,loaded]);
   useEffect(()=>{ if(loaded) localStorage.setItem(SHOP_KEY,JSON.stringify(shopItems)); },[shopItems,loaded]);
+  useEffect(()=>{ if(loaded) localStorage.setItem(TAGS_KEY,JSON.stringify(globalTags)); },[globalTags,loaded]);
   useEffect(()=>{ const iv=setInterval(()=>setNow(nowStr()),60000); return ()=>clearInterval(iv); },[]);
 
   const filteredTasks = useMemo(()=>activeCategory?tasks.filter(t=>t.category===activeCategory):tasks,[tasks,activeCategory]);
@@ -2093,7 +2255,7 @@ export default function App() {
 
       {/* ── Settings Screen ── */}
       {settingsOpen&&(
-        <SettingsScreen settings={settings} onSettings={setSettings} onClose={()=>setSOp(false)} onCarryOver={carryOver}/>
+        <SettingsScreen settings={settings} onSettings={setSettings} onClose={()=>setSOp(false)} onCarryOver={carryOver} globalTags={globalTags} onGlobalTags={setGlobalTags}/>
       )}
 
       {/* ── Recurrence edit confirm ── */}
