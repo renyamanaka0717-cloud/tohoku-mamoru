@@ -1199,8 +1199,8 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
       const fitsN=laterPool.filter(t=>(t.duration??0)<=item.s.min).length;
       const measuredH=freeCardHeights[item.s.start];
       const contentH=fitsN>0?94+fitsN*38:60;
-      // 次のタスクの自然なY位置まで伸ばす
-      let nextTaskNaturalY=0;
+      // 次のタスクの自然なY位置まで伸ばす（なければ就寝時刻まで）
+      let nextTaskNaturalY=calcY(sleepMin);
       for(let j=idx+1;j<allItems.length;j++){
         if(allItems[j].type==='task'){
           nextTaskNaturalY=calcY(toMin(allItems[j].t.startTime!));
