@@ -1640,15 +1640,11 @@ export default function App() {
 
   // Drag task from あとでやる to timeline
   const startDrag=(task:Task,x:number,y:number)=>{
-    // Capture containerTop NOW — before the async useEffect runs and before any
-    // page-scroll can occur in the gap (downward drag triggers natural scroll
-    // until preventDefault is attached, shifting getBoundingClientRect().top).
-    dragContainerTopRef.current =
-      tlLayoutRef.current?.container?.getBoundingClientRect().top ?? 0;
-    // Also immediately block scroll so the captured top stays accurate.
-    const blockScroll=(e:TouchEvent)=>e.preventDefault();
-    document.addEventListener('touchmove',blockScroll,{passive:false});
-    setTimeout(()=>document.removeEventListener('touchmove',blockScroll),300);
+    // Store container top as a PAGE coordinate (getBoundingClientRect().top + scrollY).
+    // This value never changes with scroll, so calcTime can use current window.scrollY
+    // on every move to get the correct relY regardless of scroll state.
+    const rect = tlLayoutRef.current?.container?.getBoundingClientRect();
+    dragContainerTopRef.current = (rect?.top ?? 0) + window.scrollY;
     setDragTask(task);
     setDragPos({x,y});
     setActiveTab(null);
@@ -1661,10 +1657,9 @@ export default function App() {
       const sMin=toMin(settings.sleepTime);
       const layout=tlLayoutRef.current;
       if(!layout) return fromMin(wMin);
-      // Use the containerTop captured at drag-start, not a fresh getBoundingClientRect().
-      // Between startDrag and this useEffect attaching preventDefault, a brief
-      // page-scroll can occur, shifting the live rect.top and causing ~100 min offsets.
-      const relY=clientY-dragContainerTopRef.current;
+      // pageY = clientY + scrollY gives scroll-independent coordinates.
+      // dragContainerTopRef stores the container's page-top (also scroll-independent).
+      const relY=(clientY+window.scrollY)-dragContainerTopRef.current;
       const{hourRows,BASE}=layout;
       for(let i=0;i<hourRows.length;i++){
         const row=hourRows[i];
