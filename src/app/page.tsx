@@ -41,6 +41,7 @@ interface Task {
 interface Settings { wakeTime: string; sleepTime: string; }
 interface FreeSlot  { start: string; end: string; min: number; }
 interface ShopItem  { id: string; name: string; checked: boolean; }
+interface TagDef    { name: string; color: string; }
 
 type TaskMode = 'later' | 'scheduled' | 'recurring';
 
@@ -52,6 +53,14 @@ const TASKS_KEY    = 'tl-tasks-v2';
 const SETTINGS_KEY = 'tl-settings-v2';
 const SHOP_KEY     = 'tl-shop-v1';
 const TAGS_KEY     = 'tl-tags-v1';
+const TAG_COLORS: {bg:string;text:string}[] = [
+  {bg:'#FFD6E0',text:'#9B2335'},{bg:'#FFE4CC',text:'#9C4A20'},
+  {bg:'#FFF3CC',text:'#7A5800'},{bg:'#E2F5CC',text:'#3A6B0E'},
+  {bg:'#CCF0E8',text:'#0E5E47'},{bg:'#CCE8F5',text:'#0A4F76'},
+  {bg:'#CCE0FF',text:'#1A3F9E'},{bg:'#E8CCFF',text:'#5B1F9E'},
+  {bg:'#F0CCF5',text:'#7A1A8E'},{bg:'#F5DDCC',text:'#8C3D10'},
+];
+const getTagTextColor=(bg:string)=>TAG_COLORS.find(c=>c.bg===bg)?.text??'#374151';
 const PX_PER_HOUR  = 40;
 const PX_PER_MIN   = PX_PER_HOUR / 60;
 const DAY_NAMES    = ['日','月','火','水','木','金','土'];
@@ -451,9 +460,10 @@ function autoIcon(name: string): string {
 
 // ── TaskModal ─────────────────────────────────────────────────────────────────
 
-function TaskModal({task,currentDate,prefillTime,prefillCategory,onSave,onDelete,onClose}:{
+function TaskModal({task,currentDate,prefillTime,prefillCategory,onSave,onDelete,onClose,globalTags}:{
   task:Task|null; currentDate:string; prefillTime?:string; prefillCategory?:string;
   onSave:(tasks:Omit<Task,'id'>[])=>void; onDelete?:()=>void; onClose:()=>void;
+  globalTags:TagDef[];
 }) {
   const initMode=():TaskMode=>{
     if(!task) return prefillTime?'scheduled':'later';
@@ -504,7 +514,6 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,onSave,onDelete
   const [custNotifMin,setCNMin]    = useState(60);
   const [pinned,setPinned]    = useState(task?.pinned??false);
   const [tags,setTags]        = useState<string[]>(task?.tags??[]);
-  const [tagInput,setTagInput]= useState('');
   const [iconOpen,setIconOpen]= useState(false);
   const [taskDate,setTaskDate]= useState(task?.date??currentDate);
   const [dateOpen,setDateOpen]= useState(false);
@@ -541,12 +550,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,onSave,onDelete
     setCNOpen(false);
   };
 
-  const addTag=()=>{
-    const t=tagInput.trim();
-    if(!t||tags.includes(t)) return;
-    setTags(prev=>[...prev,t]);
-    setTagInput('');
-  };
+  const toggleTag=(name:string)=>setTags(prev=>prev.includes(name)?prev.filter(x=>x!==name):[...prev,name]);
 
   const save=()=>{
     if(!name.trim()) return;
@@ -1023,24 +1027,22 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,onSave,onDelete
                 <span className="text-xl w-8 text-center">🏷️</span>
                 <p className="text-sm font-semibold text-gray-800">タグ</p>
               </div>
-              {tags.length>0&&(
-                <div className="flex flex-wrap gap-1.5 mb-2">
-                  {tags.map(t=>(
-                    <span key={t} className="inline-flex items-center gap-1 bg-gray-100 text-gray-700 text-xs font-medium px-2.5 py-1 rounded-full">
-                      {t}
-                      <button onClick={()=>setTags(prev=>prev.filter(x=>x!==t))} className="text-gray-400 leading-none ml-0.5">×</button>
-                    </span>
-                  ))}
+              {globalTags.length===0 ? (
+                <p className="text-xs text-gray-400">設定画面でタグを追加できます</p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {globalTags.map(td=>{
+                    const active=tags.includes(td.name);
+                    return (
+                      <button key={td.name} onClick={()=>toggleTag(td.name)}
+                        style={{backgroundColor:td.color,color:getTagTextColor(td.color)}}
+                        className={`px-3 py-1 rounded-full text-sm font-medium transition-all ${active?'ring-2 ring-gray-800 ring-offset-1':''}`}>
+                        {td.name}
+                      </button>
+                    );
+                  })}
                 </div>
               )}
-              <div className="flex gap-2">
-                <input type="text" value={tagInput} onChange={e=>setTagInput(e.target.value)}
-                  onKeyDown={e=>e.key==='Enter'&&addTag()}
-                  placeholder="タグを入力して追加..."
-                  className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50 outline-none focus:border-gray-400"/>
-                <button onClick={addTag} disabled={!tagInput.trim()}
-                  className="px-3 py-2 bg-gray-900 text-white rounded-xl text-sm font-semibold disabled:opacity-40">追加</button>
-              </div>
             </div>
           </div>
 
@@ -1060,7 +1062,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,onSave,onDelete
 
 // ── TaskCard ──────────────────────────────────────────────────────────────────
 
-function TaskCard({task,onToggle,onEdit}:{task:Task;onToggle:()=>void;onEdit:()=>void;}) {
+function TaskCard({task,onToggle,onEdit,globalTags}:{task:Task;onToggle:()=>void;onEdit:()=>void;globalTags:TagDef[];}) {
   const endTime = (task.startTime&&(task.duration??0)>0) ? fromMin(toMin(task.startTime)+(task.duration??0)) : null;
   return (
     <div className={`flex items-center gap-2.5 bg-white rounded-2xl border border-gray-100 shadow-sm px-3 py-2.5 ${task.completed?'opacity-50':''}`}
@@ -1079,9 +1081,13 @@ function TaskCard({task,onToggle,onEdit}:{task:Task;onToggle:()=>void;onEdit:()=
         {task.memo&&<p className="text-xs text-gray-400 mt-0.5 truncate">{task.memo}</p>}
         {(task.tags??[]).length>0&&(
           <div className="flex flex-wrap gap-1 mt-1">
-            {(task.tags??[]).map(tag=>(
-              <span key={tag} className="bg-gray-100 text-gray-500 text-[10px] px-1.5 py-0.5 rounded-full">{tag}</span>
-            ))}
+            {(task.tags??[]).map(tag=>{
+              const td=globalTags.find(t=>t.name===tag);
+              return (
+                <span key={tag} style={td?{backgroundColor:td.color,color:getTagTextColor(td.color)}:{}}
+                  className={`text-[10px] px-1.5 py-0.5 rounded-full ${td?'':'bg-gray-100 text-gray-500'}`}>{tag}</span>
+              );
+            })}
           </div>
         )}
       </div>
@@ -1141,12 +1147,13 @@ function FreeTimeCard({slot,fits,height,onSchedule,onHeightChange}:{
 
 // ── Timeline ──────────────────────────────────────────────────────────────────
 
-function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAddAtTime,onDragStart,dragTaskId,yToTimeRef}:{
+function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAddAtTime,onDragStart,dragTaskId,yToTimeRef,globalTags}:{
   date:string;tasks:Task[];later:Task[];settings:Settings;now:string;
   onToggle:(id:string)=>void;onEdit:(t:Task)=>void;
   onSchedule:(t:Task,time:string)=>void;onAddAtTime:(time:string)=>void;
   onDragStart:(t:Task,x:number,y:number)=>void;dragTaskId?:string;
   yToTimeRef:React.MutableRefObject<((clientY:number)=>string)|null>;
+  globalTags:TagDef[];
 }) {
   const [pressingId,setPressingId] = useState<string|null>(null);
   const [freeCardHeights,setFreeCardHeights] = useState<Record<string,number>>({});
@@ -1375,7 +1382,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
             onTouchStart={e=>startLP(task,e)}
             onTouchEnd={cancelLP}
             onTouchMove={cancelLP}>
-            <TaskCard task={task} onToggle={()=>onToggle(task.id)} onEdit={()=>onEdit(task)}/>
+            <TaskCard task={task} onToggle={()=>onToggle(task.id)} onEdit={()=>onEdit(task)} globalTags={globalTags}/>
           </div>
         );
       })}
@@ -1692,12 +1699,14 @@ function SettingsRow({icon,iconBg,title,desc,onClick,isLast=false}:{
 
 function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags}:{
   settings:Settings; onSettings:(s:Settings)=>void; onClose:()=>void;
-  globalTags:string[]; onGlobalTags:(tags:string[])=>void;
+  globalTags:TagDef[]; onGlobalTags:(tags:TagDef[])=>void;
 }) {
-  const [sub,setSub]       = useState<string|null>(null);
+  const [sub,setSub]           = useState<string|null>(null);
   const [tagInput,setTagInput] = useState('');
+  const [newTagColor,setNewTagColor] = useState(TAG_COLORS[0].bg);
   const [editIdx,setEditIdx]   = useState<number|null>(null);
   const [editVal,setEditVal]   = useState('');
+  const [editColor,setEditColor]   = useState(TAG_COLORS[0].bg);
 
   const back = () => setSub(null);
 
@@ -1722,17 +1731,17 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags}:{
 
   const addTag = () => {
     const t = tagInput.trim();
-    if(!t || globalTags.includes(t)) return;
-    onGlobalTags([...globalTags, t]);
+    if(!t || globalTags.some(td=>td.name===t)) return;
+    onGlobalTags([...globalTags, {name:t, color:newTagColor}]);
     setTagInput('');
   };
   const deleteTag = (i:number) => onGlobalTags(globalTags.filter((_,idx)=>idx!==i));
-  const startEdit = (i:number) => { setEditIdx(i); setEditVal(globalTags[i]); };
+  const startEdit = (i:number) => { setEditIdx(i); setEditVal(globalTags[i].name); setEditColor(globalTags[i].color); };
   const commitEdit = () => {
     if(editIdx===null) return;
     const v = editVal.trim();
-    if(v && !globalTags.some((t,i)=>t===v&&i!==editIdx)){
-      onGlobalTags(globalTags.map((t,i)=>i===editIdx?v:t));
+    if(v && !globalTags.some((t,i)=>t.name===v&&i!==editIdx)){
+      onGlobalTags(globalTags.map((t,i)=>i===editIdx?{name:v,color:editColor}:t));
     }
     setEditIdx(null);
   };
@@ -1748,42 +1757,71 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags}:{
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
       {subHeader('タグ')}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
+
+        {/* New tag */}
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">新しいタグ</p>
-        <div className="bg-white rounded-2xl shadow-sm px-4 py-3 flex gap-2 items-center">
-          <input
-            value={tagInput}
-            onChange={e=>setTagInput(e.target.value)}
-            onKeyDown={e=>e.key==='Enter'&&addTag()}
-            placeholder="タグ名を入力"
-            className="flex-1 text-[15px] bg-transparent outline-none text-gray-900 placeholder-gray-300"
-          />
-          <button onClick={addTag}
-            className="px-4 py-1.5 bg-gray-900 text-white text-sm font-semibold rounded-xl shrink-0">追加</button>
+        <div className="bg-white rounded-2xl shadow-sm px-4 pt-4 pb-3">
+          <div className="flex gap-2 mb-3 flex-wrap">
+            {TAG_COLORS.map(c=>(
+              <button key={c.bg} onClick={()=>setNewTagColor(c.bg)}
+                style={{backgroundColor:c.bg}}
+                className={`w-7 h-7 rounded-full transition-all ${newTagColor===c.bg?'ring-2 ring-gray-800 ring-offset-1 scale-110':''}`}/>
+            ))}
+          </div>
+          <div className="flex gap-2 items-center">
+            <input value={tagInput} onChange={e=>setTagInput(e.target.value)}
+              onKeyDown={e=>e.key==='Enter'&&addTag()}
+              placeholder="タグ名を入力"
+              className="flex-1 text-[15px] bg-transparent outline-none text-gray-900 placeholder-gray-300 border-b border-gray-200 pb-1"/>
+            <button onClick={addTag}
+              className="px-4 py-1.5 bg-gray-900 text-white text-sm font-semibold rounded-xl shrink-0">追加</button>
+          </div>
+          {tagInput.trim()&&(
+            <div className="mt-3">
+              <span style={{backgroundColor:newTagColor,color:getTagTextColor(newTagColor)}}
+                className="inline-block px-3 py-1 rounded-full text-sm font-medium">
+                {tagInput.trim()}
+              </span>
+            </div>
+          )}
         </div>
 
+        {/* Tag list */}
         {globalTags.length>0&&(
           <>
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">タグ一覧</p>
             <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
               {globalTags.map((tag,i)=>(
                 <div key={i} className={`px-4 py-3 flex items-center gap-3${i<globalTags.length-1?' border-b border-gray-100':''}`}>
-                  <span className="text-orange-400 shrink-0">🏷️</span>
                   {editIdx===i ? (
-                    <input autoFocus value={editVal}
-                      onChange={e=>setEditVal(e.target.value)}
-                      onBlur={commitEdit}
-                      onKeyDown={e=>e.key==='Enter'&&commitEdit()}
-                      className="flex-1 text-[15px] border-b border-gray-300 outline-none bg-transparent text-gray-900 py-0.5"/>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex gap-2 mb-2 flex-wrap">
+                        {TAG_COLORS.map(c=>(
+                          <button key={c.bg} onClick={()=>setEditColor(c.bg)}
+                            style={{backgroundColor:c.bg}}
+                            className={`w-6 h-6 rounded-full transition-all ${editColor===c.bg?'ring-2 ring-gray-800 ring-offset-1 scale-110':''}`}/>
+                        ))}
+                      </div>
+                      <input autoFocus value={editVal}
+                        onChange={e=>setEditVal(e.target.value)}
+                        onKeyDown={e=>e.key==='Enter'&&commitEdit()}
+                        className="w-full text-[15px] border-b border-gray-300 outline-none bg-transparent text-gray-900 py-0.5"/>
+                    </div>
                   ) : (
-                    <span className="flex-1 text-[15px] text-gray-900">{tag}</span>
+                    <>
+                      <span style={{backgroundColor:tag.color}} className="w-4 h-4 rounded-full shrink-0"/>
+                      <span className="flex-1 text-[15px] text-gray-900">{tag.name}</span>
+                    </>
                   )}
                   <div className="flex gap-1 shrink-0">
                     <button onClick={()=>editIdx===i?commitEdit():startEdit(i)}
                       className="text-xs text-blue-500 font-medium px-2 py-1">
                       {editIdx===i?'確定':'編集'}
                     </button>
-                    <button onClick={()=>deleteTag(i)}
-                      className="text-xs text-red-400 font-medium px-2 py-1">削除</button>
+                    {editIdx===i
+                      ? <button onClick={()=>setEditIdx(null)} className="text-xs text-gray-400 font-medium px-2 py-1">キャンセル</button>
+                      : <button onClick={()=>deleteTag(i)} className="text-xs text-red-400 font-medium px-2 py-1">削除</button>
+                    }
                   </div>
                 </div>
               ))}
@@ -1935,7 +1973,7 @@ export default function App() {
   const [tasks,setTasks]         = useState<Task[]>([]);
   const [settings,setSettings]   = useState<Settings>(DEFAULT_SETTINGS);
   const [shopItems,setShopItems] = useState<ShopItem[]>([]);
-  const [globalTags,setGlobalTags] = useState<string[]>([]);
+  const [globalTags,setGlobalTags] = useState<TagDef[]>([]);
   const [date,setDate]           = useState(todayStr());
   const [modal,setModal]         = useState<{open:boolean;task:Task|null;prefillTime?:string;prefillCategory?:string}>({open:false,task:null});
   const [activeCategory,setActiveCat] = useState<string|null>(null);
@@ -1965,7 +2003,14 @@ export default function App() {
       if(t) setTasks((JSON.parse(t) as Task[]).map(tk=>({...tk,recurrence:tk.recurrence??null,customRec:tk.customRec,pinned:tk.pinned??false,tags:tk.tags??[],notifications:tk.notifications??[],incompleteReminder:tk.incompleteReminder??false,category:tk.category})));
       if(s) setSettings(JSON.parse(s));
       if(sh) setShopItems(JSON.parse(sh));
-      if(tg) setGlobalTags(JSON.parse(tg));
+      if(tg){
+        const parsed=JSON.parse(tg);
+        if(Array.isArray(parsed)&&parsed.length>0&&typeof parsed[0]==='string'){
+          setGlobalTags((parsed as string[]).map((name,i)=>({name,color:TAG_COLORS[i%TAG_COLORS.length].bg})));
+        } else {
+          setGlobalTags(parsed as TagDef[]);
+        }
+      }
     }catch{}
     setLoaded(true);
   },[]);
@@ -2150,7 +2195,7 @@ export default function App() {
         }}>
         <Timeline date={date} tasks={filteredTasks} later={laterTasks} settings={settings} now={now}
           onToggle={toggle} onEdit={openEdit} onSchedule={scheduleInSlot} onAddAtTime={openAdd}
-          onDragStart={startDrag} dragTaskId={dragTask?.id} yToTimeRef={yToTimeRef}/>
+          onDragStart={startDrag} dragTaskId={dragTask?.id} yToTimeRef={yToTimeRef} globalTags={globalTags}/>
       </main>
 
       {/* ── Bottom bar ── */}
@@ -2244,7 +2289,7 @@ export default function App() {
         <TaskModal task={modal.task} currentDate={date} prefillTime={modal.prefillTime} prefillCategory={modal.prefillCategory}
           onSave={saveTasks}
           onDelete={modal.task?()=>delTask(modal.task!.id):undefined}
-          onClose={closeModal}/>
+          onClose={closeModal} globalTags={globalTags}/>
       )}
 
       {/* ── Settings Screen ── */}
