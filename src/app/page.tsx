@@ -1667,6 +1667,116 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
   );
 }
 
+// ── Settings Screen ──────────────────────────────────────────────────────────
+
+function SettingsRow({icon,iconBg,title,desc,onClick,isLast=false}:{
+  icon:string; iconBg:string; title:string; desc?:string; onClick?:()=>void; isLast?:boolean;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`w-full flex items-center gap-3 px-4 py-3.5 text-left active:bg-gray-50 transition-colors${!isLast?' border-b border-gray-100':''}`}
+    >
+      <div className={`w-[30px] h-[30px] rounded-[8px] flex items-center justify-center text-[17px] shrink-0 ${iconBg}`}>
+        {icon}
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-[15px] font-medium text-gray-900 leading-tight">{title}</p>
+        {desc&&<p className="text-xs text-gray-400 mt-0.5">{desc}</p>}
+      </div>
+      <span className="text-gray-300 text-[18px] font-light shrink-0">›</span>
+    </button>
+  );
+}
+
+function SettingsScreen({settings,onSettings,onClose,onCarryOver}:{
+  settings:Settings; onSettings:(s:Settings)=>void; onClose:()=>void; onCarryOver:()=>void;
+}) {
+  const [sub,setSub] = useState<string|null>(null);
+
+  if(sub==='wakeSleep') {
+    return (
+      <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
+        <div className="bg-white border-b border-gray-200 px-4 py-3.5 flex items-center">
+          <button onClick={()=>setSub(null)} className="flex items-center gap-0.5 text-gray-900 min-w-[80px]">
+            <span className="text-[22px] leading-none">‹</span>
+            <span className="text-[15px]">設定</span>
+          </button>
+          <h2 className="flex-1 text-center text-[17px] font-semibold text-gray-900 -mx-4">起床・就寝</h2>
+          <div className="min-w-[80px]"/>
+        </div>
+        <div className="flex-1 overflow-y-auto px-4 pb-8">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">時間設定</p>
+          <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
+            <div className="px-4 py-4 border-b border-gray-100 flex items-center justify-between">
+              <p className="text-[15px] font-medium text-gray-900">起床時間</p>
+              <input type="time" value={settings.wakeTime}
+                onChange={e=>onSettings({...settings,wakeTime:e.target.value})}
+                className="border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50"/>
+            </div>
+            <div className="px-4 py-4 flex items-center justify-between">
+              <p className="text-[15px] font-medium text-gray-900">就寝時間</p>
+              <input type="time" value={settings.sleepTime}
+                onChange={e=>onSettings({...settings,sleepTime:e.target.value})}
+                className="border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50"/>
+            </div>
+          </div>
+          <div className="mt-4">
+            <button onClick={onCarryOver}
+              className="w-full py-3.5 bg-gray-900 text-white rounded-2xl text-[15px] font-semibold">
+              未完了タスクを翌日へ繰り越し →
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
+      <div className="bg-[#F2F2F7] px-4 pt-14 pb-2 flex items-center justify-between">
+        <div className="w-14"/>
+        <h1 className="text-[34px] font-bold text-gray-900">設定</h1>
+        <button onClick={onClose}
+          className="w-14 text-right text-[17px] font-medium text-gray-900">完了</button>
+      </div>
+      <div className="flex-1 overflow-y-auto px-4 pb-10">
+
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-4">統計</p>
+        <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
+          <SettingsRow icon="📊" iconBg="bg-green-500" title="統計" desc="タスク完了の統計を確認" isLast/>
+        </div>
+
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">一般</p>
+        <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
+          <SettingsRow icon="🏷️" iconBg="bg-orange-400" title="タグ" desc="タグを管理"/>
+          <SettingsRow icon="🔁" iconBg="bg-blue-500" title="繰り返しタスク" desc="繰り返しタスクを管理"/>
+          <SettingsRow icon="🔔" iconBg="bg-red-500" title="通知" desc="通知設定"/>
+          <SettingsRow icon="🎨" iconBg="bg-purple-500" title="表示設定" desc="外観、言語など"/>
+          <SettingsRow icon="🌅" iconBg="bg-amber-400" title="起床・就寝" desc="起床時間、就寝時間を設定" onClick={()=>setSub('wakeSleep')} isLast/>
+        </div>
+
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">アカウント</p>
+        <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
+          <SettingsRow icon="🔗" iconBg="bg-indigo-500" title="アカウント連携" desc="連携サービスを管理"/>
+          <SettingsRow icon="📅" iconBg="bg-red-400" title="カレンダー連携" desc="カレンダーと同期" isLast/>
+        </div>
+
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">サブスクリプション</p>
+        <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
+          <SettingsRow icon="⭐" iconBg="bg-amber-400" title="プレミアム" desc="プランを管理" isLast/>
+        </div>
+
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">その他</p>
+        <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
+          <SettingsRow icon="❓" iconBg="bg-gray-400" title="よくある質問" isLast/>
+        </div>
+
+      </div>
+    </div>
+  );
+}
+
 // ── App ───────────────────────────────────────────────────────────────────────
 
 export default function App() {
@@ -1848,31 +1958,11 @@ export default function App() {
               <button onClick={()=>setCalOp(true)} className="w-8 h-8 flex items-center justify-center text-gray-400 text-lg">📅</button>
               <button onClick={()=>setSearchOpen(true)}
                 className="w-8 h-8 flex items-center justify-center text-gray-400 text-base">🔍</button>
-              <button onClick={()=>setSOp(!settingsOpen)}
-                className={`w-8 h-8 flex items-center justify-center rounded-xl transition-colors ${settingsOpen?'bg-gray-900 text-white':'text-gray-400'}`}>⚙</button>
+              <button onClick={()=>setSOp(true)}
+                className="w-8 h-8 flex items-center justify-center text-gray-400">⚙</button>
             </div>
           </div>
 
-          {/* Settings panel */}
-          {settingsOpen&&(
-            <div className="mb-2 p-3 bg-gray-50 rounded-2xl border border-gray-100">
-              <div className="flex gap-4 mb-3">
-                <div>
-                  <p className="text-xs text-gray-500 mb-1">起床</p>
-                  <input type="time" value={settings.wakeTime} onChange={e=>setSettings(s=>({...s,wakeTime:e.target.value}))}
-                    className="border border-gray-200 rounded-xl px-2.5 py-2 text-sm bg-white"/>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500 mb-1">就寝</p>
-                  <input type="time" value={settings.sleepTime} onChange={e=>setSettings(s=>({...s,sleepTime:e.target.value}))}
-                    className="border border-gray-200 rounded-xl px-2.5 py-2 text-sm bg-white"/>
-                </div>
-              </div>
-              <button onClick={carryOver} className="text-xs px-3 py-2 bg-gray-900 text-white rounded-xl font-semibold">
-                未完了を翌日へ繰り越し →
-              </button>
-            </div>
-          )}
 
           {/* Week calendar */}
           <div className="grid grid-cols-7 py-2 border-t border-gray-50">
@@ -1999,6 +2089,11 @@ export default function App() {
           onSave={saveTasks}
           onDelete={modal.task?()=>delTask(modal.task!.id):undefined}
           onClose={closeModal}/>
+      )}
+
+      {/* ── Settings Screen ── */}
+      {settingsOpen&&(
+        <SettingsScreen settings={settings} onSettings={setSettings} onClose={()=>setSOp(false)} onCarryOver={carryOver}/>
       )}
 
       {/* ── Recurrence edit confirm ── */}
