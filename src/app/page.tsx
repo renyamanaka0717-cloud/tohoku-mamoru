@@ -1607,6 +1607,7 @@ export default function App() {
   const mainSwX = useRef(0);
   const mainSwY = useRef(0);
   const tlLayoutRef = useRef<{hourRows:{hourMin:number;rowHeight:number;top:number}[];wakeMin:number;BASE:number;container:HTMLDivElement|null}|null>(null);
+  const dragContainerTopRef = useRef<number>(0);
   const [recConfirm,setRecConfirm] = useState<Task|null>(null);
   const [editScope,setEditScope]   = useState<'one'|'all'>('one');
   const [overTrash,setOverTrash]   = useState(false);
@@ -1639,6 +1640,15 @@ export default function App() {
 
   // Drag task from あとでやる to timeline
   const startDrag=(task:Task,x:number,y:number)=>{
+    // Capture containerTop NOW — before the async useEffect runs and before any
+    // page-scroll can occur in the gap (downward drag triggers natural scroll
+    // until preventDefault is attached, shifting getBoundingClientRect().top).
+    dragContainerTopRef.current =
+      tlLayoutRef.current?.container?.getBoundingClientRect().top ?? 0;
+    // Also immediately block scroll so the captured top stays accurate.
+    const blockScroll=(e:TouchEvent)=>e.preventDefault();
+    document.addEventListener('touchmove',blockScroll,{passive:false});
+    setTimeout(()=>document.removeEventListener('touchmove',blockScroll),300);
     setDragTask(task);
     setDragPos({x,y});
     setActiveTab(null);
@@ -1650,9 +1660,11 @@ export default function App() {
       const wMin=toMin(settings.wakeTime);
       const sMin=toMin(settings.sleepTime);
       const layout=tlLayoutRef.current;
-      if(!layout?.container) return fromMin(wMin);
-      const rect=layout.container.getBoundingClientRect();
-      const relY=clientY-rect.top;
+      if(!layout) return fromMin(wMin);
+      // Use the containerTop captured at drag-start, not a fresh getBoundingClientRect().
+      // Between startDrag and this useEffect attaching preventDefault, a brief
+      // page-scroll can occur, shifting the live rect.top and causing ~100 min offsets.
+      const relY=clientY-dragContainerTopRef.current;
       const{hourRows,BASE}=layout;
       for(let i=0;i<hourRows.length;i++){
         const row=hourRows[i];
