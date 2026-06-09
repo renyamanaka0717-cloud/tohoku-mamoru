@@ -1153,7 +1153,8 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
   const calcY=(min:number)=>(min-wakeMin)*PX_PER_MIN;
 
   // Combined layout: tasks + free slots in time order, no overlaps
-  const MIN_CARD_H = 60;
+  const MIN_CARD_H = 72;
+  const CARD_GAP = 12;
   type TLItem = {type:'task';t:Task;y:number}|{type:'free';s:FreeSlot;y:number};
   const allItems:TLItem[] = [
     ...dayTasks.map(t=>({type:'task' as const,t,y:calcY(toMin(t.startTime!))})),
@@ -1166,16 +1167,15 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
 
   for(const item of allItems){
     if(item.type==='task'){
-      const top=Math.max(item.y,prevBottom+2);
+      const top=Math.max(item.y,prevBottom+CARD_GAP);
       const h=Math.max(MIN_CARD_H,(item.t.duration??0)*PX_PER_MIN);
       taskLayout.push({task:item.t,top,h});
       prevBottom=top+h;
     } else {
-      const freeY=Math.max(item.y,prevBottom)+2;
+      const freeY=Math.max(item.y,prevBottom+CARD_GAP);
       const fitsN=laterPool.filter(t=>(t.duration??0)<=item.s.min).length;
-      const cardH=dayTasks.length>0
-        ?Math.max(item.s.min*PX_PER_MIN-4,32)
-        :Math.max(94+Math.min(fitsN,3)*38,item.s.min*PX_PER_MIN-4);
+      const contentH=80+Math.min(fitsN,3)*36;
+      const cardH=Math.max(contentH,item.s.min*PX_PER_MIN);
       freeLayout.push({slot:item.s,freeY,cardH});
       prevBottom=freeY+cardH;
     }
