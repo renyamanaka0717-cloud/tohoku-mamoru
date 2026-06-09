@@ -1150,73 +1150,86 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
   const freeSlots=calcFreeSlots(tasks,date,settings);
   const laterPool=later.filter(t=>!t.completed);
 
-  const calcY=(min:number)=>(min-wakeMin)*PX_PER_MIN;
+  // Row-based layout: BASE_SLOT_HEIGHT per hour, expand when card > BASE_SLOT_HEIGHT
+  const BASE_SLOT_HEIGHT=40;
+  const CARD_GAP=12;
+  const MIN_CARD_H=72;
 
-  // Combined layout: tasks + free slots in time order, no overlaps
-  const MIN_CARD_H = 72;
-  const CARD_GAP = 12;
-  type TLItem = {type:'task';t:Task;y:number}|{type:'free';s:FreeSlot;y:number};
-  const allItems:TLItem[] = [
-    ...dayTasks.map(t=>({type:'task' as const,t,y:calcY(toMin(t.startTime!))})),
-    ...freeSlots.map(s=>({type:'free' as const,s,y:calcY(toMin(s.start))})),
-  ].sort((a,b)=>a.y-b.y);
+  // Unified items sorted by start time
+  type TLItem={type:'task';t:Task}|{type:'free';s:FreeSlot};
+  const allItems:TLItem[]=[
+    ...dayTasks.map(t=>({type:'task' as const,t})),
+    ...freeSlots.map(s=>({type:'free' as const,s})),
+  ].sort((a,b)=>{
+    const am=a.type==='task'?toMin(a.t.startTime!):toMin(a.s.start);
+    const bm=b.type==='task'?toMin(b.t.startTime!):toMin(b.s.start);
+    return am-bm;
+  });
 
+  // Content-based card heights: free = content only (no duration), task = max(MIN, duration)
+  const getCardH=(item:TLItem):number=>{
+    if(item.type==='task') return Math.max(MIN_CARD_H,(item.t.duration??0)*PX_PER_MIN);
+    const fitsN=laterPool.filter(t=>(t.duration??0)<=item.s.min).length;
+    return 96+Math.min(fitsN,3)*36;
+  };
+
+  // Per-hour rows: simulate stacking of all items in each hour to get needed height
+  type HourRow={hourMin:number;rowHeight:number;top:number};
+  const hourRows:HourRow[]=[];
+  let cumTop=0;
+  for(let m=wakeMin;m<=sleepMin;m+=60){
+    const inHour=allItems.filter(it=>{
+      const sm=it.type==='task'?toMin(it.t.startTime!):toMin(it.s.start);
+      return sm>=m&&sm<m+60;
+    });
+    let rowHeight=BASE_SLOT_HEIGHT;
+    if(inHour.length>0){
+      let localPrev=-Infinity;
+      for(const it of inHour){
+        const sm=it.type==='task'?toMin(it.t.startTime!):toMin(it.s.start);
+        const localY=(sm-m)*(BASE_SLOT_HEIGHT/60);
+        const itemTop=Math.max(localY,localPrev+CARD_GAP);
+        localPrev=itemTop+getCardH(it);
+      }
+      rowHeight=Math.max(BASE_SLOT_HEIGHT,localPrev+CARD_GAP);
+    }
+    hourRows.push({hourMin:m,rowHeight,top:cumTop});
+    cumTop+=rowHeight;
+  }
+  const totalHeight=cumTop+32;
+  const hourRowMap=new Map(hourRows.map(r=>[r.hourMin,r]));
+
+  // Time → Y: row.top + proportional offset within hour (BASE_SLOT_HEIGHT scale)
+  const rowCalcY=(min:number):number=>{
+    if(min<=wakeMin) return 0;
+    if(min>=sleepMin) return totalHeight-32;
+    for(let i=0;i<hourRows.length;i++){
+      const row=hourRows[i];
+      const nextMin=i<hourRows.length-1?hourRows[i+1].hourMin:sleepMin+60;
+      if(min>=row.hourMin&&min<nextMin) return Math.round(row.top+(min-row.hourMin)/60*BASE_SLOT_HEIGHT);
+    }
+    return totalHeight-32;
+  };
+
+  // Layout items: rowCalcY as baseline, prevBottom+CARD_GAP as floor
   let prevBottom=-Infinity;
   const taskLayout:{task:Task;top:number;h:number}[]=[];
   const freeLayout:{slot:FreeSlot;freeY:number;cardH:number}[]=[];
 
   for(const item of allItems){
     if(item.type==='task'){
-      const top=Math.max(item.y,prevBottom+CARD_GAP);
+      const top=Math.max(rowCalcY(toMin(item.t.startTime!)),prevBottom+CARD_GAP);
       const h=Math.max(MIN_CARD_H,(item.t.duration??0)*PX_PER_MIN);
       taskLayout.push({task:item.t,top,h});
       prevBottom=top+h;
     } else {
-      const freeY=Math.max(item.y,prevBottom+CARD_GAP);
+      const freeY=Math.max(rowCalcY(toMin(item.s.start)),prevBottom+CARD_GAP);
       const fitsN=laterPool.filter(t=>(t.duration??0)<=item.s.min).length;
-      const contentH=96+Math.min(fitsN,3)*36;
-      const cardH=Math.max(contentH,item.s.min*PX_PER_MIN);
+      const cardH=96+Math.min(fitsN,3)*36;
       freeLayout.push({slot:item.s,freeY,cardH});
       prevBottom=freeY+cardH;
     }
   }
-
-  const maxBottom=Math.max(
-    taskLayout.length?taskLayout[taskLayout.length-1].top+taskLayout[taskLayout.length-1].h:0,
-    freeLayout.length?freeLayout[freeLayout.length-1].freeY+freeLayout[freeLayout.length-1].cardH:0,
-  );
-  const totalHeight=Math.max(calcY(sleepMin),maxBottom)+32;
-
-  // Piecewise linear time→Y mapping using card layout as anchor points
-  const rawAnchors:[number,number][]=[[wakeMin,0]];
-  for(const {task,top,h} of taskLayout){
-    const sm=toMin(task.startTime!);
-    rawAnchors.push([sm,top],[sm+(task.duration??0),top+h]);
-  }
-  for(const {slot,freeY,cardH} of freeLayout){
-    rawAnchors.push([toMin(slot.start),freeY],[toMin(slot.end),freeY+cardH]);
-  }
-  rawAnchors.push([sleepMin,totalHeight-32]);
-  rawAnchors.sort((a,b)=>a[0]-b[0]);
-  const anchors:[number,number][]=[];
-  for(const [m,y] of rawAnchors){
-    if(anchors.length>0&&anchors[anchors.length-1][0]===m){
-      anchors[anchors.length-1][1]=Math.max(anchors[anchors.length-1][1],y);
-    } else { anchors.push([m,y]); }
-  }
-  // Enforce monotonically non-decreasing Y (pushed-down cards can create inverted anchors)
-  for(let i=1;i<anchors.length;i++){
-    if(anchors[i][1]<anchors[i-1][1]) anchors[i][1]=anchors[i-1][1];
-  }
-  const layoutCalcY=(min:number):number=>{
-    if(min<=anchors[0][0]) return anchors[0][1];
-    if(min>=anchors[anchors.length-1][0]) return anchors[anchors.length-1][1];
-    for(let i=0;i<anchors.length-1;i++){
-      const [m0,y0]=anchors[i],[m1,y1]=anchors[i+1];
-      if(min>=m0&&min<=m1) return Math.round(y0+(min-m0)/(m1-m0)*(y1-y0));
-    }
-    return calcY(min);
-  };
 
   const hours:number[]=[];
   for(let m=wakeMin;m<=sleepMin;m+=60) hours.push(m);
@@ -1234,7 +1247,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
         const inFree=freeSlots.some(s=>toMin(s.start)<=h&&h<toMin(s.end));
         const hasTask=dayTasks.some(t=>toMin(t.startTime!)===h);
         return (
-          <div key={h} className="absolute flex items-center" style={{top:`${layoutCalcY(h)-8}px`,left:0}}>
+          <div key={h} className="absolute flex items-center" style={{top:`${(hourRowMap.get(h)?.top??rowCalcY(h))-8}px`,left:0}}>
             <button
               onClick={()=>!isWake&&!isSleep&&onAddAtTime(fromMin(h))}
               className={`text-xs w-12 text-right pr-1 leading-none transition-colors ${
@@ -1255,7 +1268,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
 
       {/* current time */}
       {date===todayStr()&&nowMin>=wakeMin&&nowMin<=sleepMin&&(
-        <div className="absolute flex items-center z-20 gap-1.5" style={{top:`${layoutCalcY(nowMin)-12}px`,left:0,right:0}}>
+        <div className="absolute flex items-center z-20 gap-1.5" style={{top:`${rowCalcY(nowMin)-12}px`,left:0,right:0}}>
           <div className="bg-gray-900 text-white text-xs font-bold px-2 py-1 rounded-full whitespace-nowrap">{now}</div>
           <button onClick={()=>onAddAtTime(now)} className="w-5 h-5 bg-gray-200 rounded-full flex items-center justify-center text-xs font-bold text-gray-600 shrink-0">+</button>
           <div className="flex-1 h-px bg-gray-300"/>
