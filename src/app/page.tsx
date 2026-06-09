@@ -1140,15 +1140,17 @@ function FreeTimeCard({slot,fits,height,onSchedule,onHeightChange}:{
 
 // ── Timeline ──────────────────────────────────────────────────────────────────
 
-function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAddAtTime,onDragStart,dragTaskId}:{
+function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAddAtTime,onDragStart,dragTaskId,yToTimeRef}:{
   date:string;tasks:Task[];later:Task[];settings:Settings;now:string;
   onToggle:(id:string)=>void;onEdit:(t:Task)=>void;
   onSchedule:(t:Task,time:string)=>void;onAddAtTime:(time:string)=>void;
   onDragStart:(t:Task,x:number,y:number)=>void;dragTaskId?:string;
+  yToTimeRef:React.MutableRefObject<((clientY:number)=>string)|null>;
 }) {
   const [pressingId,setPressingId] = useState<string|null>(null);
   const [freeCardHeights,setFreeCardHeights] = useState<Record<string,number>>({});
   useEffect(()=>{setFreeCardHeights({});},[date]);
+  const containerRef = useRef<HTMLDivElement>(null);
   const lpTimer = useRef<ReturnType<typeof setTimeout>|null>(null);
   const startLP=(task:Task,e:React.TouchEvent)=>{
     const touch=e.touches[0];
@@ -1241,8 +1243,32 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
 
   const AXIS_X=52, CARD_LEFT=AXIS_X+16;
 
+  // anchors の逆引き（Y座標→時刻）を App のドラッグハンドラに渡す
+  yToTimeRef.current=(clientY:number):string=>{
+    const el=containerRef.current;
+    const baseY=el?(el.getBoundingClientRect().top+window.scrollY):0;
+    const timelineY=clientY+window.scrollY-baseY;
+    let min:number;
+    if(!anchors.length||timelineY<=anchors[0][1]){
+      min=anchors[0]?.[0]??wakeMin;
+    } else if(timelineY>=anchors[anchors.length-1][1]){
+      min=anchors[anchors.length-1][0];
+    } else {
+      min=wakeMin;
+      for(let i=0;i<anchors.length-1;i++){
+        const [m0,y0]=anchors[i],[m1,y1]=anchors[i+1];
+        if(timelineY>=y0&&timelineY<=y1){
+          min=y1===y0?m0:m0+(timelineY-y0)/(y1-y0)*(m1-m0);
+          break;
+        }
+      }
+    }
+    const snapped=Math.round(min/5)*5;
+    return fromMin(Math.max(wakeMin,Math.min(sleepMin,snapped)));
+  };
+
   return (
-    <div className="relative" style={{height:`${totalHeight+32}px`,minHeight:'400px'}}>
+    <div ref={containerRef} className="relative" style={{height:`${totalHeight+32}px`,minHeight:'400px'}}>
       {/* vertical line */}
       <div className="absolute w-px bg-gray-200" style={{left:`${AXIS_X}px`,top:0,height:`${totalHeight}px`}}/>
 
@@ -1605,6 +1631,7 @@ export default function App() {
   const [dropTime,setDropTime]   = useState<string|null>(null);
   const mainSwX = useRef(0);
   const mainSwY = useRef(0);
+  const yToTimeRef = useRef<((clientY:number)=>string)|null>(null);
   const [recConfirm,setRecConfirm] = useState<Task|null>(null);
   const [editScope,setEditScope]   = useState<'one'|'all'>('one');
   const [overTrash,setOverTrash]   = useState(false);
@@ -1645,6 +1672,7 @@ export default function App() {
   useEffect(()=>{
     if(!dragTask) return;
     const calcTime=(clientY:number)=>{
+      if(yToTimeRef.current) return yToTimeRef.current(clientY);
       const header=document.querySelector('header');
       const headerBottom=header?header.getBoundingClientRect().bottom:130;
       const wakeMin=toMin(settings.wakeTime);
@@ -1819,7 +1847,7 @@ export default function App() {
         }}>
         <Timeline date={date} tasks={filteredTasks} later={laterTasks} settings={settings} now={now}
           onToggle={toggle} onEdit={openEdit} onSchedule={scheduleInSlot} onAddAtTime={openAdd}
-          onDragStart={startDrag} dragTaskId={dragTask?.id}/>
+          onDragStart={startDrag} dragTaskId={dragTask?.id} yToTimeRef={yToTimeRef}/>
       </main>
 
       {/* ── Bottom bar ── */}
