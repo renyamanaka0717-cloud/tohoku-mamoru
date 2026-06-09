@@ -1173,9 +1173,9 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
     } else {
       const freeY=Math.max(item.y,prevBottom)+2;
       const fitsN=laterPool.filter(t=>(t.duration??0)<=item.s.min).length;
-      const cardH=dayTasks.length>0
-        ?Math.max(item.s.min*PX_PER_MIN-4,32)
-        :Math.max(94+Math.min(fitsN,3)*38,item.s.min*PX_PER_MIN-4);
+      const contentH=fitsN>0?94+Math.min(fitsN,3)*38:60;
+      const timeH=item.s.min*PX_PER_MIN-4;
+      const cardH=Math.max(contentH,timeH);
       freeLayout.push({slot:item.s,freeY,cardH});
       prevBottom=freeY+cardH;
     }
