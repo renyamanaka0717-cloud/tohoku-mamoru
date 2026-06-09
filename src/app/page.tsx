@@ -1094,10 +1094,29 @@ function TaskCard({task,onToggle,onEdit}:{task:Task;onToggle:()=>void;onEdit:()=
 
 // ── FreeTimeCard ──────────────────────────────────────────────────────────────
 
-function FreeTimeCard({slot,fits,height,onSchedule}:{slot:FreeSlot;fits:Task[];height:number;onSchedule:(t:Task,time:string)=>void;}) {
+function FreeTimeCard({slot,fits,height,onSchedule,onHeightChange}:{
+  slot:FreeSlot;fits:Task[];height:number;
+  onSchedule:(t:Task,time:string)=>void;
+  onHeightChange:(h:number)=>void;
+}) {
+  const divRef=useRef<HTMLDivElement>(null);
+  const cbRef=useRef(onHeightChange);
+  useEffect(()=>{cbRef.current=onHeightChange;});
+  useEffect(()=>{
+    const el=divRef.current;
+    if(!el) return;
+    const ro=new ResizeObserver(entries=>{
+      const e=entries[0];
+      if(!e) return;
+      const h=e.borderBoxSize?.[0]?.blockSize??el.getBoundingClientRect().height;
+      cbRef.current(Math.ceil(h));
+    });
+    ro.observe(el);
+    return ()=>ro.disconnect();
+  },[]);
   const h=Math.floor(slot.min/60), m=slot.min%60;
   return (
-    <div className="bg-gray-100 rounded-2xl px-4 pt-3 pb-3" style={{minHeight:`${height}px`}}>
+    <div ref={divRef} className="bg-gray-100 rounded-2xl px-4 pt-3 pb-3" style={{minHeight:`${height}px`}}>
       <div className="flex items-center gap-1 mb-1.5">
         <span className="text-xs">🕐</span>
         <span className="text-xs text-gray-400 font-medium">空き時間</span>
@@ -1107,7 +1126,7 @@ function FreeTimeCard({slot,fits,height,onSchedule}:{slot:FreeSlot;fits:Task[];h
         {m>0&&<><span className="text-xl ml-1">{m}</span><span className="text-xs ml-0.5">分</span></>}
       </p>
       <div className="flex flex-wrap gap-1.5">
-        {fits.slice(0,3).map(t=>(
+        {fits.map(t=>(
           <button key={t.id} onClick={()=>onSchedule(t,slot.start)}
             className="inline-flex items-center gap-1 bg-white rounded-full px-2.5 py-1 text-xs font-medium text-gray-700 shadow-sm">
             <span className="w-3 h-3 border border-gray-300 rounded-sm shrink-0"/>
@@ -1128,6 +1147,8 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
   onDragStart:(t:Task,x:number,y:number)=>void;dragTaskId?:string;
 }) {
   const [pressingId,setPressingId] = useState<string|null>(null);
+  const [freeCardHeights,setFreeCardHeights] = useState<Record<string,number>>({});
+  useEffect(()=>{setFreeCardHeights({});},[date]);
   const lpTimer = useRef<ReturnType<typeof setTimeout>|null>(null);
   const startLP=(task:Task,e:React.TouchEvent)=>{
     const touch=e.touches[0];
@@ -1173,9 +1194,10 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
     } else {
       const freeY=Math.max(item.y,prevBottom)+2;
       const fitsN=laterPool.filter(t=>(t.duration??0)<=item.s.min).length;
-      const contentH=fitsN>0?94+Math.min(fitsN,3)*38:60;
+      const measuredH=freeCardHeights[item.s.start];
+      const contentH=fitsN>0?94+fitsN*38:60;
       const timeH=item.s.min*PX_PER_MIN-4;
-      const cardH=Math.max(contentH,timeH);
+      const cardH=measuredH??Math.max(contentH,timeH);
       freeLayout.push({slot:item.s,freeY,cardH});
       prevBottom=freeY+cardH;
     }
@@ -1276,10 +1298,11 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
 
       {/* free time cards */}
       {freeLayout.map(({slot,freeY,cardH},i)=>{
-        const fits=laterPool.filter(t=>(t.duration??0)<=slot.min).slice(0,3);
+        const fits=laterPool.filter(t=>(t.duration??0)<=slot.min);
         return (
           <div key={i} className="absolute z-10" style={{top:`${freeY}px`,left:`${CARD_LEFT}px`,right:'0px'}}>
-            <FreeTimeCard slot={slot} fits={fits} height={cardH} onSchedule={onSchedule}/>
+            <FreeTimeCard slot={slot} fits={fits} height={cardH} onSchedule={onSchedule}
+              onHeightChange={h=>setFreeCardHeights(prev=>prev[slot.start]===h?prev:{...prev,[slot.start]:h})}/>
           </div>
         );
       })}
