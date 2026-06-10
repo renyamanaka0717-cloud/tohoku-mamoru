@@ -191,7 +191,7 @@ const generateCustomDates=(base:string,r:CustomRec):string[]=>{
 
 function calcFreeSlots(tasks: Task[], date: string, s: Settings): FreeSlot[] {
   const scheduled = tasks
-    .filter(t=>t.date===date&&!t.isLater&&t.startTime&&(t.duration??0)>0)
+    .filter(t=>t.date===date&&!t.isLater&&t.startTime)
     .map(t=>[toMin(t.startTime!),toMin(t.startTime!)+(t.duration??0)] as [number,number])
     .sort((a,b)=>a[0]-b[0]);
   const slots:FreeSlot[]=[];
@@ -1191,7 +1191,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
   const allItems:TLItem[] = [
     ...dayTasks.map(t=>({type:'task' as const,t,y:calcY(toMin(t.startTime!))})),
     ...freeSlots.map(s=>({type:'free' as const,s,y:calcY(toMin(s.start))})),
-  ].sort((a,b)=>a.y-b.y);
+  ].sort((a,b)=>a.y-b.y||(a.type==='task'?-1:1));
 
   let prevBottom=WAKE_CARD_H;
   const taskLayout:{task:Task;top:number;h:number}[]=[];
