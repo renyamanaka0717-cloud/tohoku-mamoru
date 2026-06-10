@@ -1310,11 +1310,12 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
         const stMin=toMin(st);
         if(stMin===wakeMin||stMin===sleepMin) return null;
         const centerY=(top+bottom)/2;
-        return (
+        return [
           <div key={`tl-${st}`} className="absolute flex items-center" style={{top:`${centerY-8}px`,left:0}}>
             <span className="text-xs w-12 text-right pr-1 leading-none text-gray-400">{st}</span>
-          </div>
-        );
+          </div>,
+          <div key={`tl-dot-${st}`} className="absolute z-10 w-2 h-2 rounded-full bg-gray-300" style={{left:`${AXIS_X-4}px`,top:`${centerY-4}px`}}/>,
+        ];
       })}
 
       {/* free slot hourly labels on left axis — skip wake/sleep */}
@@ -1329,14 +1330,15 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
           const y=cardY(m);
           if(y>=freeY&&y<=freeY+finalH) labels.push(m);
         }
-        return labels.map(m=>(
+        return labels.flatMap(m=>[
           <div key={`fh-${m}`} className="absolute flex items-center" style={{top:`${cardY(m)-8}px`,left:0}}>
             <button onClick={()=>onAddAtTime(fromMin(m))}
               className="text-xs w-12 text-right pr-1 leading-none text-gray-400 active:text-gray-900 transition-colors">
               {fromMin(m)}
             </button>
-          </div>
-        ));
+          </div>,
+          <div key={`fh-dot-${m}`} className="absolute z-10 w-2 h-2 rounded-full bg-gray-300" style={{left:`${AXIS_X-4}px`,top:`${cardY(m)-4}px`}}/>,
+        ]);
       })}
 
       {/* current time */}
