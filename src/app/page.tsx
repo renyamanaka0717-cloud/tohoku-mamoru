@@ -1178,11 +1178,23 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
   let prevBottom=WAKE_CARD_H;
   const taskLayout:{task:Task;top:number;h:number}[]=[];
 
-  // header(100px) + chip rows(30px/row, ~3 chips/row) + bottom-pad(24px)
-  const calcFreeContentH=(n:number):number=>{
-    if(n===0) return 60;
-    const rows=Math.ceil(n/3);
-    return 100+rows*30+24;
+  // Simulate chip wrapping to get accurate content height.
+  // CARD_LEFT=68, p-6*2=48 → inner width = screenWidth - 116
+  const calcFreeContentH=(tasks:Task[]):number=>{
+    const HEADER_H=92;  // p-6top(24)+header+mb-4(32)+duration+mb-4(36)
+    const FOOTER_H=24;  // p-6 bottom
+    const CHIP_H=24;    // py-1(8)+text-xs lh(16)
+    const ROW_GAP=6;    // gap-1.5
+    const GAP_X=6;      // gap-1.5 horizontal
+    if(tasks.length===0) return 60;
+    const innerW=(typeof window!=='undefined'?window.innerWidth:375)-68-48;
+    let rows=1,rowW=0;
+    for(const t of tasks){
+      const w=36+t.name.length*9; // px-2.5*2(20)+icon+gap(16)+~9px/char
+      if(rowW>0&&rowW+GAP_X+w>innerW){rows++;rowW=w;}
+      else{rowW+=(rowW>0?GAP_X:0)+w;}
+    }
+    return HEADER_H+rows*CHIP_H+(rows-1)*ROW_GAP+FOOTER_H;
   };
 
   // Phase 1: compute taskLayout and capture free slot positions in one forward pass
@@ -1199,7 +1211,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
     } else {
       const freeY=Math.max(item.y,prevBottom)+16;
       freePassItems.push({slot:item.s,freeY});
-      const contentH=calcFreeContentH(laterPool.length);
+      const contentH=calcFreeContentH(laterPool);
       const timeH=item.s.min*PX_PER_MIN;
       prevBottom=freeY+Math.max(timeH,contentH);
     }
@@ -1208,7 +1220,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
   // Phase 2: cardH = max(time-based height, content height)
   const freeLayout:{slot:FreeSlot;freeY:number;cardH:number}[]=[];
   for(const {slot,freeY} of freePassItems){
-    const contentH=calcFreeContentH(laterPool.length);
+    const contentH=calcFreeContentH(laterPool);
     const timeH=slot.min*PX_PER_MIN;
     const cardH=Math.max(contentH,timeH);
     freeLayout.push({slot,freeY,cardH});
