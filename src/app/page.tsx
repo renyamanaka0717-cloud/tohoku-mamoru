@@ -1178,6 +1178,13 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
   let prevBottom=WAKE_CARD_H;
   const taskLayout:{task:Task;top:number;h:number}[]=[];
 
+  // header(100px) + chip rows(30px/row, ~3 chips/row) + bottom-pad(24px)
+  const calcFreeContentH=(n:number):number=>{
+    if(n===0) return 60;
+    const rows=Math.ceil(n/3);
+    return 100+rows*30+24;
+  };
+
   // Phase 1: compute taskLayout and capture free slot positions in one forward pass
   type FreePassItem={slot:FreeSlot;freeY:number};
   const freePassItems:FreePassItem[]=[];
@@ -1192,8 +1199,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
     } else {
       const freeY=Math.max(item.y,prevBottom)+16;
       freePassItems.push({slot:item.s,freeY});
-      const fitsN=laterPool.length;
-      const contentH=fitsN>0?100+fitsN*32:60;
+      const contentH=calcFreeContentH(laterPool.length);
       const timeH=item.s.min*PX_PER_MIN;
       prevBottom=freeY+Math.max(timeH,contentH);
     }
@@ -1202,8 +1208,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
   // Phase 2: cardH = max(time-based height, content height)
   const freeLayout:{slot:FreeSlot;freeY:number;cardH:number}[]=[];
   for(const {slot,freeY} of freePassItems){
-    const fitsN=laterPool.length;
-    const contentH=fitsN>0?100+fitsN*32:60;
+    const contentH=calcFreeContentH(laterPool.length);
     const timeH=slot.min*PX_PER_MIN;
     const cardH=Math.max(contentH,timeH);
     freeLayout.push({slot,freeY,cardH});
