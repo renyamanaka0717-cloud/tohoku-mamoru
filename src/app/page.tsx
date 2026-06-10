@@ -1105,10 +1105,28 @@ function TaskCard({task,onToggle,onEdit,globalTags}:{task:Task;onToggle:()=>void
 
 // ── FreeTimeCard ──────────────────────────────────────────────────────────────
 
-function FreeTimeCard({slot,fits,height,onSchedule}:{
+function FreeTimeCard({slot,fits,height,onSchedule,onDragStart}:{
   slot:FreeSlot;fits:Task[];height:number;
   onSchedule:(t:Task,time:string)=>void;
+  onDragStart:(t:Task,x:number,y:number)=>void;
 }) {
+  const [pressingId,setPressingId] = useState<string|null>(null);
+  const lpTimer = useRef<ReturnType<typeof setTimeout>|null>(null);
+
+  const startLP=(task:Task,e:React.TouchEvent)=>{
+    const touch=e.touches[0];
+    setPressingId(task.id);
+    lpTimer.current=setTimeout(()=>{
+      navigator.vibrate?.(40);
+      setPressingId(null);
+      onDragStart(task,touch.clientX,touch.clientY);
+    },500);
+  };
+  const cancelLP=()=>{
+    if(lpTimer.current){clearTimeout(lpTimer.current);lpTimer.current=null;}
+    setPressingId(null);
+  };
+
   const h=Math.floor(slot.min/60), m=slot.min%60;
   return (
     <div className="bg-gray-100 rounded-2xl px-4 pt-4 pb-2" style={{height:`${height}px`,overflow:'hidden'}}>
@@ -1122,8 +1140,12 @@ function FreeTimeCard({slot,fits,height,onSchedule}:{
       </p>
       <div className="flex flex-wrap gap-1.5">
         {fits.map(t=>(
-          <button key={t.id} onClick={()=>onSchedule(t,slot.start)}
-            className="inline-flex items-center gap-1 bg-white rounded-full px-2.5 py-1 text-xs font-medium text-gray-700 shadow-sm">
+          <button key={t.id}
+            onClick={()=>onSchedule(t,slot.start)}
+            onTouchStart={e=>startLP(t,e)}
+            onTouchEnd={cancelLP}
+            onTouchMove={cancelLP}
+            className={`inline-flex items-center gap-1 bg-white rounded-full px-2.5 py-1 text-xs font-medium text-gray-700 shadow-sm select-none transition-transform${pressingId===t.id?' scale-95 shadow-md ring-2 ring-blue-300':''}`}>
             <span className="w-3 h-3 border border-gray-300 rounded-sm shrink-0"/>
             <span>{t.name}</span>
           </button>
@@ -1499,7 +1521,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
         const fits=laterPool;
         return (
           <div key={i} className="absolute z-10" style={{top:`${freeY}px`,left:`${CARD_LEFT}px`,right:'0px'}}>
-            <FreeTimeCard slot={slot} fits={fits} height={finalH} onSchedule={onSchedule}/>
+            <FreeTimeCard slot={slot} fits={fits} height={finalH} onSchedule={onSchedule} onDragStart={onDragStart}/>
           </div>
         );
       })}
