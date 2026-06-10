@@ -1287,17 +1287,6 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
       {/* vertical line */}
       <div className="absolute w-px bg-gray-200" style={{left:`${AXIS_X}px`,top:0,height:`${totalHeight}px`}}/>
 
-      {/* wake/sleep axis icons (no text — time is in the cards) */}
-      <div className="absolute flex items-center" style={{top:`${layoutCalcY(wakeMin)-8}px`,left:0}}>
-        <div className="w-12 flex justify-end pr-1">
-          <div className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-sm z-10 shadow-sm">☀️</div>
-        </div>
-      </div>
-      <div className="absolute flex items-center" style={{top:`${sleepCardTop-8}px`,left:0}}>
-        <div className="w-12 flex justify-end pr-1">
-          <div className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-sm z-10 shadow-sm">🌙</div>
-        </div>
-      </div>
 
       {/* task start time labels — 1 per startTime group, center-aligned, skip wake/sleep */}
       {[...taskGroups.entries()].map(([st,{top,bottom}])=>{
