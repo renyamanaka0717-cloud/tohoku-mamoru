@@ -36,6 +36,8 @@ interface Task {
   notifications?: number[];     // 開始何分前 (0=開始時, 1440=前日)
   incompleteReminder?: boolean;
   category?: string;
+  postponedCount?: number;
+  lastPostponedDate?: string;
 }
 
 interface Settings { wakeTime: string; sleepTime: string; }
@@ -1463,11 +1465,11 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
 // ── BottomTabs ────────────────────────────────────────────────────────────────
 
 function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,shopPending,
-  onToggle,onEdit,onMoveToTimeline,onAddShop,onToggleShop,onDeleteShop,onDragStart
+  onToggle,onEdit,onAddShop,onToggleShop,onDeleteShop,onDragStart
 }:{
   activeTab:'later'|'shop'; onSwitchTab:(t:'later'|'shop')=>void; onClose:()=>void;
   tasks:Task[]; shopItems:ShopItem[]; pendingCount:number; shopPending:number;
-  onToggle:(id:string)=>void; onEdit:(t:Task)=>void; onMoveToTimeline:(t:Task)=>void;
+  onToggle:(id:string)=>void; onEdit:(t:Task)=>void;
   onAddShop:(n:string)=>void; onToggleShop:(id:string)=>void; onDeleteShop:(id:string)=>void;
   onDragStart:(t:Task,x:number,y:number)=>void;
 }) {
@@ -1592,11 +1594,10 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
                       <div className="flex-1 min-w-0" onClick={()=>onEdit(t)}>
                         <p className="text-sm font-semibold text-gray-900">{t.name}</p>
                         {(t.duration??0)>0&&<p className="text-xs text-gray-400">{durLabel(t.duration??0)}</p>}
-                        <button onClick={e=>{e.stopPropagation();onMoveToTimeline(t);}}
-                          className="mt-1.5 text-xs font-semibold px-2.5 py-1 border border-gray-200 rounded-lg text-gray-600">
-                          今日のタイムラインへ →
-                        </button>
                       </div>
+                      {(t.postponedCount??0)>0&&(
+                        <span className="text-xs text-gray-400 font-semibold shrink-0">🔄{t.postponedCount}</span>
+                      )}
                       <button onClick={()=>onToggle(t.id)} className="w-6 h-6 rounded-full border-2 border-gray-300 shrink-0"/>
                     </div>
                   ))}
@@ -2052,7 +2053,7 @@ export default function App() {
       const s=localStorage.getItem(SETTINGS_KEY);
       const sh=localStorage.getItem(SHOP_KEY);
       const tg=localStorage.getItem(TAGS_KEY);
-      if(t) setTasks((JSON.parse(t) as Task[]).map(tk=>({...tk,recurrence:tk.recurrence??null,customRec:tk.customRec,pinned:tk.pinned??false,tags:tk.tags??[],notifications:tk.notifications??[],incompleteReminder:tk.incompleteReminder??false,category:tk.category})));
+      if(t) setTasks((JSON.parse(t) as Task[]).map(tk=>({...tk,recurrence:tk.recurrence??null,customRec:tk.customRec,pinned:tk.pinned??false,tags:tk.tags??[],notifications:tk.notifications??[],incompleteReminder:tk.incompleteReminder??false,category:tk.category,postponedCount:tk.postponedCount??0,lastPostponedDate:tk.lastPostponedDate})));
       if(s) setSettings(JSON.parse(s));
       if(sh) setShopItems(JSON.parse(sh));
       if(tg){
@@ -2087,7 +2088,17 @@ export default function App() {
       (t.date<today||(t.date===today&&nowM>=sleepM));
     const toMove=tasks.filter(shouldMove);
     if(toMove.length===0) return;
-    setTasks(prev=>prev.map(t=>shouldMove(t)?{...t,isLater:true,startTime:null}:t));
+    setTasks(prev=>prev.map(t=>{
+      if(!shouldMove(t)) return t;
+      const alreadyCounted=t.lastPostponedDate===today;
+      return {
+        ...t,
+        isLater:true,
+        startTime:null,
+        postponedCount:alreadyCounted?(t.postponedCount??0):(t.postponedCount??0)+1,
+        lastPostponedDate:today,
+      };
+    }));
     setMoveHistory(prev=>{
       const existing=prev.find(h=>h.date===today);
       const newNames=toMove.map(t=>t.name);
@@ -2307,7 +2318,7 @@ export default function App() {
       {activeTab&&(
         <BottomTabs activeTab={activeTab} onSwitchTab={setActiveTab} onClose={()=>setActiveTab(null)}
           tasks={filteredTasks} shopItems={shopItems} pendingCount={pendingCount} shopPending={shopPending}
-          onToggle={toggle} onEdit={openEdit} onMoveToTimeline={moveToTimeline}
+          onToggle={toggle} onEdit={openEdit}
           onAddShop={addShopItem} onToggleShop={toggleShop} onDeleteShop={deleteShop}
           onDragStart={startDrag}/>
       )}
