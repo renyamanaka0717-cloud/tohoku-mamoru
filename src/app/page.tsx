@@ -202,7 +202,7 @@ function calcFreeSlots(tasks: Task[], date: string, s: Settings): FreeSlot[] {
     cur=Math.max(cur,en);
   }
   if(cur<end) slots.push({start:fromMin(cur),end:fromMin(end),min:end-cur});
-  return slots.filter(sl=>sl.min>=10);
+  return slots.filter(sl=>sl.min>=60);
 }
 
 // ── MonthCalendar ─────────────────────────────────────────────────────────────
