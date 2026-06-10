@@ -1318,6 +1318,16 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
         ];
       })}
 
+      {/* wake/sleep axis labels */}
+      <div className="absolute flex items-center" style={{top:`${WAKE_CARD_H/2}px`,transform:'translateY(-50%)',left:0}}>
+        <span className="text-xs w-12 text-right pr-1 leading-none text-gray-400">{settings.wakeTime}</span>
+      </div>
+      <div className="absolute z-10 rounded-full bg-gray-300" style={{width:'6px',height:'6px',left:`${AXIS_X}px`,top:`${WAKE_CARD_H/2}px`,transform:'translate(-50%,-50%)'}}/>
+      <div className="absolute flex items-center" style={{top:`${sleepCardTop+SLEEP_CARD_H/2}px`,transform:'translateY(-50%)',left:0}}>
+        <span className="text-xs w-12 text-right pr-1 leading-none text-gray-400">{settings.sleepTime}</span>
+      </div>
+      <div className="absolute z-10 rounded-full bg-gray-300" style={{width:'6px',height:'6px',left:`${AXIS_X}px`,top:`${sleepCardTop+SLEEP_CARD_H/2}px`,transform:'translate(-50%,-50%)'}}/>
+
       {/* free slot hourly labels on left axis — skip wake/sleep */}
       {freeLayout.flatMap(({slot,freeY,finalH})=>{
         const startMin=toMin(slot.start);
