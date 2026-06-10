@@ -1107,12 +1107,12 @@ function FreeTimeCard({slot,fits,height,onSchedule}:{
 }) {
   const h=Math.floor(slot.min/60), m=slot.min%60;
   return (
-    <div className="bg-gray-100 rounded-2xl p-6" style={{height:`${height}px`,overflow:'hidden'}}>
-      <div className="flex items-center gap-1 mb-4">
+    <div className="bg-gray-100 rounded-2xl p-4" style={{height:`${height}px`,overflow:'hidden'}}>
+      <div className="flex items-center gap-1 mb-2">
         <span className="text-xs">🕐</span>
         <span className="text-xs text-gray-400 font-medium">空き時間</span>
       </div>
-      <p className="font-semibold text-gray-700 leading-none mb-4">
+      <p className="font-semibold text-gray-700 leading-none mb-2">
         {h>0&&<><span className="text-xl">{h}</span><span className="text-xs ml-0.5">時間</span></>}
         {m>0&&<><span className="text-xl ml-1">{m}</span><span className="text-xs ml-0.5">分</span></>}
       </p>
@@ -1179,15 +1179,15 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
   const taskLayout:{task:Task;top:number;h:number}[]=[];
 
   // Simulate chip wrapping to get accurate content height.
-  // CARD_LEFT=68, p-6*2=48 → inner width = screenWidth - 116
+  // CARD_LEFT=68, p-4*2=32 → inner width = screenWidth - 100
   const calcFreeContentH=(tasks:Task[]):number=>{
-    const HEADER_H=92;  // p-6top(24)+header+mb-4(32)+duration+mb-4(36)
-    const FOOTER_H=24;  // p-6 bottom
+    const HEADER_H=68;  // p-4top(16)+header+mb-2(24)+duration+mb-2(28)
+    const FOOTER_H=16;  // p-4 bottom
     const CHIP_H=24;    // py-1(8)+text-xs lh(16)
     const ROW_GAP=6;    // gap-1.5
     const GAP_X=6;      // gap-1.5 horizontal
     if(tasks.length===0) return 60;
-    const innerW=(typeof window!=='undefined'?window.innerWidth:375)-68-48;
+    const innerW=(typeof window!=='undefined'?window.innerWidth:375)-68-32;
     let rows=1,rowW=0;
     for(const t of tasks){
       const w=36+t.name.length*9; // px-2.5*2(20)+icon+gap(16)+~9px/char
