@@ -1179,9 +1179,8 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
   const taskLayout:{task:Task;top:number;h:number}[]=[];
 
   // Phase 1: compute taskLayout and capture free slot positions in one forward pass
-  type FreePassItem={slot:FreeSlot;freeY:number;nextTaskIdx:number|null};
+  type FreePassItem={slot:FreeSlot;freeY:number};
   const freePassItems:FreePassItem[]=[];
-  let taskCount=0;
 
   for(let idx=0;idx<allItems.length;idx++){
     const item=allItems[idx];
@@ -1190,37 +1189,23 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
       const h=Math.max(MIN_CARD_H,(item.t.duration??0)*PX_PER_MIN);
       taskLayout.push({task:item.t,top,h});
       prevBottom=top+h;
-      taskCount++;
     } else {
       const freeY=Math.max(item.y,prevBottom)+16;
-      let nextTaskIdx:number|null=null;
-      const futureTaskCount=taskCount;
-      for(let j=idx+1;j<allItems.length;j++){
-        if(allItems[j].type==='task'){nextTaskIdx=futureTaskCount;break;}
-      }
-      freePassItems.push({slot:item.s,freeY,nextTaskIdx});
+      freePassItems.push({slot:item.s,freeY});
       const fitsN=laterPool.length;
       const contentH=fitsN>0?100+fitsN*32:60;
-      prevBottom=freeY+contentH;
+      const timeH=item.s.min*PX_PER_MIN;
+      prevBottom=freeY+Math.max(timeH,contentH);
     }
   }
 
-  // Phase 2: compute freeLayout using taskLayout.top for nextTaskNaturalY
-  const taskMaxBottom=taskLayout.length
-    ?taskLayout[taskLayout.length-1].top+taskLayout[taskLayout.length-1].h
-    :WAKE_CARD_H;
+  // Phase 2: cardH = max(time-based height, content height)
   const freeLayout:{slot:FreeSlot;freeY:number;cardH:number}[]=[];
-  for(const {slot,freeY,nextTaskIdx} of freePassItems){
+  for(const {slot,freeY} of freePassItems){
     const fitsN=laterPool.length;
     const contentH=fitsN>0?100+fitsN*32:60;
-    let nextTaskNaturalY:number;
-    if(nextTaskIdx!==null&&nextTaskIdx<taskLayout.length){
-      nextTaskNaturalY=taskLayout[nextTaskIdx].top;
-    } else {
-      nextTaskNaturalY=Math.max(taskMaxBottom+16,calcY(sleepMin));
-    }
-    const fillH=nextTaskNaturalY>freeY?nextTaskNaturalY-freeY-16:0;
-    const cardH=Math.max(contentH,fillH);
+    const timeH=slot.min*PX_PER_MIN;
+    const cardH=Math.max(contentH,timeH);
     freeLayout.push({slot,freeY,cardH});
   }
 
