@@ -1542,10 +1542,6 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
                       <div className="flex-1 min-w-0" onClick={()=>onEdit(t)}>
                         <p className="text-sm font-semibold text-gray-900">{t.name}</p>
                         {(t.duration??0)>0&&<p className="text-xs text-gray-400">{durLabel(t.duration??0)}</p>}
-                        <button onClick={e=>{e.stopPropagation();onMoveToTimeline(t);}}
-                          className="mt-1.5 text-xs font-semibold px-2.5 py-1 border border-gray-200 rounded-lg text-gray-600">
-                          今日のタイムラインへ →
-                        </button>
                       </div>
                       <button onClick={()=>onToggle(t.id)} className="w-6 h-6 rounded-full border-2 border-gray-300 shrink-0"/>
                     </div>
