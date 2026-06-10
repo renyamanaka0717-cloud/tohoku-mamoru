@@ -1147,12 +1147,13 @@ function FreeTimeCard({slot,fits,height,onSchedule,onHeightChange}:{
 
 // ── Timeline ──────────────────────────────────────────────────────────────────
 
-function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAddAtTime,onDragStart,dragTaskId,yToTimeRef,globalTags}:{
+function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAddAtTime,onDragStart,dragTaskId,yToTimeRef,layoutYRef,globalTags}:{
   date:string;tasks:Task[];later:Task[];settings:Settings;now:string;
   onToggle:(id:string)=>void;onEdit:(t:Task)=>void;
   onSchedule:(t:Task,time:string)=>void;onAddAtTime:(time:string)=>void;
   onDragStart:(t:Task,x:number,y:number)=>void;dragTaskId?:string;
   yToTimeRef:React.MutableRefObject<((clientY:number)=>string)|null>;
+  layoutYRef:React.MutableRefObject<((min:number)=>number)|null>;
   globalTags:TagDef[];
 }) {
   const [pressingId,setPressingId] = useState<string|null>(null);
@@ -1194,7 +1195,11 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
 
   let prevBottom=WAKE_CARD_H;
   const taskLayout:{task:Task;top:number;h:number}[]=[];
-  const freeLayout:{slot:FreeSlot;freeY:number;cardH:number}[]=[];
+
+  // Phase 1: compute taskLayout and capture free slot positions in one forward pass
+  type FreePassItem={slot:FreeSlot;freeY:number;nextTaskIdx:number|null};
+  const freePassItems:FreePassItem[]=[];
+  let taskCount=0;
 
   for(let idx=0;idx<allItems.length;idx++){
     const item=allItems[idx];
@@ -1203,26 +1208,41 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
       const h=Math.max(MIN_CARD_H,(item.t.duration??0)*PX_PER_MIN);
       taskLayout.push({task:item.t,top,h});
       prevBottom=top+h;
+      taskCount++;
     } else {
       const freeY=Math.max(item.y,prevBottom)+16;
-      const fitsN=laterPool.length;
-      const measuredH=freeCardHeights[item.s.start];
-      const contentH=fitsN>0?100+fitsN*32:60;
-      // 次のタスクの自然なY位置まで伸ばす（なければ就寝時刻まで）
-      let nextTaskNaturalY=calcY(sleepMin);
+      let nextTaskIdx:number|null=null;
+      const futureTaskCount=taskCount;
       for(let j=idx+1;j<allItems.length;j++){
-        const next=allItems[j];
-        if(next.type==='task'){
-          nextTaskNaturalY=calcY(toMin(next.t.startTime!));
-          break;
-        }
+        if(allItems[j].type==='task'){nextTaskIdx=futureTaskCount;break;}
       }
-      const fillH=nextTaskNaturalY>freeY?nextTaskNaturalY-freeY-16:0;
-      const targetH=Math.max(contentH,fillH);
-      const cardH=measuredH??targetH;
-      freeLayout.push({slot:item.s,freeY,cardH});
-      prevBottom=freeY+cardH;
+      freePassItems.push({slot:item.s,freeY,nextTaskIdx});
+      const fitsN=laterPool.length;
+      const contentH=fitsN>0?100+fitsN*32:60;
+      const measuredH=freeCardHeights[item.s.start];
+      prevBottom=freeY+(measuredH??contentH);
     }
+  }
+
+  // Phase 2: compute freeLayout using taskLayout.top for nextTaskNaturalY
+  const taskMaxBottom=taskLayout.length
+    ?taskLayout[taskLayout.length-1].top+taskLayout[taskLayout.length-1].h
+    :WAKE_CARD_H;
+  const freeLayout:{slot:FreeSlot;freeY:number;cardH:number}[]=[];
+  for(const {slot,freeY,nextTaskIdx} of freePassItems){
+    const fitsN=laterPool.length;
+    const contentH=fitsN>0?100+fitsN*32:60;
+    const measuredH=freeCardHeights[slot.start];
+    let nextTaskNaturalY:number;
+    if(nextTaskIdx!==null&&nextTaskIdx<taskLayout.length){
+      nextTaskNaturalY=taskLayout[nextTaskIdx].top;
+    } else {
+      nextTaskNaturalY=Math.max(taskMaxBottom+16,calcY(sleepMin));
+    }
+    const fillH=nextTaskNaturalY>freeY?nextTaskNaturalY-freeY-16:0;
+    const targetH=Math.max(contentH,fillH);
+    const cardH=measuredH??targetH;
+    freeLayout.push({slot,freeY,cardH});
   }
 
   const maxBottom=Math.max(
@@ -1291,6 +1311,13 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
     return fromMin(Math.max(wakeMin,Math.min(sleepMin,snapped)));
   };
 
+  // 実レイアウト座標（min→スクリーンY）をドラッグオーバーレイ用に公開
+  layoutYRef.current=(min:number):number=>{
+    const el=containerRef.current;
+    if(!el) return 0;
+    return el.getBoundingClientRect().top+layoutCalcY(min);
+  };
+
   return (
     <div ref={containerRef} className="relative" style={{height:`${totalHeight+32}px`,minHeight:'400px'}}>
       {/* vertical line */}
@@ -1327,11 +1354,11 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
         const labels:number[]=[];
         for(let m=Math.ceil(startMin/60)*60;m<=endMin;m+=60){
           if(m===wakeMin||m===sleepMin) continue;
-          const y=freeY+(m-startMin)*PX_PER_MIN;
+          const y=layoutCalcY(m);
           if(y>=freeY&&y<=freeY+cardH) labels.push(m);
         }
         return labels.map(m=>(
-          <div key={`fh-${m}`} className="absolute flex items-center" style={{top:`${freeY+(m-startMin)*PX_PER_MIN-8}px`,left:0}}>
+          <div key={`fh-${m}`} className="absolute flex items-center" style={{top:`${layoutCalcY(m)-8}px`,left:0}}>
             <button onClick={()=>onAddAtTime(fromMin(m))}
               className="text-xs w-12 text-right pr-1 leading-none text-gray-400 active:text-gray-900 transition-colors">
               {fromMin(m)}
@@ -1990,6 +2017,7 @@ export default function App() {
   const mainSwX = useRef(0);
   const mainSwY = useRef(0);
   const yToTimeRef = useRef<((clientY:number)=>string)|null>(null);
+  const layoutYRef = useRef<((min:number)=>number)|null>(null);
   const [recConfirm,setRecConfirm] = useState<Task|null>(null);
   const [editScope,setEditScope]   = useState<'one'|'all'>('one');
   const [overTrash,setOverTrash]   = useState(false);
@@ -2195,7 +2223,7 @@ export default function App() {
         }}>
         <Timeline date={date} tasks={filteredTasks} later={laterTasks} settings={settings} now={now}
           onToggle={toggle} onEdit={openEdit} onSchedule={scheduleInSlot} onAddAtTime={openAdd}
-          onDragStart={startDrag} dragTaskId={dragTask?.id} yToTimeRef={yToTimeRef} globalTags={globalTags}/>
+          onDragStart={startDrag} dragTaskId={dragTask?.id} yToTimeRef={yToTimeRef} layoutYRef={layoutYRef} globalTags={globalTags}/>
       </main>
 
       {/* ── Bottom bar ── */}
@@ -2246,7 +2274,7 @@ export default function App() {
           {/* Drop time line — starts after axis area (68px) */}
           {dropTime&&!overTrash&&(
             <div className="absolute right-0 flex items-center gap-2"
-              style={{top:`${dragPos.y}px`,left:'68px'}}>
+              style={{top:`${layoutYRef.current?layoutYRef.current(toMin(dropTime)):dragPos.y}px`,left:'68px'}}>
               <div className="flex-1 h-0.5 bg-blue-400 rounded-full"/>
               <span className="bg-blue-500 text-white text-xs font-bold px-2 py-0.5 rounded-full whitespace-nowrap shrink-0 mr-2">{dropTime}</span>
             </div>
@@ -2256,7 +2284,7 @@ export default function App() {
             <div style={{
               position:'absolute',
               left:`${Math.max(8,Math.min(dragPos.x-70,window.innerWidth-180))}px`,
-              top:`${dragPos.y-60}px`,
+              top:`${(layoutYRef.current&&dropTime?layoutYRef.current(toMin(dropTime)):dragPos.y)-60}px`,
               transform:'rotate(-3deg) scale(1.05)',
             }}>
               <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 px-4 py-3 w-44">
