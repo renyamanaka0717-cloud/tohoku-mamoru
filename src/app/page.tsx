@@ -1217,19 +1217,18 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
     }
   }
 
-  // Phase 2: visualH = card background height (content only), reservedH = layout spacing
-  const freeLayout:{slot:FreeSlot;freeY:number;visualH:number;reservedH:number}[]=[];
+  // Phase 2: finalH = max(slotH, contentH) — card height, layout height, and label range all use this
+  const freeLayout:{slot:FreeSlot;freeY:number;finalH:number}[]=[];
   for(const {slot,freeY} of freePassItems){
     const contentH=calcFreeContentH(laterPool);
     const timeH=slot.min*PX_PER_MIN;
-    const visualH=contentH;
-    const reservedH=Math.max(contentH,timeH);
-    freeLayout.push({slot,freeY,visualH,reservedH});
+    const finalH=Math.max(contentH,timeH);
+    freeLayout.push({slot,freeY,finalH});
   }
 
   const maxBottom=Math.max(
     taskLayout.length?taskLayout[taskLayout.length-1].top+taskLayout[taskLayout.length-1].h:0,
-    freeLayout.length?freeLayout[freeLayout.length-1].freeY+freeLayout[freeLayout.length-1].reservedH:0,
+    freeLayout.length?freeLayout[freeLayout.length-1].freeY+freeLayout[freeLayout.length-1].finalH:0,
   );
   const sleepCardTop=Math.max(maxBottom+16,calcY(sleepMin));
   const totalHeight=sleepCardTop+SLEEP_CARD_H+32;
@@ -1319,16 +1318,16 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
       })}
 
       {/* free slot hourly labels on left axis — skip wake/sleep */}
-      {freeLayout.flatMap(({slot,freeY,reservedH})=>{
+      {freeLayout.flatMap(({slot,freeY,finalH})=>{
         const startMin=toMin(slot.start);
         const endMin=toMin(slot.end);
         const slotMin=endMin-startMin;
-        const cardY=(m:number)=>slotMin>0?freeY+(m-startMin)/slotMin*reservedH:freeY;
+        const cardY=(m:number)=>slotMin>0?freeY+(m-startMin)/slotMin*finalH:freeY;
         const labels:number[]=[];
         for(let m=Math.ceil(startMin/60)*60;m<=endMin;m+=60){
           if(m===wakeMin||m===sleepMin) continue;
           const y=cardY(m);
-          if(y>=freeY&&y<=freeY+reservedH) labels.push(m);
+          if(y>=freeY&&y<=freeY+finalH) labels.push(m);
         }
         return labels.map(m=>(
           <div key={`fh-${m}`} className="absolute flex items-center" style={{top:`${cardY(m)-8}px`,left:0}}>
@@ -1388,11 +1387,11 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
       })}
 
       {/* free time cards */}
-      {freeLayout.map(({slot,freeY,visualH},i)=>{
+      {freeLayout.map(({slot,freeY,finalH},i)=>{
         const fits=laterPool;
         return (
           <div key={i} className="absolute z-10" style={{top:`${freeY}px`,left:`${CARD_LEFT}px`,right:'0px'}}>
-            <FreeTimeCard slot={slot} fits={fits} height={visualH} onSchedule={onSchedule}/>
+            <FreeTimeCard slot={slot} fits={fits} height={finalH} onSchedule={onSchedule}/>
           </div>
         );
       })}
