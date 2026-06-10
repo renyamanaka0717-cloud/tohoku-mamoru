@@ -42,6 +42,7 @@ interface Settings { wakeTime: string; sleepTime: string; }
 interface FreeSlot  { start: string; end: string; min: number; }
 interface ShopItem  { id: string; name: string; checked: boolean; }
 interface TagDef    { name: string; color: string; }
+interface MoveHistory { id: string; date: string; taskNames: string[]; }
 
 type TaskMode = 'later' | 'scheduled' | 'recurring';
 
@@ -53,6 +54,7 @@ const TASKS_KEY    = 'tl-tasks-v2';
 const SETTINGS_KEY = 'tl-settings-v2';
 const SHOP_KEY     = 'tl-shop-v1';
 const TAGS_KEY     = 'tl-tags-v1';
+const HISTORY_KEY  = 'tl-history-v1';
 const TAG_COLORS: {bg:string;text:string}[] = [
   {bg:'#FFD6E0',text:'#9B2335'},{bg:'#FFE4CC',text:'#9C4A20'},
   {bg:'#FFF3CC',text:'#7A5800'},{bg:'#E2F5CC',text:'#3A6B0E'},
@@ -1131,7 +1133,7 @@ function FreeTimeCard({slot,fits,height,onSchedule}:{
 
 // ── Timeline ──────────────────────────────────────────────────────────────────
 
-function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAddAtTime,onDragStart,dragTaskId,yToTimeRef,layoutYRef,globalTags}:{
+function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAddAtTime,onDragStart,dragTaskId,yToTimeRef,layoutYRef,globalTags,todayHistory}:{
   date:string;tasks:Task[];later:Task[];settings:Settings;now:string;
   onToggle:(id:string)=>void;onEdit:(t:Task)=>void;
   onSchedule:(t:Task,time:string)=>void;onAddAtTime:(time:string)=>void;
@@ -1139,8 +1141,10 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
   yToTimeRef:React.MutableRefObject<((clientY:number)=>string)|null>;
   layoutYRef:React.MutableRefObject<((min:number)=>number)|null>;
   globalTags:TagDef[];
+  todayHistory?:{taskNames:string[]};
 }) {
   const [pressingId,setPressingId] = useState<string|null>(null);
+  const [historyOpen,setHistoryOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const lpTimer = useRef<ReturnType<typeof setTimeout>|null>(null);
   const startLP=(task:Task,e:React.TouchEvent)=>{
@@ -1231,7 +1235,9 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
     freeLayout.length?freeLayout[freeLayout.length-1].freeY+freeLayout[freeLayout.length-1].finalH:0,
   );
   const sleepCardTop=Math.max(maxBottom+16,calcY(sleepMin));
-  const totalHeight=sleepCardTop+SLEEP_CARD_H+32;
+  const hasHistoryCard=!!(todayHistory&&todayHistory.taskNames.length>0)&&date===todayStr();
+  const HISTORY_CARD_H=44;
+  const totalHeight=sleepCardTop+SLEEP_CARD_H+32+(hasHistoryCard?HISTORY_CARD_H+12:0);
 
   // Piecewise linear time→Y mapping using card layout as anchor points
   const rawAnchors:[number,number][]=[[wakeMin,0]];
@@ -1381,6 +1387,40 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
           </div>
         </div>
       </div>
+
+      {/* move history card */}
+      {hasHistoryCard&&todayHistory&&(
+        <>
+          <div className="absolute z-10"
+            style={{top:`${sleepCardTop+SLEEP_CARD_H+12}px`,left:`${CARD_LEFT}px`,right:'0px'}}
+            onClick={()=>setHistoryOpen(true)}>
+            <div className="flex items-center gap-2 bg-gray-50 rounded-xl border border-gray-100 px-3 py-2.5 active:bg-gray-100">
+              <span className="text-xs text-gray-400">↩︎</span>
+              <span className="text-xs text-gray-400 flex-1">未完了タスク{todayHistory.taskNames.length}件をあとでやるへ移動</span>
+              <span className="text-xs text-gray-300">›</span>
+            </div>
+          </div>
+          {historyOpen&&(
+            <div className="fixed inset-0 z-[60] bg-black/50 flex items-center justify-center p-6"
+              onClick={()=>setHistoryOpen(false)}>
+              <div className="bg-white rounded-2xl p-4 w-full max-w-xs shadow-xl"
+                onClick={e=>e.stopPropagation()}>
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-sm font-semibold text-gray-900">移動したタスク</p>
+                  <button onClick={()=>setHistoryOpen(false)}
+                    className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 text-sm">×</button>
+                </div>
+                {todayHistory.taskNames.map((name,i)=>(
+                  <div key={i} className="flex items-center gap-2.5 py-2 border-b border-gray-50 last:border-0">
+                    <div className="w-4 h-4 rounded border border-gray-200 shrink-0"/>
+                    <span className="text-sm text-gray-700">{name}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
 
       {/* task cards */}
       {taskLayout.map(({task,top,h})=>{
@@ -1984,6 +2024,7 @@ export default function App() {
   const [settings,setSettings]   = useState<Settings>(DEFAULT_SETTINGS);
   const [shopItems,setShopItems] = useState<ShopItem[]>([]);
   const [globalTags,setGlobalTags] = useState<TagDef[]>([]);
+  const [moveHistory,setMoveHistory] = useState<MoveHistory[]>([]);
   const [date,setDate]           = useState(todayStr());
   const [modal,setModal]         = useState<{open:boolean;task:Task|null;prefillTime?:string;prefillCategory?:string}>({open:false,task:null});
   const [activeCategory,setActiveCat] = useState<string|null>(null);
@@ -2022,6 +2063,8 @@ export default function App() {
           setGlobalTags(parsed as TagDef[]);
         }
       }
+      const mh=localStorage.getItem(HISTORY_KEY);
+      if(mh) setMoveHistory(JSON.parse(mh) as MoveHistory[]);
     }catch{}
     setLoaded(true);
   },[]);
@@ -2030,22 +2073,32 @@ export default function App() {
   useEffect(()=>{ if(loaded) localStorage.setItem(SETTINGS_KEY,JSON.stringify(settings)); },[settings,loaded]);
   useEffect(()=>{ if(loaded) localStorage.setItem(SHOP_KEY,JSON.stringify(shopItems)); },[shopItems,loaded]);
   useEffect(()=>{ if(loaded) localStorage.setItem(TAGS_KEY,JSON.stringify(globalTags)); },[globalTags,loaded]);
+  useEffect(()=>{ if(loaded) localStorage.setItem(HISTORY_KEY,JSON.stringify(moveHistory)); },[moveHistory,loaded]);
   useEffect(()=>{ const iv=setInterval(()=>setNow(nowStr()),60000); return ()=>clearInterval(iv); },[]);
 
-  // 就寝時刻を過ぎた当日の未完了タスクを「あとでやる」へ自動移動
+  // 就寝時刻を過ぎた当日の未完了タスクを「あとでやる」へ自動移動し履歴を記録
   useEffect(()=>{
     if(!loaded) return;
     const today=todayStr();
     const nowM=toMin(now);
     const sleepM=toMin(settings.sleepTime);
-    setTasks(prev=>{
-      const shouldMove=(t:Task)=>
-        !t.completed&&!t.isLater&&!!t.startTime&&!t.recurrence&&
-        (t.date<today||(t.date===today&&nowM>=sleepM));
-      if(!prev.some(shouldMove)) return prev;
-      return prev.map(t=>shouldMove(t)?{...t,isLater:true,startTime:null}:t);
+    const shouldMove=(t:Task)=>
+      !t.completed&&!t.isLater&&!!t.startTime&&!t.recurrence&&
+      (t.date<today||(t.date===today&&nowM>=sleepM));
+    const toMove=tasks.filter(shouldMove);
+    if(toMove.length===0) return;
+    setTasks(prev=>prev.map(t=>shouldMove(t)?{...t,isLater:true,startTime:null}:t));
+    setMoveHistory(prev=>{
+      const existing=prev.find(h=>h.date===today);
+      const newNames=toMove.map(t=>t.name);
+      if(existing){
+        const merged=[...new Set([...existing.taskNames,...newNames])];
+        if(merged.length===existing.taskNames.length) return prev;
+        return prev.map(h=>h.date===today?{...h,taskNames:merged}:h);
+      }
+      return [...prev,{id:uid(),date:today,taskNames:newNames}];
     });
-  },[loaded,settings.sleepTime,now]);
+  },[loaded,tasks,settings.sleepTime,now]);
 
   const filteredTasks = useMemo(()=>activeCategory?tasks.filter(t=>t.category===activeCategory):tasks,[tasks,activeCategory]);
   const laterTasks    = useMemo(()=>filteredTasks.filter(t=>t.isLater),[filteredTasks]);
@@ -2221,7 +2274,8 @@ export default function App() {
         }}>
         <Timeline date={date} tasks={filteredTasks} later={laterTasks} settings={settings} now={now}
           onToggle={toggle} onEdit={openEdit} onSchedule={scheduleInSlot} onAddAtTime={openAdd}
-          onDragStart={startDrag} dragTaskId={dragTask?.id} yToTimeRef={yToTimeRef} layoutYRef={layoutYRef} globalTags={globalTags}/>
+          onDragStart={startDrag} dragTaskId={dragTask?.id} yToTimeRef={yToTimeRef} layoutYRef={layoutYRef} globalTags={globalTags}
+          todayHistory={moveHistory.find(h=>h.date===date)}/>
       </main>
 
       {/* ── Bottom bar ── */}
