@@ -1133,6 +1133,28 @@ function FreeTimeCard({slot,fits,height,onSchedule}:{
   );
 }
 
+// ── CompactTaskCard ───────────────────────────────────────────────────────────
+
+function CompactTaskCard({task,onToggle,onEdit}:{task:Task;onToggle:()=>void;onEdit:()=>void;}) {
+  return (
+    <div
+      className={`h-full bg-white rounded-xl border border-gray-100 shadow-sm p-2 flex flex-col justify-between overflow-hidden${task.completed?' opacity-50':''}`}
+      onClick={onEdit}>
+      <div className="flex items-center justify-between gap-0.5">
+        <span className="text-sm leading-none shrink-0">{task.icon}</span>
+        <button onClick={e=>{e.stopPropagation();onToggle();}}
+          className={`w-5 h-5 rounded-full border-2 shrink-0 flex items-center justify-center transition-colors${task.completed?' border-gray-900 bg-gray-900':' border-gray-300'}`}>
+          {task.completed&&<span className="text-white text-[8px] font-bold leading-none">✓</span>}
+        </button>
+      </div>
+      <p className={`text-[10px] font-semibold leading-tight mt-1${task.completed?' line-through text-gray-400':' text-gray-800'}`}
+        style={{display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical',overflow:'hidden'} as React.CSSProperties}>
+        {task.name}
+      </p>
+    </div>
+  );
+}
+
 // ── Timeline ──────────────────────────────────────────────────────────────────
 
 function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAddAtTime,onDragStart,dragTaskId,yToTimeRef,layoutYRef,globalTags,todayHistory}:{
@@ -1172,17 +1194,34 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
 
   const calcY=(min:number)=>(min-wakeMin)*PX_PER_MIN;
 
-  // Combined layout: tasks + free slots in time order, no overlaps
   const MIN_CARD_H = 60;
   const WAKE_CARD_H=52, SLEEP_CARD_H=52;
-  type TLItem = {type:'task';t:Task;y:number}|{type:'free';s:FreeSlot;y:number};
-  const allItems:TLItem[] = [
-    ...dayTasks.map(t=>({type:'task' as const,t,y:calcY(toMin(t.startTime!))})),
+  const COLS=5, ROW_GAP=6;
+
+  type TaskGroupData={startTime:string;tasks:Task[];rows:number;h:number};
+  const tasksByTime=new Map<string,Task[]>();
+  for(const t of dayTasks){
+    if(!tasksByTime.has(t.startTime!)) tasksByTime.set(t.startTime!,[]);
+    tasksByTime.get(t.startTime!)!.push(t);
+  }
+  const taskGroupList:TaskGroupData[]=[...tasksByTime.entries()]
+    .sort((a,b)=>toMin(a[0])-toMin(b[0]))
+    .map(([startTime,tasks])=>{
+      const rows=Math.ceil(tasks.length/COLS);
+      const h=tasks.length===1
+        ?Math.max(MIN_CARD_H,(tasks[0].duration??0)*PX_PER_MIN)
+        :rows*MIN_CARD_H+(rows-1)*ROW_GAP;
+      return {startTime,tasks,rows,h};
+    });
+
+  type TLItem={type:'group';g:TaskGroupData;y:number}|{type:'free';s:FreeSlot;y:number};
+  const allItems:TLItem[]=[
+    ...taskGroupList.map(g=>({type:'group' as const,g,y:calcY(toMin(g.startTime))})),
     ...freeSlots.map(s=>({type:'free' as const,s,y:calcY(toMin(s.start))})),
-  ].sort((a,b)=>a.y-b.y||(a.type==='task'?-1:1));
+  ].sort((a,b)=>a.y-b.y||(a.type==='group'?-1:1));
 
   let prevBottom=WAKE_CARD_H;
-  const taskLayout:{task:Task;top:number;h:number}[]=[];
+  const groupLayout:{g:TaskGroupData;top:number}[]=[];
 
   // Simulate chip wrapping to get accurate content height.
   // CARD_LEFT=68, p-4*2=32 → inner width = screenWidth - 100
@@ -1207,13 +1246,11 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
   type FreePassItem={slot:FreeSlot;freeY:number};
   const freePassItems:FreePassItem[]=[];
 
-  for(let idx=0;idx<allItems.length;idx++){
-    const item=allItems[idx];
-    if(item.type==='task'){
+  for(const item of allItems){
+    if(item.type==='group'){
       const top=Math.max(item.y,prevBottom+16);
-      const h=Math.max(MIN_CARD_H,(item.t.duration??0)*PX_PER_MIN);
-      taskLayout.push({task:item.t,top,h});
-      prevBottom=top+h;
+      groupLayout.push({g:item.g,top});
+      prevBottom=top+item.g.h;
     } else {
       const freeY=Math.max(item.y,prevBottom)+16;
       freePassItems.push({slot:item.s,freeY});
@@ -1233,7 +1270,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
   }
 
   const maxBottom=Math.max(
-    taskLayout.length?taskLayout[taskLayout.length-1].top+taskLayout[taskLayout.length-1].h:0,
+    groupLayout.length?groupLayout[groupLayout.length-1].top+groupLayout[groupLayout.length-1].g.h:0,
     freeLayout.length?freeLayout[freeLayout.length-1].freeY+freeLayout[freeLayout.length-1].finalH:0,
   );
   const sleepCardTop=Math.max(maxBottom+16,calcY(sleepMin));
@@ -1243,9 +1280,10 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
 
   // Piecewise linear time→Y mapping using card layout as anchor points
   const rawAnchors:[number,number][]=[[wakeMin,0]];
-  for(const {task,top,h} of taskLayout){
-    const sm=toMin(task.startTime!);
-    rawAnchors.push([sm,top],[sm+(task.duration??0),top+h]);
+  for(const {g,top} of groupLayout){
+    const sm=toMin(g.startTime);
+    const maxDur=Math.max(...g.tasks.map(t=>t.duration??0));
+    rawAnchors.push([sm,top],[sm+maxDur,top+g.h]);
   }
   rawAnchors.push([sleepMin,sleepCardTop]);
   rawAnchors.sort((a,b)=>a[0]-b[0]);
@@ -1264,15 +1302,6 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
     }
     return calcY(min);
   };
-
-  // 同時刻タスクのグループ化（重複ラベル排除・中心位置計算用）
-  const taskGroups=new Map<string,{top:number;bottom:number}>();
-  for(const {task,top,h} of taskLayout){
-    const st=task.startTime!;
-    const e=taskGroups.get(st);
-    if(!e) taskGroups.set(st,{top,bottom:top+h});
-    else taskGroups.set(st,{top:Math.min(e.top,top),bottom:Math.max(e.bottom,top+h)});
-  }
 
   const AXIS_X=52, CARD_LEFT=AXIS_X+16;
 
@@ -1313,16 +1342,16 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
       <div className="absolute w-px bg-gray-200" style={{left:`${AXIS_X}px`,top:0,height:`${totalHeight}px`}}/>
 
 
-      {/* task start time labels — 1 per startTime group, center-aligned, skip wake/sleep */}
-      {[...taskGroups.entries()].map(([st,{top,bottom}])=>{
-        const stMin=toMin(st);
+      {/* task start time labels — 1 per group, center-aligned, skip wake/sleep */}
+      {groupLayout.map(({g,top})=>{
+        const stMin=toMin(g.startTime);
         if(stMin===wakeMin||stMin===sleepMin) return null;
-        const centerY=(top+bottom)/2;
+        const centerY=top+g.h/2;
         return [
-          <div key={`tl-${st}`} className="absolute flex items-center" style={{top:`${centerY}px`,transform:'translateY(-50%)',left:0}}>
-            <span className="text-xs w-12 text-right pr-1 leading-none text-gray-400">{st}</span>
+          <div key={`tl-${g.startTime}`} className="absolute flex items-center" style={{top:`${centerY}px`,transform:'translateY(-50%)',left:0}}>
+            <span className="text-xs w-12 text-right pr-1 leading-none text-gray-400">{g.startTime}</span>
           </div>,
-          <div key={`tl-dot-${st}`} className="absolute z-10 rounded-full bg-gray-300" style={{width:'6px',height:'6px',left:`${AXIS_X}px`,top:`${centerY}px`,transform:'translate(-50%,-50%)'}}/>,
+          <div key={`tl-dot-${g.startTime}`} className="absolute z-10 rounded-full bg-gray-300" style={{width:'6px',height:'6px',left:`${AXIS_X}px`,top:`${centerY}px`,transform:'translate(-50%,-50%)'}}/>,
         ];
       })}
 
@@ -1424,18 +1453,43 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
         </>
       )}
 
-      {/* task cards */}
-      {taskLayout.map(({task,top,h})=>{
-        const isDragging=dragTaskId===task.id;
-        const isPressing=pressingId===task.id;
+      {/* task groups */}
+      {groupLayout.map(({g,top})=>{
+        if(g.tasks.length===1){
+          const task=g.tasks[0];
+          const isDragging=dragTaskId===task.id;
+          const isPressing=pressingId===task.id;
+          return (
+            <div key={g.startTime} className={`absolute z-10 transition-transform select-none ${isPressing?'scale-95':''}`}
+              style={{top:`${top}px`,left:`${CARD_LEFT}px`,right:'0px',minHeight:`${g.h}px`,
+                opacity:isDragging?0.25:1,pointerEvents:isDragging?'none':'auto'}}
+              onTouchStart={e=>startLP(task,e)}
+              onTouchEnd={cancelLP}
+              onTouchMove={cancelLP}>
+              <TaskCard task={task} onToggle={()=>onToggle(task.id)} onEdit={()=>onEdit(task)} globalTags={globalTags}/>
+            </div>
+          );
+        }
+        const cols=Math.min(g.tasks.length,COLS);
         return (
-          <div key={task.id} className={`absolute z-10 transition-transform select-none ${isPressing?'scale-95':''}`}
-            style={{top:`${top}px`,left:`${CARD_LEFT}px`,right:'0px',minHeight:`${h}px`,
-              opacity:isDragging?0.25:1, pointerEvents:isDragging?'none':'auto'}}
-            onTouchStart={e=>startLP(task,e)}
-            onTouchEnd={cancelLP}
-            onTouchMove={cancelLP}>
-            <TaskCard task={task} onToggle={()=>onToggle(task.id)} onEdit={()=>onEdit(task)} globalTags={globalTags}/>
+          <div key={g.startTime} className="absolute z-10"
+            style={{top:`${top}px`,left:`${CARD_LEFT}px`,right:'0px'}}>
+            <div style={{display:'grid',gridTemplateColumns:`repeat(${cols},1fr)`,gap:`${ROW_GAP}px`}}>
+              {g.tasks.map(task=>{
+                const isDragging=dragTaskId===task.id;
+                const isPressing=pressingId===task.id;
+                return (
+                  <div key={task.id}
+                    className={`select-none transition-transform${isPressing?' scale-95':''}`}
+                    style={{height:`${MIN_CARD_H}px`,opacity:isDragging?0.25:1,pointerEvents:isDragging?'none':'auto'}}
+                    onTouchStart={e=>startLP(task,e)}
+                    onTouchEnd={cancelLP}
+                    onTouchMove={cancelLP}>
+                    <CompactTaskCard task={task} onToggle={()=>onToggle(task.id)} onEdit={()=>onEdit(task)}/>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         );
       })}
