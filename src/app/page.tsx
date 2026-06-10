@@ -2032,6 +2032,21 @@ export default function App() {
   useEffect(()=>{ if(loaded) localStorage.setItem(TAGS_KEY,JSON.stringify(globalTags)); },[globalTags,loaded]);
   useEffect(()=>{ const iv=setInterval(()=>setNow(nowStr()),60000); return ()=>clearInterval(iv); },[]);
 
+  // 就寝時刻を過ぎた当日の未完了タスクを「あとでやる」へ自動移動
+  useEffect(()=>{
+    if(!loaded) return;
+    const today=todayStr();
+    const nowM=toMin(now);
+    const sleepM=toMin(settings.sleepTime);
+    setTasks(prev=>{
+      const shouldMove=(t:Task)=>
+        !t.completed&&!t.isLater&&!!t.startTime&&!t.recurrence&&
+        (t.date<today||(t.date===today&&nowM>=sleepM));
+      if(!prev.some(shouldMove)) return prev;
+      return prev.map(t=>shouldMove(t)?{...t,isLater:true,startTime:null}:t);
+    });
+  },[loaded,settings.sleepTime,now]);
+
   const filteredTasks = useMemo(()=>activeCategory?tasks.filter(t=>t.category===activeCategory):tasks,[tasks,activeCategory]);
   const laterTasks    = useMemo(()=>filteredTasks.filter(t=>t.isLater),[filteredTasks]);
   const pendingCount  = useMemo(()=>laterTasks.filter(t=>!t.completed).length,[laterTasks]);
