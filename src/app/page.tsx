@@ -1101,29 +1101,13 @@ function TaskCard({task,onToggle,onEdit,globalTags}:{task:Task;onToggle:()=>void
 
 // ── FreeTimeCard ──────────────────────────────────────────────────────────────
 
-function FreeTimeCard({slot,fits,height,onSchedule,onHeightChange}:{
+function FreeTimeCard({slot,fits,height,onSchedule}:{
   slot:FreeSlot;fits:Task[];height:number;
   onSchedule:(t:Task,time:string)=>void;
-  onHeightChange:(h:number)=>void;
 }) {
-  const divRef=useRef<HTMLDivElement>(null);
-  const cbRef=useRef(onHeightChange);
-  useEffect(()=>{cbRef.current=onHeightChange;});
-  useEffect(()=>{
-    const el=divRef.current;
-    if(!el) return;
-    const ro=new ResizeObserver(entries=>{
-      const e=entries[0];
-      if(!e) return;
-      const h=e.borderBoxSize?.[0]?.blockSize??el.getBoundingClientRect().height;
-      cbRef.current(Math.ceil(h));
-    });
-    ro.observe(el);
-    return ()=>ro.disconnect();
-  },[]);
   const h=Math.floor(slot.min/60), m=slot.min%60;
   return (
-    <div ref={divRef} className="bg-gray-100 rounded-2xl p-6" style={{minHeight:`${height}px`}}>
+    <div className="bg-gray-100 rounded-2xl p-6" style={{height:`${height}px`,overflow:'hidden'}}>
       <div className="flex items-center gap-1 mb-4">
         <span className="text-xs">🕐</span>
         <span className="text-xs text-gray-400 font-medium">空き時間</span>
@@ -1157,8 +1141,6 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
   globalTags:TagDef[];
 }) {
   const [pressingId,setPressingId] = useState<string|null>(null);
-  const [freeCardHeights,setFreeCardHeights] = useState<Record<string,number>>({});
-  useEffect(()=>{setFreeCardHeights({});},[date]);
   const containerRef = useRef<HTMLDivElement>(null);
   const lpTimer = useRef<ReturnType<typeof setTimeout>|null>(null);
   const startLP=(task:Task,e:React.TouchEvent)=>{
@@ -1219,8 +1201,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
       freePassItems.push({slot:item.s,freeY,nextTaskIdx});
       const fitsN=laterPool.length;
       const contentH=fitsN>0?100+fitsN*32:60;
-      const measuredH=freeCardHeights[item.s.start];
-      prevBottom=freeY+(measuredH??contentH);
+      prevBottom=freeY+contentH;
     }
   }
 
@@ -1232,7 +1213,6 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
   for(const {slot,freeY,nextTaskIdx} of freePassItems){
     const fitsN=laterPool.length;
     const contentH=fitsN>0?100+fitsN*32:60;
-    const measuredH=freeCardHeights[slot.start];
     let nextTaskNaturalY:number;
     if(nextTaskIdx!==null&&nextTaskIdx<taskLayout.length){
       nextTaskNaturalY=taskLayout[nextTaskIdx].top;
@@ -1240,8 +1220,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
       nextTaskNaturalY=Math.max(taskMaxBottom+16,calcY(sleepMin));
     }
     const fillH=nextTaskNaturalY>freeY?nextTaskNaturalY-freeY-16:0;
-    const targetH=Math.max(contentH,fillH);
-    const cardH=measuredH??targetH;
+    const cardH=Math.max(contentH,fillH);
     freeLayout.push({slot,freeY,cardH});
   }
 
@@ -1351,14 +1330,16 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
       {freeLayout.flatMap(({slot,freeY,cardH})=>{
         const startMin=toMin(slot.start);
         const endMin=toMin(slot.end);
+        const slotMin=endMin-startMin;
+        const cardY=(m:number)=>slotMin>0?freeY+(m-startMin)/slotMin*cardH:freeY;
         const labels:number[]=[];
         for(let m=Math.ceil(startMin/60)*60;m<=endMin;m+=60){
           if(m===wakeMin||m===sleepMin) continue;
-          const y=layoutCalcY(m);
+          const y=cardY(m);
           if(y>=freeY&&y<=freeY+cardH) labels.push(m);
         }
         return labels.map(m=>(
-          <div key={`fh-${m}`} className="absolute flex items-center" style={{top:`${layoutCalcY(m)-8}px`,left:0}}>
+          <div key={`fh-${m}`} className="absolute flex items-center" style={{top:`${cardY(m)-8}px`,left:0}}>
             <button onClick={()=>onAddAtTime(fromMin(m))}
               className="text-xs w-12 text-right pr-1 leading-none text-gray-400 active:text-gray-900 transition-colors">
               {fromMin(m)}
@@ -1419,8 +1400,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
         const fits=laterPool;
         return (
           <div key={i} className="absolute z-10" style={{top:`${freeY}px`,left:`${CARD_LEFT}px`,right:'0px'}}>
-            <FreeTimeCard slot={slot} fits={fits} height={cardH} onSchedule={onSchedule}
-              onHeightChange={h=>setFreeCardHeights(prev=>prev[slot.start]===h?prev:{...prev,[slot.start]:h})}/>
+            <FreeTimeCard slot={slot} fits={fits} height={cardH} onSchedule={onSchedule}/>
           </div>
         );
       })}
