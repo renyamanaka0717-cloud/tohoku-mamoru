@@ -1812,7 +1812,7 @@ function SettingsRow({icon,iconBg,title,desc,onClick,isLast=false}:{
       onClick={onClick}
       className={`w-full flex items-center gap-3 px-4 py-3.5 text-left active:bg-gray-50 transition-colors${!isLast?' border-b border-gray-100':''}`}
     >
-      <div className={`w-[30px] h-[30px] rounded-[8px] flex items-center justify-center shrink-0 text-white ${iconBg}`}>
+      <div className={`w-[30px] h-[30px] rounded-[8px] flex items-center justify-center shrink-0 text-gray-700 ${iconBg}`}>
         {icon}
       </div>
       <div className="flex-1 min-w-0">
@@ -2061,32 +2061,32 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags}:{
 
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-4">統計</p>
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
-          <SettingsRow icon={<AppIcons.stats/>} iconBg="bg-green-500" title="統計" desc="タスク完了の統計を確認" onClick={()=>setSub('stats')} isLast/>
+          <SettingsRow icon={<AppIcons.stats/>} iconBg="bg-gray-100" title="統計" desc="タスク完了の統計を確認" onClick={()=>setSub('stats')} isLast/>
         </div>
 
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">一般</p>
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
-          <SettingsRow icon={<AppIcons.tag/>} iconBg="bg-orange-400" title="タグ" desc="タグを管理" onClick={()=>setSub('tags')}/>
-          <SettingsRow icon={<AppIcons.repeat size={18}/>} iconBg="bg-blue-500" title="繰り返しタスク" desc="繰り返しタスクを管理" onClick={()=>setSub('recurring')}/>
-          <SettingsRow icon={<AppIcons.bell/>} iconBg="bg-red-500" title="通知" desc="通知設定" onClick={()=>setSub('notifications')}/>
-          <SettingsRow icon={<AppIcons.palette/>} iconBg="bg-purple-500" title="表示設定" desc="外観、言語など" onClick={()=>setSub('display')}/>
-          <SettingsRow icon={<AppIcons.wake size={18}/>} iconBg="bg-amber-400" title="起床・就寝" desc="起床時間、就寝時間を設定" onClick={()=>setSub('wakeSleep')} isLast/>
+          <SettingsRow icon={<AppIcons.tag/>} iconBg="bg-gray-100" title="タグ" desc="タグを管理" onClick={()=>setSub('tags')}/>
+          <SettingsRow icon={<AppIcons.repeat size={18}/>} iconBg="bg-gray-100" title="繰り返しタスク" desc="繰り返しタスクを管理" onClick={()=>setSub('recurring')}/>
+          <SettingsRow icon={<AppIcons.bell/>} iconBg="bg-gray-100" title="通知" desc="通知設定" onClick={()=>setSub('notifications')}/>
+          <SettingsRow icon={<AppIcons.palette/>} iconBg="bg-gray-100" title="表示設定" desc="外観、言語など" onClick={()=>setSub('display')}/>
+          <SettingsRow icon={<AppIcons.wake size={18}/>} iconBg="bg-gray-100" title="起床・就寝" desc="起床時間、就寝時間を設定" onClick={()=>setSub('wakeSleep')} isLast/>
         </div>
 
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">アカウント</p>
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
-          <SettingsRow icon={<AppIcons.link/>} iconBg="bg-indigo-500" title="アカウント連携" desc="連携サービスを管理" onClick={()=>setSub('account')}/>
-          <SettingsRow icon={<AppIcons.calendar size={18}/>} iconBg="bg-red-400" title="カレンダー連携" desc="カレンダーと同期" onClick={()=>setSub('calendar')} isLast/>
+          <SettingsRow icon={<AppIcons.link/>} iconBg="bg-gray-100" title="アカウント連携" desc="連携サービスを管理" onClick={()=>setSub('account')}/>
+          <SettingsRow icon={<AppIcons.calendar size={18}/>} iconBg="bg-gray-100" title="カレンダー連携" desc="カレンダーと同期" onClick={()=>setSub('calendar')} isLast/>
         </div>
 
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">サブスクリプション</p>
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
-          <SettingsRow icon={<AppIcons.star/>} iconBg="bg-amber-400" title="プレミアム" desc="プランを管理" onClick={()=>setSub('premium')} isLast/>
+          <SettingsRow icon={<AppIcons.star/>} iconBg="bg-gray-100" title="プレミアム" desc="プランを管理" onClick={()=>setSub('premium')} isLast/>
         </div>
 
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">その他</p>
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
-          <SettingsRow icon={<AppIcons.question/>} iconBg="bg-gray-400" title="よくある質問" onClick={()=>setSub('faq')} isLast/>
+          <SettingsRow icon={<AppIcons.question/>} iconBg="bg-gray-100" title="よくある質問" onClick={()=>setSub('faq')} isLast/>
         </div>
 
       </div>
