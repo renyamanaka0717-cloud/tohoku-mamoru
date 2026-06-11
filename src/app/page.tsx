@@ -51,7 +51,6 @@ type TaskMode = 'later' | 'scheduled' | 'recurring';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const ICONS = ['📝','💼','🏃','🍽️','📚','💊','🛒','🏠','💻','📞','🎯','⭐','🎵','🛁','🐕','✅'];
 const DEFAULT_SETTINGS: Settings = { wakeTime: '07:00', sleepTime: '23:00' };
 const TASKS_KEY    = 'tl-tasks-v2';
 const SETTINGS_KEY = 'tl-settings-v2';
@@ -269,7 +268,7 @@ function MonthCalendar({selected,onSelect,onClose,tasks}:{selected:string;onSele
                   <div className="w-full space-y-0.5 mt-0.5 min-h-[20px]">
                     {dayTasks.map((t,ti)=>(
                       <div key={ti} className="w-full bg-gray-100 rounded px-1 overflow-hidden">
-                        <p className="text-[9px] text-gray-600 truncate leading-tight py-px">{t.icon} {t.name}</p>
+                        <p className="text-[9px] text-gray-600 truncate leading-tight py-px">{t.name}</p>
                       </div>
                     ))}
                   </div>
@@ -460,7 +459,7 @@ function autoIcon(name: string): string {
   if (/犬|猫|ペット|散歩/.test(n)) return '🐕';
   if (/目標|ゴール|確認|チェック/.test(n)) return '🎯';
   if (/起床|起き|起きる/.test(n)) return '⭐';
-  return '📝';
+  return '';
 }
 
 // ── TaskModal ─────────────────────────────────────────────────────────────────
@@ -482,7 +481,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,onSave,onDelete
   const [startTime,setST]     = useState(task?.startTime??prefillTime??nowStr());
   const [duration,setDur]     = useState(task?.duration??0);
   const [memo,setMemo]        = useState(task?.memo??'');
-  const [icon,setIcon]        = useState(task?.icon??'📝');
+  const [icon]                = useState(task?.icon??'');
   const [recur,setRecur]      = useState<'daily'|'weekly'|'monthly'|'yearly'|'custom'>(
     task?.recurrence==='weekly'?'weekly':
     task?.recurrence==='monthly'?'monthly':
@@ -519,15 +518,12 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,onSave,onDelete
   const [custNotifMin,setCNMin]    = useState(60);
   const [pinned,setPinned]    = useState(task?.pinned??false);
   const [tags,setTags]        = useState<string[]>(task?.tags??[]);
-  const [iconOpen,setIconOpen]= useState(false);
   const [taskDate,setTaskDate]= useState(task?.date??currentDate);
   const [dateOpen,setDateOpen]= useState(false);
   const [calVm,setCalVm]      = useState(()=>{
     const d=new Date((task?.date??currentDate)+'T12:00:00');
     return {year:d.getFullYear(),month:d.getMonth()};
   });
-
-  const headerIcon = mode==='later' ? icon : autoIcon(name);
 
   const computedEnd = (startTime&&duration>0) ? fromMin(toMin(startTime)+duration) : null;
 
@@ -624,11 +620,9 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,onSave,onDelete
 
           {/* Icon + name */}
           <div className="flex items-center gap-3 mb-4">
-            <button onClick={()=>mode==='later'&&setIconOpen(!iconOpen)}
-              className="w-12 h-12 bg-gray-700 rounded-2xl flex items-center justify-center text-2xl shrink-0 relative">
-              {headerIcon}
-              {mode==='later'&&<span className="absolute -bottom-0.5 -right-0.5 bg-gray-500 text-white rounded-full p-0.5 flex items-center justify-center"><AppIcons.task size={8}/></span>}
-            </button>
+            <div className="w-12 h-12 bg-gray-700 rounded-2xl flex items-center justify-center shrink-0 text-white">
+              <AppIcons.task size={24}/>
+            </div>
             <div className="flex-1 min-w-0">
               {(mode==='scheduled'||mode==='recurring')&&startTime&&(
                 <p className="text-xs text-gray-400 mb-0.5">{startTime}{computedEnd?`〜${computedEnd}`:''}{mode==='recurring'&&' · 繰り返し'}</p>
@@ -639,18 +633,6 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,onSave,onDelete
                 autoFocus/>
             </div>
           </div>
-
-          {/* Icon picker */}
-          {iconOpen&&mode==='later'&&(
-            <div className="flex flex-wrap gap-2 pb-3">
-              {ICONS.map(ic=>(
-                <button key={ic} onClick={()=>{setIcon(ic);setIconOpen(false);}}
-                  className={`text-xl w-10 h-10 rounded-xl flex items-center justify-center ${icon===ic?'bg-white/20':'bg-gray-700'}`}>
-                  {ic}
-                </button>
-              ))}
-            </div>
-          )}
 
           {/* Category chips */}
           <div className="flex gap-2 mb-3">
@@ -1072,8 +1054,8 @@ function TaskCard({task,onToggle,onEdit,globalTags}:{task:Task;onToggle:()=>void
   return (
     <div className={`flex items-center gap-2.5 bg-white rounded-2xl border border-gray-100 shadow-sm px-3 py-2.5 ${task.completed?'opacity-50':''}`}
       onClick={onEdit}>
-      <div className="w-8 h-8 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0 text-base leading-none">
-        {task.icon}
+      <div className="w-8 h-8 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0">
+        <AppIcons.task size={18} className="text-gray-500"/>
       </div>
       <div className="flex-1 min-w-0">
         {task.startTime&&(
@@ -1164,7 +1146,7 @@ function CompactTaskCard({task,onToggle,onEdit}:{task:Task;onToggle:()=>void;onE
       className={`h-full bg-white rounded-xl border border-gray-100 shadow-sm p-2 flex flex-col justify-between overflow-hidden${task.completed?' opacity-50':''}`}
       onClick={onEdit}>
       <div className="flex items-center justify-between gap-0.5">
-        <span className="text-sm leading-none shrink-0">{task.icon}</span>
+        <AppIcons.task size={14} className="text-gray-500 shrink-0"/>
         <button onClick={e=>{e.stopPropagation();onToggle();}}
           className={`w-5 h-5 rounded-full border-2 shrink-0 flex items-center justify-center transition-colors${task.completed?' border-gray-900 bg-gray-900':' border-gray-300'}`}>
           {task.completed&&<span className="text-white text-[8px] font-bold leading-none">✓</span>}
@@ -1740,7 +1722,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
                 <div className="space-y-2">
                   {laterDone.map(t=>(
                     <div key={t.id} className="flex items-center gap-2.5 bg-gray-50 border border-gray-100 rounded-2xl px-3 py-3 opacity-60">
-                      <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-base shrink-0">{t.icon}</div>
+                      <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center shrink-0"><AppIcons.task size={16} className="text-gray-400"/></div>
                       <div className="flex-1"><p className="text-sm font-semibold text-gray-400 line-through">{t.name}</p></div>
                       <button onClick={()=>onToggle(t.id)} className="w-6 h-6 rounded-full border-2 border-gray-900 bg-gray-900 shrink-0 flex items-center justify-center">
                         <span className="text-white text-[10px] font-bold">✓</span>
