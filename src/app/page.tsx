@@ -1819,7 +1819,7 @@ function SettingsRow({icon,iconBg,title,desc,onClick,isLast=false}:{
         <p className="text-[15px] font-medium text-gray-900 leading-tight">{title}</p>
         {desc&&<p className="text-xs text-gray-400 mt-0.5">{desc}</p>}
       </div>
-      <span className="text-gray-300 text-[18px] font-light shrink-0">›</span>
+      <AppIcons.caretRight className="text-gray-300 shrink-0"/>
     </button>
   );
 }
@@ -1840,7 +1840,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags}:{
   const subHeader = (title:string) => (
     <div className="bg-white border-b border-gray-200 px-4 py-3.5 flex items-center shrink-0">
       <button onClick={back} className="flex items-center gap-0.5 text-gray-900 min-w-[80px]">
-        <span className="text-[22px] leading-none">‹</span>
+        <AppIcons.caretLeft size={20}/>
         <span className="text-[15px]">設定</span>
       </button>
       <h2 className="flex-1 text-center text-[17px] font-semibold text-gray-900 -mx-4">{title}</h2>

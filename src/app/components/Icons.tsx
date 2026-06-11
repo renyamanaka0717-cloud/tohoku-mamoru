@@ -17,6 +17,8 @@ import {
   LinkSimple,
   Star,
   Question,
+  CaretRight,
+  CaretLeft,
 } from '@phosphor-icons/react';
 
 type PhosphorComp = React.ComponentType<{
@@ -54,4 +56,6 @@ export const AppIcons = {
   link:      make(LinkSimple, 18),
   star:      make(Star, 18),
   question:  make(Question, 18),
+  caretRight: make(CaretRight, 18),
+  caretLeft:  make(CaretLeft, 18),
 };
