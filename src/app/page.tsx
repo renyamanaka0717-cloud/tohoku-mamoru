@@ -1202,13 +1202,6 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
   const freeSlots=calcFreeSlots(tasks,date,settings);
   const laterPool=later.filter(t=>!t.completed);
 
-  // Extend timeline start to earliest task if it precedes wakeTime
-  const minTaskMin=dayTasks.length>0?Math.min(...dayTasks.map(t=>toMin(t.startTime!))):wakeMin;
-  const timelineStart=Math.min(wakeMin,minTaskMin);
-  const wakeCardTop=(wakeMin-timelineStart)*PX_PER_MIN;
-
-  const calcY=(min:number)=>(min-timelineStart)*PX_PER_MIN;
-
   const MIN_CARD_H = 60;
   const WAKE_CARD_H=52, SLEEP_CARD_H=52;
   const COLS=5, ROW_GAP=6;
@@ -1228,15 +1221,6 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
         :rows*MIN_CARD_H+(rows-1)*ROW_GAP;
       return {startTime,tasks,rows,h};
     });
-
-  type TLItem={type:'group';g:TaskGroupData;y:number}|{type:'free';s:FreeSlot;y:number};
-  const allItems:TLItem[]=[
-    ...taskGroupList.map(g=>({type:'group' as const,g,y:calcY(toMin(g.startTime))})),
-    ...freeSlots.map(s=>({type:'free' as const,s,y:calcY(toMin(s.start))})),
-  ].sort((a,b)=>a.y-b.y||(a.type==='group'?-1:1));
-
-  let prevBottom=-16;
-  const groupLayout:{g:TaskGroupData;top:number}[]=[];
 
   // Simulate chip wrapping to get accurate content height.
   // CARD_LEFT=68, p-4*2=32 → inner width = screenWidth - 100
@@ -1259,12 +1243,34 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
     return base+CHIP_MT+rows*CHIP_H+(rows-1)*ROW_GAP;
   };
 
-  // Phase 1: compute taskLayout and free slot positions — finalH calculated once here and reused for both layout and display
   type FreePassItem={slot:FreeSlot;freeY:number;finalH:number};
+  const groupLayout:{g:TaskGroupData;top:number}[]=[];
   const freePassItems:FreePassItem[]=[];
 
-  for(const item of allItems){
-    if(item.y>=wakeCardTop) prevBottom=Math.max(prevBottom,wakeCardTop+WAKE_CARD_H);
+  // Phase 0: pre-wake tasks — compact (card order, no time gap)
+  let prevBottom=-16;
+  for(const g of taskGroupList.filter(g=>toMin(g.startTime)<wakeMin)){
+    const top=prevBottom+16;
+    groupLayout.push({g,top});
+    prevBottom=top+g.h;
+  }
+
+  // Wake card: right after pre-wake items (no clock-time gap)
+  const wakeCardTop=prevBottom+16;
+  prevBottom=wakeCardTop+WAKE_CARD_H;
+
+  // Time→Y within activity window, anchored at wakeCardTop
+  const calcDayY=(min:number)=>wakeCardTop+WAKE_CARD_H+(min-wakeMin)*PX_PER_MIN;
+
+  // Phase 1: daytime tasks + free slots — real-time Y within wake–sleep window
+  type TLItem={type:'group';g:TaskGroupData;y:number}|{type:'free';s:FreeSlot;y:number};
+  const dayItems:TLItem[]=[
+    ...taskGroupList.filter(g=>toMin(g.startTime)>=wakeMin&&toMin(g.startTime)<sleepMin)
+      .map(g=>({type:'group' as const,g,y:calcDayY(toMin(g.startTime))})),
+    ...freeSlots.map(s=>({type:'free' as const,s,y:calcDayY(toMin(s.start))})),
+  ].sort((a,b)=>a.y-b.y||(a.type==='group'?-1:1));
+
+  for(const item of dayItems){
     if(item.type==='group'){
       const top=Math.max(item.y,prevBottom+16);
       groupLayout.push({g:item.g,top});
@@ -1279,17 +1285,22 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
     }
   }
 
-  // Phase 2: pass through — finalH already computed in Phase 1
-  const freeLayout:{slot:FreeSlot;freeY:number;finalH:number}[]=freePassItems.map(({slot,freeY,finalH})=>({slot,freeY,finalH}));
+  const freeLayout:{slot:FreeSlot;freeY:number;finalH:number}[]=freePassItems;
 
-  const maxBottom=Math.max(
-    groupLayout.length?groupLayout[groupLayout.length-1].top+groupLayout[groupLayout.length-1].g.h:0,
-    freeLayout.length?freeLayout[freeLayout.length-1].freeY+freeLayout[freeLayout.length-1].finalH:0,
-  );
-  const sleepCardTop=Math.max(wakeCardTop+WAKE_CARD_H+16,maxBottom+16);
+  // Sleep card: right after daytime content
+  const sleepCardTop=prevBottom+16;
+
+  // Phase 2: post-sleep tasks — compact (card order, no time gap)
+  prevBottom=sleepCardTop+SLEEP_CARD_H;
+  for(const g of taskGroupList.filter(g=>toMin(g.startTime)>=sleepMin)){
+    const top=prevBottom+16;
+    groupLayout.push({g,top});
+    prevBottom=top+g.h;
+  }
+
   const hasHistoryCard=!!(todayHistory&&todayHistory.taskNames.length>0)&&date===todayStr();
   const HISTORY_CARD_H=44;
-  const totalHeight=sleepCardTop+SLEEP_CARD_H+32+(hasHistoryCard?HISTORY_CARD_H+12:0);
+  const totalHeight=Math.max(prevBottom,sleepCardTop+SLEEP_CARD_H+(hasHistoryCard?HISTORY_CARD_H+12:0))+32;
 
   // Piecewise linear time→Y mapping using card layout as anchor points
   const rawAnchors:[number,number][]=[[wakeMin,wakeCardTop]];
@@ -1313,7 +1324,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
       const [m0,y0]=anchors[i],[m1,y1]=anchors[i+1];
       if(min>=m0&&min<=m1) return Math.round(y0+(min-m0)/(m1-m0)*(y1-y0));
     }
-    return calcY(min);
+    return calcDayY(min);
   };
 
   const AXIS_X=60, CARD_LEFT=68;
