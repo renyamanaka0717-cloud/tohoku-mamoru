@@ -2102,6 +2102,7 @@ export default function App() {
   const [recConfirm,setRecConfirm] = useState<Task|null>(null);
   const [editScope,setEditScope]   = useState<'one'|'all'>('one');
   const [overTrash,setOverTrash]   = useState(false);
+  const [overLater,setOverLater]   = useState(false);
 
   useEffect(()=>{
     try{
@@ -2195,18 +2196,26 @@ export default function App() {
       return fromMin(Math.max(wakeMin,Math.min(toMin(settings.sleepTime),snapped)));
     };
     const TRASH_H=100;
-    const isInTrash=(y:number)=>y>window.innerHeight-TRASH_H;
+    const isInBottomZone=(y:number)=>y>window.innerHeight-TRASH_H;
+    const isInTrash=(x:number,y:number)=>isInBottomZone(y)&&x<window.innerWidth/2;
+    const isInLater=(x:number,y:number)=>isInBottomZone(y)&&x>=window.innerWidth/2;
     const onMove=(e:TouchEvent)=>{
       e.preventDefault();
       const t=e.touches[0];
       setDragPos({x:t.clientX,y:t.clientY});
-      setOverTrash(isInTrash(t.clientY));
-      if(!isInTrash(t.clientY)) setDropTime(calcTime(t.clientY));
+      setOverTrash(isInTrash(t.clientX,t.clientY));
+      setOverLater(isInLater(t.clientX,t.clientY));
+      if(!isInBottomZone(t.clientY)) setDropTime(calcTime(t.clientY));
     };
     const onEnd=(e:TouchEvent)=>{
       const t=e.changedTouches[0];
-      if(isInTrash(t.clientY)){
+      if(isInTrash(t.clientX,t.clientY)){
         setTasks(prev=>prev.filter(tk=>tk.id!==dragTask.id));
+      } else if(isInLater(t.clientX,t.clientY)){
+        setTasks(prev=>prev.map(tk=>tk.id===dragTask.id
+          ? {...tk,isLater:true,startTime:null}
+          : tk
+        ));
       } else {
         const time=calcTime(t.clientY);
         setTasks(prev=>prev.map(tk=>tk.id===dragTask.id
@@ -2217,6 +2226,7 @@ export default function App() {
       setDragTask(null);
       setDropTime(null);
       setOverTrash(false);
+      setOverLater(false);
     };
     document.addEventListener('touchmove',onMove,{passive:false});
     document.addEventListener('touchend',onEnd);
@@ -2389,7 +2399,7 @@ export default function App() {
       {dragTask&&(
         <div className="fixed inset-0 z-[70] pointer-events-none">
           {/* Drop time line — starts after axis area (68px) */}
-          {dropTime&&!overTrash&&(
+          {dropTime&&!overTrash&&!overLater&&(
             <div className="absolute right-0 flex items-center gap-2"
               style={{top:`${layoutYRef.current?layoutYRef.current(toMin(dropTime)):dragPos.y}px`,left:'68px'}}>
               <div className="flex-1 h-0.5 bg-blue-400 rounded-full"/>
@@ -2397,7 +2407,7 @@ export default function App() {
             </div>
           )}
           {/* Floating card */}
-          {!overTrash&&(
+          {!overTrash&&!overLater&&(
             <div style={{
               position:'absolute',
               left:`${Math.max(8,Math.min(dragPos.x-70,window.innerWidth-180))}px`,
@@ -2410,10 +2420,18 @@ export default function App() {
               </div>
             </div>
           )}
-          {/* Trash zone */}
-          <div className={`absolute bottom-0 left-0 right-0 h-24 flex flex-col items-center justify-center gap-1 transition-colors ${overTrash?'bg-red-500':'bg-red-100'}`}>
-            <span className="text-2xl">{overTrash?'🗑️':'🗑️'}</span>
-            <span className={`text-xs font-bold ${overTrash?'text-white':'text-red-400'}`}>ここで削除</span>
+          {/* Bottom drop zones */}
+          <div className="absolute bottom-0 left-0 right-0 h-24 flex">
+            {/* Left: Delete */}
+            <div className={`flex-1 flex flex-col items-center justify-center gap-1 transition-colors ${overTrash?'bg-red-500':'bg-red-100'}`}>
+              <span className="text-2xl">🗑️</span>
+              <span className={`text-xs font-bold ${overTrash?'text-white':'text-red-400'}`}>ここで削除</span>
+            </div>
+            {/* Right: Return to later */}
+            <div className={`flex-1 flex flex-col items-center justify-center gap-1 transition-colors ${overLater?'bg-blue-400':'bg-blue-100'}`}>
+              <AppIcons.postponed size={24} className={overLater?'text-white':'text-blue-400'}/>
+              <span className={`text-xs font-bold ${overLater?'text-white':'text-blue-400'}`}>あとでやるに戻す</span>
+            </div>
           </div>
         </div>
       )}
