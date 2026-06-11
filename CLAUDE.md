@@ -1,5 +1,41 @@
 # CLAUDE.md
 
+## Project
+
+- Next.js 15 (App Router)
+- TypeScript
+- Tailwind CSS
+- GitHub管理
+- Vercelデプロイ（main ブランチへの push で自動デプロイ）
+
+作業完了時は必ず以下を順に実施する：
+
+1. `npm run lint`
+2. `npm run build`
+3. Git commit
+4. `git push origin main`（Vercel 本番デプロイ）
+
+説明より実装を優先する。必要なら関連ファイルを自分で調査して進める。
+
+---
+
+## Development
+
+修正方針の長い説明より実装を優先する。
+
+必要なら関連ファイルを自分で調査する。
+
+作業完了時は必ず以下を報告する：
+
+- 修正したファイル
+- 実装内容
+- lint 結果
+- build 結果
+- commit ID
+- デプロイ URL
+
+---
+
 ## プロジェクト概要
 
 **1日タイムライン** — ADHD気質の人やToDoリストが続かない人向けに、今日やることを時間軸で見える化するタイムラインToDoアプリ。
