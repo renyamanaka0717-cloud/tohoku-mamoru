@@ -1117,23 +1117,25 @@ function FreeTimeCard({slot,fits,height,onSchedule,onDragStart}:{
         <AppIcons.freeTime size={12} className="text-gray-400"/>
         <span className="text-xs text-gray-400 font-medium">空き時間</span>
       </div>
-      <p className="font-semibold text-gray-700 leading-none mb-1">
+      <p className="font-semibold text-gray-700 leading-none">
         {h>0&&<><span className="text-xl">{h}</span><span className="text-xs ml-0.5">時間</span></>}
         {m>0&&<><span className="text-xl ml-1">{m}</span><span className="text-xs ml-0.5">分</span></>}
       </p>
-      <div className="flex flex-wrap gap-1.5">
-        {fits.map(t=>(
-          <button key={t.id}
-            onClick={()=>onSchedule(t,slot.start)}
-            onTouchStart={e=>startLP(t,e)}
-            onTouchEnd={cancelLP}
-            onTouchMove={cancelLP}
-            className={`inline-flex items-center gap-1 bg-white rounded-full px-2.5 py-1 text-xs font-medium text-gray-700 shadow-sm select-none transition-transform${pressingId===t.id?' scale-95 shadow-md ring-2 ring-blue-300':''}`}>
-            <span className="w-3 h-3 border border-gray-300 rounded-sm shrink-0"/>
-            <span>{t.name}</span>
-          </button>
-        ))}
-      </div>
+      {fits.length>0&&(
+        <div className="flex flex-wrap gap-1.5 mt-2">
+          {fits.map(t=>(
+            <button key={t.id}
+              onClick={()=>onSchedule(t,slot.start)}
+              onTouchStart={e=>startLP(t,e)}
+              onTouchEnd={cancelLP}
+              onTouchMove={cancelLP}
+              className={`inline-flex items-center gap-1 bg-white rounded-full px-2.5 py-1 text-xs font-medium text-gray-700 shadow-sm select-none transition-transform${pressingId===t.id?' scale-95 shadow-md ring-2 ring-blue-300':''}`}>
+              <span className="w-3 h-3 border border-gray-300 rounded-sm shrink-0"/>
+              <span>{t.name}</span>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -1231,20 +1233,22 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
   // Simulate chip wrapping to get accurate content height.
   // CARD_LEFT=68, p-4*2=32 → inner width = screenWidth - 100
   const calcFreeContentH=(tasks:Task[]):number=>{
-    const HEADER_H=72;  // py-5(20)+icon_row(16)+mb-1(4)+duration(28)+mb-1(4)
-    const FOOTER_H=20;  // py-5(20)
-    const CHIP_H=24;    // py-1(8)+text-xs lh(16)
-    const ROW_GAP=6;    // gap-1.5
-    const GAP_X=6;      // gap-1.5 horizontal
-    if(tasks.length===0) return 60;
+    const PAD=20;    // py-5 (top and bottom)
+    const ICON_H=16; // header row height
+    const ICON_MB=4; // mb-1 after header
+    const DUR_H=28;  // duration text (text-xl, leading-none)
+    const CHIP_MT=8; // mt-2 before chips section
+    const CHIP_H=24; const ROW_GAP=6; const GAP_X=6;
+    const base=PAD*2+ICON_H+ICON_MB+DUR_H; // 88px — no mb on duration, no chips div
+    if(tasks.length===0) return base;
     const innerW=(typeof window!=='undefined'?window.innerWidth:375)-68-32;
     let rows=1,rowW=0;
     for(const t of tasks){
-      const w=36+t.name.length*9; // px-2.5*2(20)+icon+gap(16)+~9px/char
+      const w=36+t.name.length*9;
       if(rowW>0&&rowW+GAP_X+w>innerW){rows++;rowW=w;}
       else{rowW+=(rowW>0?GAP_X:0)+w;}
     }
-    return HEADER_H+rows*CHIP_H+(rows-1)*ROW_GAP+FOOTER_H;
+    return base+CHIP_MT+rows*CHIP_H+(rows-1)*ROW_GAP;
   };
 
   // Phase 1: compute taskLayout and capture free slot positions in one forward pass
