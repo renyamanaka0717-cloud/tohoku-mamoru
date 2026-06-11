@@ -1,6 +1,11 @@
 'use client';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
+import {
+  IcCalendar, IcSearch, IcSettings,
+  IcWake, IcSleep, IcFreeTime, IcPencil,
+  IcShopping, IcRepeat, IcRotateCcw,
+} from './components/Icons';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -404,7 +409,7 @@ function SearchPage({tasks,onClose,onSelect}:{tasks:Task[];onClose:()=>void;onSe
       <div className="flex items-center gap-3 px-4 pt-4 pb-3 border-b border-gray-100">
         <button onClick={onClose} className="text-sm font-semibold text-gray-600 shrink-0">キャンセル</button>
         <div className="flex-1 flex items-center gap-2 bg-gray-100 rounded-xl px-3 py-2.5">
-          <span className="text-gray-400 text-sm">🔍</span>
+          <IcSearch size={16} className="text-gray-400 shrink-0"/>
           <input ref={inputRef} type="text" value={query} onChange={e=>setQuery(e.target.value)}
             placeholder="タスクを検索..."
             className="flex-1 text-sm bg-transparent outline-none text-gray-900 placeholder-gray-400"/>
@@ -415,7 +420,7 @@ function SearchPage({tasks,onClose,onSelect}:{tasks:Task[];onClose:()=>void;onSe
       {/* Results */}
       <div className="flex-1 overflow-y-auto">
         {!query?(
-          <div className="py-20 text-center"><p className="text-4xl mb-2">🔍</p><p className="text-sm text-gray-400">タスク名・メモで検索</p></div>
+          <div className="py-20 text-center"><IcSearch size={40} className="mx-auto mb-2 text-gray-300"/><p className="text-sm text-gray-400">タスク名・メモで検索</p></div>
         ):results.length===0?(
           <div className="py-20 text-center"><p className="text-4xl mb-2">😔</p><p className="text-sm text-gray-400">「{query}」は見つかりませんでした</p></div>
         ):(
@@ -626,7 +631,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,onSave,onDelete
             <button onClick={()=>mode==='later'&&setIconOpen(!iconOpen)}
               className="w-12 h-12 bg-gray-700 rounded-2xl flex items-center justify-center text-2xl shrink-0 relative">
               {headerIcon}
-              {mode==='later'&&<span className="absolute -bottom-0.5 -right-0.5 text-[10px] bg-gray-500 text-white rounded-full px-0.5">✎</span>}
+              {mode==='later'&&<span className="absolute -bottom-0.5 -right-0.5 bg-gray-500 text-white rounded-full p-0.5 flex items-center justify-center"><IcPencil size={8}/></span>}
             </button>
             <div className="flex-1 min-w-0">
               {(mode==='scheduled'||mode==='recurring')&&startTime&&(
@@ -690,7 +695,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,onSave,onDelete
               {/* Type selector */}
               <div className="bg-white mx-3 mt-3 rounded-2xl p-4">
                 <div className="flex items-center gap-2 mb-3">
-                  <span className="text-lg">🔄</span>
+                  <IcRepeat size={18} className="text-gray-600"/>
                   <span className="text-sm font-semibold text-gray-800">繰り返し</span>
                 </div>
                 <div className="flex gap-2 overflow-x-auto pb-0.5" style={{scrollbarWidth:'none',WebkitOverflowScrolling:'touch'} as React.CSSProperties}>
@@ -1078,7 +1083,7 @@ function TaskCard({task,onToggle,onEdit,globalTags}:{task:Task;onToggle:()=>void
         {task.startTime&&(
           <p className="text-[11px] text-gray-400 leading-none mb-0.5">
             {task.startTime}{endTime?`〜${endTime}`:''}
-            {task.recurrence&&<span className="ml-1">🔄</span>}
+            {task.recurrence&&<IcRepeat size={11} className="ml-1 inline-block align-middle"/>}
           </p>
         )}
         <p className={`text-sm font-semibold leading-snug ${task.completed?'line-through text-gray-400':'text-gray-900'}`}>{task.name}</p>
@@ -1131,7 +1136,7 @@ function FreeTimeCard({slot,fits,height,onSchedule,onDragStart}:{
   return (
     <div className="bg-gray-100 rounded-2xl px-4 pt-4 pb-2" style={{height:`${height}px`,overflow:'hidden'}}>
       <div className="flex items-center gap-1 mb-1">
-        <span className="text-xs">🕐</span>
+        <IcFreeTime size={12} className="text-gray-400"/>
         <span className="text-xs text-gray-400 font-medium">空き時間</span>
       </div>
       <p className="font-semibold text-gray-700 leading-none mb-1">
@@ -1422,7 +1427,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
       {/* wake card */}
       <div className="absolute z-10" style={{top:'0px',left:`${CARD_LEFT}px`,right:'0px'}}>
         <div className="flex items-center gap-2.5 bg-white rounded-2xl border border-gray-100 shadow-sm px-3 py-2.5">
-          <div className="w-8 h-8 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0 text-base leading-none">☀️</div>
+          <div className="w-8 h-8 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0"><IcWake size={18} className="text-gray-500"/></div>
           <div className="flex-1 min-w-0">
             <p className="text-[11px] text-gray-400 leading-none mb-0.5">{settings.wakeTime}</p>
             <p className="text-sm font-semibold text-gray-900">起床</p>
@@ -1433,7 +1438,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
       {/* sleep card */}
       <div className="absolute z-10" style={{top:`${sleepCardTop}px`,left:`${CARD_LEFT}px`,right:'0px'}}>
         <div className="flex items-center gap-2.5 bg-white rounded-2xl border border-gray-100 shadow-sm px-3 py-2.5">
-          <div className="w-8 h-8 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0 text-base leading-none">🌙</div>
+          <div className="w-8 h-8 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0"><IcSleep size={18} className="text-gray-500"/></div>
           <div className="flex-1 min-w-0">
             <p className="text-[11px] text-gray-400 leading-none mb-0.5">{settings.sleepTime}</p>
             <p className="text-sm font-semibold text-gray-900">就寝</p>
@@ -1669,7 +1674,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
                         {(t.duration??0)>0&&<p className="text-xs text-gray-400">{durLabel(t.duration??0)}</p>}
                       </div>
                       {(t.postponedCount??0)>0&&(
-                        <span className="text-xs text-gray-400 font-semibold shrink-0">🔄{t.postponedCount}</span>
+                        <span className="flex items-center gap-0.5 text-xs text-gray-400 font-semibold shrink-0"><IcRotateCcw size={11}/>{t.postponedCount}</span>
                       )}
                       <button onClick={()=>onToggle(t.id)} className="w-6 h-6 rounded-full border-2 border-gray-300 shrink-0"/>
                     </div>
@@ -1706,7 +1711,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
             {recurringGroups.length>0&&(
               <div className="mt-3">
                 <div className="flex items-center gap-1.5 mb-2">
-                  <span className="text-xs text-gray-400">↻</span>
+                  <IcRepeat size={12} className="text-gray-400"/>
                   <span className="text-xs text-gray-400 font-medium">繰り返し {recurringGroups.length}</span>
                 </div>
                 <div className="space-y-2">
@@ -1715,7 +1720,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
                       className="flex items-center gap-2.5 bg-white border border-gray-100 rounded-2xl shadow-sm px-3 py-3"
                       onClick={()=>onEdit(t)}>
                       <div className="w-7 h-7 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0">
-                        <span className="text-xs text-gray-400">↻</span>
+                        <IcRepeat size={12} className="text-gray-400"/>
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-gray-900">{t.name}</p>
@@ -1767,7 +1772,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
             </div>
             <div className="overflow-y-auto px-4 pb-10 flex-1">
               {shopItems.length===0?(
-                <div className="py-12 text-center"><p className="text-4xl mb-2">🛒</p><p className="text-sm text-gray-400">リストは空です</p></div>
+                <div className="py-12 text-center"><IcShopping size={40} className="mx-auto mb-2 text-gray-300"/><p className="text-sm text-gray-400">リストは空です</p></div>
               ):(
                 <div className="space-y-2">
                   {shopPendingItems.map(item=>(
@@ -2319,11 +2324,9 @@ export default function App() {
                 今日
               </button>
               <button onClick={()=>setDate(shiftDate(date,1))} className="w-8 h-8 flex items-center justify-center text-gray-600 text-xl font-semibold">›</button>
-              <button onClick={()=>setCalOp(true)} className="w-8 h-8 flex items-center justify-center text-gray-400 text-lg">📅</button>
-              <button onClick={()=>setSearchOpen(true)}
-                className="w-8 h-8 flex items-center justify-center text-gray-400 text-base">🔍</button>
-              <button onClick={()=>setSOp(true)}
-                className="w-8 h-8 flex items-center justify-center text-gray-400">⚙</button>
+              <button onClick={()=>setCalOp(true)} className="w-8 h-8 flex items-center justify-center text-gray-400"><IcCalendar size={20}/></button>
+              <button onClick={()=>setSearchOpen(true)} className="w-8 h-8 flex items-center justify-center text-gray-400"><IcSearch size={20}/></button>
+              <button onClick={()=>setSOp(true)} className="w-8 h-8 flex items-center justify-center text-gray-400"><IcSettings size={20}/></button>
             </div>
           </div>
 
