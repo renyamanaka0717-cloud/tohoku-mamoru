@@ -22,6 +22,9 @@ import {
   CaretDown,
   Clock,
   PushPin,
+  SmileySad,
+  Sparkle,
+  CheckSquare,
 } from '@phosphor-icons/react';
 
 type PhosphorComp = React.ComponentType<{
@@ -61,7 +64,10 @@ export const AppIcons = {
   question:  make(Question, 18),
   caretRight: make(CaretRight, 18),
   caretLeft:  make(CaretLeft, 18),
-  caretDown:  make(CaretDown, 14),
-  clock:      make(Clock, 18),
-  pin:        make(PushPin, 18),
+  caretDown:   make(CaretDown, 14),
+  clock:       make(Clock, 18),
+  pin:         make(PushPin, 18),
+  smileySad:   make(SmileySad, 40),
+  sparkle:     make(Sparkle, 40),
+  checkSquare: make(CheckSquare, 12),
 };

@@ -244,9 +244,9 @@ function MonthCalendar({selected,onSelect,onClose,tasks}:{selected:string;onSele
         {/* Header */}
         <div className="px-4 pt-4 pb-2">
           <div className="flex items-center justify-between mb-3">
-            <button onClick={()=>setVm(m=>shiftMonth(m.year,m.month,-1))} className="w-9 h-9 flex items-center justify-center text-gray-600 text-xl font-semibold">‹</button>
+            <button onClick={()=>setVm(m=>shiftMonth(m.year,m.month,-1))} className="w-9 h-9 flex items-center justify-center text-gray-600"><AppIcons.caretLeft/></button>
             <span className="font-bold text-gray-900 text-base">{vm.year}年{vm.month+1}月</span>
-            <button onClick={()=>setVm(m=>shiftMonth(m.year,m.month,1))} className="w-9 h-9 flex items-center justify-center text-gray-600 text-xl font-semibold">›</button>
+            <button onClick={()=>setVm(m=>shiftMonth(m.year,m.month,1))} className="w-9 h-9 flex items-center justify-center text-gray-600"><AppIcons.caretRight/></button>
           </div>
           <div className="grid grid-cols-7 mb-1">
             {DAY_NAMES.map((n,i)=>(
@@ -320,13 +320,13 @@ function CalendarPage({date,tasks,onSelect,onClose}:{date:string;tasks:Task[];on
     <div className="fixed inset-0 z-[80] bg-white flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-gray-100 bg-white">
-        <button onClick={onClose} className="w-9 h-9 flex items-center justify-center text-xl text-gray-600 font-semibold">‹</button>
+        <button onClick={onClose} className="w-9 h-9 flex items-center justify-center text-gray-600"><AppIcons.caretLeft/></button>
         <div className="flex items-center gap-3">
           <button onClick={()=>setVm(m=>shiftMonth(m.year,m.month,-1))}
-            className="w-9 h-9 flex items-center justify-center text-gray-500 bg-gray-100 rounded-xl text-sm font-semibold">‹</button>
+            className="w-9 h-9 flex items-center justify-center text-gray-500 bg-gray-100 rounded-xl"><AppIcons.caretLeft/></button>
           <span className="font-bold text-gray-900 text-base min-w-[7rem] text-center">{vm.year}年{vm.month+1}月</span>
           <button onClick={()=>setVm(m=>shiftMonth(m.year,m.month,1))}
-            className="w-9 h-9 flex items-center justify-center text-gray-500 bg-gray-100 rounded-xl text-sm font-semibold">›</button>
+            className="w-9 h-9 flex items-center justify-center text-gray-500 bg-gray-100 rounded-xl"><AppIcons.caretRight/></button>
         </div>
         <button onClick={()=>{const d=new Date();setVm({year:d.getFullYear(),month:d.getMonth()});onSelect(today);}}
           className="text-xs font-bold px-3 py-1.5 bg-gray-900 text-white rounded-full">今日</button>
@@ -421,7 +421,7 @@ function SearchPage({tasks,onClose,onSelect}:{tasks:Task[];onClose:()=>void;onSe
         {!query?(
           <div className="py-20 text-center"><AppIcons.search size={40} className="mx-auto mb-2 text-gray-300"/><p className="text-sm text-gray-400">タスク名・メモで検索</p></div>
         ):results.length===0?(
-          <div className="py-20 text-center"><p className="text-4xl mb-2">😔</p><p className="text-sm text-gray-400">「{query}」は見つかりませんでした</p></div>
+          <div className="py-20 text-center"><AppIcons.smileySad className="mx-auto mb-2 text-gray-300"/><p className="text-sm text-gray-400">「{query}」は見つかりませんでした</p></div>
         ):(
           <div>
             <p className="text-xs text-gray-400 px-4 pt-3 pb-1">{results.length}件</p>
@@ -1453,7 +1453,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
             <div className="flex items-center gap-2 bg-gray-50 rounded-xl border border-gray-100 px-3 py-2.5 active:bg-gray-100">
               <span className="text-xs text-gray-400">↩︎</span>
               <span className="text-xs text-gray-400 flex-1">未完了タスク{todayHistory.taskNames.length}件をあとでやるへ移動</span>
-              <span className="text-xs text-gray-300">›</span>
+              <AppIcons.caretRight size={12} className="text-gray-300"/>
             </div>
           </div>
           {historyOpen&&(
@@ -1532,7 +1532,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
       {/* empty state */}
       {dayTasks.length===0&&freeSlots.length===0&&(
         <div className="absolute inset-0 flex flex-col items-center justify-center" style={{left:`${CARD_LEFT}px`}}>
-          <p className="text-4xl mb-2">📋</p>
+          <AppIcons.task size={40} className="mb-2 text-gray-300"/>
           <p className="text-sm text-gray-400">タスクがありません</p>
           <p className="text-xs text-gray-300 mt-1">時間をタップして追加</p>
         </div>
@@ -1665,7 +1665,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
                       onTouchEnd={cancelLP}
                       onTouchMove={cancelLP}>
                       <div className="w-7 h-7 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0">
-                        {t.pinned?<span className="text-xs">📌</span>:<span className="text-xs text-gray-400">☑</span>}
+                        {t.pinned?<AppIcons.pin size={12}/>:<AppIcons.checkSquare className="text-gray-400"/>}
                       </div>
                       <div className="flex-1 min-w-0" onClick={()=>onEdit(t)}>
                         <p className="text-sm font-semibold text-gray-900">{t.name}</p>
@@ -1732,7 +1732,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
 
             {/* empty */}
             {normalLater.length===0&&scheduledRaw.length===0&&recurringGroups.length===0&&(
-              <div className="py-12 text-center"><p className="text-4xl mb-2">✨</p><p className="text-sm text-gray-400">タスクがありません</p></div>
+              <div className="py-12 text-center"><AppIcons.sparkle className="mx-auto mb-2 text-gray-300"/><p className="text-sm text-gray-400">タスクがありません</p></div>
             )}
 
             {/* completed */}
@@ -2336,12 +2336,12 @@ export default function App() {
               </div>
             </div>
             <div className="flex items-center gap-1 pt-2">
-              <button onClick={()=>setDate(shiftDate(date,-1))} className="w-8 h-8 flex items-center justify-center text-gray-600 text-xl font-semibold">‹</button>
+              <button onClick={()=>setDate(shiftDate(date,-1))} className="w-8 h-8 flex items-center justify-center text-gray-600"><AppIcons.caretLeft/></button>
               <button onClick={()=>setDate(today)}
                 className={`px-3 py-1.5 text-xs font-bold rounded-full transition-colors ${date===today?'bg-gray-900 text-white':'border border-gray-300 text-gray-600'}`}>
                 今日
               </button>
-              <button onClick={()=>setDate(shiftDate(date,1))} className="w-8 h-8 flex items-center justify-center text-gray-600 text-xl font-semibold">›</button>
+              <button onClick={()=>setDate(shiftDate(date,1))} className="w-8 h-8 flex items-center justify-center text-gray-600"><AppIcons.caretRight/></button>
               <button onClick={()=>setCalOp(true)} className="w-8 h-8 flex items-center justify-center text-gray-400"><AppIcons.calendar size={20}/></button>
               <button onClick={()=>setSearchOpen(true)} className="w-8 h-8 flex items-center justify-center text-gray-400"><AppIcons.search size={20}/></button>
               <button onClick={()=>setSOp(true)} className="w-8 h-8 flex items-center justify-center text-gray-400"><AppIcons.settings size={20}/></button>
