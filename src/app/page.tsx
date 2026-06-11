@@ -202,7 +202,11 @@ function calcFreeSlots(tasks: Task[], date: string, s: Settings): FreeSlot[] {
   let cur=toMin(s.wakeTime);
   const end=toMin(s.sleepTime);
   for(const [st,en] of scheduled){
-    if(st>cur) slots.push({start:fromMin(cur),end:fromMin(st),min:st-cur});
+    if(cur>=end) break;
+    if(st>cur){
+      const slotEnd=Math.min(st,end);
+      slots.push({start:fromMin(cur),end:fromMin(slotEnd),min:slotEnd-cur});
+    }
     cur=Math.max(cur,en);
   }
   if(cur<end) slots.push({start:fromMin(cur),end:fromMin(end),min:end-cur});
