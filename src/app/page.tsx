@@ -1199,7 +1199,12 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
   const freeSlots=calcFreeSlots(tasks,date,settings);
   const laterPool=later.filter(t=>!t.completed);
 
-  const calcY=(min:number)=>(min-wakeMin)*PX_PER_MIN;
+  // Extend timeline start to earliest task if it precedes wakeTime
+  const minTaskMin=dayTasks.length>0?Math.min(...dayTasks.map(t=>toMin(t.startTime!))):wakeMin;
+  const timelineStart=Math.min(wakeMin,minTaskMin);
+  const wakeCardTop=(wakeMin-timelineStart)*PX_PER_MIN;
+
+  const calcY=(min:number)=>(min-timelineStart)*PX_PER_MIN;
 
   const MIN_CARD_H = 60;
   const WAKE_CARD_H=52, SLEEP_CARD_H=52;
@@ -1227,7 +1232,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
     ...freeSlots.map(s=>({type:'free' as const,s,y:calcY(toMin(s.start))})),
   ].sort((a,b)=>a.y-b.y||(a.type==='group'?-1:1));
 
-  let prevBottom=WAKE_CARD_H;
+  let prevBottom=wakeCardTop+WAKE_CARD_H;
   const groupLayout:{g:TaskGroupData;top:number}[]=[];
 
   // Simulate chip wrapping to get accurate content height.
@@ -1283,7 +1288,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
   const totalHeight=sleepCardTop+SLEEP_CARD_H+32+(hasHistoryCard?HISTORY_CARD_H+12:0);
 
   // Piecewise linear time→Y mapping using card layout as anchor points
-  const rawAnchors:[number,number][]=[[wakeMin,0]];
+  const rawAnchors:[number,number][]=[[wakeMin,wakeCardTop]];
   for(const {g,top} of groupLayout){
     const sm=toMin(g.startTime);
     const maxDur=Math.max(...g.tasks.map(t=>t.duration??0));
@@ -1360,10 +1365,10 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
       })}
 
       {/* wake/sleep axis labels */}
-      <div className="absolute flex items-center" style={{top:`${WAKE_CARD_H/2}px`,transform:'translateY(-50%)',left:0}}>
+      <div className="absolute flex items-center" style={{top:`${wakeCardTop+WAKE_CARD_H/2}px`,transform:'translateY(-50%)',left:0}}>
         <span className="text-xs w-12 text-right pr-1 leading-none text-gray-400">{settings.wakeTime}</span>
       </div>
-      <div className="absolute z-10 rounded-full bg-gray-300" style={{width:'6px',height:'6px',left:`${AXIS_X}px`,top:`${WAKE_CARD_H/2}px`,transform:'translate(-50%,-50%)'}}/>
+      <div className="absolute z-10 rounded-full bg-gray-300" style={{width:'6px',height:'6px',left:`${AXIS_X}px`,top:`${wakeCardTop+WAKE_CARD_H/2}px`,transform:'translate(-50%,-50%)'}}/>
       <div className="absolute flex items-center" style={{top:`${sleepCardTop+SLEEP_CARD_H/2}px`,transform:'translateY(-50%)',left:0}}>
         <span className="text-xs w-12 text-right pr-1 leading-none text-gray-400">{settings.sleepTime}</span>
       </div>
@@ -1403,7 +1408,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
       )}
 
       {/* wake card */}
-      <div className="absolute z-10" style={{top:'0px',left:`${CARD_LEFT}px`,right:'0px'}}>
+      <div className="absolute z-10" style={{top:`${wakeCardTop}px`,left:`${CARD_LEFT}px`,right:'0px'}}>
         <div className="flex items-center gap-2.5 bg-white rounded-2xl border border-gray-100 shadow-sm px-3 py-2.5">
           <div className="w-8 h-8 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0"><AppIcons.wake size={18} className="text-gray-500"/></div>
           <div className="flex-1 min-w-0">
