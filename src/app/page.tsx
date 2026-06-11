@@ -1369,15 +1369,16 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
       </div>
       <div className="absolute z-10 rounded-full bg-gray-300" style={{width:'6px',height:'6px',left:`${AXIS_X}px`,top:`${sleepCardTop+SLEEP_CARD_H/2}px`,transform:'translate(-50%,-50%)'}}/>
 
-      {/* free slot hourly labels on left axis — skip wake/sleep */}
+      {/* free slot hourly labels on left axis — skip wake/sleep and task start times */}
       {freeLayout.flatMap(({slot,freeY,finalH})=>{
+        const usedMins=new Set([wakeMin,sleepMin,...groupLayout.map(({g})=>toMin(g.startTime))]);
         const startMin=toMin(slot.start);
         const endMin=toMin(slot.end);
         const slotMin=endMin-startMin;
         const cardY=(m:number)=>slotMin>0?freeY+(m-startMin)/slotMin*finalH:freeY;
         const labels:number[]=[];
         for(let m=Math.ceil(startMin/60)*60;m<=endMin;m+=60){
-          if(m===wakeMin||m===sleepMin) continue;
+          if(usedMins.has(m)) continue;
           const y=cardY(m);
           if(y>=freeY&&y<=freeY+finalH) labels.push(m);
         }
