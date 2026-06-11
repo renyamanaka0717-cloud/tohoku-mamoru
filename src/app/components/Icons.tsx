@@ -10,6 +10,13 @@ import {
   ShoppingCart,
   ArrowCounterClockwise,
   Trash,
+  ChartBar,
+  Tag,
+  Bell,
+  Palette,
+  LinkSimple,
+  Star,
+  Question,
 } from '@phosphor-icons/react';
 
 type PhosphorComp = React.ComponentType<{
@@ -40,4 +47,11 @@ export const AppIcons = {
   shopping:  make(ShoppingCart, 40),
   postponed: make(ArrowCounterClockwise, 12),
   trash:     make(Trash, 28),
+  stats:     make(ChartBar, 18),
+  tag:       make(Tag, 18),
+  bell:      make(Bell, 18),
+  palette:   make(Palette, 18),
+  link:      make(LinkSimple, 18),
+  star:      make(Star, 18),
+  question:  make(Question, 18),
 };

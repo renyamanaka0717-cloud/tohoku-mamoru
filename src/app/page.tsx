@@ -1805,14 +1805,14 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
 // ── Settings Screen ──────────────────────────────────────────────────────────
 
 function SettingsRow({icon,iconBg,title,desc,onClick,isLast=false}:{
-  icon:string; iconBg:string; title:string; desc?:string; onClick?:()=>void; isLast?:boolean;
+  icon:React.ReactNode; iconBg:string; title:string; desc?:string; onClick?:()=>void; isLast?:boolean;
 }) {
   return (
     <button
       onClick={onClick}
       className={`w-full flex items-center gap-3 px-4 py-3.5 text-left active:bg-gray-50 transition-colors${!isLast?' border-b border-gray-100':''}`}
     >
-      <div className={`w-[30px] h-[30px] rounded-[8px] flex items-center justify-center text-[17px] shrink-0 ${iconBg}`}>
+      <div className={`w-[30px] h-[30px] rounded-[8px] flex items-center justify-center shrink-0 text-white ${iconBg}`}>
         {icon}
       </div>
       <div className="flex-1 min-w-0">
@@ -1848,9 +1848,9 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags}:{
     </div>
   );
 
-  const comingSoon = (icon:string, msg:string) => (
+  const comingSoon = (icon:React.ReactNode, msg:string) => (
     <div className="flex flex-col items-center justify-center pt-20 gap-3">
-      <span className="text-5xl">{icon}</span>
+      <div className="text-gray-300">{icon}</div>
       <p className="text-[17px] font-semibold text-gray-900">準備中</p>
       <p className="text-sm text-gray-400 text-center px-8 leading-relaxed">{msg}</p>
     </div>
@@ -1876,7 +1876,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags}:{
   if(sub==='stats') return (
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
       {subHeader('統計')}
-      <div className="flex-1 overflow-y-auto px-4 pb-8">{comingSoon('📊','タスク完了の統計機能は近日公開予定です')}</div>
+      <div className="flex-1 overflow-y-auto px-4 pb-8">{comingSoon(<AppIcons.stats size={48}/>,'タスク完了の統計機能は近日公開予定です')}</div>
     </div>
   );
 
@@ -1965,14 +1965,14 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags}:{
   if(sub==='recurring') return (
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
       {subHeader('繰り返しタスク')}
-      <div className="flex-1 overflow-y-auto px-4 pb-8">{comingSoon('🔁','繰り返しタスクの一覧・管理機能は近日公開予定です')}</div>
+      <div className="flex-1 overflow-y-auto px-4 pb-8">{comingSoon(<AppIcons.repeat size={48}/>,'繰り返しタスクの一覧・管理機能は近日公開予定です')}</div>
     </div>
   );
 
   if(sub==='notifications') return (
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
       {subHeader('通知')}
-      <div className="flex-1 overflow-y-auto px-4 pb-8">{comingSoon('🔔','通知設定は近日公開予定です')}</div>
+      <div className="flex-1 overflow-y-auto px-4 pb-8">{comingSoon(<AppIcons.bell size={48}/>,'通知設定は近日公開予定です')}</div>
     </div>
   );
 
@@ -2024,28 +2024,28 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags}:{
   if(sub==='account') return (
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
       {subHeader('アカウント連携')}
-      <div className="flex-1 overflow-y-auto px-4 pb-8">{comingSoon('🔗','アカウント連携機能は近日公開予定です')}</div>
+      <div className="flex-1 overflow-y-auto px-4 pb-8">{comingSoon(<AppIcons.link size={48}/>,'アカウント連携機能は近日公開予定です')}</div>
     </div>
   );
 
   if(sub==='calendar') return (
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
       {subHeader('カレンダー連携')}
-      <div className="flex-1 overflow-y-auto px-4 pb-8">{comingSoon('📅','カレンダー連携機能は近日公開予定です')}</div>
+      <div className="flex-1 overflow-y-auto px-4 pb-8">{comingSoon(<AppIcons.calendar size={48}/>,'カレンダー連携機能は近日公開予定です')}</div>
     </div>
   );
 
   if(sub==='premium') return (
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
       {subHeader('プレミアム')}
-      <div className="flex-1 overflow-y-auto px-4 pb-8">{comingSoon('⭐','プレミアムプランは近日公開予定です')}</div>
+      <div className="flex-1 overflow-y-auto px-4 pb-8">{comingSoon(<AppIcons.star size={48}/>,'プレミアムプランは近日公開予定です')}</div>
     </div>
   );
 
   if(sub==='faq') return (
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
       {subHeader('よくある質問')}
-      <div className="flex-1 overflow-y-auto px-4 pb-8">{comingSoon('❓','よくある質問は近日公開予定です')}</div>
+      <div className="flex-1 overflow-y-auto px-4 pb-8">{comingSoon(<AppIcons.question size={48}/>,'よくある質問は近日公開予定です')}</div>
     </div>
   );
 
@@ -2061,32 +2061,32 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags}:{
 
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-4">統計</p>
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
-          <SettingsRow icon="📊" iconBg="bg-green-500" title="統計" desc="タスク完了の統計を確認" onClick={()=>setSub('stats')} isLast/>
+          <SettingsRow icon={<AppIcons.stats/>} iconBg="bg-green-500" title="統計" desc="タスク完了の統計を確認" onClick={()=>setSub('stats')} isLast/>
         </div>
 
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">一般</p>
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
-          <SettingsRow icon="🏷️" iconBg="bg-orange-400" title="タグ" desc="タグを管理" onClick={()=>setSub('tags')}/>
-          <SettingsRow icon="🔁" iconBg="bg-blue-500" title="繰り返しタスク" desc="繰り返しタスクを管理" onClick={()=>setSub('recurring')}/>
-          <SettingsRow icon="🔔" iconBg="bg-red-500" title="通知" desc="通知設定" onClick={()=>setSub('notifications')}/>
-          <SettingsRow icon="🎨" iconBg="bg-purple-500" title="表示設定" desc="外観、言語など" onClick={()=>setSub('display')}/>
-          <SettingsRow icon="🌅" iconBg="bg-amber-400" title="起床・就寝" desc="起床時間、就寝時間を設定" onClick={()=>setSub('wakeSleep')} isLast/>
+          <SettingsRow icon={<AppIcons.tag/>} iconBg="bg-orange-400" title="タグ" desc="タグを管理" onClick={()=>setSub('tags')}/>
+          <SettingsRow icon={<AppIcons.repeat size={18}/>} iconBg="bg-blue-500" title="繰り返しタスク" desc="繰り返しタスクを管理" onClick={()=>setSub('recurring')}/>
+          <SettingsRow icon={<AppIcons.bell/>} iconBg="bg-red-500" title="通知" desc="通知設定" onClick={()=>setSub('notifications')}/>
+          <SettingsRow icon={<AppIcons.palette/>} iconBg="bg-purple-500" title="表示設定" desc="外観、言語など" onClick={()=>setSub('display')}/>
+          <SettingsRow icon={<AppIcons.wake size={18}/>} iconBg="bg-amber-400" title="起床・就寝" desc="起床時間、就寝時間を設定" onClick={()=>setSub('wakeSleep')} isLast/>
         </div>
 
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">アカウント</p>
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
-          <SettingsRow icon="🔗" iconBg="bg-indigo-500" title="アカウント連携" desc="連携サービスを管理" onClick={()=>setSub('account')}/>
-          <SettingsRow icon="📅" iconBg="bg-red-400" title="カレンダー連携" desc="カレンダーと同期" onClick={()=>setSub('calendar')} isLast/>
+          <SettingsRow icon={<AppIcons.link/>} iconBg="bg-indigo-500" title="アカウント連携" desc="連携サービスを管理" onClick={()=>setSub('account')}/>
+          <SettingsRow icon={<AppIcons.calendar size={18}/>} iconBg="bg-red-400" title="カレンダー連携" desc="カレンダーと同期" onClick={()=>setSub('calendar')} isLast/>
         </div>
 
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">サブスクリプション</p>
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
-          <SettingsRow icon="⭐" iconBg="bg-amber-400" title="プレミアム" desc="プランを管理" onClick={()=>setSub('premium')} isLast/>
+          <SettingsRow icon={<AppIcons.star/>} iconBg="bg-amber-400" title="プレミアム" desc="プランを管理" onClick={()=>setSub('premium')} isLast/>
         </div>
 
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">その他</p>
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
-          <SettingsRow icon="❓" iconBg="bg-gray-400" title="よくある質問" onClick={()=>setSub('faq')} isLast/>
+          <SettingsRow icon={<AppIcons.question/>} iconBg="bg-gray-400" title="よくある質問" onClick={()=>setSub('faq')} isLast/>
         </div>
 
       </div>
