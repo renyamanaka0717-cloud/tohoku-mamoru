@@ -1265,7 +1265,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
       freePassItems.push({slot:item.s,freeY});
       const contentH=calcFreeContentH(laterPool);
       const timeH=item.s.min*PX_PER_MIN;
-      prevBottom=freeY+Math.max(timeH,contentH,120);
+      prevBottom=freeY+Math.max(timeH,contentH,60);
     }
   }
 
