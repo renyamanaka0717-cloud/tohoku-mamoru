@@ -1584,11 +1584,12 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
   const laterPending= laterTasks.filter(t=>!t.completed);
   const laterDone   = laterTasks.filter(t=>t.completed);
 
-  // Pinned tasks always appear first, then sorted by insertion order
+  // Pinned tasks always appear first, then sorted by sortDir within the group
   const normalLater = (() => {
     const pinned  = laterPending.filter(t=>t.pinned&&!t.recurrence);
     const normal  = laterPending.filter(t=>!t.pinned&&!t.recurrence);
-    return [...pinned,...normal];
+    const ordered = sortDir==='asc' ? normal : [...normal].reverse();
+    return [...pinned,...ordered];
   })();
 
   const scheduledRaw = tasks.filter(t=>!t.isLater&&t.startTime&&!t.completed&&!t.recurrence)
@@ -1605,7 +1606,10 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
     const key=`${t.name}||${t.recurrence}||${t.startTime??''}`;
     if(!recurringMap.has(key)) recurringMap.set(key,t);
   });
-  const recurringGroups=[...recurringMap.values()];
+  const recurringGroups=[...recurringMap.values()].sort((a,b)=>{
+    const cmp=(a.startTime??'').localeCompare(b.startTime??'')||a.name.localeCompare(b.name);
+    return sortDir==='asc'?cmp:-cmp;
+  });
 
   const shopPendingItems=shopItems.filter(i=>!i.checked);
   const shopDoneItems=shopItems.filter(i=>i.checked);
@@ -1644,62 +1648,59 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
             </div>
 
             {/* あとでやる section */}
-            {/* あとでやる + 時間指定: order swaps based on sortDir */}
-            <div className="flex flex-col">
-              {normalLater.length>0&&(
-                <div className={sortDir==='desc'?'order-2 mt-3':'mb-1'}>
-                  <div className="flex items-center gap-1.5 mb-2">
-                    <span className="text-xs text-gray-400">≡</span>
-                    <span className="text-xs text-gray-400 font-medium">あとでやる {normalLater.length}</span>
-                  </div>
-                  <div className="space-y-2">
-                    {normalLater.map(t=>(
-                      <div key={t.id}
-                        className={`flex items-center gap-2.5 bg-white border border-gray-100 rounded-2xl shadow-sm px-3 py-3 transition-transform select-none ${pressingId===t.id?'scale-95 shadow-lg border-blue-200':''}`}
-                        onTouchStart={e=>startLP(t,e)}
-                        onTouchEnd={cancelLP}
-                        onTouchMove={cancelLP}>
-                        <div className="w-7 h-7 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0">
-                          {t.pinned?<span className="text-xs">📌</span>:<span className="text-xs text-gray-400">☑</span>}
-                        </div>
-                        <div className="flex-1 min-w-0" onClick={()=>onEdit(t)}>
-                          <p className="text-sm font-semibold text-gray-900">{t.name}</p>
-                          {(t.duration??0)>0&&<p className="text-xs text-gray-400">{durLabel(t.duration??0)}</p>}
-                        </div>
-                        {(t.postponedCount??0)>0&&(
-                          <span className="text-xs text-gray-400 font-semibold shrink-0">🔄{t.postponedCount}</span>
-                        )}
-                        <button onClick={()=>onToggle(t.id)} className="w-6 h-6 rounded-full border-2 border-gray-300 shrink-0"/>
-                      </div>
-                    ))}
-                  </div>
+            {normalLater.length>0&&(
+              <div className="mb-1">
+                <div className="flex items-center gap-1.5 mb-2">
+                  <span className="text-xs text-gray-400">≡</span>
+                  <span className="text-xs text-gray-400 font-medium">あとでやる {normalLater.length}</span>
                 </div>
-              )}
+                <div className="space-y-2">
+                  {normalLater.map(t=>(
+                    <div key={t.id}
+                      className={`flex items-center gap-2.5 bg-white border border-gray-100 rounded-2xl shadow-sm px-3 py-3 transition-transform select-none ${pressingId===t.id?'scale-95 shadow-lg border-blue-200':''}`}
+                      onTouchStart={e=>startLP(t,e)}
+                      onTouchEnd={cancelLP}
+                      onTouchMove={cancelLP}>
+                      <div className="w-7 h-7 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0">
+                        {t.pinned?<span className="text-xs">📌</span>:<span className="text-xs text-gray-400">☑</span>}
+                      </div>
+                      <div className="flex-1 min-w-0" onClick={()=>onEdit(t)}>
+                        <p className="text-sm font-semibold text-gray-900">{t.name}</p>
+                        {(t.duration??0)>0&&<p className="text-xs text-gray-400">{durLabel(t.duration??0)}</p>}
+                      </div>
+                      {(t.postponedCount??0)>0&&(
+                        <span className="text-xs text-gray-400 font-semibold shrink-0">🔄{t.postponedCount}</span>
+                      )}
+                      <button onClick={()=>onToggle(t.id)} className="w-6 h-6 rounded-full border-2 border-gray-300 shrink-0"/>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
-              {/* 時間指定 section */}
-              {scheduledRaw.length>0&&(
-                <div className={sortDir==='desc'?'order-1 mb-1':'mt-3'}>
-                  <div className="flex items-center gap-1.5 mb-2">
-                    <span className="text-xs text-gray-400">⊙</span>
-                    <span className="text-xs text-gray-400 font-medium">時間指定 {scheduledRaw.length}</span>
-                  </div>
-                  <div className="space-y-2">
-                    {scheduledRaw.map(t=>(
-                      <div key={t.id} className="flex items-center gap-2.5 bg-white border border-gray-100 rounded-2xl shadow-sm px-3 py-3">
-                        <div className="w-7 h-7 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0">
-                          <span className="text-xs text-gray-400">⊙</span>
-                        </div>
-                        <div className="flex-1 min-w-0" onClick={()=>onEdit(t)}>
-                          <p className="text-sm font-semibold text-gray-900">{t.name}</p>
-                          <p className="text-xs text-gray-400">{t.date.slice(5).replace('-','/')} {t.startTime}</p>
-                        </div>
-                        <button onClick={()=>onToggle(t.id)} className="w-6 h-6 rounded-full border-2 border-gray-300 shrink-0"/>
-                      </div>
-                    ))}
-                  </div>
+            {/* 時間指定 section */}
+            {scheduledRaw.length>0&&(
+              <div className="mt-3">
+                <div className="flex items-center gap-1.5 mb-2">
+                  <span className="text-xs text-gray-400">⊙</span>
+                  <span className="text-xs text-gray-400 font-medium">時間指定 {scheduledRaw.length}</span>
                 </div>
-              )}
-            </div>
+                <div className="space-y-2">
+                  {scheduledRaw.map(t=>(
+                    <div key={t.id} className="flex items-center gap-2.5 bg-white border border-gray-100 rounded-2xl shadow-sm px-3 py-3">
+                      <div className="w-7 h-7 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0">
+                        <span className="text-xs text-gray-400">⊙</span>
+                      </div>
+                      <div className="flex-1 min-w-0" onClick={()=>onEdit(t)}>
+                        <p className="text-sm font-semibold text-gray-900">{t.name}</p>
+                        <p className="text-xs text-gray-400">{t.date.slice(5).replace('-','/')} {t.startTime}</p>
+                      </div>
+                      <button onClick={()=>onToggle(t.id)} className="w-6 h-6 rounded-full border-2 border-gray-300 shrink-0"/>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* 繰り返し section */}
             {recurringGroups.length>0&&(
