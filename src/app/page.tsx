@@ -437,7 +437,7 @@ function SearchPage({tasks,onClose,onSelect}:{tasks:Task[];onClose:()=>void;onSe
                   </p>
                   {t.memo&&<p className="text-xs text-gray-300 truncate mt-0.5">{t.memo}</p>}
                 </div>
-                <span className="text-gray-300 text-lg">›</span>
+                <AppIcons.caretRight className="text-gray-300"/>
               </button>
             ))}
           </div>
@@ -847,12 +847,12 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,onSave,onDelete
               <button className="w-full flex items-center justify-between px-4 py-3"
                 onClick={()=>setDateOpen(o=>!o)}>
                 <div className="flex items-center gap-2">
-                  <span className="text-lg">📅</span>
+                  <AppIcons.calendar size={18} className="text-gray-700"/>
                   <span className="text-sm font-semibold text-gray-800">日付</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <span className="text-sm font-semibold text-gray-700">{taskDateLabel()}</span>
-                  <span className={`text-gray-400 text-xs transition-transform ${dateOpen?'rotate-180':''}`}>∨</span>
+                  <AppIcons.caretDown className={`text-gray-400 transition-transform ${dateOpen?'rotate-180':''}`}/>
                 </div>
               </button>
               {dateOpen&&(
@@ -864,9 +864,9 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,onSave,onDelete
                     </span>
                     <div className="flex gap-1">
                       <button onClick={()=>setCalVm(m=>shiftMonth(m.year,m.month,-1))}
-                        className="w-7 h-7 flex items-center justify-center text-gray-500 rounded-lg bg-gray-100 text-sm">‹</button>
+                        className="w-7 h-7 flex items-center justify-center text-gray-500 rounded-lg bg-gray-100"><AppIcons.caretLeft size={14}/></button>
                       <button onClick={()=>setCalVm(m=>shiftMonth(m.year,m.month,1))}
-                        className="w-7 h-7 flex items-center justify-center text-gray-500 rounded-lg bg-gray-100 text-sm">›</button>
+                        className="w-7 h-7 flex items-center justify-center text-gray-500 rounded-lg bg-gray-100"><AppIcons.caretRight size={14}/></button>
                     </div>
                   </div>
                   {/* Day headers */}
@@ -901,7 +901,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,onSave,onDelete
             <div className="bg-white mx-3 mt-3 rounded-2xl p-4">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  <span className="text-lg">🕐</span>
+                  <AppIcons.clock className="text-gray-700"/>
                   <span className="text-sm font-semibold text-gray-800">開始時刻</span>
                 </div>
                 {startTime&&computedEnd&&(
@@ -916,7 +916,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,onSave,onDelete
           {/* 所要時間 — all modes */}
           <div className="bg-white mx-3 mt-3 rounded-2xl p-4">
             <div className="flex items-center gap-2 mb-3">
-              <span className="text-lg">🕐</span>
+              <AppIcons.clock className="text-gray-700"/>
               <span className="text-sm font-semibold text-gray-800">所要時間</span>
             </div>
             <div className="flex gap-2 overflow-x-auto pb-0.5" style={{scrollbarWidth:'none',WebkitOverflowScrolling:'touch'} as React.CSSProperties}>
@@ -947,7 +947,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,onSave,onDelete
           {(mode==='scheduled'||mode==='recurring')&&(
             <div className="bg-white mx-3 mt-3 rounded-2xl overflow-hidden">
               <div className="flex items-center gap-2 px-4 pt-4 pb-3">
-                <span className="text-lg">🔔</span>
+                <AppIcons.bell className="text-gray-700"/>
                 <span className="text-sm font-semibold text-gray-800">通知</span>
               </div>
               <div className="flex gap-2 overflow-x-auto pb-0.5 px-4 mb-3" style={{scrollbarWidth:'none',WebkitOverflowScrolling:'touch'} as React.CSSProperties}>
@@ -1000,7 +1000,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,onSave,onDelete
             {/* Pin toggle */}
             <div className="flex items-center justify-between p-4 border-b border-gray-50">
               <div className="flex items-center gap-3">
-                <span className="text-xl w-8 text-center">📌</span>
+                <AppIcons.pin className="text-gray-700"/>
                 <div>
                   <p className="text-sm font-semibold text-gray-800">ピン留め</p>
                   <p className="text-xs text-gray-400">リストの上部に固定表示</p>
@@ -1015,7 +1015,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,onSave,onDelete
             {/* Tags */}
             <div className="p-4">
               <div className="flex items-center gap-3 mb-3">
-                <span className="text-xl w-8 text-center">🏷️</span>
+                <AppIcons.tag className="text-gray-700"/>
                 <p className="text-sm font-semibold text-gray-800">タグ</p>
               </div>
               {globalTags.length===0 ? (
