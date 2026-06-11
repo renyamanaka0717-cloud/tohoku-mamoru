@@ -1112,7 +1112,7 @@ function FreeTimeCard({slot,fits,height,onSchedule,onDragStart}:{
 
   const h=Math.floor(slot.min/60), m=slot.min%60;
   return (
-    <div className="bg-gray-100 rounded-2xl px-4 py-5 flex flex-col justify-center" style={{height:`${height}px`,overflow:'hidden'}}>
+    <div className="bg-gray-100 rounded-2xl px-4 pt-5 pb-4 flex flex-col" style={{height:`${height}px`,overflow:'hidden'}}>
       <div className="flex items-center gap-1 mb-1">
         <AppIcons.freeTime size={12} className="text-gray-400"/>
         <span className="text-xs text-gray-400 font-medium">空き時間</span>
@@ -1265,7 +1265,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
       freePassItems.push({slot:item.s,freeY});
       const contentH=calcFreeContentH(laterPool);
       const timeH=item.s.min*PX_PER_MIN;
-      prevBottom=freeY+Math.max(timeH,contentH);
+      prevBottom=freeY+Math.max(timeH,contentH,120);
     }
   }
 
@@ -1274,7 +1274,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
   for(const {slot,freeY} of freePassItems){
     const contentH=calcFreeContentH(laterPool);
     const timeH=slot.min*PX_PER_MIN;
-    const finalH=Math.max(contentH,timeH);
+    const finalH=Math.max(contentH,timeH,120);
     freeLayout.push({slot,freeY,finalH});
   }
 
