@@ -1251,8 +1251,8 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
     return base+CHIP_MT+rows*CHIP_H+(rows-1)*ROW_GAP;
   };
 
-  // Phase 1: compute taskLayout and capture free slot positions in one forward pass
-  type FreePassItem={slot:FreeSlot;freeY:number};
+  // Phase 1: compute taskLayout and free slot positions — finalH calculated once here and reused for both layout and display
+  type FreePassItem={slot:FreeSlot;freeY:number;finalH:number};
   const freePassItems:FreePassItem[]=[];
 
   for(const item of allItems){
@@ -1262,21 +1262,16 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
       prevBottom=top+item.g.h;
     } else {
       const freeY=Math.max(item.y,prevBottom)+16;
-      freePassItems.push({slot:item.s,freeY});
       const contentH=calcFreeContentH(laterPool);
       const timeH=item.s.min*PX_PER_MIN;
-      prevBottom=freeY+Math.max(timeH,contentH,60);
+      const finalH=Math.max(timeH,contentH,60);
+      freePassItems.push({slot:item.s,freeY,finalH});
+      prevBottom=freeY+finalH;
     }
   }
 
-  // Phase 2: finalH = max(slotH, contentH) — card height, layout height, and label range all use this
-  const freeLayout:{slot:FreeSlot;freeY:number;finalH:number}[]=[];
-  for(const {slot,freeY} of freePassItems){
-    const contentH=calcFreeContentH(laterPool);
-    const timeH=slot.min*PX_PER_MIN;
-    const finalH=Math.max(contentH,timeH,60);
-    freeLayout.push({slot,freeY,finalH});
-  }
+  // Phase 2: pass through — finalH already computed in Phase 1
+  const freeLayout:{slot:FreeSlot;freeY:number;finalH:number}[]=freePassItems.map(({slot,freeY,finalH})=>({slot,freeY,finalH}));
 
   const maxBottom=Math.max(
     groupLayout.length?groupLayout[groupLayout.length-1].top+groupLayout[groupLayout.length-1].g.h:0,
