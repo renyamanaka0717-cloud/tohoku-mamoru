@@ -9,6 +9,7 @@ import {
   ArrowsClockwise,
   ShoppingCart,
   ArrowCounterClockwise,
+  Trash,
 } from '@phosphor-icons/react';
 
 type PhosphorComp = React.ComponentType<{
@@ -38,4 +39,5 @@ export const AppIcons = {
   repeat:    make(ArrowsClockwise, 12),
   shopping:  make(ShoppingCart, 40),
   postponed: make(ArrowCounterClockwise, 12),
+  trash:     make(Trash, 28),
 };

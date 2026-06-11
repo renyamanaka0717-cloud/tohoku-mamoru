@@ -2423,13 +2423,13 @@ export default function App() {
           {/* Bottom drop zones */}
           <div className="absolute bottom-0 left-0 right-0 h-24 flex">
             {/* Left: Delete */}
-            <div className={`flex-1 flex flex-col items-center justify-center gap-1 transition-colors ${overTrash?'bg-red-500':'bg-red-100'}`}>
-              <span className="text-2xl">🗑️</span>
-              <span className={`text-xs font-bold ${overTrash?'text-white':'text-red-400'}`}>ここで削除</span>
+            <div className={`flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors ${overTrash?'bg-red-400':'bg-red-50'}`}>
+              <AppIcons.trash size={28} className={overTrash?'text-white':'text-red-400'}/>
+              <span className={`text-xs font-bold ${overTrash?'text-white':'text-red-400'}`}>削除する</span>
             </div>
             {/* Right: Return to later */}
-            <div className={`flex-1 flex flex-col items-center justify-center gap-1 transition-colors ${overLater?'bg-blue-400':'bg-blue-100'}`}>
-              <AppIcons.postponed size={24} className={overLater?'text-white':'text-blue-400'}/>
+            <div className={`flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors ${overLater?'bg-blue-400':'bg-blue-50'}`}>
+              <AppIcons.postponed size={28} className={overLater?'text-white':'text-blue-400'}/>
               <span className={`text-xs font-bold ${overLater?'text-white':'text-blue-400'}`}>あとでやるに戻す</span>
             </div>
           </div>
