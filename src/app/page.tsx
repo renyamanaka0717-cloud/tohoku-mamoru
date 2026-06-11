@@ -1274,7 +1274,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
   for(const {slot,freeY} of freePassItems){
     const contentH=calcFreeContentH(laterPool);
     const timeH=slot.min*PX_PER_MIN;
-    const finalH=Math.max(contentH,timeH,120);
+    const finalH=Math.max(contentH,timeH,60);
     freeLayout.push({slot,freeY,finalH});
   }
 
