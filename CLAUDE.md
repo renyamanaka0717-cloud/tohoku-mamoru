@@ -43,6 +43,7 @@
 - フレームワーク: Next.js 15 (App Router)
 - 言語: TypeScript
 - スタイル: Tailwind CSS
+- アイコン: @phosphor-icons/react（weight="bold"、AppIcons で一元管理）
 - AI: Groq SDK（llama-3.3-70b-versatile）※Threads投稿生成機能で使用
 - データ永続化: localStorage（サーバーDBなし）
 
@@ -50,12 +51,14 @@
 
 ```
 src/app/
-  page.tsx          # アプリ全体のメイン実装（タイムライン・タスク管理）
-  layout.tsx        # ルートレイアウト・メタデータ
-  globals.css       # グローバルスタイル
+  page.tsx              # アプリ全体のメイン実装（タイムライン・タスク管理）
+  layout.tsx            # ルートレイアウト・メタデータ
+  globals.css           # グローバルスタイル
+  components/
+    Icons.tsx           # AppIcons — Phosphor Icons の一元管理
   api/
     generate/
-      route.ts      # Groq APIを使ったThreads投稿生成エンドポイント
+      route.ts          # Groq APIを使ったThreads投稿生成エンドポイント
 ```
 
 ## 主要な型定義（page.tsx）
@@ -91,6 +94,31 @@ npm run lint    # ESLint
 | 変数 | 説明 |
 |---|---|
 | `GROQ_API_KEY` | Groq APIキー（Threads投稿生成機能で使用） |
+
+## アイコン方針
+
+- ライブラリ: `@phosphor-icons/react`
+- weight: `"bold"` をデフォルト
+- サイズ: 20px 前後（用途により 10〜40px）
+- 管理: `src/app/components/Icons.tsx` の `AppIcons` オブジェクトで一元管理
+- 画面内（page.tsx など）に Phosphor を直接 import しない
+
+### AppIcons キー一覧
+
+| キー | Phosphor コンポーネント | 用途 |
+|---|---|---|
+| `calendar` | CalendarBlank | ヘッダー カレンダーボタン |
+| `search` | MagnifyingGlass | ヘッダー 検索ボタン・検索バー |
+| `settings` | Gear | ヘッダー 設定ボタン |
+| `wake` | SunHorizon | タイムライン 起床カード |
+| `sleep` | Moon | タイムライン 就寝カード |
+| `task` | NotePencil | タスクアイコン編集ボタン |
+| `freeTime` | ClockCountdown | 空き時間カード |
+| `repeat` | ArrowsClockwise | 繰り返しラベル・セクション |
+| `shopping` | ShoppingCart | 買い物リスト空状態 |
+| `postponed` | ArrowCounterClockwise | 未完了回数インジケーター |
+
+---
 
 ## 開発上の注意
 

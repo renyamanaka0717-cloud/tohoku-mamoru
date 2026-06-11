@@ -1,27 +1,41 @@
 import {
-  Calendar,
-  Search,
-  Settings,
-  Sunrise,
+  CalendarBlank,
+  MagnifyingGlass,
+  Gear,
+  SunHorizon,
   Moon,
-  Clock3,
-  Pencil,
+  NotePencil,
+  ClockCountdown,
+  ArrowsClockwise,
   ShoppingCart,
-  Repeat,
-  RotateCcw,
-} from 'lucide-react';
+  ArrowCounterClockwise,
+} from '@phosphor-icons/react';
+
+type PhosphorComp = React.ComponentType<{
+  weight?: 'thin' | 'light' | 'regular' | 'bold' | 'fill' | 'duotone';
+  size?: number | string;
+  className?: string;
+  color?: string;
+}>;
 
 type P = { size?: number; className?: string };
 
-const sw = 1.5;
+const make = (Ic: PhosphorComp, defaultSize = 20) => {
+  function PhosphorIcon({ size = defaultSize, className }: P) {
+    return <Ic weight="bold" size={size} className={className} />;
+  }
+  return PhosphorIcon;
+};
 
-export const IcCalendar  = ({ size = 20, className }: P) => <Calendar     size={size} strokeWidth={sw} className={className} />;
-export const IcSearch    = ({ size = 20, className }: P) => <Search        size={size} strokeWidth={sw} className={className} />;
-export const IcSettings  = ({ size = 20, className }: P) => <Settings      size={size} strokeWidth={sw} className={className} />;
-export const IcWake      = ({ size = 18, className }: P) => <Sunrise       size={size} strokeWidth={sw} className={className} />;
-export const IcSleep     = ({ size = 18, className }: P) => <Moon          size={size} strokeWidth={sw} className={className} />;
-export const IcFreeTime  = ({ size = 12, className }: P) => <Clock3        size={size} strokeWidth={sw} className={className} />;
-export const IcPencil    = ({ size = 10, className }: P) => <Pencil        size={size} strokeWidth={sw} className={className} />;
-export const IcShopping  = ({ size = 40, className }: P) => <ShoppingCart  size={size} strokeWidth={sw} className={className} />;
-export const IcRepeat    = ({ size = 12, className }: P) => <Repeat        size={size} strokeWidth={sw} className={className} />;
-export const IcRotateCcw = ({ size = 12, className }: P) => <RotateCcw     size={size} strokeWidth={sw} className={className} />;
+export const AppIcons = {
+  calendar:  make(CalendarBlank),
+  search:    make(MagnifyingGlass),
+  settings:  make(Gear),
+  wake:      make(SunHorizon, 18),
+  sleep:     make(Moon, 18),
+  task:      make(NotePencil, 10),
+  freeTime:  make(ClockCountdown, 12),
+  repeat:    make(ArrowsClockwise, 12),
+  shopping:  make(ShoppingCart, 40),
+  postponed: make(ArrowCounterClockwise, 12),
+};
