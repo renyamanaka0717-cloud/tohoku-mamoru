@@ -1236,7 +1236,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
     ...freeSlots.map(s=>({type:'free' as const,s,y:calcY(toMin(s.start))})),
   ].sort((a,b)=>a.y-b.y||(a.type==='group'?-1:1));
 
-  let prevBottom=wakeCardTop+WAKE_CARD_H;
+  let prevBottom=-16;
   const groupLayout:{g:TaskGroupData;top:number}[]=[];
 
   // Simulate chip wrapping to get accurate content height.
@@ -1265,6 +1265,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
   const freePassItems:FreePassItem[]=[];
 
   for(const item of allItems){
+    if(item.y>=wakeCardTop) prevBottom=Math.max(prevBottom,wakeCardTop+WAKE_CARD_H);
     if(item.type==='group'){
       const top=Math.max(item.y,prevBottom+16);
       groupLayout.push({g:item.g,top});
