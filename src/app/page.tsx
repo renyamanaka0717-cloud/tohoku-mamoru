@@ -1327,7 +1327,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
     return calcDayY(min);
   };
 
-  const AXIS_X=60, CARD_LEFT=82;
+  const AXIS_X=60, CARD_LEFT=104;
 
   // anchors の逆引き（Y座標→時刻）を App のドラッグハンドラに渡す
   yToTimeRef.current=(clientY:number):string=>{
