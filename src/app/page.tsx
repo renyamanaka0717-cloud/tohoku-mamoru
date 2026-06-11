@@ -43,7 +43,7 @@ interface Task {
 
 interface Settings { wakeTime: string; sleepTime: string; }
 interface FreeSlot  { start: string; end: string; min: number; }
-interface ShopItem  { id: string; name: string; checked: boolean; }
+interface ShopItem  { id: string; name: string; checked: boolean; purchasedAt?: string; }
 interface TagDef    { name: string; color: string; }
 interface MoveHistory { id: string; date: string; taskNames: string[]; }
 
@@ -1781,7 +1781,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
                     </div>
                   ))}
                   {shopDoneItems.length>0&&<>
-                    <p className="text-xs text-gray-300 pt-3 pb-1">購入済み</p>
+                    <p className="text-xs text-gray-300 pt-3 pb-1">購入済み（7日後に自動削除）</p>
                     {shopDoneItems.map(item=>(
                       <div key={item.id} className="flex items-center gap-3 bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3 opacity-60">
                         <button onClick={()=>onToggleShop(item.id)} className="w-5 h-5 rounded border-2 border-gray-900 bg-gray-900 shrink-0 flex items-center justify-center">
@@ -2132,7 +2132,12 @@ export default function App() {
       const tg=localStorage.getItem(TAGS_KEY);
       if(t) setTasks((JSON.parse(t) as Task[]).map(tk=>({...tk,recurrence:tk.recurrence??null,customRec:tk.customRec,pinned:tk.pinned??false,tags:tk.tags??[],notifications:tk.notifications??[],incompleteReminder:tk.incompleteReminder??false,category:tk.category,postponedCount:tk.postponedCount??0,lastPostponedDate:tk.lastPostponedDate})));
       if(s) setSettings(JSON.parse(s));
-      if(sh) setShopItems(JSON.parse(sh));
+      if(sh){
+        const parsed:ShopItem[]=JSON.parse(sh);
+        const now=Date.now();
+        const cleaned=parsed.filter(i=>!(i.checked&&i.purchasedAt&&now-new Date(i.purchasedAt).getTime()>=7*24*60*60*1000));
+        setShopItems(cleaned);
+      }
       if(tg){
         const parsed=JSON.parse(tg);
         if(Array.isArray(parsed)&&parsed.length>0&&typeof parsed[0]==='string'){
@@ -2257,7 +2262,12 @@ export default function App() {
   },[dragTask,settings,date]);
 
   const addShopItem  = (name:string) => setShopItems(prev=>[...prev,{id:uid(),name,checked:false}]);
-  const toggleShop   = (id:string)   => setShopItems(prev=>prev.map(i=>i.id===id?{...i,checked:!i.checked}:i));
+  const toggleShop   = (id:string)   => setShopItems(prev=>{
+    const now=Date.now();
+    return prev
+      .map(i=>i.id===id?{...i,checked:!i.checked,purchasedAt:!i.checked?new Date().toISOString():(i.purchasedAt)}:i)
+      .filter(i=>!(i.checked&&i.purchasedAt&&now-new Date(i.purchasedAt).getTime()>=7*24*60*60*1000));
+  });
   const deleteShop   = (id:string)   => setShopItems(prev=>prev.filter(i=>i.id!==id));
 
   const openAdd  = (prefillTime?:string) => setModal({open:true,task:null,prefillTime,prefillCategory:activeCategory??'個人'});
