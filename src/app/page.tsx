@@ -1196,7 +1196,6 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
     setPressingId(null);
   };
   const wakeMin=toMin(settings.wakeTime),sleepMin=toMin(settings.sleepTime);
-  const totalMins=sleepMin-wakeMin;
   const nowMin=toMin(now);
 
   const dayTasks=tasks.filter(t=>t.date===date&&!t.isLater&&t.startTime).sort((a,b)=>toMin(a.startTime!)-toMin(b.startTime!));
@@ -1287,7 +1286,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
     groupLayout.length?groupLayout[groupLayout.length-1].top+groupLayout[groupLayout.length-1].g.h:0,
     freeLayout.length?freeLayout[freeLayout.length-1].freeY+freeLayout[freeLayout.length-1].finalH:0,
   );
-  const sleepCardTop=Math.max(maxBottom+16,calcY(sleepMin));
+  const sleepCardTop=Math.max(wakeCardTop+WAKE_CARD_H+16,maxBottom+16);
   const hasHistoryCard=!!(todayHistory&&todayHistory.taskNames.length>0)&&date===todayStr();
   const HISTORY_CARD_H=44;
   const totalHeight=sleepCardTop+SLEEP_CARD_H+32+(hasHistoryCard?HISTORY_CARD_H+12:0);
