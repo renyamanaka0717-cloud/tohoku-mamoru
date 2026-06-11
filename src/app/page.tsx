@@ -1112,7 +1112,7 @@ function FreeTimeCard({slot,fits,height,onSchedule,onDragStart}:{
 
   const h=Math.floor(slot.min/60), m=slot.min%60;
   return (
-    <div className="bg-gray-100 rounded-2xl px-4 pt-4 pb-2" style={{height:`${height}px`,overflow:'hidden'}}>
+    <div className="bg-gray-100 rounded-2xl px-4 py-5 flex flex-col justify-center" style={{height:`${height}px`,overflow:'hidden'}}>
       <div className="flex items-center gap-1 mb-1">
         <AppIcons.freeTime size={12} className="text-gray-400"/>
         <span className="text-xs text-gray-400 font-medium">空き時間</span>
@@ -1231,8 +1231,8 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
   // Simulate chip wrapping to get accurate content height.
   // CARD_LEFT=68, p-4*2=32 → inner width = screenWidth - 100
   const calcFreeContentH=(tasks:Task[]):number=>{
-    const HEADER_H=68;  // pt-4(16)+header+mb-1(20)+duration(text-xl lh=28px)+mb-1(32)
-    const FOOTER_H=8;   // pb-2 bottom
+    const HEADER_H=72;  // py-5(20)+icon_row(16)+mb-1(4)+duration(28)+mb-1(4)
+    const FOOTER_H=20;  // py-5(20)
     const CHIP_H=24;    // py-1(8)+text-xs lh(16)
     const ROW_GAP=6;    // gap-1.5
     const GAP_X=6;      // gap-1.5 horizontal
