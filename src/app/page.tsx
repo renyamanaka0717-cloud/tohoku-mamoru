@@ -1858,8 +1858,8 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
                       onTouchStart={e=>startLP(t,e)}
                       onTouchEnd={cancelLP}
                       onTouchMove={cancelLP}>
-                      <div className="w-7 h-7 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0">
-                        <LaterIc size={14} className="text-gray-400"/>
+                      <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{background:t.color||'#F3F4F6'}}>
+                        <LaterIc size={14} className={t.color?'text-gray-600':'text-gray-400'}/>
                       </div>
                       <div className="flex-1 min-w-0" onClick={()=>onEdit(t)}>
                         <p className="text-sm font-semibold text-gray-900">{t.name}</p>
@@ -1887,8 +1887,8 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
                     const SchedIc=getTaskIcon(t.icon??'');
                     return (
                     <div key={t.id} className="flex items-center gap-2.5 bg-white border border-gray-100 rounded-2xl shadow-sm px-3 py-3">
-                      <div className="w-7 h-7 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0">
-                        <SchedIc size={14} className="text-gray-400"/>
+                      <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{background:t.color||'#F3F4F6'}}>
+                        <SchedIc size={14} className={t.color?'text-gray-600':'text-gray-400'}/>
                       </div>
                       <div className="flex-1 min-w-0" onClick={()=>onEdit(t)}>
                         <p className="text-sm font-semibold text-gray-900">{t.name}</p>
@@ -1915,8 +1915,8 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
                     <div key={`${t.name}||${t.recurrence}||${t.startTime??''}`}
                       className="flex items-center gap-2.5 bg-white border border-gray-100 rounded-2xl shadow-sm px-3 py-3"
                       onClick={()=>onEdit(t)}>
-                      <div className="w-7 h-7 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0">
-                        <RecIc size={14} className="text-gray-400"/>
+                      <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{background:t.color||'#F3F4F6'}}>
+                        <RecIc size={14} className={t.color?'text-gray-600':'text-gray-400'}/>
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-gray-900">{t.name}</p>
