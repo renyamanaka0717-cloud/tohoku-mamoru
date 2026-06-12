@@ -2783,7 +2783,7 @@ export default function App() {
                   <span className={`w-8 h-8 flex items-center justify-center rounded-full text-sm font-bold transition-colors ${isSel?'bg-gray-900 text-white':isToday?'bg-gray-100 text-gray-900':'text-gray-600'}`}>
                     {new Date(d+'T12:00:00').getDate()}
                   </span>
-                  <div className={`w-1.5 h-1.5 rounded-full ${taskDateSet.has(d)?(isSel?'bg-gray-400':'bg-gray-400'):'bg-transparent'}`}/>
+                  <div className={`w-1.5 h-1.5 rounded-full mt-1 ${taskDateSet.has(d)?(isSel?'bg-gray-400':'bg-gray-400'):'bg-transparent'}`}/>
                 </button>
               );
             })}
