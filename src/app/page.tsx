@@ -1701,7 +1701,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
         return labels.flatMap(m=>[
           <div key={`fh-${m}`} className="absolute flex items-center" style={{top:`${cardY(m)}px`,transform:'translateY(-50%)',left:0}}>
             <button onClick={()=>onAddAtTime(fromMin(m))}
-              className="text-xs w-12 text-right pr-1 leading-none text-gray-400 active:text-gray-900 transition-colors">
+              className="text-xs w-10 text-right pr-1 leading-none text-gray-400 active:text-gray-900 transition-colors">
               {fromMin(m)}
             </button>
           </div>,
