@@ -567,7 +567,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
   const [category,setCategory]   = useState<string|null>(task?.category??prefillCategory??null);
   const [custDurOpen,setCDurOpen] = useState(false);
   const [custDurMin,setCDurMin]  = useState(duration>0&&!DUR_OPTS.find(o=>o.v===duration)?duration:90);
-  const [notifications,setNotifs]  = useState<number[]>(task?.notifications??[]);
+  const [notifications,setNotifs]  = useState<number[]>(task?.notifications??(!task?[0]:[]));
   const modalSwX=useRef(0), modalSwY=useRef(0);
   const modeOrder:TaskMode[]=['later','scheduled','recurring'];
   const onModalSwipe=(e:React.TouchEvent)=>{
