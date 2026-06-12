@@ -1114,37 +1114,39 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
               </div>
             )}
 
-            {/* サブタスクを追加 */}
-            <div className="h-px bg-gray-100 mx-4"/>
-            <button className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50" onClick={()=>setSubtasksOpen(o=>!o)}>
+          </div>
+
+          {/* サブタスク — 独立カード */}
+          <div className="bg-white mx-3 mt-3 rounded-2xl overflow-hidden">
+            <button className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50" onClick={()=>{setSubtasksOpen(true);setSubtaskInput('');}}>
               <AppIcons.checkSquare size={18} className="text-gray-400 shrink-0"/>
               <span className="flex-1 text-left text-sm font-medium text-gray-800">サブタスクを追加</span>
-              {subtasks.length>0&&<span className="text-xs text-gray-400 shrink-0">{subtasks.length}件</span>}
-              <AppIcons.caretRight size={14} className="text-gray-300"/>
             </button>
-            {subtasksOpen&&(
-              <div className="border-t border-gray-100 px-4 pt-3 pb-4">
+            {(subtasks.length>0||subtasksOpen)&&(
+              <div className="border-t border-gray-100 px-4 pt-2 pb-3">
                 {subtasks.map((st,i)=>(
-                  <div key={st.id} className="flex items-center gap-2 mb-2">
+                  <div key={st.id} className="flex items-center gap-2 py-2 border-b border-gray-50">
                     <button onClick={()=>setSubtasks(prev=>prev.map((s,j)=>j===i?{...s,completed:!s.completed}:s))}
-                      className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${st.completed?'bg-gray-900 border-gray-900':'border-gray-300'}`}>
+                      className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 ${st.completed?'bg-gray-900 border-gray-900':'border-gray-300'}`}>
                       {st.completed&&<AppIcons.checkSquare size={10} className="text-white"/>}
                     </button>
                     <span className={`flex-1 text-sm ${st.completed?'line-through text-gray-400':'text-gray-800'}`}>{st.name}</span>
-                    <button onClick={()=>setSubtasks(prev=>prev.filter((_,j)=>j!==i))} className="text-gray-300 text-lg leading-none">×</button>
+                    <button onClick={()=>setSubtasks(prev=>prev.filter((_,j)=>j!==i))} className="text-gray-300 text-base leading-none px-1">×</button>
                   </div>
                 ))}
-                <div className="flex gap-2 mt-1">
-                  <input type="text" value={subtaskInput} onChange={e=>setSubtaskInput(e.target.value)}
-                    onKeyDown={e=>{if(e.key==='Enter'&&subtaskInput.trim()){setSubtasks(prev=>[...prev,{id:Date.now().toString(),name:subtaskInput.trim(),completed:false}]);setSubtaskInput('');}}}
-                    placeholder="サブタスクを入力..."
-                    className="flex-1 text-sm border border-gray-200 rounded-xl px-3 py-2 outline-none bg-gray-50"/>
-                  <button onClick={()=>{if(subtaskInput.trim()){setSubtasks(prev=>[...prev,{id:Date.now().toString(),name:subtaskInput.trim(),completed:false}]);setSubtaskInput('');}}}
-                    className="px-3 py-2 bg-gray-900 text-white rounded-xl text-sm font-semibold">追加</button>
-                </div>
+                {subtasksOpen&&(
+                  <div className="flex gap-2 mt-2">
+                    <input type="text" value={subtaskInput} onChange={e=>setSubtaskInput(e.target.value)} autoFocus
+                      onKeyDown={e=>{if(e.key==='Enter'&&subtaskInput.trim()){setSubtasks(prev=>[...prev,{id:Date.now().toString(),name:subtaskInput.trim(),completed:false}]);setSubtaskInput('');}
+                        else if(e.key==='Escape'){setSubtasksOpen(false);}}}
+                      placeholder="サブタスクを入力..."
+                      className="flex-1 text-sm border border-gray-200 rounded-xl px-3 py-2 outline-none bg-gray-50"/>
+                    <button onClick={()=>{if(subtaskInput.trim()){setSubtasks(prev=>[...prev,{id:Date.now().toString(),name:subtaskInput.trim(),completed:false}]);setSubtaskInput('');}else{setSubtasksOpen(false);}}}
+                      className="px-3 py-2 bg-gray-900 text-white rounded-xl text-sm font-semibold">追加</button>
+                  </div>
+                )}
               </div>
             )}
-
           </div>
 
           {/* Memo */}
