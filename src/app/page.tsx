@@ -40,6 +40,7 @@ interface Task {
   postponedCount?: number;
   lastPostponedDate?: string;
   color?: string;
+  subtasks?: {id:string;name:string;completed:boolean}[];
 }
 
 interface Settings { wakeTime: string; sleepTime: string; }
@@ -587,6 +588,10 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
   const [dateOpen,setDateOpen]= useState(false);
   const [timeOpen,setTimeOpen]= useState(false);
   const [alertOpen,setAlertOpen]= useState(false);
+  const [tagOpen,setTagOpen]   = useState(false);
+  const [subtasksOpen,setSubtasksOpen] = useState(false);
+  const [subtaskInput,setSubtaskInput] = useState('');
+  const [subtasks,setSubtasks] = useState<{id:string;name:string;completed:boolean}[]>(task?.subtasks??[]);
   const [calVm,setCalVm]      = useState(()=>{
     const d=new Date((task?.date??currentDate)+'T12:00:00');
     return {year:d.getFullYear(),month:d.getMonth()};
@@ -640,6 +645,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
       category:category??undefined,
       pinned,
       tags,
+      subtasks:subtasks.length>0?subtasks:undefined,
     };
     if(mode==='recurring'&&!task){
       const instances:Omit<Task,'id'>[]=[];
@@ -730,13 +736,6 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
         <div className="bg-gray-50 max-h-[55vh] overflow-y-auto"
           onTouchStart={e=>{modalSwX.current=e.touches[0].clientX;modalSwY.current=e.touches[0].clientY;}}
           onTouchEnd={onModalSwipe}>
-          {/* Memo */}
-          <div className="bg-white mx-3 mt-3 rounded-2xl p-4">
-            <textarea value={memo} onChange={e=>setMemo(e.target.value)}
-              placeholder="メモを追加..." rows={3}
-              className="w-full text-sm text-gray-700 placeholder-gray-400 outline-none resize-none bg-transparent"/>
-          </div>
-
           {/* Recurring settings */}
           {mode==='recurring'&&(
             <>
@@ -907,201 +906,167 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
             </>
           )}
 
-          {/* 日付・時間・アラート — リスト型カード */}
-          {(mode==='scheduled'||mode==='recurring')&&(
-            <div className="bg-white mx-3 mt-3 rounded-2xl overflow-hidden">
+          {/* Settings card */}
+          <div className="bg-white mx-3 mt-3 rounded-2xl overflow-hidden">
 
-              {/* 日付行 (scheduled only) */}
-              {mode==='scheduled'&&(
-                <>
-                  <button className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50" onClick={()=>setDateOpen(o=>!o)}>
-                    <AppIcons.calendar size={18} className="text-gray-400 shrink-0"/>
-                    <span className="flex-1 text-left text-sm font-medium text-gray-800">{taskDateLabel()}</span>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      {taskDate===todayStr()&&<span className="text-xs text-gray-400">今日</span>}
-                      <AppIcons.caretRight size={14} className="text-gray-300"/>
-                    </div>
-                  </button>
-                  {dateOpen&&(
-                    <div className="border-t border-gray-100 px-3 pb-3">
-                      <div className="flex items-center justify-between py-2">
-                        <span className="text-sm font-bold text-gray-800">{calVm.year}年{calVm.month+1}月</span>
-                        <div className="flex gap-1">
-                          <button onClick={()=>setCalVm(m=>shiftMonth(m.year,m.month,-1))} className="w-7 h-7 flex items-center justify-center text-gray-500 rounded-lg bg-gray-100"><AppIcons.caretLeft size={14}/></button>
-                          <button onClick={()=>setCalVm(m=>shiftMonth(m.year,m.month,1))} className="w-7 h-7 flex items-center justify-center text-gray-500 rounded-lg bg-gray-100"><AppIcons.caretRight size={14}/></button>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-7 mb-1">
-                        {DAY_NAMES.map((n,i)=>(
-                          <div key={i} className={`text-center text-[11px] font-semibold py-1 ${i===0?'text-red-400':i===6?'text-blue-400':'text-gray-400'}`}>{n}</div>
-                        ))}
-                      </div>
-                      <div className="grid grid-cols-7">
-                        {calDays.map((d,i)=>{
-                          const isSel=d===taskDate, isToday=d===todayStr();
-                          return (
-                            <button key={i} disabled={!d} onClick={()=>{if(d){setTaskDate(d);setDateOpen(false);}}} className="flex items-center justify-center py-1">
-                              <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${!d?'':isSel?'bg-gray-900 text-white':isToday?'bg-gray-100 font-bold text-gray-900':'text-gray-600'}`}>
-                                {d?new Date(d+'T12:00:00').getDate():''}
-                              </span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                  <div className="h-px bg-gray-100 mx-4"/>
-                </>
-              )}
-
-              {/* 時間行 */}
-              <button className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50" onClick={()=>setTimeOpen(o=>!o)}>
-                <AppIcons.clock size={18} className="text-gray-400 shrink-0"/>
-                <span className="flex-1 text-left text-sm font-medium text-gray-800">
-                  {startTime?(computedEnd?`${startTime}〜${computedEnd}`:startTime):'時間未設定'}
-                </span>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  {duration>0&&<span className="text-xs text-gray-400">{DUR_OPTS.find(o=>o.v===duration)?.l??`${duration}分`}</span>}
+            {/* 日付 — scheduled only */}
+            {mode==='scheduled'&&(
+              <>
+                <button className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50" onClick={()=>setDateOpen(o=>!o)}>
+                  <AppIcons.calendar size={18} className="text-gray-400 shrink-0"/>
+                  <span className="flex-1 text-left text-sm font-medium text-gray-800">{taskDateLabel()}</span>
                   <AppIcons.caretRight size={14} className="text-gray-300"/>
-                </div>
-              </button>
-              {timeOpen&&(
-                <div className="border-t border-gray-100 px-4 pt-3 pb-4">
-                  <p className="text-xs text-gray-500 mb-1.5">開始時刻</p>
-                  <input type="time" value={startTime} onChange={e=>setST(e.target.value)}
-                    className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-gray-50 outline-none focus:border-gray-400 mb-3 block"/>
-                  <p className="text-xs text-gray-500 mb-1.5">所要時間</p>
-                  <div className="flex gap-2 overflow-x-auto pb-0.5" style={{scrollbarWidth:'none',WebkitOverflowScrolling:'touch'} as React.CSSProperties}>
-                    {DUR_OPTS.map(({v,l})=>(
-                      <button key={v} onClick={()=>{setDur(v);setCDurOpen(false);}}
-                        className={`shrink-0 px-4 py-2 rounded-full text-sm font-semibold ${duration===v&&!custDurOpen?'bg-gray-900 text-white':'bg-gray-100 text-gray-600'}`}>
-                        {l}
-                      </button>
-                    ))}
-                    <button onClick={()=>setCDurOpen(o=>!o)}
-                      className={`shrink-0 px-4 py-2 rounded-full text-sm font-semibold ${custDurOpen?'bg-gray-900 text-white':'bg-gray-100 text-gray-600'}`}>
-                      カスタム
-                    </button>
-                  </div>
-                  {custDurOpen&&(
-                    <div className="flex items-center gap-2 mt-3">
-                      <input type="number" value={custDurMin} min={1}
-                        onChange={e=>setCDurMin(Math.max(1,Number(e.target.value)))}
-                        className="w-20 border border-gray-200 rounded-xl px-3 py-2 text-sm text-center outline-none"/>
-                      <span className="text-sm text-gray-600">分</span>
-                      <button onClick={()=>{setDur(custDurMin);setCDurOpen(false);}}
-                        className="px-4 py-2 bg-gray-900 text-white rounded-xl text-sm font-semibold">設定</button>
+                </button>
+                {dateOpen&&(
+                  <div className="border-t border-gray-100 px-3 pb-3">
+                    <div className="flex items-center justify-between py-2">
+                      <span className="text-sm font-bold text-gray-800">{calVm.year}年{calVm.month+1}月</span>
+                      <div className="flex gap-1">
+                        <button onClick={()=>setCalVm(m=>shiftMonth(m.year,m.month,-1))} className="w-7 h-7 flex items-center justify-center text-gray-500 rounded-lg bg-gray-100"><AppIcons.caretLeft size={14}/></button>
+                        <button onClick={()=>setCalVm(m=>shiftMonth(m.year,m.month,1))} className="w-7 h-7 flex items-center justify-center text-gray-500 rounded-lg bg-gray-100"><AppIcons.caretRight size={14}/></button>
+                      </div>
                     </div>
-                  )}
-                </div>
-              )}
-
-              {/* アラート行 */}
-              <div className="h-px bg-gray-100 mx-4"/>
-              <button className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50" onClick={()=>setAlertOpen(o=>!o)}>
-                <AppIcons.bell size={18} className="text-gray-400 shrink-0"/>
-                <span className="flex-1 text-left text-sm font-medium text-gray-800">
-                  {notifications.length>0?`${notifications.length}件のアラート`:'アラートなし'}
-                </span>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  {notifications.length>0&&(
-                    <span className="text-xs text-gray-400 max-w-[80px] truncate">
-                      {notifications.slice(0,2).map(v=>NOTIF_OPTS.find(o=>o.v===v)?.l??`${v}分前`).join('・')}{notifications.length>2?'…':''}
-                    </span>
-                  )}
-                  <AppIcons.caretRight size={14} className="text-gray-300"/>
-                </div>
-              </button>
-              {alertOpen&&(
-                <div className="border-t border-gray-100 px-4 pt-3 pb-4">
-                  <div className="flex gap-2 overflow-x-auto pb-0.5 mb-2" style={{scrollbarWidth:'none',WebkitOverflowScrolling:'touch'} as React.CSSProperties}>
-                    {NOTIF_OPTS.map(({v,l})=>(
-                      <button key={v} onClick={()=>toggleNotif(v)}
-                        className={`shrink-0 px-3 py-1.5 rounded-full text-sm font-semibold ${notifications.includes(v)?'bg-gray-900 text-white':'bg-gray-100 text-gray-600'}`}>
-                        {l}
-                      </button>
-                    ))}
-                    <button onClick={()=>setCNOpen(o=>!o)}
-                      className={`shrink-0 px-3 py-1.5 rounded-full text-sm font-semibold ${custNotifOpen?'bg-gray-900 text-white':'bg-gray-100 text-gray-600'}`}>
-                      カスタム
-                    </button>
-                  </div>
-                  {custNotifOpen&&(
-                    <div className="flex items-center gap-2 mb-2">
-                      <input type="number" value={custNotifMin} min={1}
-                        onChange={e=>setCNMin(Math.max(1,Number(e.target.value)))}
-                        className="w-20 border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none text-center"/>
-                      <span className="text-sm text-gray-600">分前</span>
-                      <button onClick={addCustNotif} className="px-3 py-2 bg-gray-900 text-white rounded-xl text-sm font-semibold">追加</button>
-                    </div>
-                  )}
-                  {notifications.filter(v=>!NOTIF_OPTS.find(o=>o.v===v)).length>0&&(
-                    <div className="flex flex-wrap gap-2 mb-2">
-                      {notifications.filter(v=>!NOTIF_OPTS.find(o=>o.v===v)).map(v=>(
-                        <span key={v} className="inline-flex items-center gap-1 bg-gray-900 text-white text-xs font-semibold px-2.5 py-1.5 rounded-full">
-                          {v}分前<button onClick={()=>setNotifs(prev=>prev.filter(x=>x!==v))} className="opacity-70 leading-none ml-0.5">×</button>
-                        </span>
+                    <div className="grid grid-cols-7 mb-1">
+                      {DAY_NAMES.map((n,i)=>(
+                        <div key={i} className={`text-center text-[11px] font-semibold py-1 ${i===0?'text-red-400':i===6?'text-blue-400':'text-gray-400'}`}>{n}</div>
                       ))}
                     </div>
-                  )}
-                  <div className="flex items-center justify-between pt-2 border-t border-gray-50 mt-1">
-                    <div>
-                      <p className="text-sm font-semibold text-gray-800">未完了リマインダー</p>
-                      <p className="text-xs text-gray-400">タスクが未完了の場合に通知</p>
+                    <div className="grid grid-cols-7">
+                      {calDays.map((d,i)=>{
+                        const isSel=d===taskDate, isToday=d===todayStr();
+                        return (
+                          <button key={i} disabled={!d} onClick={()=>{if(d){setTaskDate(d);setDateOpen(false);}}} className="flex items-center justify-center py-1">
+                            <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${!d?'':isSel?'bg-gray-900 text-white':isToday?'bg-gray-100 font-bold text-gray-900':'text-gray-600'}`}>
+                              {d?new Date(d+'T12:00:00').getDate():''}
+                            </span>
+                          </button>
+                        );
+                      })}
                     </div>
-                    <button onClick={()=>setIncRem(r=>!r)}
-                      className={`w-12 h-6 rounded-full transition-colors relative shrink-0 ${incompleteRem?'bg-gray-900':'bg-gray-200'}`}>
-                      <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${incompleteRem?'left-[22px]':'left-0.5'}`}/>
-                    </button>
                   </div>
-                </div>
-              )}
+                )}
+                <div className="h-px bg-gray-100 mx-4"/>
+              </>
+            )}
 
-            </div>
-          )}
-
-          {/* 所要時間 — later mode only */}
-          {mode==='later'&&(
-            <div className="bg-white mx-3 mt-3 rounded-2xl p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <AppIcons.clock className="text-gray-700"/>
-                <span className="text-sm font-semibold text-gray-800">所要時間</span>
-              </div>
-              <div className="flex gap-2 overflow-x-auto pb-0.5" style={{scrollbarWidth:'none',WebkitOverflowScrolling:'touch'} as React.CSSProperties}>
-                {DUR_OPTS.map(({v,l})=>(
-                  <button key={v} onClick={()=>{setDur(v);setCDurOpen(false);}}
-                    className={`shrink-0 px-4 py-2 rounded-full text-sm font-semibold ${duration===v&&!custDurOpen?'bg-gray-900 text-white':'bg-gray-100 text-gray-600'}`}>
-                    {l}
+            {/* 時間 */}
+            <button className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50" onClick={()=>setTimeOpen(o=>!o)}>
+              <AppIcons.clock size={18} className="text-gray-400 shrink-0"/>
+              <span className="flex-1 text-left text-sm font-medium text-gray-800">
+                {mode==='later'
+                  ? (duration>0?(DUR_OPTS.find(o=>o.v===duration)?.l??`${duration}分`):'所要時間なし')
+                  : startTime?(computedEnd?`${startTime}〜${computedEnd}`:startTime):'時間未設定'
+                }
+              </span>
+              {mode!=='later'&&duration>0&&<span className="text-xs text-gray-400 shrink-0">{DUR_OPTS.find(o=>o.v===duration)?.l??`${duration}分`}</span>}
+              <AppIcons.caretRight size={14} className="text-gray-300"/>
+            </button>
+            {timeOpen&&(
+              <div className="border-t border-gray-100 px-4 pt-3 pb-4">
+                {mode!=='later'&&(
+                  <>
+                    <p className="text-xs text-gray-500 mb-1.5">開始時刻</p>
+                    <input type="time" value={startTime} onChange={e=>setST(e.target.value)}
+                      className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-gray-50 outline-none focus:border-gray-400 mb-3 block"/>
+                  </>
+                )}
+                <p className="text-xs text-gray-500 mb-1.5">所要時間</p>
+                <div className="flex gap-2 overflow-x-auto pb-0.5" style={{scrollbarWidth:'none',WebkitOverflowScrolling:'touch'} as React.CSSProperties}>
+                  {DUR_OPTS.map(({v,l})=>(
+                    <button key={v} onClick={()=>{setDur(v);setCDurOpen(false);}}
+                      className={`shrink-0 px-4 py-2 rounded-full text-sm font-semibold ${duration===v&&!custDurOpen?'bg-gray-900 text-white':'bg-gray-100 text-gray-600'}`}>
+                      {l}
+                    </button>
+                  ))}
+                  <button onClick={()=>setCDurOpen(o=>!o)}
+                    className={`shrink-0 px-4 py-2 rounded-full text-sm font-semibold ${custDurOpen?'bg-gray-900 text-white':'bg-gray-100 text-gray-600'}`}>
+                    カスタム
                   </button>
-                ))}
-                <button onClick={()=>setCDurOpen(o=>!o)}
-                  className={`shrink-0 px-4 py-2 rounded-full text-sm font-semibold ${custDurOpen?'bg-gray-900 text-white':'bg-gray-100 text-gray-600'}`}>
-                  カスタム
-                </button>
+                </div>
+                {custDurOpen&&(
+                  <div className="flex items-center gap-2 mt-3">
+                    <input type="number" value={custDurMin} min={1}
+                      onChange={e=>setCDurMin(Math.max(1,Number(e.target.value)))}
+                      className="w-20 border border-gray-200 rounded-xl px-3 py-2 text-sm text-center outline-none"/>
+                    <span className="text-sm text-gray-600">分</span>
+                    <button onClick={()=>{setDur(custDurMin);setCDurOpen(false);}}
+                      className="px-4 py-2 bg-gray-900 text-white rounded-xl text-sm font-semibold">設定</button>
+                  </div>
+                )}
               </div>
-              {custDurOpen&&(
-                <div className="flex items-center gap-2 mt-3">
-                  <input type="number" value={custDurMin} min={1}
-                    onChange={e=>setCDurMin(Math.max(1,Number(e.target.value)))}
-                    className="w-20 border border-gray-200 rounded-xl px-3 py-2 text-sm text-center outline-none"/>
-                  <span className="text-sm text-gray-600">分</span>
-                  <button onClick={()=>{setDur(custDurMin);setCDurOpen(false);}}
-                    className="px-4 py-2 bg-gray-900 text-white rounded-xl text-sm font-semibold">設定</button>
-                </div>
-              )}
-            </div>
-          )}
+            )}
 
-          {/* Pin + Tags */}
-          <div className="bg-white mx-3 mt-3 rounded-2xl overflow-hidden">
-            {/* Pin toggle */}
-            <div className="flex items-center justify-between p-4 border-b border-gray-50">
+            {/* アラート — scheduled/recurring only */}
+            {(mode==='scheduled'||mode==='recurring')&&(
+              <>
+                <div className="h-px bg-gray-100 mx-4"/>
+                <button className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50" onClick={()=>setAlertOpen(o=>!o)}>
+                  <AppIcons.bell size={18} className="text-gray-400 shrink-0"/>
+                  <span className="flex-1 text-left text-sm font-medium text-gray-800">
+                    {notifications.length>0?`${notifications.length}件のアラート`:'アラートなし'}
+                  </span>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {notifications.length>0&&(
+                      <span className="text-xs text-gray-400 max-w-[80px] truncate">
+                        {notifications.slice(0,2).map(v=>NOTIF_OPTS.find(o=>o.v===v)?.l??`${v}分前`).join('・')}{notifications.length>2?'…':''}
+                      </span>
+                    )}
+                    <AppIcons.caretRight size={14} className="text-gray-300"/>
+                  </div>
+                </button>
+                {alertOpen&&(
+                  <div className="border-t border-gray-100 px-4 pt-3 pb-4">
+                    <div className="flex gap-2 overflow-x-auto pb-0.5 mb-2" style={{scrollbarWidth:'none',WebkitOverflowScrolling:'touch'} as React.CSSProperties}>
+                      {NOTIF_OPTS.map(({v,l})=>(
+                        <button key={v} onClick={()=>toggleNotif(v)}
+                          className={`shrink-0 px-3 py-1.5 rounded-full text-sm font-semibold ${notifications.includes(v)?'bg-gray-900 text-white':'bg-gray-100 text-gray-600'}`}>
+                          {l}
+                        </button>
+                      ))}
+                      <button onClick={()=>setCNOpen(o=>!o)}
+                        className={`shrink-0 px-3 py-1.5 rounded-full text-sm font-semibold ${custNotifOpen?'bg-gray-900 text-white':'bg-gray-100 text-gray-600'}`}>
+                        カスタム
+                      </button>
+                    </div>
+                    {custNotifOpen&&(
+                      <div className="flex items-center gap-2 mb-2">
+                        <input type="number" value={custNotifMin} min={1}
+                          onChange={e=>setCNMin(Math.max(1,Number(e.target.value)))}
+                          className="w-20 border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none text-center"/>
+                        <span className="text-sm text-gray-600">分前</span>
+                        <button onClick={addCustNotif} className="px-3 py-2 bg-gray-900 text-white rounded-xl text-sm font-semibold">追加</button>
+                      </div>
+                    )}
+                    {notifications.filter(v=>!NOTIF_OPTS.find(o=>o.v===v)).length>0&&(
+                      <div className="flex flex-wrap gap-2 mb-2">
+                        {notifications.filter(v=>!NOTIF_OPTS.find(o=>o.v===v)).map(v=>(
+                          <span key={v} className="inline-flex items-center gap-1 bg-gray-900 text-white text-xs font-semibold px-2.5 py-1.5 rounded-full">
+                            {v}分前<button onClick={()=>setNotifs(prev=>prev.filter(x=>x!==v))} className="opacity-70 leading-none ml-0.5">×</button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between pt-2 border-t border-gray-50 mt-1">
+                      <div>
+                        <p className="text-sm font-semibold text-gray-800">未完了リマインダー</p>
+                        <p className="text-xs text-gray-400">タスクが未完了の場合に通知</p>
+                      </div>
+                      <button onClick={()=>setIncRem(r=>!r)}
+                        className={`w-12 h-6 rounded-full transition-colors relative shrink-0 ${incompleteRem?'bg-gray-900':'bg-gray-200'}`}>
+                        <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${incompleteRem?'left-[22px]':'left-0.5'}`}/>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* ピン留め */}
+            <div className="h-px bg-gray-100 mx-4"/>
+            <div className="flex items-center justify-between px-4 py-3.5">
               <div className="flex items-center gap-3">
-                <AppIcons.pin className="text-gray-700"/>
-                <div>
-                  <p className="text-sm font-semibold text-gray-800">ピン留め</p>
-                  <p className="text-xs text-gray-400">リストの上部に固定表示</p>
-                </div>
+                <AppIcons.pin size={18} className="text-gray-400 shrink-0"/>
+                <span className="text-sm font-medium text-gray-800">ピン留め</span>
               </div>
               <button onClick={()=>setPinned(p=>!p)}
                 className={`w-12 h-6 rounded-full transition-colors relative shrink-0 ${pinned?'bg-gray-900':'bg-gray-200'}`}>
@@ -1109,29 +1074,84 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
               </button>
             </div>
 
-            {/* Tags */}
-            <div className="p-4">
-              <div className="flex items-center gap-3 mb-3">
-                <AppIcons.tag className="text-gray-700"/>
-                <p className="text-sm font-semibold text-gray-800">タグ</p>
-              </div>
-              {globalTags.length===0 ? (
-                <p className="text-xs text-gray-400">設定画面でタグを追加できます</p>
-              ) : (
-                <div className="flex flex-wrap gap-2">
-                  {globalTags.map(td=>{
-                    const active=tags.includes(td.name);
-                    return (
-                      <button key={td.name} onClick={()=>toggleTag(td.name)}
-                        style={{backgroundColor:td.color,color:getTagTextColor(td.color)}}
-                        className={`px-3 py-1 rounded-full text-sm font-medium transition-all ${active?'ring-2 ring-gray-800 ring-offset-1':''}`}>
-                        {td.name}
-                      </button>
-                    );
+            {/* タグ */}
+            <div className="h-px bg-gray-100 mx-4"/>
+            <button className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50" onClick={()=>setTagOpen(o=>!o)}>
+              <AppIcons.tag size={18} className="text-gray-400 shrink-0"/>
+              <span className="flex-1 text-left text-sm font-medium text-gray-800">タグ</span>
+              {tags.length>0&&(
+                <div className="flex gap-1 shrink-0 max-w-[120px] overflow-hidden">
+                  {tags.slice(0,2).map(t=>{
+                    const td=globalTags.find(x=>x.name===t);
+                    return td?(
+                      <span key={t} className="text-xs px-1.5 py-0.5 rounded-full font-medium truncate max-w-[52px]"
+                        style={{backgroundColor:td.color,color:getTagTextColor(td.color)}}>{t}</span>
+                    ):null;
                   })}
+                  {tags.length>2&&<span className="text-xs text-gray-400">+{tags.length-2}</span>}
                 </div>
               )}
-            </div>
+              <AppIcons.caretRight size={14} className="text-gray-300"/>
+            </button>
+            {tagOpen&&(
+              <div className="border-t border-gray-100 px-4 pt-3 pb-4">
+                {globalTags.length===0?(
+                  <p className="text-xs text-gray-400">設定画面でタグを追加できます</p>
+                ):(
+                  <div className="flex flex-wrap gap-2">
+                    {globalTags.map(td=>{
+                      const active=tags.includes(td.name);
+                      return (
+                        <button key={td.name} onClick={()=>toggleTag(td.name)}
+                          style={{backgroundColor:td.color,color:getTagTextColor(td.color)}}
+                          className={`px-3 py-1 rounded-full text-sm font-medium transition-all ${active?'ring-2 ring-gray-800 ring-offset-1':''}`}>
+                          {td.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* サブタスクを追加 */}
+            <div className="h-px bg-gray-100 mx-4"/>
+            <button className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50" onClick={()=>setSubtasksOpen(o=>!o)}>
+              <AppIcons.checkSquare size={18} className="text-gray-400 shrink-0"/>
+              <span className="flex-1 text-left text-sm font-medium text-gray-800">サブタスクを追加</span>
+              {subtasks.length>0&&<span className="text-xs text-gray-400 shrink-0">{subtasks.length}件</span>}
+              <AppIcons.caretRight size={14} className="text-gray-300"/>
+            </button>
+            {subtasksOpen&&(
+              <div className="border-t border-gray-100 px-4 pt-3 pb-4">
+                {subtasks.map((st,i)=>(
+                  <div key={st.id} className="flex items-center gap-2 mb-2">
+                    <button onClick={()=>setSubtasks(prev=>prev.map((s,j)=>j===i?{...s,completed:!s.completed}:s))}
+                      className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${st.completed?'bg-gray-900 border-gray-900':'border-gray-300'}`}>
+                      {st.completed&&<AppIcons.checkSquare size={10} className="text-white"/>}
+                    </button>
+                    <span className={`flex-1 text-sm ${st.completed?'line-through text-gray-400':'text-gray-800'}`}>{st.name}</span>
+                    <button onClick={()=>setSubtasks(prev=>prev.filter((_,j)=>j!==i))} className="text-gray-300 text-lg leading-none">×</button>
+                  </div>
+                ))}
+                <div className="flex gap-2 mt-1">
+                  <input type="text" value={subtaskInput} onChange={e=>setSubtaskInput(e.target.value)}
+                    onKeyDown={e=>{if(e.key==='Enter'&&subtaskInput.trim()){setSubtasks(prev=>[...prev,{id:Date.now().toString(),name:subtaskInput.trim(),completed:false}]);setSubtaskInput('');}}}
+                    placeholder="サブタスクを入力..."
+                    className="flex-1 text-sm border border-gray-200 rounded-xl px-3 py-2 outline-none bg-gray-50"/>
+                  <button onClick={()=>{if(subtaskInput.trim()){setSubtasks(prev=>[...prev,{id:Date.now().toString(),name:subtaskInput.trim(),completed:false}]);setSubtaskInput('');}}}
+                    className="px-3 py-2 bg-gray-900 text-white rounded-xl text-sm font-semibold">追加</button>
+                </div>
+              </div>
+            )}
+
+          </div>
+
+          {/* Memo */}
+          <div className="bg-white mx-3 mt-3 rounded-2xl p-4">
+            <textarea value={memo} onChange={e=>setMemo(e.target.value)}
+              placeholder="メモを追加..." rows={3}
+              className="w-full text-sm text-gray-700 placeholder-gray-400 outline-none resize-none bg-transparent"/>
           </div>
 
           {/* Delete */}
