@@ -344,10 +344,10 @@ function CalendarPage({date,tasks,onSelect,onClose}:{date:string;tasks:Task[];on
               style={active?{
                 padding:'7px 18px',background:'white',color:'#111827',fontWeight:700,fontSize:'0.875rem',
                 border:'2px solid #6b7280',borderBottom:'2px solid white',
-                borderRadius:'8px 8px 0 0',marginBottom:'-2px',zIndex:10,
+                borderRadius:'14px 14px 0 0',marginBottom:'-2px',zIndex:10,
               }:{
                 padding:'5px 18px',background:'#f3f4f6',color:'#9ca3af',fontWeight:600,fontSize:'0.875rem',
-                border:'none',borderRadius:'6px 6px 0 0',
+                border:'none',borderRadius:'14px 14px 0 0',
               }}>{label}</button>
           );
         })}
@@ -2517,10 +2517,10 @@ export default function App() {
                 style={active?{
                   padding:'7px 18px',background:'white',color:'#111827',fontWeight:700,fontSize:'0.875rem',
                   border:'2px solid #6b7280',borderBottom:'2px solid white',
-                  borderRadius:'8px 8px 0 0',marginBottom:'-2px',zIndex:10,
+                  borderRadius:'14px 14px 0 0',marginBottom:'-2px',zIndex:10,
                 }:{
                   padding:'5px 18px',background:'#f3f4f6',color:'#9ca3af',fontWeight:600,fontSize:'0.875rem',
-                  border:'none',borderRadius:'6px 6px 0 0',
+                  border:'none',borderRadius:'14px 14px 0 0',
                 }}>{label}</button>
             );
           })}
