@@ -334,13 +334,13 @@ function CalendarPage({date,tasks,onSelect,onClose}:{date:string;tasks:Task[];on
           className="text-xs font-bold px-3 py-1.5 bg-gray-900 text-white rounded-full">今日</button>
       </div>
 
-      {/* Category filter */}
-      <div className="flex gap-2 px-4 py-2 overflow-x-auto border-b border-gray-100" style={{scrollbarWidth:'none'} as React.CSSProperties}>
+      {/* Category filter - file tabs */}
+      <div className="flex items-end gap-1 px-4 pt-2 bg-white border-b border-gray-200">
         <button onClick={()=>setCatF(null)}
-          className={`shrink-0 px-4 py-1.5 rounded-full text-sm font-semibold ${!catFilter?'bg-gray-900 text-white':'bg-gray-100 text-gray-500'}`}>すべて</button>
+          className={`shrink-0 px-4 text-sm font-semibold rounded-t-xl transition-colors ${!catFilter?'py-1.5 bg-white text-gray-900 border-t border-l border-r border-gray-200 -mb-px':'py-1 bg-gray-100 text-gray-400'}`}>すべて</button>
         {CATEGORIES.map(cat=>(
           <button key={cat} onClick={()=>setCatF(c=>c===cat?null:cat)}
-            className={`shrink-0 px-4 py-1.5 rounded-full text-sm font-semibold ${catFilter===cat?'bg-gray-900 text-white':'bg-gray-100 text-gray-500'}`}>{cat}</button>
+            className={`shrink-0 px-4 text-sm font-semibold rounded-t-xl transition-colors ${catFilter===cat?'py-1.5 bg-white text-gray-900 border-t border-l border-r border-gray-200 -mb-px':'py-1 bg-gray-100 text-gray-400'}`}>{cat}</button>
         ))}
       </div>
 
