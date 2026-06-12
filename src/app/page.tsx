@@ -1061,19 +1061,6 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
               </>
             )}
 
-            {/* ピン留め */}
-            <div className="h-px bg-gray-100 mx-4"/>
-            <div className="flex items-center justify-between px-4 py-3.5">
-              <div className="flex items-center gap-3">
-                <AppIcons.pin size={18} className="text-gray-400 shrink-0"/>
-                <span className="text-sm font-medium text-gray-800">ピン留め</span>
-              </div>
-              <button onClick={()=>setPinned(p=>!p)}
-                className={`w-12 h-6 rounded-full transition-colors relative shrink-0 ${pinned?'bg-gray-900':'bg-gray-200'}`}>
-                <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${pinned?'left-[22px]':'left-0.5'}`}/>
-              </button>
-            </div>
-
             {/* タグ */}
             <div className="h-px bg-gray-100 mx-4"/>
             <button className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50" onClick={()=>setTagOpen(o=>!o)}>
@@ -1114,8 +1101,9 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
               </div>
             )}
 
-            {/* サブタスク */}
-            <div className="h-px bg-gray-100 mx-4"/>
+            {/* サブタスク — scheduled only */}
+            {mode==='scheduled'&&<div className="h-px bg-gray-100 mx-4"/>}
+            {mode==='scheduled'&&(
             <div className="px-4 py-3">
               <div className="flex items-center gap-3">
                 <AppIcons.checkSquare size={18} className="text-gray-400 shrink-0"/>
@@ -1139,6 +1127,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                 </div>
               )}
             </div>
+            )}
 
           </div>
 
