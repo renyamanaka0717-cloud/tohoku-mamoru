@@ -336,7 +336,7 @@ function CalendarPage({date,tasks,customTabs,onSelect,onClose}:{date:string;task
       </div>
 
       {/* Category filter - file tabs */}
-      <div className="bg-white" style={{boxShadow:'inset 0 -2px 0 0 #e5e7eb'}}>
+      <div className="bg-white" style={{boxShadow:'inset 0 -3px 0 0 #e5e7eb'}}>
         <div className="flex items-end px-3 pt-2" style={{overflowX:'auto',WebkitOverflowScrolling:'touch'}}>
           {([{key:null as string|null,label:'すべて'},...customTabs.map(t=>({key:t.id,label:t.name}))]).map(({key,label})=>{
             const active=catFilter===key;
@@ -349,7 +349,7 @@ function CalendarPage({date,tasks,customTabs,onSelect,onClose}:{date:string;task
                   borderRadius:'14px 14px 0 0',zIndex:10,
                 }:{
                   padding:'5px 18px',background:'#f3f4f6',color:'#9ca3af',fontWeight:600,fontSize:'0.875rem',
-                  border:'none',borderRadius:'14px 14px 0 0',
+                  border:'none',borderRadius:'14px 14px 0 0',marginBottom:'2px',
                 }}>{label}</button>
             );
           })}
@@ -2718,7 +2718,7 @@ export default function App() {
       {/* ── Header ── */}
       <header className="sticky top-0 z-30 bg-white shadow-sm">
         {/* Category filter tabs */}
-        <div className="bg-white" style={{boxShadow:'inset 0 -2px 0 0 #e5e7eb'}}>
+        <div className="bg-white" style={{boxShadow:'inset 0 -3px 0 0 #e5e7eb'}}>
           <div className="flex items-end px-3 pt-2" style={{overflowX:'auto',WebkitOverflowScrolling:'touch'}}>
           <button onClick={()=>{setActiveCat(null);setEditTabId(null);}} className="shrink-0 relative"
             style={activeCategory===null?{
@@ -2727,7 +2727,7 @@ export default function App() {
               borderRadius:'14px 14px 0 0',zIndex:10,
             }:{
               padding:'5px 18px',background:'#f3f4f6',color:'#9ca3af',fontWeight:600,fontSize:'0.875rem',
-              border:'none',borderRadius:'14px 14px 0 0',
+              border:'none',borderRadius:'14px 14px 0 0',marginBottom:'2px',
             }}>すべて</button>
           {customTabs.map(tab=>{
             const active=activeCategory===tab.id;
@@ -2742,7 +2742,7 @@ export default function App() {
                   borderRadius:'14px 14px 0 0',zIndex:10,
                 }:{
                   padding:'5px 18px',background:'#f3f4f6',color:'#9ca3af',fontWeight:600,fontSize:'0.875rem',
-                  border:'none',borderRadius:'14px 14px 0 0',
+                  border:'none',borderRadius:'14px 14px 0 0',marginBottom:'2px',
                 }}>{tab.name}</button>
             );
           })}
