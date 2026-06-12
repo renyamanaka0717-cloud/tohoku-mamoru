@@ -1399,7 +1399,7 @@ function FreeTimeCard({slot,fits,height,onSchedule,onDragStart}:{
 
   const h=Math.floor(slot.min/60), m=slot.min%60;
   return (
-    <div className="bg-gray-100 rounded-2xl px-4 pt-5 pb-4 flex flex-col" style={{height:`${height}px`,overflow:'hidden'}}>
+    <div className="bg-gray-100 rounded-2xl px-4 pt-3 pb-3 flex flex-col" style={{height:`${height}px`,overflow:'hidden'}}>
       <div className="flex items-center gap-1 mb-1">
         <AppIcons.freeTime size={12} className="text-gray-400"/>
         <span className="text-xs text-gray-400 font-medium">空き時間</span>
@@ -1507,13 +1507,13 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
   // Simulate chip wrapping to get accurate content height.
   // CARD_LEFT=104, p-4*2=32 → inner width = screenWidth - 136
   const calcFreeContentH=(tasks:Task[]):number=>{
-    const PAD=20;    // py-5 (top and bottom)
+    const PAD=12;    // py-3 (top and bottom)
     const ICON_H=16; // header row height
     const ICON_MB=4; // mb-1 after header
     const DUR_H=28;  // duration text (text-xl, leading-none)
     const CHIP_MT=8; // mt-2 before chips section
     const CHIP_H=24; const ROW_GAP=6; const GAP_X=6;
-    const base=PAD*2+ICON_H+ICON_MB+DUR_H; // 88px — no mb on duration, no chips div
+    const base=PAD*2+ICON_H+ICON_MB+DUR_H; // 72px — no mb on duration, no chips div
     if(tasks.length===0) return base;
     const innerW=(typeof window!=='undefined'?window.innerWidth:375)-104-32;
     let rows=1,rowW=0;
@@ -1561,7 +1561,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
       const freeY=Math.max(item.y,prevBottom)+16;
       const contentH=calcFreeContentH(laterPool);
       const timeH=item.s.min*PX_PER_MIN;
-      const finalH=Math.max(timeH,contentH,60);
+      const finalH=Math.max(timeH,contentH,48);
       freePassItems.push({slot:item.s,freeY,finalH});
       prevBottom=freeY+finalH;
     }
@@ -1611,7 +1611,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
 
   // Layout zones: [time label area] [gap] [icon area centered on axis] [gap] [card area → right:0]
   const TIME_LABEL_W = 40;  // px — fits "HH:MM" at text-xs
-  const AXIS_GAP     = 4;   // px — between label area and icon
+  const AXIS_GAP     = 8;   // px — between label area and icon
   const ICON_HALF    = 28;  // px — half of 56px icon capsule
   const CARD_GAP     = 4;   // px — between icon right edge and card left
 
@@ -1652,7 +1652,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
   return (
     <div ref={containerRef} className="relative" style={{height:`${totalHeight+32}px`,minHeight:'400px'}}>
       {/* vertical line */}
-      <div className="absolute bg-gray-300" style={{left:`${AXIS_X-2}px`,width:'4px',top:0,height:`${totalHeight}px`}}/>
+      <div className="absolute bg-gray-200" style={{left:`${AXIS_X-1}px`,width:'2px',top:0,height:`${totalHeight}px`}}/>
 
 
       {/* task start time labels — 1 per group, center-aligned, skip wake/sleep */}
