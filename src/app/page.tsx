@@ -338,7 +338,7 @@ function CalendarPage({date,tasks,customTabs,onSelect,onClose}:{date:string;task
       </div>
 
       {/* Category filter - file tabs */}
-      <div className="bg-white" style={{boxShadow:'inset 0 -3px 0 0 #e5e7eb'}}>
+      <div className="bg-white" style={{boxShadow:'inset 0 -3px 0 0 #6b7280'}}>
         <div className="flex items-end px-3 pt-2" style={{overflowX:'auto',WebkitOverflowScrolling:'touch'}}>
           {([{key:null as string|null,label:'すべて'},...customTabs.map(t=>({key:t.id,label:t.name}))]).map(({key,label})=>{
             const active=catFilter===key;
@@ -2816,7 +2816,7 @@ export default function App() {
       {/* ── Header ── */}
       <header className="sticky top-0 z-30 bg-white shadow-sm">
         {/* Category filter tabs */}
-        <div className="bg-white" style={{boxShadow:'inset 0 -3px 0 0 #e5e7eb'}}>
+        <div className="bg-white" style={{boxShadow:'inset 0 -3px 0 0 #6b7280'}}>
           <div className="flex items-end px-3 pt-2" style={{overflowX:'auto',WebkitOverflowScrolling:'touch'}}>
           <button onClick={()=>{setActiveCat(null);setEditTabId(null);}} className="shrink-0 relative"
             style={activeCategory===null?{
