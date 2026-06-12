@@ -336,9 +336,8 @@ function CalendarPage({date,tasks,customTabs,onSelect,onClose}:{date:string;task
       </div>
 
       {/* Category filter - file tabs */}
-      <div className="bg-white" style={{position:'relative'}}>
-        <div style={{position:'absolute',bottom:0,left:0,right:0,height:'2px',background:'#e5e7eb',zIndex:1}}/>
-        <div className="flex items-end px-3 pt-2" style={{overflowX:'auto',WebkitOverflowScrolling:'touch',position:'relative',zIndex:2}}>
+      <div className="bg-white" style={{boxShadow:'inset 0 -2px 0 0 #e5e7eb'}}>
+        <div className="flex items-end px-3 pt-2" style={{overflowX:'auto',WebkitOverflowScrolling:'touch'}}>
           {([{key:null as string|null,label:'すべて'},...customTabs.map(t=>({key:t.id,label:t.name}))]).map(({key,label})=>{
             const active=catFilter===key;
             return (
@@ -346,7 +345,7 @@ function CalendarPage({date,tasks,customTabs,onSelect,onClose}:{date:string;task
                 className="shrink-0 relative"
                 style={active?{
                   padding:'7px 18px',background:'white',color:'#111827',fontWeight:700,fontSize:'0.875rem',
-                  border:'2px solid #6b7280',borderBottom:'2px solid white',
+                  border:'2px solid #6b7280',borderBottom:'none',
                   borderRadius:'14px 14px 0 0',zIndex:10,
                 }:{
                   padding:'5px 18px',background:'#f3f4f6',color:'#9ca3af',fontWeight:600,fontSize:'0.875rem',
@@ -2719,13 +2718,12 @@ export default function App() {
       {/* ── Header ── */}
       <header className="sticky top-0 z-30 bg-white shadow-sm">
         {/* Category filter tabs */}
-        <div className="bg-white" style={{position:'relative'}}>
-          <div style={{position:'absolute',bottom:0,left:0,right:0,height:'2px',background:'#e5e7eb',zIndex:1}}/>
-          <div className="flex items-end px-3 pt-2" style={{overflowX:'auto',WebkitOverflowScrolling:'touch',position:'relative',zIndex:2}}>
+        <div className="bg-white" style={{boxShadow:'inset 0 -2px 0 0 #e5e7eb'}}>
+          <div className="flex items-end px-3 pt-2" style={{overflowX:'auto',WebkitOverflowScrolling:'touch'}}>
           <button onClick={()=>{setActiveCat(null);setEditTabId(null);}} className="shrink-0 relative"
             style={activeCategory===null?{
               padding:'7px 18px',background:'white',color:'#111827',fontWeight:700,fontSize:'0.875rem',
-              border:'2px solid #6b7280',borderBottom:'2px solid white',
+              border:'2px solid #6b7280',borderBottom:'none',
               borderRadius:'14px 14px 0 0',zIndex:10,
             }:{
               padding:'5px 18px',background:'#f3f4f6',color:'#9ca3af',fontWeight:600,fontSize:'0.875rem',
@@ -2740,7 +2738,7 @@ export default function App() {
               }} className="shrink-0 relative"
                 style={active?{
                   padding:'7px 18px',background:'white',color:'#111827',fontWeight:700,fontSize:'0.875rem',
-                  border:'2px solid #6b7280',borderBottom:'2px solid white',
+                  border:'2px solid #6b7280',borderBottom:'none',
                   borderRadius:'14px 14px 0 0',zIndex:10,
                 }:{
                   padding:'5px 18px',background:'#f3f4f6',color:'#9ca3af',fontWeight:600,fontSize:'0.875rem',
