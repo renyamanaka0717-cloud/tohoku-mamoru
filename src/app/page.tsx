@@ -1505,7 +1505,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
     });
 
   // Simulate chip wrapping to get accurate content height.
-  // CARD_LEFT=68, p-4*2=32 → inner width = screenWidth - 100
+  // CARD_LEFT=88, p-4*2=32 → inner width = screenWidth - 120
   const calcFreeContentH=(tasks:Task[]):number=>{
     const PAD=20;    // py-5 (top and bottom)
     const ICON_H=16; // header row height
@@ -1515,7 +1515,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
     const CHIP_H=24; const ROW_GAP=6; const GAP_X=6;
     const base=PAD*2+ICON_H+ICON_MB+DUR_H; // 88px — no mb on duration, no chips div
     if(tasks.length===0) return base;
-    const innerW=(typeof window!=='undefined'?window.innerWidth:375)-68-32;
+    const innerW=(typeof window!=='undefined'?window.innerWidth:375)-88-32;
     let rows=1,rowW=0;
     for(const t of tasks){
       const w=36+t.name.length*9;
@@ -1609,7 +1609,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
     return calcDayY(min);
   };
 
-  const AXIS_X=80, CARD_LEFT=112;
+  const AXIS_X=56, CARD_LEFT=88;
 
   // anchors の逆引き（Y座標→時刻）を App のドラッグハンドラに渡す
   yToTimeRef.current=(clientY:number):string=>{
