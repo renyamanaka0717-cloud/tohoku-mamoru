@@ -2871,7 +2871,7 @@ export default function App() {
 
 
           {/* Week calendar */}
-          <div className="grid grid-cols-7 py-2 border-t border-gray-50">
+          <div className="grid grid-cols-7 pt-2 pb-0.5 border-t border-gray-50">
             {DAY_NAMES.map((name,i)=>{
               const d=weekDates[i];
               const isSel=d===date, isToday=d===today;
