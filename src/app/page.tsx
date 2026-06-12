@@ -466,6 +466,26 @@ function autoIcon(name: string): string {
   return '';
 }
 
+const ICON_OPTIONS:{key:string;label:string}[]=[
+  {key:'task',    label:'メモ'},
+  {key:'shopping',label:'買い物'},
+  {key:'food',    label:'食事'},
+  {key:'clean',   label:'掃除'},
+  {key:'work',    label:'仕事'},
+  {key:'travel',  label:'移動'},
+  {key:'rest',    label:'休憩'},
+  {key:'sleep',   label:'睡眠'},
+  {key:'calendar',label:'予定'},
+  {key:'question',label:'その他'},
+];
+function getTaskIcon(key:string){
+  const m={task:AppIcons.task,shopping:AppIcons.shopping,food:AppIcons.food,
+    clean:AppIcons.clean,work:AppIcons.work,travel:AppIcons.travel,
+    rest:AppIcons.rest,sleep:AppIcons.sleep,calendar:AppIcons.calendar,
+    question:AppIcons.question} as Record<string,typeof AppIcons.task>;
+  return m[key]??AppIcons.task;
+}
+
 // ── TaskModal ─────────────────────────────────────────────────────────────────
 
 function TaskModal({task,currentDate,prefillTime,prefillCategory,onSave,onDelete,onClose,globalTags}:{
@@ -485,7 +505,11 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,onSave,onDelete
   const [startTime,setST]     = useState(task?.startTime??prefillTime??nowStr());
   const [duration,setDur]     = useState(task?.duration??0);
   const [memo,setMemo]        = useState(task?.memo??'');
-  const [icon]                = useState(task?.icon??'');
+  const [icon,setIcon]        = useState(()=>{
+    const k=task?.icon??'';
+    return ICON_OPTIONS.some(o=>o.key===k)?k:'task';
+  });
+  const [iconPickerOpen,setIconPickerOpen] = useState(false);
   const [recur,setRecur]      = useState<'daily'|'weekly'|'monthly'|'yearly'|'custom'>(
     task?.recurrence==='weekly'?'weekly':
     task?.recurrence==='monthly'?'monthly':
@@ -565,7 +589,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,onSave,onDelete
       startTime:mode==='later'?null:(startTime||null),
       duration:dur,
       memo,
-      icon:mode==='later'?icon:autoIcon(name.trim()),
+      icon:icon,
       completed:task?.completed??false,
       date:mode==='scheduled'?taskDate:(task?.date??currentDate),
       isLater:mode==='later',
@@ -624,9 +648,10 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,onSave,onDelete
 
           {/* Icon + name */}
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-12 h-12 bg-gray-700 rounded-2xl flex items-center justify-center shrink-0 text-white">
-              <AppIcons.task size={24}/>
-            </div>
+            <button onClick={()=>setIconPickerOpen(v=>!v)}
+              className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 text-white transition-colors ${iconPickerOpen?'bg-gray-600':'bg-gray-700'}`}>
+              {(()=>{const Ic=getTaskIcon(icon);return <Ic size={24}/>;})()}
+            </button>
             <div className="flex-1 min-w-0">
               {(mode==='scheduled'||mode==='recurring')&&startTime&&(
                 <p className="text-xs text-gray-400 mb-0.5">{startTime}{computedEnd?`〜${computedEnd}`:''}{mode==='recurring'&&' · 繰り返し'}</p>
@@ -637,6 +662,23 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,onSave,onDelete
                 autoFocus/>
             </div>
           </div>
+
+          {/* Icon picker */}
+          {iconPickerOpen&&(
+            <div className="grid grid-cols-5 gap-1.5 mb-4 p-3 bg-gray-800 rounded-2xl">
+              {ICON_OPTIONS.map(opt=>{
+                const Ic=getTaskIcon(opt.key);
+                return (
+                  <button key={opt.key}
+                    onClick={()=>{setIcon(opt.key);setIconPickerOpen(false);}}
+                    className={`flex flex-col items-center gap-1 py-2 rounded-xl transition-colors ${icon===opt.key?'bg-gray-600':'active:bg-gray-700'}`}>
+                    <Ic size={20} className="text-white"/>
+                    <span className="text-[10px] text-gray-400 leading-none">{opt.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
           {/* Category chips */}
           <div className="flex gap-2 mb-3">
@@ -1485,11 +1527,12 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
           const task=g.tasks[0];
           const isDragging=dragTaskId===task.id;
           const isPressing=pressingId===task.id;
+          const CapsuleIc=getTaskIcon(task.icon??'');
           return [
             <div key={`cap-${g.startTime}`} className="absolute z-10 pointer-events-none"
               style={{top:`${top}px`,left:`${AXIS_X-28}px`,width:'56px',height:`${Math.max(g.h,56)}px`}}>
               <div className="w-full h-full bg-gray-100 flex items-center justify-center" style={{borderRadius:'28px'}}>
-                <AppIcons.task size={24} className="text-gray-400"/>
+                <CapsuleIc size={24} className="text-gray-400"/>
               </div>
             </div>,
             <div key={g.startTime} className={`absolute z-10 transition-transform select-none ${isPressing?'scale-95':''}`}
@@ -1505,9 +1548,9 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
         const cols=Math.min(g.tasks.length,COLS);
         return [
           <div key={`cap-${g.startTime}`} className="absolute z-10 pointer-events-none"
-            style={{top:`${top}px`,left:`${AXIS_X-11}px`,width:'22px',height:`${g.h}px`}}>
-            <div className="w-full h-full rounded-full bg-gray-100 border border-gray-100 flex items-center justify-center">
-              <AppIcons.task size={13} className="text-gray-400"/>
+            style={{top:`${top}px`,left:`${AXIS_X-28}px`,width:'56px',height:`${Math.max(g.h,56)}px`}}>
+            <div className="w-full h-full bg-gray-100 flex items-center justify-center" style={{borderRadius:'28px'}}>
+              <AppIcons.task size={24} className="text-gray-400"/>
             </div>
           </div>,
           <div key={g.startTime} className="absolute z-10"

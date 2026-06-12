@@ -25,6 +25,11 @@ import {
   SmileySad,
   Sparkle,
   CheckSquare,
+  ForkKnife,
+  Broom,
+  Briefcase,
+  Car,
+  Coffee,
 } from '@phosphor-icons/react';
 
 type PhosphorComp = React.ComponentType<{
@@ -70,4 +75,9 @@ export const AppIcons = {
   smileySad:   make(SmileySad, 40),
   sparkle:     make(Sparkle, 40),
   checkSquare: make(CheckSquare, 12),
+  food:       make(ForkKnife, 18),
+  clean:      make(Broom, 18),
+  work:       make(Briefcase, 18),
+  travel:     make(Car, 18),
+  rest:       make(Coffee, 18),
 };
