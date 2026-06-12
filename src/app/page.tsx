@@ -2536,12 +2536,6 @@ export default function App() {
               </div>
             </div>
             <div className="flex items-center gap-1 pt-2">
-              <button onClick={()=>setDate(shiftDate(date,-1))} className="w-8 h-8 flex items-center justify-center text-gray-600"><AppIcons.caretLeft/></button>
-              <button onClick={()=>setDate(today)}
-                className={`px-3 py-1.5 text-xs font-bold rounded-full transition-colors ${date===today?'bg-gray-900 text-white':'border border-gray-300 text-gray-600'}`}>
-                今日
-              </button>
-              <button onClick={()=>setDate(shiftDate(date,1))} className="w-8 h-8 flex items-center justify-center text-gray-600"><AppIcons.caretRight/></button>
               <button onClick={()=>setCalOp(true)} className="w-8 h-8 flex items-center justify-center text-gray-400"><AppIcons.calendar size={20}/></button>
               <button onClick={()=>setSearchOpen(true)} className="w-8 h-8 flex items-center justify-center text-gray-400"><AppIcons.search size={20}/></button>
               <button onClick={()=>setSOp(true)} className="w-8 h-8 flex items-center justify-center text-gray-400"><AppIcons.settings size={20}/></button>
