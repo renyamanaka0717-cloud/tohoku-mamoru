@@ -48,6 +48,7 @@ interface FreeSlot  { start: string; end: string; min: number; }
 interface ShopItem  { id: string; name: string; checked: boolean; purchasedAt?: string; }
 interface TagDef    { name: string; color: string; }
 interface MoveHistory { id: string; date: string; taskNames: string[]; }
+interface CustomTab  { id: string; name: string; }
 
 type TaskMode = 'later' | 'scheduled' | 'recurring';
 
@@ -58,7 +59,8 @@ const TASKS_KEY    = 'tl-tasks-v2';
 const SETTINGS_KEY = 'tl-settings-v2';
 const SHOP_KEY     = 'tl-shop-v1';
 const TAGS_KEY     = 'tl-tags-v1';
-const HISTORY_KEY  = 'tl-history-v1';
+const HISTORY_KEY      = 'tl-history-v1';
+const CUSTOM_TABS_KEY  = 'tl-custom-tabs-v1';
 const TAG_COLORS: {bg:string;text:string}[] = [
   {bg:'#FFD6E0',text:'#9B2335'},{bg:'#FFE4CC',text:'#9C4A20'},
   {bg:'#FFF3CC',text:'#7A5800'},{bg:'#E2F5CC',text:'#3A6B0E'},
@@ -77,7 +79,6 @@ const DUR_OPTS     = [
   {v:180,l:'3時間'},{v:240,l:'4時間'},{v:300,l:'5時間'},
 ];
 const NOTIF_OPTS   = [{v:0,l:'開始時'},{v:5,l:'5分前'},{v:10,l:'10分前'},{v:15,l:'15分前'},{v:30,l:'30分前'},{v:60,l:'1時間前'},{v:1440,l:'前日'}];
-const CATEGORIES   = ['個人','仕事'];
 
 // ── Utils ─────────────────────────────────────────────────────────────────────
 
@@ -294,7 +295,7 @@ function MonthCalendar({selected,onSelect,onClose,tasks}:{selected:string;onSele
 
 // ── CalendarPage ─────────────────────────────────────────────────────────────
 
-function CalendarPage({date,tasks,onSelect,onClose}:{date:string;tasks:Task[];onSelect:(d:string)=>void;onClose:()=>void;}) {
+function CalendarPage({date,tasks,customTabs,onSelect,onClose}:{date:string;tasks:Task[];customTabs:CustomTab[];onSelect:(d:string)=>void;onClose:()=>void;}) {
   const [vm,setVm]=useState(()=>{const d=new Date(date+'T12:00:00');return {year:d.getFullYear(),month:d.getMonth()};});
   const [catFilter,setCatF]=useState<string|null>(null);
   const today=todayStr();
@@ -335,11 +336,11 @@ function CalendarPage({date,tasks,onSelect,onClose}:{date:string;tasks:Task[];on
       </div>
 
       {/* Category filter - file tabs */}
-      <div className="flex items-end px-3 pt-2 bg-white" style={{borderBottom:'2px solid #e5e7eb'}}>
-        {([{key:null,label:'すべて'},...CATEGORIES.map(c=>({key:c,label:c}))] as {key:string|null,label:string}[]).map(({key,label})=>{
+      <div className="flex items-end px-3 pt-2 bg-white" style={{borderBottom:'2px solid #e5e7eb',overflowX:'auto',WebkitOverflowScrolling:'touch'}}>
+        {([{key:null as string|null,label:'すべて'},...customTabs.map(t=>({key:t.id,label:t.name}))]).map(({key,label})=>{
           const active=catFilter===key;
           return (
-            <button key={String(key)} onClick={()=>key===null?setCatF(null):setCatF(c=>c===key?null:key)}
+            <button key={String(key)} onClick={()=>setCatF(key)}
               className="shrink-0 relative"
               style={active?{
                 padding:'7px 18px',background:'white',color:'#111827',fontWeight:700,fontSize:'0.875rem',
@@ -522,10 +523,10 @@ function getTaskIcon(key:string){
 
 // ── TaskModal ─────────────────────────────────────────────────────────────────
 
-function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:initIconSheet,onSave,onDelete,onClose,globalTags}:{
+function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:initIconSheet,onSave,onDelete,onClose,globalTags,customTabs}:{
   task:Task|null; currentDate:string; prefillTime?:string; prefillCategory?:string; openIconSheet?:boolean;
   onSave:(tasks:Omit<Task,'id'>[])=>void; onDelete?:()=>void; onClose:()=>void;
-  globalTags:TagDef[];
+  globalTags:TagDef[]; customTabs:CustomTab[];
 }) {
   const initMode=():TaskMode=>{
     if(!task) return prefillTime?'scheduled':'later';
@@ -720,14 +721,16 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
           </div>
 
           {/* Category chips */}
-          <div className="flex gap-2 mb-3">
-            {CATEGORIES.map(cat=>(
-              <button key={cat} onClick={()=>setCategory(c=>c===cat?null:cat)}
-                className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${category===cat?'bg-white text-gray-900':'bg-gray-700 text-gray-300'}`}>
-                {cat}
+          {customTabs.length>0&&(
+          <div className="flex gap-2 mb-3 overflow-x-auto" style={{WebkitOverflowScrolling:'touch'}}>
+            {customTabs.map(tab=>(
+              <button key={tab.id} onClick={()=>setCategory(c=>c===tab.id?null:tab.id)}
+                className={`shrink-0 px-3 py-1 rounded-full text-xs font-semibold transition-colors ${category===tab.id?'bg-white text-gray-900':'bg-gray-700 text-gray-300'}`}>
+                {tab.name}
               </button>
             ))}
           </div>
+          )}
 
           {/* Tabs */}
           <div className="flex bg-gray-800 rounded-xl p-1">
@@ -2303,6 +2306,9 @@ export default function App() {
   const [date,setDate]           = useState(todayStr());
   const [modal,setModal]         = useState<{open:boolean;task:Task|null;prefillTime?:string;prefillCategory?:string;iconSheet?:boolean}>({open:false,task:null});
   const [activeCategory,setActiveCat] = useState<string|null>(null);
+  const [customTabs,setCustomTabs]   = useState<CustomTab[]>([]);
+  const [editTabId,setEditTabId]     = useState<string|null>(null);
+  const [editTabName,setEditTabName] = useState('');
   const [settingsOpen,setSOp]    = useState(false);
   const [calendarOpen,setCalOp]  = useState(false);
   const [searchOpen,setSearchOpen] = useState(false);
@@ -2346,6 +2352,8 @@ export default function App() {
       }
       const mh=localStorage.getItem(HISTORY_KEY);
       if(mh) setMoveHistory(JSON.parse(mh) as MoveHistory[]);
+      const ct=localStorage.getItem(CUSTOM_TABS_KEY);
+      if(ct) setCustomTabs(JSON.parse(ct) as CustomTab[]);
     }catch{}
     setLoaded(true);
   },[]);
@@ -2355,6 +2363,7 @@ export default function App() {
   useEffect(()=>{ if(loaded) localStorage.setItem(SHOP_KEY,JSON.stringify(shopItems)); },[shopItems,loaded]);
   useEffect(()=>{ if(loaded) localStorage.setItem(TAGS_KEY,JSON.stringify(globalTags)); },[globalTags,loaded]);
   useEffect(()=>{ if(loaded) localStorage.setItem(HISTORY_KEY,JSON.stringify(moveHistory)); },[moveHistory,loaded]);
+  useEffect(()=>{ if(loaded) localStorage.setItem(CUSTOM_TABS_KEY,JSON.stringify(customTabs)); },[customTabs,loaded]);
   useEffect(()=>{ const iv=setInterval(()=>setNow(nowStr()),60000); return ()=>clearInterval(iv); },[]);
 
   // 就寝時刻を過ぎた当日の未完了タスクを「あとでやる」へ自動移動し履歴を記録
@@ -2468,7 +2477,26 @@ export default function App() {
   });
   const deleteShop   = (id:string)   => setShopItems(prev=>prev.filter(i=>i.id!==id));
 
-  const openAdd  = (prefillTime?:string) => setModal({open:true,task:null,prefillTime,prefillCategory:activeCategory??'個人'});
+  const addCustomTab=()=>{
+    const newTab:CustomTab={id:uid(),name:`タブ${customTabs.length+1}`};
+    setCustomTabs(prev=>[...prev,newTab]);
+    setActiveCat(newTab.id);
+    setEditTabId(newTab.id);
+    setEditTabName(newTab.name);
+  };
+  const saveEditTab=()=>{
+    if(!editTabId) return;
+    const n=editTabName.trim();
+    if(n) setCustomTabs(prev=>prev.map(t=>t.id===editTabId?{...t,name:n}:t));
+    setEditTabId(null);
+  };
+  const deleteCustomTab=(id:string)=>{
+    setCustomTabs(prev=>prev.filter(t=>t.id!==id));
+    if(activeCategory===id) setActiveCat(null);
+    setEditTabId(null);
+  };
+
+  const openAdd  = (prefillTime?:string) => setModal({open:true,task:null,prefillTime,prefillCategory:activeCategory??undefined});
   const openEdit = (task:Task) => {
     if(task.recurrence) { setRecConfirm(task); } else { setModal({open:true,task}); }
   };
@@ -2514,12 +2542,23 @@ export default function App() {
       {/* ── Header ── */}
       <header className="sticky top-0 z-30 bg-white shadow-sm">
         {/* Category filter tabs */}
-        <div className="flex items-end px-3 pt-2 bg-white" style={{borderBottom:'2px solid #e5e7eb'}}>
-          {([{key:null,label:'すべて'},...CATEGORIES.map(c=>({key:c,label:c}))] as {key:string|null,label:string}[]).map(({key,label})=>{
-            const active=activeCategory===key;
+        <div className="flex items-end px-3 pt-2 bg-white" style={{borderBottom:'2px solid #e5e7eb',overflowX:'auto',WebkitOverflowScrolling:'touch'}}>
+          <button onClick={()=>{setActiveCat(null);setEditTabId(null);}} className="shrink-0 relative"
+            style={activeCategory===null?{
+              padding:'7px 18px',background:'white',color:'#111827',fontWeight:700,fontSize:'0.875rem',
+              border:'2px solid #6b7280',borderBottom:'2px solid white',
+              borderRadius:'14px 14px 0 0',marginBottom:'-2px',zIndex:10,
+            }:{
+              padding:'5px 18px',background:'#f3f4f6',color:'#9ca3af',fontWeight:600,fontSize:'0.875rem',
+              border:'none',borderRadius:'14px 14px 0 0',
+            }}>すべて</button>
+          {customTabs.map(tab=>{
+            const active=activeCategory===tab.id;
             return (
-              <button key={String(key)} onClick={()=>key===null?setActiveCat(null):setActiveCat(c=>c===key?null:key)}
-                className="shrink-0 relative"
+              <button key={tab.id} onClick={()=>{
+                if(active){setEditTabId(tab.id);setEditTabName(tab.name);}
+                else{setActiveCat(tab.id);setEditTabId(null);}
+              }} className="shrink-0 relative"
                 style={active?{
                   padding:'7px 18px',background:'white',color:'#111827',fontWeight:700,fontSize:'0.875rem',
                   border:'2px solid #6b7280',borderBottom:'2px solid white',
@@ -2527,10 +2566,22 @@ export default function App() {
                 }:{
                   padding:'5px 18px',background:'#f3f4f6',color:'#9ca3af',fontWeight:600,fontSize:'0.875rem',
                   border:'none',borderRadius:'14px 14px 0 0',
-                }}>{label}</button>
+                }}>{tab.name}</button>
             );
           })}
+          <button onClick={addCustomTab}
+            className="shrink-0 w-8 h-7 flex items-center justify-center text-gray-400 text-xl font-light ml-1 mb-0.5">+</button>
         </div>
+        {editTabId&&(
+          <div className="flex gap-2 px-4 py-2 bg-white border-b border-gray-100">
+            <input value={editTabName} onChange={e=>setEditTabName(e.target.value)}
+              onKeyDown={e=>{if(e.key==='Enter') saveEditTab();}}
+              autoFocus
+              className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm outline-none focus:border-gray-400 bg-gray-50"/>
+            <button onClick={saveEditTab} className="px-3 py-1.5 bg-gray-900 text-white rounded-lg text-xs font-semibold">完了</button>
+            <button onClick={()=>deleteCustomTab(editTabId)} className="p-1.5 text-red-400"><AppIcons.trash size={16}/></button>
+          </div>
+        )}
         <div className="px-4 pt-2 pb-0">
           {/* Date + nav */}
           <div className="flex items-center justify-between mb-2">
@@ -2662,7 +2713,7 @@ export default function App() {
 
       {/* ── Calendar ── */}
       {calendarOpen&&(
-        <CalendarPage date={date} tasks={tasks} onSelect={(d)=>{setDate(d);setCalOp(false);}} onClose={()=>setCalOp(false)}/>
+        <CalendarPage date={date} tasks={tasks} customTabs={customTabs} onSelect={(d)=>{setDate(d);setCalOp(false);}} onClose={()=>setCalOp(false)}/>
       )}
 
       {/* ── Search ── */}
@@ -2676,7 +2727,7 @@ export default function App() {
         <TaskModal task={modal.task} currentDate={date} prefillTime={modal.prefillTime} prefillCategory={modal.prefillCategory} openIconSheet={!!modal.iconSheet}
           onSave={saveTasks}
           onDelete={modal.task?()=>delTask(modal.task!.id):undefined}
-          onClose={closeModal} globalTags={globalTags}/>
+          onClose={closeModal} globalTags={globalTags} customTabs={customTabs}/>
       )}
 
       {/* ── Settings Screen ── */}
