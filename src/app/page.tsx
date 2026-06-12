@@ -688,7 +688,18 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
     }
   };
 
-  const handleClose=()=>{if(name.trim())save();else onClose();};
+  const [showDiscard,setShowDiscard] = useState(false);
+  const hasChanges =
+    name!==(task?.name??'') ||
+    duration!==(task?.duration??0) ||
+    memo!==(task?.memo??'') ||
+    tags.length!==(task?.tags??[]).length ||
+    tags.some((t,i)=>t!==(task?.tags??[])[i]) ||
+    subtasks.length!==(task?.subtasks??[]).length;
+
+  const handleClose=()=>{
+    if(hasChanges){setShowDiscard(true);}else{onClose();}
+  };
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60" onClick={handleClose}>
@@ -698,8 +709,10 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
           onTouchStart={e=>{modalSwX.current=e.touches[0].clientX;modalSwY.current=e.touches[0].clientY;}}
           onTouchEnd={onModalSwipe}>
           {/* Buttons row */}
-          <div className="flex items-center mb-4">
+          <div className="flex items-center justify-between mb-4">
             <button onClick={handleClose} className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center text-white">×</button>
+            <button onClick={save} disabled={!name.trim()}
+              className={`px-4 py-1.5 text-sm font-semibold rounded-full transition-colors ${name.trim()?'bg-white text-gray-900':'bg-gray-700 text-gray-500 cursor-not-allowed'}`}>保存</button>
           </div>
 
           {/* Icon + name */}
@@ -1223,6 +1236,20 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+      {showDiscard&&(
+        <div className="absolute inset-0 z-[110] flex items-center justify-center px-6" onClick={e=>e.stopPropagation()}>
+          <div className="bg-white rounded-2xl p-5 shadow-xl w-full max-w-xs">
+            <h3 className="text-base font-bold text-gray-900 mb-1">入力内容を破棄しますか？</h3>
+            <p className="text-sm text-gray-500 mb-5">保存していない内容は失われます。</p>
+            <div className="flex gap-3">
+              <button onClick={()=>setShowDiscard(false)}
+                className="flex-1 py-2.5 bg-gray-100 text-gray-900 rounded-xl text-sm font-semibold">キャンセル</button>
+              <button onClick={()=>{setShowDiscard(false);onClose();}}
+                className="flex-1 py-2.5 bg-red-500 text-white rounded-xl text-sm font-semibold">破棄する</button>
             </div>
           </div>
         </div>
