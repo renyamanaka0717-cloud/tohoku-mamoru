@@ -1484,7 +1484,13 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
           const task=g.tasks[0];
           const isDragging=dragTaskId===task.id;
           const isPressing=pressingId===task.id;
-          return (
+          return [
+            <div key={`cap-${g.startTime}`} className="absolute z-10 pointer-events-none"
+              style={{top:`${top}px`,left:`${AXIS_X-11}px`,width:'22px',height:`${g.h}px`}}>
+              <div className="w-full h-full rounded-full bg-gray-100 border border-gray-100 flex items-center justify-center">
+                <AppIcons.task size={13} className="text-gray-400"/>
+              </div>
+            </div>,
             <div key={g.startTime} className={`absolute z-10 transition-transform select-none ${isPressing?'scale-95':''}`}
               style={{top:`${top}px`,left:`${CARD_LEFT}px`,right:'0px',minHeight:`${g.h}px`,
                 opacity:isDragging?0.25:1,pointerEvents:isDragging?'none':'auto'}}
@@ -1492,11 +1498,17 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
               onTouchEnd={cancelLP}
               onTouchMove={cancelLP}>
               <TaskCard task={task} onToggle={()=>onToggle(task.id)} onEdit={()=>onEdit(task)} globalTags={globalTags}/>
-            </div>
-          );
+            </div>,
+          ];
         }
         const cols=Math.min(g.tasks.length,COLS);
-        return (
+        return [
+          <div key={`cap-${g.startTime}`} className="absolute z-10 pointer-events-none"
+            style={{top:`${top}px`,left:`${AXIS_X-11}px`,width:'22px',height:`${g.h}px`}}>
+            <div className="w-full h-full rounded-full bg-gray-100 border border-gray-100 flex items-center justify-center">
+              <AppIcons.task size={13} className="text-gray-400"/>
+            </div>
+          </div>,
           <div key={g.startTime} className="absolute z-10"
             style={{top:`${top}px`,left:`${CARD_LEFT}px`,right:'0px'}}>
             <div style={{display:'grid',gridTemplateColumns:`repeat(${cols},1fr)`,gap:`${ROW_GAP}px`}}>
@@ -1515,8 +1527,8 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
                 );
               })}
             </div>
-          </div>
-        );
+          </div>,
+        ];
       })}
 
       {/* free time cards */}
