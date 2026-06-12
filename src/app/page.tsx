@@ -1059,7 +1059,7 @@ function TaskCard({task,onToggle,onEdit,globalTags}:{task:Task;onToggle:()=>void
     <div className={`flex items-center gap-2.5 bg-white rounded-2xl border border-gray-100 shadow-sm px-3 py-2.5 ${task.completed?'opacity-50':''}`}
       onClick={onEdit}>
       <div className="w-8 h-8 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0">
-        <AppIcons.task size={18} className="text-gray-500"/>
+        <AppIcons.task size={18} className="text-gray-500 invisible"/>
       </div>
       <div className="flex-1 min-w-0">
         {task.startTime&&(
@@ -1152,7 +1152,7 @@ function CompactTaskCard({task,onToggle,onEdit}:{task:Task;onToggle:()=>void;onE
       className={`h-full bg-white rounded-xl border border-gray-100 shadow-sm p-2 flex flex-col justify-between overflow-hidden${task.completed?' opacity-50':''}`}
       onClick={onEdit}>
       <div className="flex items-center justify-between gap-0.5">
-        <AppIcons.task size={14} className="text-gray-500 shrink-0"/>
+        <AppIcons.task size={14} className="text-gray-500 shrink-0 invisible"/>
         <button onClick={e=>{e.stopPropagation();onToggle();}}
           className={`w-5 h-5 rounded-full border-2 shrink-0 flex items-center justify-center transition-colors${task.completed?' border-gray-900 bg-gray-900':' border-gray-300'}`}>
           {task.completed&&<span className="text-white text-[8px] font-bold leading-none">✓</span>}
