@@ -41,6 +41,7 @@ interface Task {
   lastPostponedDate?: string;
   color?: string;
   subtasks?: {id:string;name:string;completed:boolean}[];
+  photoCount?: number;
 }
 
 interface Settings { wakeTime: string; sleepTime: string; }
@@ -61,6 +62,7 @@ const SHOP_KEY     = 'tl-shop-v1';
 const TAGS_KEY     = 'tl-tags-v1';
 const HISTORY_KEY      = 'tl-history-v1';
 const CUSTOM_TABS_KEY  = 'tl-custom-tabs-v1';
+const PHOTOS_KEY       = 'tl-photos-v1';
 const TAG_COLORS: {bg:string;text:string}[] = [
   {bg:'#FFD6E0',text:'#9B2335'},{bg:'#FFE4CC',text:'#9C4A20'},
   {bg:'#FFF3CC',text:'#7A5800'},{bg:'#E2F5CC',text:'#3A6B0E'},
@@ -527,7 +529,7 @@ function getTaskIcon(key:string){
 
 function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:initIconSheet,onSave,onUpdate,onDelete,onClose,globalTags,customTabs}:{
   task:Task|null; currentDate:string; prefillTime?:string; prefillCategory?:string; openIconSheet?:boolean;
-  onSave:(tasks:Omit<Task,'id'>[])=>void; onUpdate?:(data:Omit<Task,'id'>)=>void; onDelete?:()=>void; onClose:()=>void;
+  onSave:(tasks:Omit<Task,'id'>[], pendingPhotos?:string[])=>void; onUpdate?:(data:Omit<Task,'id'>)=>void; onDelete?:()=>void; onClose:()=>void;
   globalTags:TagDef[]; customTabs:CustomTab[];
 }) {
   const initMode=():TaskMode=>{
@@ -608,6 +610,52 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
     const d=new Date((task?.date??currentDate)+'T12:00:00');
     return {year:d.getFullYear(),month:d.getMonth()};
   });
+  const [photos,setPhotos]       = useState<string[]>([]);
+  const [photoViewIdx,setPhotoViewIdx] = useState<number|null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(()=>{
+    if(!task) return;
+    try{
+      const store=JSON.parse(localStorage.getItem(PHOTOS_KEY)||'{}') as Record<string,string[]>;
+      setPhotos(store[task.id]??[]);
+    }catch{}
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[]);
+
+  const compressImage=(file:File):Promise<string>=>new Promise((resolve,reject)=>{
+    const img=new Image();
+    const url=URL.createObjectURL(file);
+    img.onload=()=>{
+      const MAX=800; let w=img.width,h=img.height;
+      if(w>MAX||h>MAX){if(w>h){h=Math.round(h*MAX/w);w=MAX;}else{w=Math.round(w*MAX/h);h=MAX;}}
+      const canvas=document.createElement('canvas'); canvas.width=w; canvas.height=h;
+      canvas.getContext('2d')!.drawImage(img,0,0,w,h);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL('image/jpeg',0.7));
+    };
+    img.onerror=()=>{URL.revokeObjectURL(url);reject(new Error('load failed'));};
+    img.src=url;
+  });
+
+  const addPhotos=async(files:FileList|null)=>{
+    if(!files) return;
+    const remaining=3-photos.length; if(remaining<=0) return;
+    const compressed=await Promise.all(Array.from(files).slice(0,remaining).map(f=>compressImage(f)));
+    setPhotos(prev=>{
+      const next=[...prev,...compressed];
+      if(task){try{const s=JSON.parse(localStorage.getItem(PHOTOS_KEY)||'{}') as Record<string,string[]>;s[task.id]=next;localStorage.setItem(PHOTOS_KEY,JSON.stringify(s));}catch{}}
+      return next;
+    });
+  };
+
+  const removePhoto=(idx:number)=>{
+    setPhotos(prev=>{
+      const next=prev.filter((_,i)=>i!==idx);
+      if(task){try{const s=JSON.parse(localStorage.getItem(PHOTOS_KEY)||'{}') as Record<string,string[]>;if(next.length===0)delete s[task.id];else s[task.id]=next;localStorage.setItem(PHOTOS_KEY,JSON.stringify(s));}catch{}}
+      return next;
+    });
+  };
 
   const computedEnd = (startTime&&duration>0) ? fromMin(toMin(startTime)+duration) : null;
 
@@ -630,6 +678,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
     incompleteReminder:mode!=='later'?incompleteRem:false,
     category:category??undefined, pinned, tags,
     subtasks:subtasks.length>0?subtasks:undefined,
+    photoCount:photos.length>0?photos.length:undefined,
   });
 
   const doSave = (data: Omit<Task,'id'>) => {
@@ -659,7 +708,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
     },400);
     return ()=>{if(autoSaveTimer.current) clearTimeout(autoSaveTimer.current);};
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[name,taskDate,startTime,duration,mode,recur,customRec,tags,subtasks,memo,category,notifications,incompleteRem]);
+  },[name,taskDate,startTime,duration,mode,recur,customRec,tags,subtasks,memo,category,notifications,incompleteRem,photos]);
 
   const flushAndClose = () => {
     if(autoSaveTimer.current){
@@ -720,6 +769,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
       pinned,
       tags,
       subtasks:subtasks.length>0?subtasks:undefined,
+      photoCount:photos.length>0?photos.length:undefined,
     };
     if(mode==='recurring'&&!task){
       const instances:Omit<Task,'id'>[]=[];
@@ -746,9 +796,9 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
           generateCustomDates(currentDate,customRec).forEach(d=>instances.push({...base,date:d}));
         }
       }
-      onSave(instances);
+      onSave(instances, photos.length>0?photos:undefined);
     } else {
-      onSave([base]);
+      onSave([base], photos.length>0?photos:undefined);
     }
   };
 
@@ -1248,6 +1298,39 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
               className="w-full text-sm text-gray-700 placeholder-gray-400 outline-none resize-none bg-transparent"/>
           </div>
 
+          {/* Photos */}
+          <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden"
+            onChange={e=>{addPhotos(e.target.files);if(fileInputRef.current)fileInputRef.current.value='';}}/>
+          <div className="bg-white mx-3 mt-3 rounded-2xl p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <AppIcons.camera size={16} className="text-gray-400"/>
+                <span className="text-sm font-medium text-gray-700">写真</span>
+              </div>
+              {photos.length>0&&photos.length<3&&(
+                <button onClick={()=>fileInputRef.current?.click()}
+                  className="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full active:bg-gray-200">追加</button>
+              )}
+            </div>
+            {photos.length>0?(
+              <div className="flex gap-2 flex-wrap">
+                {photos.map((src,i)=>(
+                  <div key={i} className="relative">
+                    <img src={src} alt="" className="w-20 h-20 rounded-xl object-cover cursor-pointer"
+                      onClick={()=>setPhotoViewIdx(i)}/>
+                    <button onClick={e=>{e.stopPropagation();removePhoto(i);}}
+                      className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-gray-900 rounded-full text-white text-[10px] flex items-center justify-center leading-none">×</button>
+                  </div>
+                ))}
+              </div>
+            ):(
+              <button onClick={()=>fileInputRef.current?.click()}
+                className="w-full text-sm text-gray-400 text-center py-4 border border-dashed border-gray-200 rounded-xl active:bg-gray-50">
+                タップして追加（最大3枚）
+              </button>
+            )}
+          </div>
+
           {/* Delete */}
           {task&&onDelete&&(
             <button onClick={()=>{onDelete();onClose();}}
@@ -1335,6 +1418,13 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
           </div>
         </div>
       )}
+      {photoViewIdx!==null&&(
+        <div className="fixed inset-0 z-[120] bg-black/90 flex items-center justify-center"
+          onClick={()=>setPhotoViewIdx(null)}>
+          <img src={photos[photoViewIdx]} alt="" className="max-w-full max-h-full object-contain p-4"/>
+          <button className="absolute top-4 right-4 w-10 h-10 bg-white/20 rounded-full flex items-center justify-center text-white text-xl leading-none">×</button>
+        </div>
+      )}
     </div>
   );
 }
@@ -1366,6 +1456,7 @@ function TaskCard({task,onToggle,onEdit,globalTags}:{task:Task;onToggle:()=>void
             })}
           </div>
         )}
+        {(task.photoCount??0)>0&&<AppIcons.camera size={11} className="text-gray-400 mt-0.5"/>}
       </div>
       <button onClick={e=>{e.stopPropagation();onToggle();}}
         className={`w-6 h-6 rounded-full border-2 shrink-0 flex items-center justify-center transition-colors ${task.completed?'border-gray-900 bg-gray-900':'border-gray-300'}`}>
@@ -1446,6 +1537,7 @@ function CompactTaskCard({task,onToggle,onEdit}:{task:Task;onToggle:()=>void;onE
         style={{display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical',overflow:'hidden'} as React.CSSProperties}>
         {task.name}
       </p>
+      {(task.photoCount??0)>0&&<AppIcons.camera size={10} className="text-gray-400 mt-0.5"/>}
     </div>
   );
 }
@@ -2681,7 +2773,7 @@ export default function App() {
   };
   const closeModal = () => setModal({open:false,task:null});
 
-  const saveTasks = (data:Omit<Task,'id'>[]) => {
+  const saveTasks = (data:Omit<Task,'id'>[], pendingPhotos?:string[]) => {
     if(editScope==='all'&&modal.task){
       const orig=modal.task, d=data[0];
       setTasks(prev=>prev.map(t=>
@@ -2691,6 +2783,9 @@ export default function App() {
       ));
     } else {
       const newTasks=data.map(d=>({...d,id:uid()}));
+      if(pendingPhotos&&pendingPhotos.length>0&&newTasks.length>0){
+        try{const s=JSON.parse(localStorage.getItem(PHOTOS_KEY)||'{}') as Record<string,string[]>;s[newTasks[0].id]=pendingPhotos;localStorage.setItem(PHOTOS_KEY,JSON.stringify(s));}catch{}
+      }
       setTasks(prev=>modal.task
         ?prev.map(t=>t.id===modal.task!.id?{...newTasks[0],id:t.id}:t)
         :[...prev,...newTasks]
@@ -2699,7 +2794,10 @@ export default function App() {
     setEditScope('one');
     closeModal();
   };
-  const delTask  = (id:string) => setTasks(prev=>prev.filter(t=>t.id!==id));
+  const delTask  = (id:string) => {
+    setTasks(prev=>prev.filter(t=>t.id!==id));
+    try{const s=JSON.parse(localStorage.getItem(PHOTOS_KEY)||'{}') as Record<string,string[]>;delete s[id];localStorage.setItem(PHOTOS_KEY,JSON.stringify(s));}catch{}
+  };
   const toggle   = (id:string) => setTasks(prev=>prev.map(t=>t.id===id?{...t,completed:!t.completed}:t));
   const scheduleInSlot=(task:Task,startTime:string)=>setModal({open:true,task:{...task,isLater:false,startTime,date}});
   const moveToTimeline=(task:Task)=>setModal({open:true,task:{...task,isLater:false}});
