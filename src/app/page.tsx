@@ -2527,15 +2527,9 @@ export default function App() {
         </div>
         <div className="px-4 pt-2 pb-0">
           {/* Date + nav */}
-          <div className="flex items-start justify-between mb-2">
-            <div className="flex items-end gap-2">
-              <span className="text-6xl font-black text-gray-900 leading-none">{day}</span>
-              <div className="pb-1.5">
-                <p className="text-lg font-bold text-gray-600 leading-tight">{month}月</p>
-                <p className="text-sm text-gray-400">{year}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-1 pt-2">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xl font-bold text-gray-900">{year}年{month}月{day}日</span>
+            <div className="flex items-center gap-1">
               <button onClick={()=>setCalOp(true)} className="w-8 h-8 flex items-center justify-center text-gray-400"><AppIcons.calendar size={20}/></button>
               <button onClick={()=>setSearchOpen(true)} className="w-8 h-8 flex items-center justify-center text-gray-400"><AppIcons.search size={20}/></button>
               <button onClick={()=>setSOp(true)} className="w-8 h-8 flex items-center justify-center text-gray-400"><AppIcons.settings size={20}/></button>
