@@ -670,18 +670,18 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,onSave,onDelete
     }
   };
 
+  const handleClose=()=>{if(name.trim())save();else onClose();};
+
   return (
-    <div className="fixed inset-0 z-50 bg-black/60" onClick={onClose}>
+    <div className="fixed inset-0 z-50 bg-black/60" onClick={handleClose}>
       <div className="absolute bottom-0 left-0 right-0 max-w-md mx-auto" onClick={e=>e.stopPropagation()}>
         {/* ── Dark header ── */}
         <div className="bg-gray-900 rounded-t-3xl px-4 pt-4"
           onTouchStart={e=>{modalSwX.current=e.touches[0].clientX;modalSwY.current=e.touches[0].clientY;}}
           onTouchEnd={onModalSwipe}>
           {/* Buttons row */}
-          <div className="flex items-center justify-between mb-4">
-            <button onClick={onClose} className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center text-white">×</button>
-            <button onClick={save} disabled={!name.trim()}
-              className="px-5 py-1.5 bg-gray-600 text-white text-sm font-semibold rounded-full disabled:opacity-40">保存</button>
+          <div className="flex items-center mb-4">
+            <button onClick={handleClose} className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center text-white">×</button>
           </div>
 
           {/* Icon + name */}
