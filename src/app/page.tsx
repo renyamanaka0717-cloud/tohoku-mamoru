@@ -1515,7 +1515,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
     const CHIP_H=24; const ROW_GAP=6; const GAP_X=6;
     const base=PAD*2+ICON_H+ICON_MB+DUR_H; // 88px — no mb on duration, no chips div
     if(tasks.length===0) return base;
-    const innerW=(typeof window!=='undefined'?window.innerWidth:375)-88-32;
+    const innerW=(typeof window!=='undefined'?window.innerWidth:375)-100-32;
     let rows=1,rowW=0;
     for(const t of tasks){
       const w=36+t.name.length*9;
@@ -1609,7 +1609,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
     return calcDayY(min);
   };
 
-  const AXIS_X=56, CARD_LEFT=88;
+  const AXIS_X=68, CARD_LEFT=100;
 
   // anchors の逆引き（Y座標→時刻）を App のドラッグハンドラに渡す
   yToTimeRef.current=(clientY:number):string=>{
@@ -1655,14 +1655,14 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
         const centerY=top+g.h/2;
         return [
           <div key={`tl-${g.startTime}`} className="absolute flex items-center" style={{top:`${centerY}px`,transform:'translateY(-50%)',left:0}}>
-            <span className="text-xs w-12 text-right pr-1 leading-none text-gray-400">{g.startTime}</span>
+            <span className="text-xs w-10 text-right pr-1 leading-none text-gray-400">{g.startTime}</span>
           </div>,
         ];
       })}
 
       {/* wake/sleep axis labels */}
       <div className="absolute flex items-center" style={{top:`${wakeCardTop+WAKE_CARD_H/2}px`,transform:'translateY(-50%)',left:0}}>
-        <span className="text-xs w-12 text-right pr-1 leading-none text-gray-400">{settings.wakeTime}</span>
+        <span className="text-xs w-10 text-right pr-1 leading-none text-gray-400">{settings.wakeTime}</span>
       </div>
       <div className="absolute z-10 pointer-events-none" style={{top:`${wakeCardTop}px`,left:`${AXIS_X-28}px`,width:'56px',height:'56px'}}>
         <div className="w-full h-full bg-gray-100 flex items-center justify-center" style={{borderRadius:'28px'}}>
@@ -1670,7 +1670,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
         </div>
       </div>
       <div className="absolute flex items-center" style={{top:`${sleepCardTop+SLEEP_CARD_H/2}px`,transform:'translateY(-50%)',left:0}}>
-        <span className="text-xs w-12 text-right pr-1 leading-none text-gray-400">{settings.sleepTime}</span>
+        <span className="text-xs w-10 text-right pr-1 leading-none text-gray-400">{settings.sleepTime}</span>
       </div>
       <div className="absolute z-10 pointer-events-none" style={{top:`${sleepCardTop}px`,left:`${AXIS_X-28}px`,width:'56px',height:'56px'}}>
         <div className="w-full h-full bg-gray-100 flex items-center justify-center" style={{borderRadius:'28px'}}>
