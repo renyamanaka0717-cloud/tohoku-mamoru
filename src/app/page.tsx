@@ -1114,24 +1114,32 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
               </div>
             )}
 
-          </div>
-
-          {/* サブタスク — 独立カード */}
-          <div className="bg-white mx-3 mt-3 rounded-2xl px-4 py-3">
-            {subtasks.map((st,i)=>(
-              <div key={st.id} className="flex items-center gap-2 mb-2">
-                <button onClick={()=>setSubtasks(prev=>prev.map((s,j)=>j===i?{...s,completed:!s.completed}:s))}
-                  className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 ${st.completed?'bg-gray-900 border-gray-900':'border-gray-300'}`}>
-                  {st.completed&&<AppIcons.checkSquare size={9} className="text-white"/>}
-                </button>
-                <span className={`flex-1 text-sm ${st.completed?'line-through text-gray-400':'text-gray-700'}`}>{st.name}</span>
-                <button onClick={()=>setSubtasks(prev=>prev.filter((_,j)=>j!==i))} className="text-gray-300 text-base leading-none px-1">×</button>
+            {/* サブタスク */}
+            <div className="h-px bg-gray-100 mx-4"/>
+            <div className="px-4 py-3">
+              <div className="flex items-center gap-3">
+                <AppIcons.checkSquare size={18} className="text-gray-400 shrink-0"/>
+                <input type="text" value={subtaskInput} onChange={e=>setSubtaskInput(e.target.value)}
+                  onKeyDown={e=>{if(e.key==='Enter'&&subtaskInput.trim()){setSubtasks(prev=>[...prev,{id:Date.now().toString(),name:subtaskInput.trim(),completed:false}]);setSubtaskInput('');}}}
+                  placeholder="サブタスクを追加"
+                  className="flex-1 text-sm text-gray-700 placeholder-gray-400 outline-none bg-gray-100 rounded-lg px-3 py-1.5"/>
               </div>
-            ))}
-            <input type="text" value={subtaskInput} onChange={e=>setSubtaskInput(e.target.value)}
-              onKeyDown={e=>{if(e.key==='Enter'&&subtaskInput.trim()){setSubtasks(prev=>[...prev,{id:Date.now().toString(),name:subtaskInput.trim(),completed:false}]);setSubtaskInput('');}}}
-              placeholder="サブタスクを追加"
-              className="w-full text-sm text-gray-700 placeholder-gray-400 outline-none bg-transparent"/>
+              {subtasks.length>0&&(
+                <div className="mt-2 space-y-1">
+                  {subtasks.map((st,i)=>(
+                    <div key={st.id} className="flex items-center gap-2 pl-7">
+                      <button onClick={()=>setSubtasks(prev=>prev.map((s,j)=>j===i?{...s,completed:!s.completed}:s))}
+                        className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 ${st.completed?'bg-gray-900 border-gray-900':'border-gray-300'}`}>
+                        {st.completed&&<AppIcons.checkSquare size={9} className="text-white"/>}
+                      </button>
+                      <span className={`flex-1 text-sm ${st.completed?'line-through text-gray-400':'text-gray-700'}`}>{st.name}</span>
+                      <button onClick={()=>setSubtasks(prev=>prev.filter((_,j)=>j!==i))} className="text-gray-300 text-base leading-none px-1">×</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
           </div>
 
           {/* Memo */}
