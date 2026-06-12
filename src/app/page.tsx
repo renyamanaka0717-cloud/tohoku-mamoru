@@ -2840,7 +2840,7 @@ export default function App() {
       {activeTab==='later'&&(
         <div className="fixed bottom-6 right-4 z-[60]">
           <button onClick={()=>{setActiveTab(null);openAdd();}}
-            className="w-14 h-14 bg-gray-900 text-white rounded-full text-3xl shadow-2xl flex items-center justify-center active:bg-gray-700 leading-none">+</button>
+            className="w-14 h-14 bg-gray-900 text-white rounded-full shadow-2xl flex items-center justify-center active:bg-gray-700"><AppIcons.plus size={28}/></button>
         </div>
       )}
 

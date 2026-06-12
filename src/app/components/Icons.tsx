@@ -40,6 +40,7 @@ import {
   Wallet,
   GameController,
   Camera,
+  Plus,
 } from '@phosphor-icons/react';
 
 type PhosphorComp = React.ComponentType<{
@@ -100,4 +101,5 @@ export const AppIcons = {
   money:      make(Wallet, 18),
   game:       make(GameController, 18),
   camera:     make(Camera, 18),
+  plus:       make(Plus, 28),
 };
