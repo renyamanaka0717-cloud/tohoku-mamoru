@@ -4,6 +4,7 @@
 
 html, body {
   -webkit-overflow-scrolling: touch;
+  font-size: 17px;
 }
 
 input[type="time"]::-webkit-calendar-picker-indicator {
