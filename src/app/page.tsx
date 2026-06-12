@@ -2858,7 +2858,7 @@ export default function App() {
             <button onClick={()=>deleteCustomTab(editTabId)} className="p-1.5 text-red-400"><AppIcons.trash size={16}/></button>
           </div>
         )}
-        <div className="px-4 pt-2 pb-0">
+        <div className="px-4 pt-1 pb-0">
           {/* Date + nav */}
           <div className="flex items-center justify-between mb-2">
             <span className="text-xl font-bold text-gray-900">{year}年{month}月{day}日</span>
