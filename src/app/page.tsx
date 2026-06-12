@@ -1850,14 +1850,16 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
                   <span className="text-xs text-gray-400 font-medium">あとでやる {normalLater.length}</span>
                 </div>
                 <div className="space-y-2">
-                  {normalLater.map(t=>(
+                  {normalLater.map(t=>{
+                    const LaterIc=getTaskIcon(t.icon??'');
+                    return (
                     <div key={t.id}
                       className={`flex items-center gap-2.5 bg-white border border-gray-100 rounded-2xl shadow-sm px-3 py-3 transition-transform select-none ${pressingId===t.id?'scale-95 shadow-lg border-blue-200':''}`}
                       onTouchStart={e=>startLP(t,e)}
                       onTouchEnd={cancelLP}
                       onTouchMove={cancelLP}>
                       <div className="w-7 h-7 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0">
-                        {t.pinned?<AppIcons.pin size={12}/>:<AppIcons.checkSquare className="text-gray-400"/>}
+                        <LaterIc size={14} className="text-gray-400"/>
                       </div>
                       <div className="flex-1 min-w-0" onClick={()=>onEdit(t)}>
                         <p className="text-sm font-semibold text-gray-900">{t.name}</p>
@@ -1868,7 +1870,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
                       )}
                       <button onClick={()=>onToggle(t.id)} className="w-6 h-6 rounded-full border-2 border-gray-300 shrink-0"/>
                     </div>
-                  ))}
+                  );})}
                 </div>
               </div>
             )}
@@ -1881,10 +1883,12 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
                   <span className="text-xs text-gray-400 font-medium">時間指定 {scheduledRaw.length}</span>
                 </div>
                 <div className="space-y-2">
-                  {scheduledRaw.map(t=>(
+                  {scheduledRaw.map(t=>{
+                    const SchedIc=getTaskIcon(t.icon??'');
+                    return (
                     <div key={t.id} className="flex items-center gap-2.5 bg-white border border-gray-100 rounded-2xl shadow-sm px-3 py-3">
                       <div className="w-7 h-7 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0">
-                        <span className="text-xs text-gray-400">⊙</span>
+                        <SchedIc size={14} className="text-gray-400"/>
                       </div>
                       <div className="flex-1 min-w-0" onClick={()=>onEdit(t)}>
                         <p className="text-sm font-semibold text-gray-900">{t.name}</p>
@@ -1892,7 +1896,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
                       </div>
                       <button onClick={()=>onToggle(t.id)} className="w-6 h-6 rounded-full border-2 border-gray-300 shrink-0"/>
                     </div>
-                  ))}
+                  );})}
                 </div>
               </div>
             )}
@@ -1905,19 +1909,21 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
                   <span className="text-xs text-gray-400 font-medium">繰り返し {recurringGroups.length}</span>
                 </div>
                 <div className="space-y-2">
-                  {recurringGroups.map(t=>(
+                  {recurringGroups.map(t=>{
+                    const RecIc=getTaskIcon(t.icon??'');
+                    return (
                     <div key={`${t.name}||${t.recurrence}||${t.startTime??''}`}
                       className="flex items-center gap-2.5 bg-white border border-gray-100 rounded-2xl shadow-sm px-3 py-3"
                       onClick={()=>onEdit(t)}>
                       <div className="w-7 h-7 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0">
-                        <AppIcons.repeat size={12} className="text-gray-400"/>
+                        <RecIc size={14} className="text-gray-400"/>
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-gray-900">{t.name}</p>
                         <p className="text-xs text-gray-400">{recLabel(t)}{t.startTime?` ${t.startTime}`:''}</p>
                       </div>
                     </div>
-                  ))}
+                  );})}
                 </div>
               </div>
             )}
