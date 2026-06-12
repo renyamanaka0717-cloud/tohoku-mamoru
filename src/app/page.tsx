@@ -1563,8 +1563,8 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
     } else {
       const freeY=Math.max(item.y,prevBottom)+16;
       const contentH=calcFreeContentH(laterPool);
-      const timeH=item.s.min*PX_PER_MIN;
-      const finalH=Math.max(timeH,contentH,48);
+      const timeH=item.s.min*PX_PER_MIN*0.7;
+      const finalH=Math.max(timeH,contentH,36);
       freePassItems.push({slot:item.s,freeY,finalH});
       prevBottom=freeY+finalH;
     }
@@ -1614,7 +1614,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
 
   // Layout zones: [time label area] [gap] [icon area centered on axis] [gap] [card area → right:0]
   const TIME_LABEL_W = 40;  // px — fits "HH:MM" at text-xs
-  const AXIS_GAP     = 8;   // px — between label area and icon
+  const AXIS_GAP     = 12;  // px — between label area and icon
   const ICON_HALF    = 28;  // px — half of 56px icon capsule
   const CARD_GAP     = 4;   // px — between icon right edge and card left
 
@@ -1655,7 +1655,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
   return (
     <div ref={containerRef} className="relative" style={{height:`${totalHeight+32}px`,minHeight:'400px'}}>
       {/* vertical line */}
-      <div className="absolute bg-gray-200" style={{left:`${AXIS_X-1}px`,width:'2px',top:0,height:`${totalHeight}px`}}/>
+      <div className="absolute bg-gray-200" style={{left:`${AXIS_X}px`,width:'1px',top:0,height:`${totalHeight}px`}}/>
 
 
       {/* task start time labels — 1 per group, center-aligned, skip wake/sleep */}
