@@ -523,9 +523,9 @@ function getTaskIcon(key:string){
 
 // ── TaskModal ─────────────────────────────────────────────────────────────────
 
-function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:initIconSheet,onSave,onDelete,onClose,globalTags,customTabs}:{
+function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:initIconSheet,onSave,onUpdate,onDelete,onClose,globalTags,customTabs}:{
   task:Task|null; currentDate:string; prefillTime?:string; prefillCategory?:string; openIconSheet?:boolean;
-  onSave:(tasks:Omit<Task,'id'>[])=>void; onDelete?:()=>void; onClose:()=>void;
+  onSave:(tasks:Omit<Task,'id'>[])=>void; onUpdate?:(data:Omit<Task,'id'>)=>void; onDelete?:()=>void; onClose:()=>void;
   globalTags:TagDef[]; customTabs:CustomTab[];
 }) {
   const initMode=():TaskMode=>{
@@ -608,6 +608,68 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
   });
 
   const computedEnd = (startTime&&duration>0) ? fromMin(toMin(startTime)+duration) : null;
+
+  // ── Auto-save (edit mode only) ─────────────────────────────────────────────
+  const autoSaveTimer   = useRef<ReturnType<typeof setTimeout>|null>(null);
+  const savedTimer      = useRef<ReturnType<typeof setTimeout>|null>(null);
+  const lastSavedRef    = useRef('');
+  const pendingDataRef  = useRef<Omit<Task,'id'>|null>(null);
+  const isFirstRender   = useRef(true);
+  const [saveStatus, setSaveStatus] = useState<'idle'|'saving'|'saved'|'error'>('idle');
+  const [saveFading, setSaveFading] = useState(false);
+
+  const buildData = (): Omit<Task,'id'> => ({
+    name:name.trim(), startTime:mode==='later'?null:(startTime||null), duration, memo, icon,
+    color:color||undefined, completed:task?.completed??false,
+    date:mode==='scheduled'?taskDate:(task?.date??currentDate),
+    isLater:mode==='later', recurrence:mode==='recurring'?recur:null,
+    customRec:mode==='recurring'&&recur==='custom'?customRec:undefined,
+    notifications:mode!=='later'?notifications:undefined,
+    incompleteReminder:mode!=='later'?incompleteRem:false,
+    category:category??undefined, pinned, tags,
+    subtasks:subtasks.length>0?subtasks:undefined,
+  });
+
+  const doSave = (data: Omit<Task,'id'>) => {
+    if(!onUpdate) return;
+    const str = JSON.stringify(data);
+    if(str===lastSavedRef.current){setSaveStatus('idle');return;}
+    lastSavedRef.current = str;
+    try {
+      onUpdate(data);
+      setSaveStatus('saved'); setSaveFading(false);
+      if(savedTimer.current) clearTimeout(savedTimer.current);
+      savedTimer.current = setTimeout(()=>{
+        setSaveFading(true);
+        savedTimer.current = setTimeout(()=>{setSaveStatus('idle');setSaveFading(false);},300);
+      },1000);
+    } catch { setSaveStatus('error'); }
+  };
+
+  useEffect(()=>{
+    if(!task||!onUpdate) return;
+    pendingDataRef.current = buildData();
+    if(isFirstRender.current){isFirstRender.current=false;return;}
+    if(autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+    setSaveStatus('saving');
+    autoSaveTimer.current = setTimeout(()=>{
+      if(pendingDataRef.current) doSave(pendingDataRef.current);
+    },400);
+    return ()=>{if(autoSaveTimer.current) clearTimeout(autoSaveTimer.current);};
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[name,taskDate,startTime,duration,mode,recur,customRec,tags,subtasks,memo,category,notifications,incompleteRem]);
+
+  const flushAndClose = () => {
+    if(autoSaveTimer.current){
+      clearTimeout(autoSaveTimer.current); autoSaveTimer.current=null;
+      if(pendingDataRef.current){
+        const str=JSON.stringify(pendingDataRef.current);
+        if(str!==lastSavedRef.current&&onUpdate){onUpdate(pendingDataRef.current);lastSavedRef.current=str;}
+      }
+    }
+    onClose();
+  };
+  // ──────────────────────────────────────────────────────────────────────────
 
   const calDays = useMemo(()=>{
     const {year,month}=calVm;
@@ -698,7 +760,9 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
     subtasks.length!==(task?.subtasks??[]).length;
 
   const handleClose=()=>{
-    if(hasChanges){setShowDiscard(true);}else{onClose();}
+    if(task){flushAndClose();}
+    else if(hasChanges){setShowDiscard(true);}
+    else{onClose();}
   };
 
   return (
@@ -711,8 +775,23 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
           {/* Buttons row */}
           <div className="flex items-center justify-between mb-4">
             <button onClick={handleClose} className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center text-white">×</button>
-            <button onClick={save} disabled={!name.trim()}
-              className={`px-4 py-1.5 text-sm font-semibold rounded-full transition-colors ${name.trim()?'bg-white text-gray-900':'bg-gray-700 text-gray-500 cursor-not-allowed'}`}>保存</button>
+            <div className="flex items-center gap-3">
+              {task ? (
+                <>
+                  {saveStatus!=='idle'&&(
+                    <span style={{transition:'opacity 0.3s',opacity:saveFading?0:1}}
+                      className={`text-xs ${saveStatus==='error'?'text-red-400':saveStatus==='saved'?'text-green-400':'text-gray-400'}`}>
+                      {saveStatus==='saving'?'保存中…':saveStatus==='saved'?'✓ 保存済み':'保存に失敗しました'}
+                    </span>
+                  )}
+                  <button onClick={flushAndClose}
+                    className="px-4 py-1.5 text-sm font-semibold rounded-full bg-white text-gray-900">完了</button>
+                </>
+              ) : (
+                <button onClick={save} disabled={!name.trim()}
+                  className={`px-4 py-1.5 text-sm font-semibold rounded-full transition-colors ${name.trim()?'bg-white text-gray-900':'bg-gray-700 text-gray-500 cursor-not-allowed'}`}>保存</button>
+              )}
+            </div>
           </div>
 
           {/* Icon + name */}
@@ -2578,6 +2657,12 @@ export default function App() {
     setEditTabId(null);
   };
 
+  const updateTask = (data: Omit<Task,'id'>) => {
+    if(!modal.task) return;
+    const id = modal.task.id;
+    setTasks(prev=>prev.map(t=>t.id===id?{...t,...data,id}:t));
+  };
+
   const openAdd  = (prefillTime?:string) => setModal({open:true,task:null,prefillTime,prefillCategory:activeCategory??undefined});
   const openEdit = (task:Task) => {
     if(task.recurrence) { setRecConfirm(task); } else { setModal({open:true,task}); }
@@ -2807,7 +2892,7 @@ export default function App() {
       {/* ── Task Modal ── */}
       {modal.open&&(
         <TaskModal task={modal.task} currentDate={date} prefillTime={modal.prefillTime} prefillCategory={modal.prefillCategory} openIconSheet={!!modal.iconSheet}
-          onSave={saveTasks}
+          onSave={saveTasks} onUpdate={modal.task?updateTask:undefined}
           onDelete={modal.task?()=>delTask(modal.task!.id):undefined}
           onClose={closeModal} globalTags={globalTags} customTabs={customTabs}/>
       )}
