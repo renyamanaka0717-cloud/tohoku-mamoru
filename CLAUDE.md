@@ -26,11 +26,14 @@ npm run lint    # ESLint
 
 テストフレームワークなし。
 
-## 作業完了時の手順
+## 作業完了時の必須手順
 
 ```
-npm run build → git add → git commit → git push origin main
+npm install → npm run build → git add → git commit → git push origin main
 ```
+
+**node_modules がない状態でビルド確認をせずにコミット・プッシュしないこと。**  
+「変更が小さいから大丈夫」という推測でコミットしない。必ずビルドを通してから push する。
 
 Vercel は `main` push で自動デプロイされる。デプロイした場合のみ「デプロイしました」と報告する。
 
@@ -38,7 +41,7 @@ Vercel は `main` push で自動デプロイされる。デプロイした場合
 
 ## アーキテクチャ
 
-ほぼすべての機能が `src/app/page.tsx` 1ファイルに集約されている（2700行超）。コンポーネント分割は最小限。
+ほぼすべての機能が `src/app/page.tsx` 1ファイルに集約されている（約2930行）。コンポーネント分割は最小限。
 
 ```
 src/app/
@@ -57,7 +60,7 @@ src/app/
 | 関数 | 役割 |
 |---|---|
 | `App` | ルートコンポーネント。state管理・localStorage同期・ドラッグ処理 |
-| `Timeline` | タイムライン描画。`AXIS_X` / `CARD_LEFT` の絶対配置で構築 |
+| `Timeline` | タイムライン描画。絶対配置で構築 |
 | `TaskModal` | タスク作成・編集モーダル（繰り返し設定含む） |
 | `TaskCard` | タイムライン上のタスクカード |
 | `CompactTaskCard` | 同時刻タスクが複数ある場合のコンパクト表示 |
@@ -66,17 +69,27 @@ src/app/
 | `CalendarPage` | フルスクリーン月間カレンダー（タスク一覧付き） |
 | `SearchPage` | タスク検索 |
 | `BottomTabs` | あとでやる・買い物リストのボトムシート |
-| `SettingsScreen` | 設定画面 |
+| `SettingsScreen` | 設定画面（ファイルタブ管理含む） |
 
 ### タイムラインのレイアウト定数（Timeline 内）
 
-| 定数 | 値 | 説明 |
-|---|---|---|
-| `PX_PER_HOUR` | 40 | 1時間あたりのピクセル高さ |
-| `AXIS_X` | 60 | 縦軸線のX座標（px） |
-| `CARD_LEFT` | 72 | タスクカード左端のX座標（px） |
+以下のセマンティックゾーン定数から AXIS_X・CARD_LEFT を導出している。固定px値を直接書かない。
 
-タイムラインは `position: absolute` で各要素を配置。時刻→Y座標の変換は `layoutCalcY(min)`、タッチY座標→時刻は `yToTimeRef`。
+```typescript
+const TIME_LABEL_W = 40;  // px — "HH:MM" が text-xs で収まる幅
+const AXIS_GAP     = 4;   // px — ラベルエリアとアイコンの間
+const ICON_HALF    = 28;  // px — 56px アイコンカプセルの半分
+const CARD_GAP     = 4;   // px — アイコン右端とカード左端の間
+
+const AXIS_X    = TIME_LABEL_W + AXIS_GAP + ICON_HALF;  // 72px
+const CARD_LEFT = AXIS_X + ICON_HALF + CARD_GAP;         // 104px
+```
+
+- `PX_PER_HOUR` = 40（1時間あたりのピクセル高さ）
+- タイムラインは `position: absolute` で各要素を配置
+- 時刻→Y座標: `layoutCalcY(min)`
+- タッチY→時刻: `yToTimeRef`
+- **時刻ラベルはすべて `w-10 text-right pr-1`（40px）で統一**。`w-12` は使わない
 
 ---
 
@@ -84,13 +97,14 @@ src/app/
 
 | 型 | 説明 |
 |---|---|
-| `Task` | id, name, startTime, duration, memo, icon, completed, date, isLater, recurrence, customRec, pinned, tags, notifications, incompleteReminder, category, postponedCount, color, **subtasks** |
+| `Task` | id, name, startTime, duration, memo, icon, completed, date, isLater, recurrence, customRec, pinned, tags, notifications, incompleteReminder, category, postponedCount, color, subtasks |
 | `Settings` | wakeTime, sleepTime |
 | `FreeSlot` | タイムライン上の空き時間スロット |
 | `ShopItem` | 買い物リストのアイテム（7日後に自動削除） |
 | `TagDef` | タグ定義（name, color） |
 | `CustomRec` | カスタム繰り返し設定 |
 | `MoveHistory` | 未完了タスクの「あとでやる」移動履歴 |
+| `CustomTab` | ユーザー定義ファイルタブ（`{id:string; name:string}`） |
 | `TaskMode` | `'later'` / `'scheduled'` / `'recurring'` |
 
 `Task.subtasks` は `{id:string; name:string; completed:boolean}[]` 型。
@@ -104,10 +118,50 @@ src/app/
 | `SHOP_KEY` | `'tl-shop-v1'` | 買い物リスト |
 | `TAGS_KEY` | `'tl-tags-v1'` | グローバルタグ定義 |
 | `HISTORY_KEY` | `'tl-history-v1'` | 移動履歴 |
+| `CUSTOM_TABS_KEY` | `'tl-custom-tabs-v1'` | ユーザー定義ファイルタブ |
 
 ---
 
 ## 現在のUI実装状態
+
+### ヘッダー
+
+- 日付表示: `2026年6月12日` の1行表示（年→月→日、日本語表記）
+- 日付ナビゲーション行（〈 今日 〉）は**削除済み**
+- ファイルタブバー（横スクロール対応、ユーザー定義タブ + + ボタン）
+
+### ファイルタブ（カスタムタブ）
+
+メインヘッダーと CalendarPage の両方で**ファイルタブ型**を採用。
+
+- `すべて`（常に先頭）+ ユーザー定義タブ（`CustomTab[]`） + `+` ボタン
+- タブをタップ → 未選択なら選択、選択中ならインライン名前編集に入る
+- `+` ボタンでタブ追加 → 即インライン編集
+- 設定画面の「ファイルタブ」からも名前変更・削除可能
+- タブを削除したタスクは自動的に `すべて`（`category: null`）扱いになる
+
+**ファイルタブ型スタイル（共通パターン）：**
+```jsx
+<div className="flex items-end px-3 pt-2 bg-white"
+  style={{borderBottom:'2px solid #e5e7eb',overflowX:'auto',WebkitOverflowScrolling:'touch'}}>
+  {([{key:null,label:'すべて'},...customTabs.map(t=>({key:t.id,label:t.name}))]).map(({key,label})=>{
+    const active = currentFilter===key;
+    return (
+      <button key={String(key)} className="shrink-0 relative"
+        style={active ? {
+          padding:'7px 18px', background:'white', color:'#111827', fontWeight:700, fontSize:'0.875rem',
+          border:'2px solid #6b7280', borderBottom:'2px solid white',
+          borderRadius:'14px 14px 0 0', marginBottom:'-2px', zIndex:10,
+        } : {
+          padding:'5px 18px', background:'#f3f4f6', color:'#9ca3af', fontWeight:600, fontSize:'0.875rem',
+          border:'none', borderRadius:'14px 14px 0 0',
+        }}>{label}</button>
+    );
+  })}
+</div>
+```
+
+すべて inline style で実装（Tailwind では `-mb-px` や `border-b-white` 等の表現が難しいため）。
 
 ### TaskModal（タスク詳細画面）
 
@@ -116,8 +170,20 @@ src/app/
 **ダークヘッダー（bg-gray-900）**
 - 閉じるボタン（×）
 - アイコン + タスク名入力欄
-- カテゴリチップ（個人／仕事）
+- カテゴリチップ（ユーザー定義タブ）
 - モードタブ（あとで／時間指定／繰り返し）
+- 右端ボタン: **新規作成時** → `保存` ボタン / **編集時** → 保存ステータス + `完了` ボタン
+
+**新規作成モード（task=null）**
+- 名前が空なら `保存` ボタンは disabled
+- × ボタンで閉じる際、入力済みなら「入力内容を破棄しますか？」確認ダイアログを表示
+- ダイアログはモーダル内 `z-[110]` のオーバーレイで実装
+
+**編集モード（task!=null）**
+- 変更を400ms debounce で自動保存（`onUpdate` コールバック経由）
+- 保存状態表示: `保存中…` / `✓ 保存済み`（1秒後フェードアウト）/ `保存に失敗しました`
+- `完了` ボタン → 未送信のpendingデータを即時フラッシュして閉じる（`flushAndClose`）
+- × ボタンも `flushAndClose` を呼ぶ（確認ダイアログなし）
 
 **ホワイトコンテンツ（bg-gray-50）**
 1. 繰り返し設定カード（繰り返しモード時のみ）
@@ -131,39 +197,29 @@ src/app/
 3. **メモカード**（設定カードの下）
 4. 削除ボタン（タスク編集時のみ）
 
-**ピン留めは現在削除済み**（設定カードから除外）。
-
+**ピン留めは削除済み**（設定カードから除外）。  
 **アラートのデフォルト値**：新規タスク作成時は `[0]`（開始時）。
 
-### カテゴリフィルタータブ
+### BottomTabs（あとでやるリスト）
 
-メインヘッダーと CalendarPage の両方で**ファイルタブ型**を採用。
+各タスクのアイコン表示はすべて `task.icon` / `task.color` を反映。
 
-- `すべて` / `個人` / `仕事`
-- 選択中タブ: `bg-white`、上・左・右にボーダー（`2px solid #6b7280`）、`borderBottom: '2px solid white'` で下線を隠す、`borderRadius: '14px 14px 0 0'`、`marginBottom: '-2px'`、`zIndex: 10`
-- 未選択タブ: `bg-gray-100`、ボーダーなし、`borderRadius: '14px 14px 0 0'`（同じ角丸で統一）
-- コンテナ: `borderBottom: '2px solid #e5e7eb'`
-- すべて inline style で実装（Tailwind では `-mb-px` や `border-b-white` 等の表現が難しいため）
-
-**実装パターン（両方の場所で共通）：**
 ```jsx
-<div className="flex items-end px-3 pt-2 bg-white" style={{borderBottom:'2px solid #e5e7eb'}}>
-  {tabs.map(({key,label})=>{
-    const active = currentFilter===key;
-    return (
-      <button key={...} onClick={...} className="shrink-0 relative"
-        style={active ? {
-          padding:'7px 18px', background:'white', color:'#111827', fontWeight:700, fontSize:'0.875rem',
-          border:'2px solid #6b7280', borderBottom:'2px solid white',
-          borderRadius:'14px 14px 0 0', marginBottom:'-2px', zIndex:10,
-        } : {
-          padding:'5px 18px', background:'#f3f4f6', color:'#9ca3af', fontWeight:600, fontSize:'0.875rem',
-          border:'none', borderRadius:'14px 14px 0 0',
-        }}>{label}</button>
-    );
-  })}
+const Ic = getTaskIcon(t.icon ?? '');
+<div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+  style={{background: t.color || '#F3F4F6'}}>
+  <Ic size={14} className={t.color ? 'text-gray-600' : 'text-gray-400'}/>
 </div>
 ```
+
+対象：あとでやる通常タスク、あとでやる繰り返しタスク、時間指定グループ、繰り返しグループ。どこに表示されても同じアイコン・色。
+
+### SettingsScreen（設定画面）
+
+`customTabs: CustomTab[]` と `onCustomTabs: (tabs:CustomTab[])=>void` を受け取る。  
+サブ画面 `'tabs'` で各タブの名前変更・削除が可能。
+
+設定メニューの並び順：タグ → **ファイルタブ** → 繰り返しタスク → 通知 → 表示設定 → 起床・就寝
 
 ---
 
@@ -232,6 +288,7 @@ src/app/
 - 見た目が変わらない微調整だけで終わらせる（構造から変えること）
 - グラデーション、アニメーション過多、過度な影
 - 既存のデザインパターンを無視した突発的なスタイル追加
+- タイムライン時刻ラベルに `w-12`（48px）を使う（`w-10` で統一）
 
 ---
 
@@ -239,17 +296,19 @@ src/app/
 
 ### 修正前の確認
 
-**必ず現在の実装を Read/Grep で確認してから変更する。** 既存コードを見ずに書き直さない。
+**必ず現在の実装を Read/Grep で確認してから変更する。** 既存コードを見ずに書き直さない。  
+関連する定数・型・コンポーネントを grep で把握してから手を入れる。
 
 ### 変更の原則
 
 1. **必要最小限の変更のみ**行う — 関係ない箇所は触らない
 2. **既存コンポーネントを流用**することを優先する — 新しく作る前に既存を確認
-3. **大規模リファクタリングを避ける**（2700行の1ファイル構成は意図的）
+3. **大規模リファクタリングを避ける**（約2930行の1ファイル構成は意図的）
 4. 不要なリファクタリング・抽象化・コメントアウトは行わない
 5. 見た目が変わらない微調整だけで終わらせない — 効果が見える変更にする
 6. iOS設定画面やStructured風の**自然なUI**を優先する
 7. **新しいセッションでも同じ品質で開発できる**ことを重視する
+8. 小さく直す — 1つのリクエストで1箇所だけ変える
 
 ### コードスタイル
 
@@ -274,6 +333,7 @@ src/app/
 - 繰り返しタスクは `generateCustomDates()` で将来日程を生成し、`tasks` に展開して保存
 - 「あとでやる」タスクは `isLater: true`、日付をまたいで持ち越し可能
 - スマートフォン最適化済み（`userScalable: false`、`overscroll-none`）
+- タイムラインの横レイアウトはセマンティックゾーン定数（`TIME_LABEL_W` 等）で管理。機種ごとに固定px調整しない
 
 ---
 
@@ -281,9 +341,10 @@ src/app/
 
 - `main` branch への push で Vercel が自動デプロイ
 - feature branch は `claude/xxx` 形式
-- 作業完了後は必ず `git push origin main`
+- 作業完了後は必ず `npm run build` → `git push origin main`
 - **作業ブランチから main にマージ・push するまでデプロイされない**
 - リモートが進んでいる場合は `git pull origin main --rebase` してから push
+- push は `git push -u origin <branch>` を使う
 
 ---
 
@@ -305,6 +366,7 @@ src/app/
 - コードブロックでの報告
 - 変更内容の要約・ファイル一覧の報告
 - 詳細な完了報告
+- 途中経過・進捗報告・Step ごとの説明
 
 #### デプロイ
 
