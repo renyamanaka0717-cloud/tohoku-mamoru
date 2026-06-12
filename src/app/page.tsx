@@ -1383,11 +1383,19 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
       <div className="absolute flex items-center" style={{top:`${wakeCardTop+WAKE_CARD_H/2}px`,transform:'translateY(-50%)',left:0}}>
         <span className="text-xs w-12 text-right pr-1 leading-none text-gray-400">{settings.wakeTime}</span>
       </div>
-      <div className="absolute z-10 rounded-full bg-white border-2 border-gray-300 shadow-sm" style={{width:'18px',height:'18px',left:`${AXIS_X}px`,top:`${wakeCardTop+WAKE_CARD_H/2}px`,transform:'translate(-50%,-50%)'}}/>
+      <div className="absolute z-10 pointer-events-none" style={{top:`${wakeCardTop}px`,left:`${AXIS_X-11}px`,width:'22px',height:`${WAKE_CARD_H}px`}}>
+        <div className="w-full h-full rounded-full bg-gray-100 border border-gray-100 flex items-center justify-center">
+          <AppIcons.wake size={13} className="text-gray-400"/>
+        </div>
+      </div>
       <div className="absolute flex items-center" style={{top:`${sleepCardTop+SLEEP_CARD_H/2}px`,transform:'translateY(-50%)',left:0}}>
         <span className="text-xs w-12 text-right pr-1 leading-none text-gray-400">{settings.sleepTime}</span>
       </div>
-      <div className="absolute z-10 rounded-full bg-white border-2 border-gray-300 shadow-sm" style={{width:'18px',height:'18px',left:`${AXIS_X}px`,top:`${sleepCardTop+SLEEP_CARD_H/2}px`,transform:'translate(-50%,-50%)'}}/>
+      <div className="absolute z-10 pointer-events-none" style={{top:`${sleepCardTop}px`,left:`${AXIS_X-11}px`,width:'22px',height:`${SLEEP_CARD_H}px`}}>
+        <div className="w-full h-full rounded-full bg-gray-100 border border-gray-100 flex items-center justify-center">
+          <AppIcons.sleep size={13} className="text-gray-400"/>
+        </div>
+      </div>
 
       {/* free slot hourly labels on left axis — skip wake/sleep and task start times */}
       {freeLayout.flatMap(({slot,freeY,finalH})=>{
@@ -1425,7 +1433,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
       {/* wake card */}
       <div className="absolute z-10" style={{top:`${wakeCardTop}px`,left:`${CARD_LEFT}px`,right:'0px'}}>
         <div className="flex items-center gap-2.5 bg-white rounded-2xl border border-gray-100 shadow-sm px-3 py-2.5">
-          <div className="w-8 h-8 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0"><AppIcons.wake size={18} className="text-gray-500"/></div>
+          <div className="w-8 h-8 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0"><AppIcons.wake size={18} className="text-gray-500 invisible"/></div>
           <div className="flex-1 min-w-0">
             <p className="text-[11px] text-gray-400 leading-none mb-0.5">{settings.wakeTime}</p>
             <p className="text-sm font-semibold text-gray-900">起床</p>
@@ -1436,7 +1444,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
       {/* sleep card */}
       <div className="absolute z-10" style={{top:`${sleepCardTop}px`,left:`${CARD_LEFT}px`,right:'0px'}}>
         <div className="flex items-center gap-2.5 bg-white rounded-2xl border border-gray-100 shadow-sm px-3 py-2.5">
-          <div className="w-8 h-8 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0"><AppIcons.sleep size={18} className="text-gray-500"/></div>
+          <div className="w-8 h-8 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0"><AppIcons.sleep size={18} className="text-gray-500 invisible"/></div>
           <div className="flex-1 min-w-0">
             <p className="text-[11px] text-gray-400 leading-none mb-0.5">{settings.sleepTime}</p>
             <p className="text-sm font-semibold text-gray-900">就寝</p>
