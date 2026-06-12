@@ -1104,12 +1104,18 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
             {/* サブタスク */}
             <div className="h-px bg-gray-100 mx-4"/>
             <div className="px-4 py-3">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
                 <AppIcons.checkSquare size={18} className="text-gray-400 shrink-0"/>
                 <input type="text" value={subtaskInput} onChange={e=>setSubtaskInput(e.target.value)}
                   onKeyDown={e=>{if(e.key==='Enter'&&subtaskInput.trim()){setSubtasks(prev=>[...prev,{id:Date.now().toString(),name:subtaskInput.trim(),completed:false}]);setSubtaskInput('');}}}
                   placeholder="サブタスクを追加"
                   className="flex-1 text-sm text-gray-700 placeholder-gray-400 outline-none bg-gray-100 rounded-lg px-3 py-1.5"/>
+                <button
+                  disabled={!subtaskInput.trim()}
+                  onClick={()=>{if(subtaskInput.trim()){setSubtasks(prev=>[...prev,{id:Date.now().toString(),name:subtaskInput.trim(),completed:false}]);setSubtaskInput('');}}}
+                  className={`text-sm font-medium shrink-0 transition-colors ${subtaskInput.trim()?'text-gray-800':'text-gray-300'}`}>
+                  追加
+                </button>
               </div>
               {subtasks.length>0&&(
                 <div className="mt-2 space-y-1">
