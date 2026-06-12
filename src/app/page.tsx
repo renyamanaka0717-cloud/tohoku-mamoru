@@ -1113,7 +1113,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                 <button
                   disabled={!subtaskInput.trim()}
                   onClick={()=>{if(subtaskInput.trim()){setSubtasks(prev=>[...prev,{id:Date.now().toString(),name:subtaskInput.trim(),completed:false}]);setSubtaskInput('');}}}
-                  className={`text-sm font-medium shrink-0 transition-colors ${subtaskInput.trim()?'text-gray-800':'text-gray-300'}`}>
+                  className={`text-sm font-semibold shrink-0 px-3 py-1.5 rounded-lg transition-colors ${subtaskInput.trim()?'bg-gray-700 text-white active:bg-gray-900':'bg-gray-100 text-gray-300'}`}>
                   追加
                 </button>
               </div>
