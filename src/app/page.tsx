@@ -1058,9 +1058,6 @@ function TaskCard({task,onToggle,onEdit,globalTags}:{task:Task;onToggle:()=>void
   return (
     <div className={`flex items-center gap-2.5 bg-white rounded-2xl border border-gray-100 shadow-sm px-3 py-2.5 ${task.completed?'opacity-50':''}`}
       onClick={onEdit}>
-      <div className="w-8 h-8 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0">
-        <AppIcons.task size={18} className="text-gray-500 invisible"/>
-      </div>
       <div className="flex-1 min-w-0">
         {task.startTime&&(
           <p className="text-[11px] text-gray-400 leading-none mb-0.5">
@@ -1152,7 +1149,6 @@ function CompactTaskCard({task,onToggle,onEdit}:{task:Task;onToggle:()=>void;onE
       className={`h-full bg-white rounded-xl border border-gray-100 shadow-sm p-2 flex flex-col justify-between overflow-hidden${task.completed?' opacity-50':''}`}
       onClick={onEdit}>
       <div className="flex items-center justify-between gap-0.5">
-        <AppIcons.task size={14} className="text-gray-500 shrink-0 invisible"/>
         <button onClick={e=>{e.stopPropagation();onToggle();}}
           className={`w-5 h-5 rounded-full border-2 shrink-0 flex items-center justify-center transition-colors${task.completed?' border-gray-900 bg-gray-900':' border-gray-300'}`}>
           {task.completed&&<span className="text-white text-[8px] font-bold leading-none">✓</span>}
@@ -1327,7 +1323,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
     return calcDayY(min);
   };
 
-  const AXIS_X=60, CARD_LEFT=72;
+  const AXIS_X=80, CARD_LEFT=116;
 
   // anchors の逆引き（Y座標→時刻）を App のドラッグハンドラに渡す
   yToTimeRef.current=(clientY:number):string=>{
@@ -1363,7 +1359,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
   return (
     <div ref={containerRef} className="relative" style={{height:`${totalHeight+32}px`,minHeight:'400px'}}>
       {/* vertical line */}
-      <div className="absolute w-px bg-gray-300" style={{left:`${AXIS_X}px`,top:0,height:`${totalHeight}px`}}/>
+      <div className="absolute bg-gray-300" style={{left:`${AXIS_X-2}px`,width:'4px',top:0,height:`${totalHeight}px`}}/>
 
 
       {/* task start time labels — 1 per group, center-aligned, skip wake/sleep */}
@@ -1375,7 +1371,6 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
           <div key={`tl-${g.startTime}`} className="absolute flex items-center" style={{top:`${centerY}px`,transform:'translateY(-50%)',left:0}}>
             <span className="text-xs w-12 text-right pr-1 leading-none text-gray-400">{g.startTime}</span>
           </div>,
-          <div key={`tl-dot-${g.startTime}`} className="absolute z-10 rounded-full bg-white border-2 border-gray-300 shadow-sm" style={{width:'18px',height:'18px',left:`${AXIS_X}px`,top:`${centerY}px`,transform:'translate(-50%,-50%)'}}/>,
         ];
       })}
 
@@ -1383,17 +1378,17 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
       <div className="absolute flex items-center" style={{top:`${wakeCardTop+WAKE_CARD_H/2}px`,transform:'translateY(-50%)',left:0}}>
         <span className="text-xs w-12 text-right pr-1 leading-none text-gray-400">{settings.wakeTime}</span>
       </div>
-      <div className="absolute z-10 pointer-events-none" style={{top:`${wakeCardTop}px`,left:`${AXIS_X-11}px`,width:'22px',height:`${WAKE_CARD_H}px`}}>
-        <div className="w-full h-full rounded-full bg-gray-100 border border-gray-100 flex items-center justify-center">
-          <AppIcons.wake size={13} className="text-gray-400"/>
+      <div className="absolute z-10 pointer-events-none" style={{top:`${wakeCardTop}px`,left:`${AXIS_X-32}px`,width:'64px',height:'64px'}}>
+        <div className="w-full h-full bg-gray-100 flex items-center justify-center" style={{borderRadius:'32px'}}>
+          <AppIcons.wake size={28} className="text-gray-400"/>
         </div>
       </div>
       <div className="absolute flex items-center" style={{top:`${sleepCardTop+SLEEP_CARD_H/2}px`,transform:'translateY(-50%)',left:0}}>
         <span className="text-xs w-12 text-right pr-1 leading-none text-gray-400">{settings.sleepTime}</span>
       </div>
-      <div className="absolute z-10 pointer-events-none" style={{top:`${sleepCardTop}px`,left:`${AXIS_X-11}px`,width:'22px',height:`${SLEEP_CARD_H}px`}}>
-        <div className="w-full h-full rounded-full bg-gray-100 border border-gray-100 flex items-center justify-center">
-          <AppIcons.sleep size={13} className="text-gray-400"/>
+      <div className="absolute z-10 pointer-events-none" style={{top:`${sleepCardTop}px`,left:`${AXIS_X-32}px`,width:'64px',height:'64px'}}>
+        <div className="w-full h-full bg-gray-100 flex items-center justify-center" style={{borderRadius:'32px'}}>
+          <AppIcons.sleep size={28} className="text-gray-400"/>
         </div>
       </div>
 
@@ -1433,7 +1428,6 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
       {/* wake card */}
       <div className="absolute z-10" style={{top:`${wakeCardTop}px`,left:`${CARD_LEFT}px`,right:'0px'}}>
         <div className="flex items-center gap-2.5 bg-white rounded-2xl border border-gray-100 shadow-sm px-3 py-2.5">
-          <div className="w-8 h-8 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0"><AppIcons.wake size={18} className="text-gray-500 invisible"/></div>
           <div className="flex-1 min-w-0">
             <p className="text-[11px] text-gray-400 leading-none mb-0.5">{settings.wakeTime}</p>
             <p className="text-sm font-semibold text-gray-900">起床</p>
@@ -1444,7 +1438,6 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
       {/* sleep card */}
       <div className="absolute z-10" style={{top:`${sleepCardTop}px`,left:`${CARD_LEFT}px`,right:'0px'}}>
         <div className="flex items-center gap-2.5 bg-white rounded-2xl border border-gray-100 shadow-sm px-3 py-2.5">
-          <div className="w-8 h-8 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0"><AppIcons.sleep size={18} className="text-gray-500 invisible"/></div>
           <div className="flex-1 min-w-0">
             <p className="text-[11px] text-gray-400 leading-none mb-0.5">{settings.sleepTime}</p>
             <p className="text-sm font-semibold text-gray-900">就寝</p>
@@ -1494,9 +1487,9 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
           const isPressing=pressingId===task.id;
           return [
             <div key={`cap-${g.startTime}`} className="absolute z-10 pointer-events-none"
-              style={{top:`${top}px`,left:`${AXIS_X-11}px`,width:'22px',height:`${g.h}px`}}>
-              <div className="w-full h-full rounded-full bg-gray-100 border border-gray-100 flex items-center justify-center">
-                <AppIcons.task size={13} className="text-gray-400"/>
+              style={{top:`${top}px`,left:`${AXIS_X-32}px`,width:'64px',height:`${Math.max(g.h,64)}px`}}>
+              <div className="w-full h-full bg-gray-100 flex items-center justify-center" style={{borderRadius:'32px'}}>
+                <AppIcons.task size={28} className="text-gray-400"/>
               </div>
             </div>,
             <div key={g.startTime} className={`absolute z-10 transition-transform select-none ${isPressing?'scale-95':''}`}
