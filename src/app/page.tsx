@@ -2508,17 +2508,22 @@ export default function App() {
       {/* ── Header ── */}
       <header className="sticky top-0 z-30 bg-white shadow-sm">
         {/* Category filter tabs */}
-        <div className="flex gap-2 px-4 pt-3 pb-1 overflow-x-auto" style={{scrollbarWidth:'none'} as React.CSSProperties}>
-          <button onClick={()=>setActiveCat(null)}
-            className={`shrink-0 px-4 py-1.5 rounded-full text-sm font-semibold transition-colors ${!activeCategory?'bg-gray-900 text-white':'bg-gray-100 text-gray-500'}`}>
-            すべて
-          </button>
-          {CATEGORIES.map(cat=>(
-            <button key={cat} onClick={()=>setActiveCat(c=>c===cat?null:cat)}
-              className={`shrink-0 px-4 py-1.5 rounded-full text-sm font-semibold transition-colors ${activeCategory===cat?'bg-gray-900 text-white':'bg-gray-100 text-gray-500'}`}>
-              {cat}
-            </button>
-          ))}
+        <div className="flex items-end px-3 pt-2 bg-white" style={{borderBottom:'2px solid #e5e7eb'}}>
+          {([{key:null,label:'すべて'},...CATEGORIES.map(c=>({key:c,label:c}))] as {key:string|null,label:string}[]).map(({key,label})=>{
+            const active=activeCategory===key;
+            return (
+              <button key={String(key)} onClick={()=>key===null?setActiveCat(null):setActiveCat(c=>c===key?null:key)}
+                className="shrink-0 relative"
+                style={active?{
+                  padding:'7px 18px',background:'white',color:'#111827',fontWeight:700,fontSize:'0.875rem',
+                  border:'2px solid #6b7280',borderBottom:'2px solid white',
+                  borderRadius:'8px 8px 0 0',marginBottom:'-2px',zIndex:10,
+                }:{
+                  padding:'5px 18px',background:'#f3f4f6',color:'#9ca3af',fontWeight:600,fontSize:'0.875rem',
+                  border:'none',borderRadius:'6px 6px 0 0',
+                }}>{label}</button>
+            );
+          })}
         </div>
         <div className="px-4 pt-2 pb-0">
           {/* Date + nav */}
