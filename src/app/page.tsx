@@ -335,13 +335,22 @@ function CalendarPage({date,tasks,onSelect,onClose}:{date:string;tasks:Task[];on
       </div>
 
       {/* Category filter - file tabs */}
-      <div className="flex items-end gap-1 px-3 pt-2 bg-white border-b-2 border-gray-200">
-        <button onClick={()=>setCatF(null)}
-          className={`shrink-0 px-5 text-sm font-bold rounded-t-xl relative transition-all ${!catFilter?'py-2.5 bg-white text-gray-900 border-2 border-gray-300 border-b-white -mb-0.5 z-10':'py-1.5 bg-gray-100 text-gray-400'}`}>すべて</button>
-        {CATEGORIES.map(cat=>(
-          <button key={cat} onClick={()=>setCatF(c=>c===cat?null:cat)}
-            className={`shrink-0 px-5 text-sm font-bold rounded-t-xl relative transition-all ${catFilter===cat?'py-2.5 bg-white text-gray-900 border-2 border-gray-300 border-b-white -mb-0.5 z-10':'py-1.5 bg-gray-100 text-gray-400'}`}>{cat}</button>
-        ))}
+      <div className="flex items-end px-3 pt-2 bg-white" style={{borderBottom:'2px solid #e5e7eb'}}>
+        {([{key:null,label:'すべて'},...CATEGORIES.map(c=>({key:c,label:c}))] as {key:string|null,label:string}[]).map(({key,label})=>{
+          const active=catFilter===key;
+          return (
+            <button key={String(key)} onClick={()=>key===null?setCatF(null):setCatF(c=>c===key?null:key)}
+              className="shrink-0 relative"
+              style={active?{
+                padding:'7px 18px',background:'white',color:'#111827',fontWeight:700,fontSize:'0.875rem',
+                border:'2px solid #6b7280',borderBottom:'2px solid white',
+                borderRadius:'8px 8px 0 0',marginBottom:'-2px',zIndex:10,
+              }:{
+                padding:'5px 18px',background:'#f3f4f6',color:'#9ca3af',fontWeight:600,fontSize:'0.875rem',
+                border:'none',borderRadius:'6px 6px 0 0',
+              }}>{label}</button>
+          );
+        })}
       </div>
 
       {/* Day headers */}
