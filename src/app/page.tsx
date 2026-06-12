@@ -2877,8 +2877,8 @@ export default function App() {
               const isSel=d===date, isToday=d===today;
               return (
                 <button key={i} onClick={()=>setDate(d)} className="flex flex-col items-center py-1">
-                  <span className={`text-[11px] font-medium ${i===0?'text-red-400':i===6?'text-blue-400':'text-gray-400'}`}>{name}</span>
-                  <span className={`w-8 h-8 flex items-center justify-center rounded-full text-sm font-bold transition-colors ${isSel?'bg-gray-900 text-white':isToday?'bg-gray-100 text-gray-900':'text-gray-600'}`}>
+                  <span className={`text-[13px] font-medium ${i===0?'text-red-400':i===6?'text-blue-400':'text-gray-400'}`}>{name}</span>
+                  <span className={`w-8 h-8 flex items-center justify-center rounded-full font-bold transition-colors ${isSel?'bg-gray-900 text-white':isToday?'bg-gray-100 text-gray-900':'text-gray-600'}`} style={{fontSize:'20px'}}>
                     {new Date(d+'T12:00:00').getDate()}
                   </span>
                   <div className={`w-1.5 h-1.5 rounded-full mt-1 ${taskDateSet.has(d)?(isSel?'bg-gray-400':'bg-gray-400'):'bg-transparent'}`}/>
