@@ -2025,9 +2025,10 @@ function SettingsRow({icon,iconBg,title,desc,onClick,isLast=false}:{
   );
 }
 
-function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags}:{
+function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,customTabs,onCustomTabs}:{
   settings:Settings; onSettings:(s:Settings)=>void; onClose:()=>void;
   globalTags:TagDef[]; onGlobalTags:(tags:TagDef[])=>void;
+  customTabs:CustomTab[]; onCustomTabs:(tabs:CustomTab[])=>void;
 }) {
   const [sub,setSub]           = useState<string|null>(null);
   const [tagInput,setTagInput] = useState('');
@@ -2035,6 +2036,9 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags}:{
   const [editIdx,setEditIdx]   = useState<number|null>(null);
   const [editVal,setEditVal]   = useState('');
   const [editColor,setEditColor]   = useState(TAG_COLORS[0].bg);
+  const [tabInput,setTabInput]     = useState('');
+  const [editTabId,setEditTabId]   = useState<string|null>(null);
+  const [editTabVal,setEditTabVal] = useState('');
 
   const back = () => setSub(null);
 
@@ -2078,6 +2082,56 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags}:{
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
       {subHeader('統計')}
       <div className="flex-1 overflow-y-auto px-4 pb-8">{comingSoon(<AppIcons.stats size={48}/>,'タスク完了の統計機能は近日公開予定です')}</div>
+    </div>
+  );
+
+  if(sub==='tabs') return (
+    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
+      {subHeader('ファイルタブ')}
+      <div className="flex-1 overflow-y-auto px-4 pb-8">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">新しいタブ</p>
+        <div className="bg-white rounded-2xl shadow-sm px-4 py-3">
+          <div className="flex gap-2 items-center">
+            <input value={tabInput} onChange={e=>setTabInput(e.target.value)}
+              onKeyDown={e=>{if(e.key==='Enter'){const v=tabInput.trim();if(v){onCustomTabs([...customTabs,{id:uid(),name:v}]);setTabInput('');}}} }
+              placeholder="タブ名を入力"
+              className="flex-1 text-[15px] bg-transparent outline-none text-gray-900 placeholder-gray-300 border-b border-gray-200 pb-1"/>
+            <button onClick={()=>{const v=tabInput.trim();if(v){onCustomTabs([...customTabs,{id:uid(),name:v}]);setTabInput('');}}}
+              className="px-4 py-1.5 bg-gray-900 text-white text-sm font-semibold rounded-xl shrink-0">追加</button>
+          </div>
+        </div>
+        {customTabs.length>0&&(
+          <>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">タブ一覧</p>
+            <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
+              {customTabs.map((tab,i)=>(
+                <div key={tab.id} className={`px-4 py-3 flex items-center gap-3${i<customTabs.length-1?' border-b border-gray-100':''}`}>
+                  {editTabId===tab.id ? (
+                    <input autoFocus value={editTabVal} onChange={e=>setEditTabVal(e.target.value)}
+                      onKeyDown={e=>{if(e.key==='Enter'){const v=editTabVal.trim();if(v)onCustomTabs(customTabs.map(t=>t.id===tab.id?{...t,name:v}:t));setEditTabId(null);}}}
+                      className="flex-1 text-[15px] border-b border-gray-300 outline-none bg-transparent text-gray-900 py-0.5"/>
+                  ) : (
+                    <span className="flex-1 text-[15px] text-gray-900">{tab.name}</span>
+                  )}
+                  <div className="flex gap-1 shrink-0">
+                    <button onClick={()=>{if(editTabId===tab.id){const v=editTabVal.trim();if(v)onCustomTabs(customTabs.map(t=>t.id===tab.id?{...t,name:v}:t));setEditTabId(null);}else{setEditTabId(tab.id);setEditTabVal(tab.name);}}}
+                      className="text-xs text-blue-500 font-medium px-2 py-1">
+                      {editTabId===tab.id?'確定':'編集'}
+                    </button>
+                    {editTabId===tab.id
+                      ? <button onClick={()=>setEditTabId(null)} className="text-xs text-gray-400 font-medium px-2 py-1">キャンセル</button>
+                      : <button onClick={()=>onCustomTabs(customTabs.filter(t=>t.id!==tab.id))} className="text-xs text-red-400 font-medium px-2 py-1">削除</button>
+                    }
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+        {customTabs.length===0&&(
+          <p className="text-sm text-gray-400 text-center mt-10">タブがまだありません</p>
+        )}
+      </div>
     </div>
   );
 
@@ -2268,6 +2322,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags}:{
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">一般</p>
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
           <SettingsRow icon={<AppIcons.tag/>} iconBg="bg-gray-100" title="タグ" desc="タグを管理" onClick={()=>setSub('tags')}/>
+          <SettingsRow icon={<AppIcons.caretRight/>} iconBg="bg-gray-100" title="ファイルタブ" desc="タブを管理" onClick={()=>setSub('tabs')}/>
           <SettingsRow icon={<AppIcons.repeat size={18}/>} iconBg="bg-gray-100" title="繰り返しタスク" desc="繰り返しタスクを管理" onClick={()=>setSub('recurring')}/>
           <SettingsRow icon={<AppIcons.bell/>} iconBg="bg-gray-100" title="通知" desc="通知設定" onClick={()=>setSub('notifications')}/>
           <SettingsRow icon={<AppIcons.palette/>} iconBg="bg-gray-100" title="表示設定" desc="外観、言語など" onClick={()=>setSub('display')}/>
@@ -2732,7 +2787,7 @@ export default function App() {
 
       {/* ── Settings Screen ── */}
       {settingsOpen&&(
-        <SettingsScreen settings={settings} onSettings={setSettings} onClose={()=>setSOp(false)} globalTags={globalTags} onGlobalTags={setGlobalTags}/>
+        <SettingsScreen settings={settings} onSettings={setSettings} onClose={()=>setSOp(false)} globalTags={globalTags} onGlobalTags={setGlobalTags} customTabs={customTabs} onCustomTabs={setCustomTabs}/>
       )}
 
       {/* ── Recurrence edit confirm ── */}
