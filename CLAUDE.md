@@ -1,8 +1,10 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+このファイルは Claude Code がこのリポジトリで作業する際のガイドです。**新しいセッションでも同じ品質で開発できるよう、現在の実装状態と方針を記述しています。**
 
-## Project
+---
+
+## プロジェクト概要
 
 **1日タイムライン** — ADHD気質の人やToDoリストが続かない人向けに、今日やることを時間軸で見える化するタイムラインToDoアプリ。
 
@@ -11,6 +13,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - AI: Groq SDK（llama-3.3-70b-versatile）— Threads投稿生成のみ
 - データ永続化: localStorage（サーバーDBなし）
 - デプロイ: Vercel（`main` push で自動）
+
+---
 
 ## 開発コマンド
 
@@ -25,18 +29,22 @@ npm run lint    # ESLint
 ## 作業完了時の手順
 
 ```
-npm run lint → npm run build → git commit → git push origin main
+npm run build → git add → git commit → git push origin main
 ```
+
+Vercel は `main` push で自動デプロイされる。デプロイした場合のみ「デプロイしました」と報告する。
+
+---
 
 ## アーキテクチャ
 
-ほぼすべての機能が `src/app/page.tsx` 1ファイルに集約されている（2500行超）。コンポーネント分割は最小限。
+ほぼすべての機能が `src/app/page.tsx` 1ファイルに集約されている（2700行超）。コンポーネント分割は最小限。
 
 ```
 src/app/
   page.tsx              # アプリ全体（タイムライン・タスク管理・モーダル等）
   layout.tsx            # ルートレイアウト・メタデータ・viewport設定
-  globals.css           # グローバルスタイル
+  globals.css           # グローバルスタイル（font-size: 17px）
   components/
     Icons.tsx           # AppIcons — Phosphor Icons の一元管理
   api/
@@ -70,11 +78,13 @@ src/app/
 
 タイムラインは `position: absolute` で各要素を配置。時刻→Y座標の変換は `layoutCalcY(min)`、タッチY座標→時刻は `yToTimeRef`。
 
+---
+
 ## 主要な型定義
 
 | 型 | 説明 |
 |---|---|
-| `Task` | id, name, startTime, duration, memo, icon, completed, date, isLater, recurrence, customRec, pinned, tags, notifications, incompleteReminder, category, postponedCount |
+| `Task` | id, name, startTime, duration, memo, icon, completed, date, isLater, recurrence, customRec, pinned, tags, notifications, incompleteReminder, category, postponedCount, color, **subtasks** |
 | `Settings` | wakeTime, sleepTime |
 | `FreeSlot` | タイムライン上の空き時間スロット |
 | `ShopItem` | 買い物リストのアイテム（7日後に自動削除） |
@@ -82,6 +92,8 @@ src/app/
 | `CustomRec` | カスタム繰り返し設定 |
 | `MoveHistory` | 未完了タスクの「あとでやる」移動履歴 |
 | `TaskMode` | `'later'` / `'scheduled'` / `'recurring'` |
+
+`Task.subtasks` は `{id:string; name:string; completed:boolean}[]` 型。
 
 ## localStorage キー
 
@@ -92,6 +104,48 @@ src/app/
 | `SHOP_KEY` | `'tl-shop-v1'` | 買い物リスト |
 | `TAGS_KEY` | `'tl-tags-v1'` | グローバルタグ定義 |
 | `HISTORY_KEY` | `'tl-history-v1'` | 移動履歴 |
+
+---
+
+## 現在のUI実装状態
+
+### TaskModal（タスク詳細画面）
+
+ボトムシート型モーダル。上部ダークヘッダー + 下部ホワイトコンテンツの2層構成。
+
+**ダークヘッダー（bg-gray-900）**
+- 閉じるボタン（×）
+- アイコン + タスク名入力欄
+- カテゴリチップ（個人／仕事）
+- モードタブ（あとで／時間指定／繰り返し）
+
+**ホワイトコンテンツ（bg-gray-50）**
+1. 繰り返し設定カード（繰り返しモード時のみ）
+2. **設定カード**（1枚の白い角丸カード、iOS設定画面スタイル）
+   - 日付（時間指定モードのみ）
+   - 時間（全モード：laterは所要時間のみ、それ以外は開始時刻+所要時間）
+   - アラート（時間指定・繰り返しのみ）
+   - タグ（プルダウン形式、全モード）
+   - サブタスク入力欄（全モード：later含む）
+   - 行間に `h-px bg-gray-100 mx-4` の区切り線
+3. **メモカード**（設定カードの下）
+4. 削除ボタン（タスク編集時のみ）
+
+**ピン留めは現在削除済み**（設定カードから除外）。
+
+**アラートのデフォルト値**：新規タスク作成時は `[0]`（開始時）。
+
+### カテゴリフィルタータブ
+
+メインヘッダーと CalendarPage の両方で**ファイルタブ型**を採用。
+
+- `すべて` / `個人` / `仕事`
+- 選択中タブ: `bg-white`、上・左・右にボーダー、`-mb-px` で下線を隠す
+- 未選択タブ: `bg-gray-100`、`mt-1` で低く表示
+- コンテナ: `borderBottom: '2px solid #e5e7eb'`
+- inline style で実装（`style={{ padding, background, border, ... }}`）
+
+---
 
 ## アイコン方針
 
@@ -117,11 +171,80 @@ src/app/
 | `smileySad` | SmileySad | `caretDown` | CaretDown |
 | `sparkle` | Sparkle | `checkSquare` | CheckSquare |
 
+---
+
+## UIデザイン方針
+
+### 基本方針
+
+- **iOS設定画面 / Structured風**の自然なUIを優先する
+- 1枚の白い角丸カードに行を並べ、行間に薄い区切り線を入れる
+- 左側にアイコン（Phosphor Icons bold）、右側に値や矢印・スイッチを配置
+- 優しい雰囲気を維持する。主張しすぎないデザイン
+
+### フォント・カラー
+
+- ベースフォントサイズ: `17px`（globals.css に設定済み）
+- テキスト: `text-gray-800`（primary）、`text-gray-400`（secondary）
+- カード背景: `bg-white`、アプリ背景: `bg-gray-50`
+- アクセント: `bg-gray-900`（ボタン・選択中状態）
+
+### タップ項目の標準スタイル
+
+```jsx
+<button className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50">
+  <AppIcons.XXX size={18} className="text-gray-400 shrink-0"/>
+  <span className="flex-1 text-left text-sm font-medium text-gray-800">ラベル</span>
+  <AppIcons.caretRight size={14} className="text-gray-300"/>
+</button>
+```
+
+### 区切り線の標準スタイル
+
+```jsx
+<div className="h-px bg-gray-100 mx-4"/>
+```
+
+### 避けるデザイン
+
+- `rounded-full` のカプセル型ボタンをメインナビに使わない（タグ選択等の補助UIは可）
+- 余白が広すぎる・カードが多すぎて縦に長くなる設計
+- 見た目が変わらない微調整だけで終わらせること
+- グラデーション、アニメーション過多、過度な影
+
+---
+
+## 開発ルール
+
+### 修正前の確認
+
+**必ず現在の実装を Read/Grep で確認してから変更する。** 既存コードを見ずに書き直さない。
+
+### 変更の原則
+
+1. **必要最小限の変更のみ**行う
+2. **既存コンポーネントを流用**することを優先する
+3. **大規模リファクタリングを避ける**（2700行の1ファイル構成は意図的）
+4. 不要なリファクタリング・抽象化・コメントアウトは行わない
+5. 見た目が変わらない微調整だけで終わらせない
+6. iOS設定画面やStructured風の**自然なUI**を優先する
+
+### コードスタイル
+
+- コメントは WHY が非自明な場合のみ書く
+- 型安全を保つ（`any` 禁止）
+- Tailwind クラスは既存パターンに合わせる
+- inline style は Tailwind で表現できない場合のみ使う
+
+---
+
 ## 環境変数
 
 | 変数 | 説明 |
 |---|---|
 | `GROQ_API_KEY` | Groq APIキー（Threads投稿生成で使用） |
+
+---
 
 ## 開発上の注意
 
@@ -129,6 +252,16 @@ src/app/
 - 繰り返しタスクは `generateCustomDates()` で将来日程を生成し、`tasks` に展開して保存
 - 「あとでやる」タスクは `isLater: true`、日付をまたいで持ち越し可能
 - スマートフォン最適化済み（`userScalable: false`、`overscroll-none`）
+
+---
+
+## Vercel / Git 運用
+
+- `main` branch への push で Vercel が自動デプロイ
+- feature branch は `claude/xxx` 形式
+- 作業完了後は必ず `git push origin main`
+- **作業ブランチから main にマージ・push するまでデプロイされない**
+- リモートが進んでいる場合は `git pull origin main --rebase` してから push
 
 ---
 
@@ -155,7 +288,7 @@ src/app/
 
 デプロイを実行した場合のみ、簡潔に報告する。
 
-例：「修正しました。デプロイ完了しました。」
+例：「デプロイしました。」
 
 デプロイ状況だけは省略しない。
 
