@@ -1431,37 +1431,63 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
 
 // ── TaskCard ──────────────────────────────────────────────────────────────────
 
-function TaskCard({task,onToggle,onEdit,globalTags}:{task:Task;onToggle:()=>void;onEdit:()=>void;globalTags:TagDef[];}) {
+function TaskCard({task,onToggle,onEdit,globalTags,onSubtaskToggle}:{task:Task;onToggle:()=>void;onEdit:()=>void;globalTags:TagDef[];onSubtaskToggle?:(subtaskId:string)=>void;}) {
+  const [subtaskOpen,setSubtaskOpen] = useState(false);
   const endTime = (task.startTime&&(task.duration??0)>0) ? fromMin(toMin(task.startTime)+(task.duration??0)) : null;
+  const subtasks = task.subtasks??[];
+  const doneCount = subtasks.filter(s=>s.completed).length;
   return (
-    <div className={`flex items-center gap-2.5 bg-white rounded-2xl border border-gray-100 shadow-sm px-3 py-2.5 ${task.completed?'opacity-50':''}`}
+    <div className={`bg-white rounded-2xl border border-gray-100 shadow-sm px-3 py-2.5 ${task.completed?'opacity-50':''}`}
       onClick={onEdit}>
-      <div className="flex-1 min-w-0">
-        {task.startTime&&(
-          <p className="text-[11px] text-gray-400 leading-none mb-0.5">
-            {task.startTime}{endTime?`〜${endTime}`:''}
-            {task.recurrence&&<AppIcons.repeat size={11} className="ml-1 inline-block align-middle"/>}
-          </p>
-        )}
-        <p className={`text-sm font-semibold leading-snug ${task.completed?'line-through text-gray-400':'text-gray-900'}`}>{task.name}</p>
-        {task.memo&&<p className="text-xs text-gray-400 mt-0.5 truncate">{task.memo}</p>}
-        {(task.tags??[]).length>0&&(
-          <div className="flex flex-wrap gap-1 mt-1">
-            {(task.tags??[]).map(tag=>{
-              const td=globalTags.find(t=>t.name===tag);
-              return (
-                <span key={tag} style={td?{backgroundColor:td.color,color:getTagTextColor(td.color)}:{}}
-                  className={`text-[10px] px-1.5 py-0.5 rounded-full ${td?'':'bg-gray-100 text-gray-500'}`}>{tag}</span>
-              );
-            })}
-          </div>
-        )}
-        {(task.photoCount??0)>0&&<AppIcons.camera size={11} className="text-gray-400 mt-0.5"/>}
+      <div className="flex items-center gap-2.5">
+        <div className="flex-1 min-w-0">
+          {task.startTime&&(
+            <p className="text-[11px] text-gray-400 leading-none mb-0.5">
+              {task.startTime}{endTime?`〜${endTime}`:''}
+              {task.recurrence&&<AppIcons.repeat size={11} className="ml-1 inline-block align-middle"/>}
+            </p>
+          )}
+          <p className={`text-sm font-semibold leading-snug ${task.completed?'line-through text-gray-400':'text-gray-900'}`}>{task.name}</p>
+          {task.memo&&<p className="text-xs text-gray-400 mt-0.5 truncate">{task.memo}</p>}
+          {(task.tags??[]).length>0&&(
+            <div className="flex flex-wrap gap-1 mt-1">
+              {(task.tags??[]).map(tag=>{
+                const td=globalTags.find(t=>t.name===tag);
+                return (
+                  <span key={tag} style={td?{backgroundColor:td.color,color:getTagTextColor(td.color)}:{}}
+                    className={`text-[10px] px-1.5 py-0.5 rounded-full ${td?'':'bg-gray-100 text-gray-500'}`}>{tag}</span>
+                );
+              })}
+            </div>
+          )}
+          {(task.photoCount??0)>0&&<AppIcons.camera size={11} className="text-gray-400 mt-0.5"/>}
+          {subtasks.length>0&&(
+            <button onClick={e=>{e.stopPropagation();setSubtaskOpen(o=>!o);}}
+              className="mt-1.5 inline-flex items-center gap-1.5 bg-gray-100 rounded-full px-2.5 py-1">
+              <AppIcons.checkSquare size={11} className="text-gray-500"/>
+              <span className="text-[11px] font-medium text-gray-600">{doneCount}/{subtasks.length}</span>
+              <span style={subtaskOpen?{transform:'rotate(90deg)',transition:'transform 0.15s',display:'inline-flex'}:{transition:'transform 0.15s',display:'inline-flex'}}><AppIcons.caretRight size={11} className="text-gray-400"/></span>
+            </button>
+          )}
+        </div>
+        <button onClick={e=>{e.stopPropagation();onToggle();}}
+          className={`w-6 h-6 rounded-full border-2 shrink-0 flex items-center justify-center transition-colors ${task.completed?'border-gray-900 bg-gray-900':'border-gray-300'}`}>
+          {task.completed&&<span className="text-white text-[10px] font-bold leading-none">✓</span>}
+        </button>
       </div>
-      <button onClick={e=>{e.stopPropagation();onToggle();}}
-        className={`w-6 h-6 rounded-full border-2 shrink-0 flex items-center justify-center transition-colors ${task.completed?'border-gray-900 bg-gray-900':'border-gray-300'}`}>
-        {task.completed&&<span className="text-white text-[10px] font-bold leading-none">✓</span>}
-      </button>
+      {subtaskOpen&&subtasks.length>0&&(
+        <div className="mt-2 space-y-1.5 pb-0.5" onClick={e=>e.stopPropagation()}>
+          {subtasks.map(st=>(
+            <div key={st.id} className="flex items-center gap-2">
+              <button onClick={e=>{e.stopPropagation();onSubtaskToggle?.(st.id);}}
+                className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 ${st.completed?'bg-gray-900 border-gray-900':'border-gray-300'}`}>
+                {st.completed&&<span className="text-white text-[8px] font-bold leading-none">✓</span>}
+              </button>
+              <span className={`text-xs ${st.completed?'line-through text-gray-400':'text-gray-700'}`}>{st.name}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -1544,7 +1570,7 @@ function CompactTaskCard({task,onToggle,onEdit}:{task:Task;onToggle:()=>void;onE
 
 // ── Timeline ──────────────────────────────────────────────────────────────────
 
-function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet,onSchedule,onAddAtTime,onDragStart,dragTaskId,yToTimeRef,layoutYRef,globalTags,todayHistory}:{
+function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet,onSchedule,onAddAtTime,onDragStart,dragTaskId,yToTimeRef,layoutYRef,globalTags,todayHistory,onSubtaskToggle}:{
   date:string;tasks:Task[];later:Task[];settings:Settings;now:string;
   onToggle:(id:string)=>void;onEdit:(t:Task)=>void;onEditIconSheet:(t:Task)=>void;
   onSchedule:(t:Task,time:string)=>void;onAddAtTime:(time:string)=>void;
@@ -1553,6 +1579,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
   layoutYRef:React.MutableRefObject<((min:number)=>number)|null>;
   globalTags:TagDef[];
   todayHistory?:{taskNames:string[]};
+  onSubtaskToggle:(taskId:string,subtaskId:string)=>void;
 }) {
   const [pressingId,setPressingId] = useState<string|null>(null);
   const [historyOpen,setHistoryOpen] = useState(false);
@@ -1887,7 +1914,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
               onTouchStart={e=>startLP(task,e)}
               onTouchEnd={cancelLP}
               onTouchMove={cancelLP}>
-              <TaskCard task={task} onToggle={()=>onToggle(task.id)} onEdit={()=>onEdit(task)} globalTags={globalTags}/>
+              <TaskCard task={task} onToggle={()=>onToggle(task.id)} onEdit={()=>onEdit(task)} globalTags={globalTags} onSubtaskToggle={(sid)=>onSubtaskToggle(task.id,sid)}/>
             </div>,
           ];
         }
@@ -2794,6 +2821,10 @@ export default function App() {
     setEditScope('one');
     closeModal();
   };
+  const subtaskToggle = (taskId:string, subtaskId:string) =>
+    setTasks(prev=>prev.map(t=>t.id===taskId
+      ?{...t,subtasks:t.subtasks?.map(s=>s.id===subtaskId?{...s,completed:!s.completed}:s)}
+      :t));
   const delTask  = (id:string) => {
     setTasks(prev=>prev.filter(t=>t.id!==id));
     try{const s=JSON.parse(localStorage.getItem(PHOTOS_KEY)||'{}') as Record<string,string[]>;delete s[id];localStorage.setItem(PHOTOS_KEY,JSON.stringify(s));}catch{}
@@ -2901,7 +2932,7 @@ export default function App() {
         <Timeline date={date} tasks={filteredTasks} later={laterTasks} settings={settings} now={now}
           onToggle={toggle} onEdit={openEdit} onEditIconSheet={openEditIconSheet} onSchedule={scheduleInSlot} onAddAtTime={openAdd}
           onDragStart={startDrag} dragTaskId={dragTask?.id} yToTimeRef={yToTimeRef} layoutYRef={layoutYRef} globalTags={globalTags}
-          todayHistory={moveHistory.find(h=>h.date===date)}/>
+          todayHistory={moveHistory.find(h=>h.date===date)} onSubtaskToggle={subtaskToggle}/>
       </main>
 
       {/* ── Bottom bar ── */}
