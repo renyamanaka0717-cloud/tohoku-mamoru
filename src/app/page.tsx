@@ -960,52 +960,79 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
             </div>
           )}
 
-          {/* 開始時刻 (scheduled/recurring only) */}
-          {(mode==='scheduled'||mode==='recurring')&&(
+          {/* 時間 + 所要時間 */}
+          {(mode==='scheduled'||mode==='recurring')?(
             <div className="bg-white mx-3 mt-3 rounded-2xl p-4">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <AppIcons.clock className="text-gray-700"/>
-                  <span className="text-sm font-semibold text-gray-800">開始時刻</span>
+                  <span className="text-sm font-semibold text-gray-800">時間</span>
                 </div>
-                {startTime&&computedEnd&&(
-                  <span className="text-sm font-semibold text-gray-500">{startTime}〜{computedEnd}</span>
+                {startTime&&(
+                  <span className="text-base font-bold text-gray-800">{startTime}{computedEnd?`〜${computedEnd}`:''}</span>
                 )}
               </div>
-              <input type="time" value={startTime} onChange={e=>setST(e.target.value)}
-                className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-gray-50 outline-none focus:border-gray-400"/>
+              <div className="mb-3">
+                <p className="text-xs text-gray-500 mb-1.5">開始時刻</p>
+                <input type="time" value={startTime} onChange={e=>setST(e.target.value)}
+                  className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-gray-50 outline-none focus:border-gray-400"/>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 mb-1.5">所要時間</p>
+                <div className="flex gap-2 overflow-x-auto pb-0.5" style={{scrollbarWidth:'none',WebkitOverflowScrolling:'touch'} as React.CSSProperties}>
+                  {DUR_OPTS.map(({v,l})=>(
+                    <button key={v} onClick={()=>{setDur(v);setCDurOpen(false);}}
+                      className={`shrink-0 px-4 py-2 rounded-full text-sm font-semibold ${duration===v&&!custDurOpen?'bg-gray-900 text-white':'bg-gray-100 text-gray-600'}`}>
+                      {l}
+                    </button>
+                  ))}
+                  <button onClick={()=>setCDurOpen(o=>!o)}
+                    className={`shrink-0 px-4 py-2 rounded-full text-sm font-semibold ${custDurOpen?'bg-gray-900 text-white':'bg-gray-100 text-gray-600'}`}>
+                    カスタム
+                  </button>
+                </div>
+                {custDurOpen&&(
+                  <div className="flex items-center gap-2 mt-3">
+                    <input type="number" value={custDurMin} min={1}
+                      onChange={e=>setCDurMin(Math.max(1,Number(e.target.value)))}
+                      className="w-20 border border-gray-200 rounded-xl px-3 py-2 text-sm text-center outline-none"/>
+                    <span className="text-sm text-gray-600">分</span>
+                    <button onClick={()=>{setDur(custDurMin);setCDurOpen(false);}}
+                      className="px-4 py-2 bg-gray-900 text-white rounded-xl text-sm font-semibold">設定</button>
+                  </div>
+                )}
+              </div>
+            </div>
+          ):(
+            <div className="bg-white mx-3 mt-3 rounded-2xl p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <AppIcons.clock className="text-gray-700"/>
+                <span className="text-sm font-semibold text-gray-800">所要時間</span>
+              </div>
+              <div className="flex gap-2 overflow-x-auto pb-0.5" style={{scrollbarWidth:'none',WebkitOverflowScrolling:'touch'} as React.CSSProperties}>
+                {DUR_OPTS.map(({v,l})=>(
+                  <button key={v} onClick={()=>{setDur(v);setCDurOpen(false);}}
+                    className={`shrink-0 px-4 py-2 rounded-full text-sm font-semibold ${duration===v&&!custDurOpen?'bg-gray-900 text-white':'bg-gray-100 text-gray-600'}`}>
+                    {l}
+                  </button>
+                ))}
+                <button onClick={()=>setCDurOpen(o=>!o)}
+                  className={`shrink-0 px-4 py-2 rounded-full text-sm font-semibold ${custDurOpen?'bg-gray-900 text-white':'bg-gray-100 text-gray-600'}`}>
+                  カスタム
+                </button>
+              </div>
+              {custDurOpen&&(
+                <div className="flex items-center gap-2 mt-3">
+                  <input type="number" value={custDurMin} min={1}
+                    onChange={e=>setCDurMin(Math.max(1,Number(e.target.value)))}
+                    className="w-20 border border-gray-200 rounded-xl px-3 py-2 text-sm text-center outline-none"/>
+                  <span className="text-sm text-gray-600">分</span>
+                  <button onClick={()=>{setDur(custDurMin);setCDurOpen(false);}}
+                    className="px-4 py-2 bg-gray-900 text-white rounded-xl text-sm font-semibold">設定</button>
+                </div>
+              )}
             </div>
           )}
-
-          {/* 所要時間 — all modes */}
-          <div className="bg-white mx-3 mt-3 rounded-2xl p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <AppIcons.clock className="text-gray-700"/>
-              <span className="text-sm font-semibold text-gray-800">所要時間</span>
-            </div>
-            <div className="flex gap-2 overflow-x-auto pb-0.5" style={{scrollbarWidth:'none',WebkitOverflowScrolling:'touch'} as React.CSSProperties}>
-              {DUR_OPTS.map(({v,l})=>(
-                <button key={v} onClick={()=>{setDur(v);setCDurOpen(false);}}
-                  className={`shrink-0 px-4 py-2 rounded-full text-sm font-semibold ${duration===v&&!custDurOpen?'bg-gray-900 text-white':'bg-gray-100 text-gray-600'}`}>
-                  {l}
-                </button>
-              ))}
-              <button onClick={()=>setCDurOpen(o=>!o)}
-                className={`shrink-0 px-4 py-2 rounded-full text-sm font-semibold ${custDurOpen?'bg-gray-900 text-white':'bg-gray-100 text-gray-600'}`}>
-                カスタム
-              </button>
-            </div>
-            {custDurOpen&&(
-              <div className="flex items-center gap-2 mt-3">
-                <input type="number" value={custDurMin} min={1}
-                  onChange={e=>setCDurMin(Math.max(1,Number(e.target.value)))}
-                  className="w-20 border border-gray-200 rounded-xl px-3 py-2 text-sm text-center outline-none"/>
-                <span className="text-sm text-gray-600">分</span>
-                <button onClick={()=>{setDur(custDurMin);setCDurOpen(false);}}
-                  className="px-4 py-2 bg-gray-900 text-white rounded-xl text-sm font-semibold">設定</button>
-              </div>
-            )}
-          </div>
 
           {/* 通知 (scheduled/recurring only) */}
           {(mode==='scheduled'||mode==='recurring')&&(
