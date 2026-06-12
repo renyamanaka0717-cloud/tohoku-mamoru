@@ -336,22 +336,25 @@ function CalendarPage({date,tasks,customTabs,onSelect,onClose}:{date:string;task
       </div>
 
       {/* Category filter - file tabs */}
-      <div className="flex items-end px-3 pt-2 bg-white" style={{borderBottom:'2px solid #e5e7eb',overflowX:'auto',WebkitOverflowScrolling:'touch'}}>
-        {([{key:null as string|null,label:'すべて'},...customTabs.map(t=>({key:t.id,label:t.name}))]).map(({key,label})=>{
-          const active=catFilter===key;
-          return (
-            <button key={String(key)} onClick={()=>setCatF(key)}
-              className="shrink-0 relative"
-              style={active?{
-                padding:'7px 18px',background:'white',color:'#111827',fontWeight:700,fontSize:'0.875rem',
-                border:'2px solid #6b7280',borderBottom:'2px solid white',
-                borderRadius:'14px 14px 0 0',marginBottom:'-2px',zIndex:10,
-              }:{
-                padding:'5px 18px',background:'#f3f4f6',color:'#9ca3af',fontWeight:600,fontSize:'0.875rem',
-                border:'none',borderRadius:'14px 14px 0 0',
-              }}>{label}</button>
-          );
-        })}
+      <div className="bg-white" style={{position:'relative'}}>
+        <div style={{position:'absolute',bottom:0,left:0,right:0,height:'2px',background:'#e5e7eb',zIndex:1}}/>
+        <div className="flex items-end px-3 pt-2" style={{overflowX:'auto',WebkitOverflowScrolling:'touch',position:'relative',zIndex:2}}>
+          {([{key:null as string|null,label:'すべて'},...customTabs.map(t=>({key:t.id,label:t.name}))]).map(({key,label})=>{
+            const active=catFilter===key;
+            return (
+              <button key={String(key)} onClick={()=>setCatF(key)}
+                className="shrink-0 relative"
+                style={active?{
+                  padding:'7px 18px',background:'white',color:'#111827',fontWeight:700,fontSize:'0.875rem',
+                  border:'2px solid #6b7280',borderBottom:'2px solid white',
+                  borderRadius:'14px 14px 0 0',zIndex:10,
+                }:{
+                  padding:'5px 18px',background:'#f3f4f6',color:'#9ca3af',fontWeight:600,fontSize:'0.875rem',
+                  border:'none',borderRadius:'14px 14px 0 0',
+                }}>{label}</button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Day headers */}
@@ -2716,12 +2719,14 @@ export default function App() {
       {/* ── Header ── */}
       <header className="sticky top-0 z-30 bg-white shadow-sm">
         {/* Category filter tabs */}
-        <div className="flex items-end px-3 pt-2 bg-white" style={{borderBottom:'2px solid #e5e7eb',overflowX:'auto',WebkitOverflowScrolling:'touch'}}>
+        <div className="bg-white" style={{position:'relative'}}>
+          <div style={{position:'absolute',bottom:0,left:0,right:0,height:'2px',background:'#e5e7eb',zIndex:1}}/>
+          <div className="flex items-end px-3 pt-2" style={{overflowX:'auto',WebkitOverflowScrolling:'touch',position:'relative',zIndex:2}}>
           <button onClick={()=>{setActiveCat(null);setEditTabId(null);}} className="shrink-0 relative"
             style={activeCategory===null?{
               padding:'7px 18px',background:'white',color:'#111827',fontWeight:700,fontSize:'0.875rem',
               border:'2px solid #6b7280',borderBottom:'2px solid white',
-              borderRadius:'14px 14px 0 0',marginBottom:'-2px',zIndex:10,
+              borderRadius:'14px 14px 0 0',zIndex:10,
             }:{
               padding:'5px 18px',background:'#f3f4f6',color:'#9ca3af',fontWeight:600,fontSize:'0.875rem',
               border:'none',borderRadius:'14px 14px 0 0',
@@ -2736,7 +2741,7 @@ export default function App() {
                 style={active?{
                   padding:'7px 18px',background:'white',color:'#111827',fontWeight:700,fontSize:'0.875rem',
                   border:'2px solid #6b7280',borderBottom:'2px solid white',
-                  borderRadius:'14px 14px 0 0',marginBottom:'-2px',zIndex:10,
+                  borderRadius:'14px 14px 0 0',zIndex:10,
                 }:{
                   padding:'5px 18px',background:'#f3f4f6',color:'#9ca3af',fontWeight:600,fontSize:'0.875rem',
                   border:'none',borderRadius:'14px 14px 0 0',
@@ -2745,6 +2750,7 @@ export default function App() {
           })}
           <button onClick={addCustomTab}
             className="shrink-0 w-8 h-7 flex items-center justify-center text-gray-400 text-xl font-light ml-1 mb-0.5">+</button>
+          </div>
         </div>
         {editTabId&&(
           <div className="flex gap-2 px-4 py-2 bg-white border-b border-gray-100">
