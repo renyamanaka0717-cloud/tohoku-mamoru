@@ -335,12 +335,12 @@ function CalendarPage({date,tasks,onSelect,onClose}:{date:string;tasks:Task[];on
       </div>
 
       {/* Category filter - file tabs */}
-      <div className="flex items-end gap-1 px-4 pt-2 bg-white border-b border-gray-200">
+      <div className="flex items-end gap-1 px-3 pt-2 bg-white border-b-2 border-gray-200">
         <button onClick={()=>setCatF(null)}
-          className={`shrink-0 px-4 text-sm font-semibold rounded-t-xl transition-colors ${!catFilter?'py-1.5 bg-white text-gray-900 border-t border-l border-r border-gray-200 -mb-px':'py-1 bg-gray-100 text-gray-400'}`}>すべて</button>
+          className={`shrink-0 px-5 text-sm font-bold rounded-t-xl relative transition-all ${!catFilter?'py-2.5 bg-white text-gray-900 border-2 border-gray-300 border-b-white -mb-0.5 z-10':'py-1.5 bg-gray-100 text-gray-400'}`}>すべて</button>
         {CATEGORIES.map(cat=>(
           <button key={cat} onClick={()=>setCatF(c=>c===cat?null:cat)}
-            className={`shrink-0 px-4 text-sm font-semibold rounded-t-xl transition-colors ${catFilter===cat?'py-1.5 bg-white text-gray-900 border-t border-l border-r border-gray-200 -mb-px':'py-1 bg-gray-100 text-gray-400'}`}>{cat}</button>
+            className={`shrink-0 px-5 text-sm font-bold rounded-t-xl relative transition-all ${catFilter===cat?'py-2.5 bg-white text-gray-900 border-2 border-gray-300 border-b-white -mb-0.5 z-10':'py-1.5 bg-gray-100 text-gray-400'}`}>{cat}</button>
         ))}
       </div>
 
