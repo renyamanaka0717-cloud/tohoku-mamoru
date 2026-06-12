@@ -39,6 +39,7 @@ interface Task {
   category?: string;
   postponedCount?: number;
   lastPostponedDate?: string;
+  color?: string;
 }
 
 interface Settings { wakeTime: string; sleepTime: string; }
@@ -466,23 +467,46 @@ function autoIcon(name: string): string {
   return '';
 }
 
-const ICON_OPTIONS:{key:string;label:string}[]=[
-  {key:'task',    label:'メモ'},
-  {key:'shopping',label:'買い物'},
-  {key:'food',    label:'食事'},
-  {key:'clean',   label:'掃除'},
-  {key:'work',    label:'仕事'},
-  {key:'travel',  label:'移動'},
-  {key:'rest',    label:'休憩'},
-  {key:'sleep',   label:'睡眠'},
-  {key:'calendar',label:'予定'},
-  {key:'question',label:'その他'},
+const ICON_CATEGORIES:{label:string;icons:{key:string;label:string}[]}[]=[
+  {label:'日常',icons:[
+    {key:'task',    label:'メモ'},
+    {key:'shopping',label:'買い物'},
+    {key:'food',    label:'食事'},
+    {key:'clean',   label:'掃除'},
+    {key:'rest',    label:'休憩'},
+    {key:'sleep',   label:'睡眠'},
+    {key:'home',    label:'家'},
+    {key:'health',  label:'健康'},
+  ]},
+  {label:'仕事・学習',icons:[
+    {key:'work',    label:'仕事'},
+    {key:'calendar',label:'予定'},
+    {key:'study',   label:'勉強'},
+    {key:'book',    label:'読書'},
+    {key:'phone',   label:'電話'},
+    {key:'money',   label:'お金'},
+  ]},
+  {label:'その他',icons:[
+    {key:'travel',   label:'移動'},
+    {key:'exercise', label:'運動'},
+    {key:'music',    label:'音楽'},
+    {key:'camera',   label:'カメラ'},
+    {key:'game',     label:'ゲーム'},
+    {key:'question', label:'その他'},
+  ]},
 ];
+const ICON_OPTIONS=ICON_CATEGORIES.flatMap(c=>c.icons);
+const TASK_COLORS=['','#FECACA','#FED7AA','#FEF08A','#BBF7D0','#BAE6FD','#C7D2FE','#FBCFE8'];
+
 function getTaskIcon(key:string){
   const m={task:AppIcons.task,shopping:AppIcons.shopping,food:AppIcons.food,
     clean:AppIcons.clean,work:AppIcons.work,travel:AppIcons.travel,
     rest:AppIcons.rest,sleep:AppIcons.sleep,calendar:AppIcons.calendar,
-    question:AppIcons.question} as Record<string,typeof AppIcons.task>;
+    question:AppIcons.question,music:AppIcons.music,book:AppIcons.book,
+    exercise:AppIcons.exercise,health:AppIcons.health,phone:AppIcons.phone,
+    home:AppIcons.home,study:AppIcons.study,money:AppIcons.money,
+    game:AppIcons.game,camera:AppIcons.camera,
+  } as Record<string,typeof AppIcons.task>;
   return m[key]??AppIcons.task;
 }
 
@@ -509,7 +533,20 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,onSave,onDelete
     const k=task?.icon??'';
     return ICON_OPTIONS.some(o=>o.key===k)?k:'task';
   });
-  const [iconPickerOpen,setIconPickerOpen] = useState(false);
+  const [color,setColor]      = useState(task?.color??'');
+  const [iconSheetOpen,setIconSheetOpen] = useState(false);
+  const [recentIcons,setRecentIcons] = useState<string[]>(()=>{
+    if(typeof window==='undefined') return [];
+    try{return JSON.parse(localStorage.getItem('tl-recent-icons')||'[]');}catch{return [];}
+  });
+  const pickIcon=(key:string)=>{
+    setIcon(key);
+    setRecentIcons(prev=>{
+      const next=[key,...prev.filter(k=>k!==key)].slice(0,5);
+      try{localStorage.setItem('tl-recent-icons',JSON.stringify(next));}catch{}
+      return next;
+    });
+  };
   const [recur,setRecur]      = useState<'daily'|'weekly'|'monthly'|'yearly'|'custom'>(
     task?.recurrence==='weekly'?'weekly':
     task?.recurrence==='monthly'?'monthly':
@@ -590,6 +627,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,onSave,onDelete
       duration:dur,
       memo,
       icon:icon,
+      color:color||undefined,
       completed:task?.completed??false,
       date:mode==='scheduled'?taskDate:(task?.date??currentDate),
       isLater:mode==='later',
@@ -648,9 +686,10 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,onSave,onDelete
 
           {/* Icon + name */}
           <div className="flex items-center gap-3 mb-4">
-            <button onClick={()=>setIconPickerOpen(v=>!v)}
-              className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 text-white transition-colors ${iconPickerOpen?'bg-gray-600':'bg-gray-700'}`}>
-              {(()=>{const Ic=getTaskIcon(icon);return <Ic size={24}/>;})()}
+            <button onClick={()=>setIconSheetOpen(true)}
+              className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 text-white bg-gray-700 active:bg-gray-600 transition-colors"
+              style={color?{background:color}:{}}>
+              {(()=>{const Ic=getTaskIcon(icon);return <Ic size={24} className={color?'text-gray-700':'text-white'}/>;})()}
             </button>
             <div className="flex-1 min-w-0">
               {(mode==='scheduled'||mode==='recurring')&&startTime&&(
@@ -662,23 +701,6 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,onSave,onDelete
                 autoFocus/>
             </div>
           </div>
-
-          {/* Icon picker */}
-          {iconPickerOpen&&(
-            <div className="grid grid-cols-5 gap-1.5 mb-4 p-3 bg-gray-800 rounded-2xl">
-              {ICON_OPTIONS.map(opt=>{
-                const Ic=getTaskIcon(opt.key);
-                return (
-                  <button key={opt.key}
-                    onClick={()=>{setIcon(opt.key);setIconPickerOpen(false);}}
-                    className={`flex flex-col items-center gap-1 py-2 rounded-xl transition-colors ${icon===opt.key?'bg-gray-600':'active:bg-gray-700'}`}>
-                    <Ic size={20} className="text-white"/>
-                    <span className="text-[10px] text-gray-400 leading-none">{opt.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
 
           {/* Category chips */}
           <div className="flex gap-2 mb-3">
@@ -1089,6 +1111,69 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,onSave,onDelete
           <div className="h-6"/>
         </div>
       </div>
+      {/* Icon & Color bottom sheet */}
+      {iconSheetOpen&&(
+        <div className="fixed inset-0 z-[100] bg-black/40 flex flex-col justify-end" onClick={()=>setIconSheetOpen(false)}>
+          <div className="bg-white rounded-t-3xl max-h-[78vh] flex flex-col w-full max-w-md mx-auto" onClick={e=>e.stopPropagation()}>
+            <div className="flex justify-center pt-3 shrink-0"><div className="w-10 h-1 bg-gray-200 rounded-full"/></div>
+            <div className="flex items-center justify-between px-5 pt-3 pb-2 shrink-0">
+              <span className="text-base font-bold text-gray-900">アイコンとカラー</span>
+              <button onClick={()=>setIconSheetOpen(false)} className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 font-bold text-sm">×</button>
+            </div>
+            <div className="overflow-y-auto px-5 pb-10 flex-1">
+              {/* Color */}
+              <p className="text-xs font-bold text-gray-400 mb-2 mt-1">カラー</p>
+              <div className="flex gap-2 mb-5">
+                {TASK_COLORS.map((c,i)=>(
+                  <button key={i} onClick={()=>setColor(c)}
+                    className={`w-8 h-8 rounded-full border-2 transition-all ${color===c?'border-gray-800 scale-110':'border-gray-100'}`}
+                    style={{background:c||'#E5E7EB'}}/>
+                ))}
+              </div>
+              {/* Recent */}
+              {recentIcons.length>0&&(
+                <>
+                  <p className="text-xs font-bold text-gray-400 mb-2">最近使ったアイコン</p>
+                  <div className="grid grid-cols-5 gap-2 mb-5">
+                    {recentIcons.map(key=>{
+                      const opt=ICON_OPTIONS.find(o=>o.key===key);
+                      if(!opt) return null;
+                      const Ic=getTaskIcon(key);
+                      const sel=icon===key;
+                      return (
+                        <button key={key} onClick={()=>pickIcon(key)}
+                          className={`flex flex-col items-center gap-1.5 py-3 rounded-2xl ${sel?'bg-gray-900':'bg-gray-50'}`}>
+                          <Ic size={22} className={sel?'text-white':'text-gray-700'}/>
+                          <span className={`text-[10px] leading-none ${sel?'text-gray-100':'text-gray-500'}`}>{opt.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+              {/* Categories */}
+              {ICON_CATEGORIES.map(cat=>(
+                <div key={cat.label} className="mb-5">
+                  <p className="text-xs font-bold text-gray-400 mb-2">{cat.label}</p>
+                  <div className="grid grid-cols-5 gap-2">
+                    {cat.icons.map(opt=>{
+                      const Ic=getTaskIcon(opt.key);
+                      const sel=icon===opt.key;
+                      return (
+                        <button key={opt.key} onClick={()=>pickIcon(opt.key)}
+                          className={`flex flex-col items-center gap-1.5 py-3 rounded-2xl ${sel?'bg-gray-900':'bg-gray-50'}`}>
+                          <Ic size={22} className={sel?'text-white':'text-gray-700'}/>
+                          <span className={`text-[10px] leading-none ${sel?'text-gray-100':'text-gray-500'}`}>{opt.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1531,8 +1616,8 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
           return [
             <div key={`cap-${g.startTime}`} className="absolute z-10 pointer-events-none"
               style={{top:`${top}px`,left:`${AXIS_X-28}px`,width:'56px',height:`${Math.max(g.h,56)}px`}}>
-              <div className="w-full h-full bg-gray-100 flex items-center justify-center" style={{borderRadius:'28px'}}>
-                <CapsuleIc size={24} className="text-gray-400"/>
+              <div className="w-full h-full flex items-center justify-center" style={{borderRadius:'28px',background:task.color||'#F3F4F6'}}>
+                <CapsuleIc size={24} className={task.color?'text-gray-600':'text-gray-400'}/>
               </div>
             </div>,
             <div key={g.startTime} className={`absolute z-10 transition-transform select-none ${isPressing?'scale-95':''}`}

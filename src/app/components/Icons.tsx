@@ -30,6 +30,16 @@ import {
   Briefcase,
   Car,
   Coffee,
+  MusicNote,
+  Book,
+  Barbell,
+  Heart,
+  Phone,
+  House,
+  GraduationCap,
+  Wallet,
+  GameController,
+  Camera,
 } from '@phosphor-icons/react';
 
 type PhosphorComp = React.ComponentType<{
@@ -80,4 +90,14 @@ export const AppIcons = {
   work:       make(Briefcase, 18),
   travel:     make(Car, 18),
   rest:       make(Coffee, 18),
+  music:      make(MusicNote, 18),
+  book:       make(Book, 18),
+  exercise:   make(Barbell, 18),
+  health:     make(Heart, 18),
+  phone:      make(Phone, 18),
+  home:       make(House, 18),
+  study:      make(GraduationCap, 18),
+  money:      make(Wallet, 18),
+  game:       make(GameController, 18),
+  camera:     make(Camera, 18),
 };
