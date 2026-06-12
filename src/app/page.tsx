@@ -1102,8 +1102,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
             )}
 
             {/* サブタスク */}
-            {mode!=='later'&&<div className="h-px bg-gray-100 mx-4"/>}
-            {mode!=='later'&&(
+            <div className="h-px bg-gray-100 mx-4"/>
             <div className="px-4 py-3">
               <div className="flex items-center gap-3">
                 <AppIcons.checkSquare size={18} className="text-gray-400 shrink-0"/>
@@ -1127,7 +1126,6 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                 </div>
               )}
             </div>
-            )}
 
           </div>
 
