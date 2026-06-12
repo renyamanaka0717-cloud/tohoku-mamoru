@@ -512,8 +512,8 @@ function getTaskIcon(key:string){
 
 // ── TaskModal ─────────────────────────────────────────────────────────────────
 
-function TaskModal({task,currentDate,prefillTime,prefillCategory,onSave,onDelete,onClose,globalTags}:{
-  task:Task|null; currentDate:string; prefillTime?:string; prefillCategory?:string;
+function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:initIconSheet,onSave,onDelete,onClose,globalTags}:{
+  task:Task|null; currentDate:string; prefillTime?:string; prefillCategory?:string; openIconSheet?:boolean;
   onSave:(tasks:Omit<Task,'id'>[])=>void; onDelete?:()=>void; onClose:()=>void;
   globalTags:TagDef[];
 }) {
@@ -534,7 +534,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,onSave,onDelete
     return ICON_OPTIONS.some(o=>o.key===k)?k:'task';
   });
   const [color,setColor]      = useState(task?.color??'');
-  const [iconSheetOpen,setIconSheetOpen] = useState(false);
+  const [iconSheetOpen,setIconSheetOpen] = useState(initIconSheet??false);
   const [recentIcons,setRecentIcons] = useState<string[]>(()=>{
     if(typeof window==='undefined') return [];
     try{return JSON.parse(localStorage.getItem('tl-recent-icons')||'[]');}catch{return [];}
@@ -1291,9 +1291,9 @@ function CompactTaskCard({task,onToggle,onEdit}:{task:Task;onToggle:()=>void;onE
 
 // ── Timeline ──────────────────────────────────────────────────────────────────
 
-function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAddAtTime,onDragStart,dragTaskId,yToTimeRef,layoutYRef,globalTags,todayHistory}:{
+function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet,onSchedule,onAddAtTime,onDragStart,dragTaskId,yToTimeRef,layoutYRef,globalTags,todayHistory}:{
   date:string;tasks:Task[];later:Task[];settings:Settings;now:string;
-  onToggle:(id:string)=>void;onEdit:(t:Task)=>void;
+  onToggle:(id:string)=>void;onEdit:(t:Task)=>void;onEditIconSheet:(t:Task)=>void;
   onSchedule:(t:Task,time:string)=>void;onAddAtTime:(time:string)=>void;
   onDragStart:(t:Task,x:number,y:number)=>void;dragTaskId?:string;
   yToTimeRef:React.MutableRefObject<((clientY:number)=>string)|null>;
@@ -1614,9 +1614,10 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
           const isPressing=pressingId===task.id;
           const CapsuleIc=getTaskIcon(task.icon??'');
           return [
-            <div key={`cap-${g.startTime}`} className="absolute z-10 pointer-events-none"
-              style={{top:`${top}px`,left:`${AXIS_X-28}px`,width:'56px',height:`${Math.max(g.h,56)}px`}}>
-              <div className="w-full h-full flex items-center justify-center" style={{borderRadius:'28px',background:task.color||'#F3F4F6'}}>
+            <div key={`cap-${g.startTime}`} className="absolute z-10 cursor-pointer"
+              style={{top:`${top}px`,left:`${AXIS_X-28}px`,width:'56px',height:`${Math.max(g.h,56)}px`}}
+              onClick={e=>{e.stopPropagation();onEditIconSheet(task);}}>
+              <div className="w-full h-full flex items-center justify-center active:opacity-70 transition-opacity" style={{borderRadius:'28px',background:task.color||'#F3F4F6'}}>
                 <CapsuleIc size={24} className={task.color?'text-gray-600':'text-gray-400'}/>
               </div>
             </div>,
@@ -2244,7 +2245,7 @@ export default function App() {
   const [globalTags,setGlobalTags] = useState<TagDef[]>([]);
   const [moveHistory,setMoveHistory] = useState<MoveHistory[]>([]);
   const [date,setDate]           = useState(todayStr());
-  const [modal,setModal]         = useState<{open:boolean;task:Task|null;prefillTime?:string;prefillCategory?:string}>({open:false,task:null});
+  const [modal,setModal]         = useState<{open:boolean;task:Task|null;prefillTime?:string;prefillCategory?:string;iconSheet?:boolean}>({open:false,task:null});
   const [activeCategory,setActiveCat] = useState<string|null>(null);
   const [settingsOpen,setSOp]    = useState(false);
   const [calendarOpen,setCalOp]  = useState(false);
@@ -2415,6 +2416,9 @@ export default function App() {
   const openEdit = (task:Task) => {
     if(task.recurrence) { setRecConfirm(task); } else { setModal({open:true,task}); }
   };
+  const openEditIconSheet=(task:Task)=>{
+    if(task.recurrence){setRecConfirm(task);}else{setModal({open:true,task,iconSheet:true});}
+  };
   const closeModal = () => setModal({open:false,task:null});
 
   const saveTasks = (data:Omit<Task,'id'>[]) => {
@@ -2519,7 +2523,7 @@ export default function App() {
           if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)*1.5) setDate(shiftDate(date,dx<0?1:-1));
         }}>
         <Timeline date={date} tasks={filteredTasks} later={laterTasks} settings={settings} now={now}
-          onToggle={toggle} onEdit={openEdit} onSchedule={scheduleInSlot} onAddAtTime={openAdd}
+          onToggle={toggle} onEdit={openEdit} onEditIconSheet={openEditIconSheet} onSchedule={scheduleInSlot} onAddAtTime={openAdd}
           onDragStart={startDrag} dragTaskId={dragTask?.id} yToTimeRef={yToTimeRef} layoutYRef={layoutYRef} globalTags={globalTags}
           todayHistory={moveHistory.find(h=>h.date===date)}/>
       </main>
@@ -2620,7 +2624,7 @@ export default function App() {
 
       {/* ── Task Modal ── */}
       {modal.open&&(
-        <TaskModal task={modal.task} currentDate={date} prefillTime={modal.prefillTime} prefillCategory={modal.prefillCategory}
+        <TaskModal task={modal.task} currentDate={date} prefillTime={modal.prefillTime} prefillCategory={modal.prefillCategory} openIconSheet={!!modal.iconSheet}
           onSave={saveTasks}
           onDelete={modal.task?()=>delTask(modal.task!.id):undefined}
           onClose={closeModal} globalTags={globalTags}/>
