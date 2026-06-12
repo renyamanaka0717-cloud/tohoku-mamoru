@@ -2829,7 +2829,7 @@ export default function App() {
       <div className="fixed bottom-16 right-4 z-50">
         <button onClick={()=>openAdd()}
           className="w-14 h-14 bg-gray-900 text-white rounded-full shadow-2xl flex items-center justify-center active:bg-gray-700">
-          <AppIcons.plus size={28}/>
+          <AppIcons.plus size={28} className="block"/>
         </button>
       </div>
 
@@ -2846,7 +2846,7 @@ export default function App() {
       {activeTab==='later'&&(
         <div className="fixed bottom-6 right-4 z-[60]">
           <button onClick={()=>{setActiveTab(null);openAdd();}}
-            className="w-14 h-14 bg-gray-900 text-white rounded-full shadow-2xl flex items-center justify-center active:bg-gray-700"><AppIcons.plus size={28}/></button>
+            className="w-14 h-14 bg-gray-900 text-white rounded-full shadow-2xl flex items-center justify-center active:bg-gray-700"><AppIcons.plus size={28} className="block"/></button>
         </div>
       )}
 
