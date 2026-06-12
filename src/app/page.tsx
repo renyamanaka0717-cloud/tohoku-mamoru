@@ -1363,7 +1363,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
   return (
     <div ref={containerRef} className="relative" style={{height:`${totalHeight+32}px`,minHeight:'400px'}}>
       {/* vertical line */}
-      <div className="absolute w-px bg-gray-200" style={{left:`${AXIS_X}px`,top:0,height:`${totalHeight}px`}}/>
+      <div className="absolute w-px bg-gray-300" style={{left:`${AXIS_X}px`,top:0,height:`${totalHeight}px`}}/>
 
 
       {/* task start time labels — 1 per group, center-aligned, skip wake/sleep */}
@@ -1375,7 +1375,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
           <div key={`tl-${g.startTime}`} className="absolute flex items-center" style={{top:`${centerY}px`,transform:'translateY(-50%)',left:0}}>
             <span className="text-xs w-12 text-right pr-1 leading-none text-gray-400">{g.startTime}</span>
           </div>,
-          <div key={`tl-dot-${g.startTime}`} className="absolute z-10 rounded-full bg-gray-300" style={{width:'6px',height:'6px',left:`${AXIS_X}px`,top:`${centerY}px`,transform:'translate(-50%,-50%)'}}/>,
+          <div key={`tl-dot-${g.startTime}`} className="absolute z-10 rounded-full bg-white border-2 border-gray-300 shadow-sm" style={{width:'18px',height:'18px',left:`${AXIS_X}px`,top:`${centerY}px`,transform:'translate(-50%,-50%)'}}/>,
         ];
       })}
 
@@ -1383,11 +1383,11 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
       <div className="absolute flex items-center" style={{top:`${wakeCardTop+WAKE_CARD_H/2}px`,transform:'translateY(-50%)',left:0}}>
         <span className="text-xs w-12 text-right pr-1 leading-none text-gray-400">{settings.wakeTime}</span>
       </div>
-      <div className="absolute z-10 rounded-full bg-gray-300" style={{width:'6px',height:'6px',left:`${AXIS_X}px`,top:`${wakeCardTop+WAKE_CARD_H/2}px`,transform:'translate(-50%,-50%)'}}/>
+      <div className="absolute z-10 rounded-full bg-white border-2 border-gray-300 shadow-sm" style={{width:'18px',height:'18px',left:`${AXIS_X}px`,top:`${wakeCardTop+WAKE_CARD_H/2}px`,transform:'translate(-50%,-50%)'}}/>
       <div className="absolute flex items-center" style={{top:`${sleepCardTop+SLEEP_CARD_H/2}px`,transform:'translateY(-50%)',left:0}}>
         <span className="text-xs w-12 text-right pr-1 leading-none text-gray-400">{settings.sleepTime}</span>
       </div>
-      <div className="absolute z-10 rounded-full bg-gray-300" style={{width:'6px',height:'6px',left:`${AXIS_X}px`,top:`${sleepCardTop+SLEEP_CARD_H/2}px`,transform:'translate(-50%,-50%)'}}/>
+      <div className="absolute z-10 rounded-full bg-white border-2 border-gray-300 shadow-sm" style={{width:'18px',height:'18px',left:`${AXIS_X}px`,top:`${sleepCardTop+SLEEP_CARD_H/2}px`,transform:'translate(-50%,-50%)'}}/>
 
       {/* free slot hourly labels on left axis — skip wake/sleep and task start times */}
       {freeLayout.flatMap(({slot,freeY,finalH})=>{
@@ -1409,7 +1409,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onSchedule,onAd
               {fromMin(m)}
             </button>
           </div>,
-          <div key={`fh-dot-${m}`} className="absolute z-10 rounded-full bg-gray-300" style={{width:'6px',height:'6px',left:`${AXIS_X}px`,top:`${cardY(m)}px`,transform:'translate(-50%,-50%)'}}/>,
+          <div key={`fh-dot-${m}`} className="absolute z-10 rounded-full bg-gray-200" style={{width:'4px',height:'4px',left:`${AXIS_X}px`,top:`${cardY(m)}px`,transform:'translate(-50%,-50%)'}}/>,
         ]);
       })}
 
