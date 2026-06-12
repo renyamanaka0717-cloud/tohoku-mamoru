@@ -2822,8 +2822,8 @@ export default function App() {
       {/* ── FAB ── */}
       <div className="fixed bottom-16 right-4 z-50">
         <button onClick={()=>openAdd()}
-          className="w-14 h-14 bg-gray-900 text-white rounded-full text-3xl shadow-2xl flex items-center justify-center active:bg-gray-700 leading-none">
-          +
+          className="w-14 h-14 bg-gray-900 text-white rounded-full shadow-2xl flex items-center justify-center active:bg-gray-700">
+          <AppIcons.plus size={28}/>
         </button>
       </div>
 
