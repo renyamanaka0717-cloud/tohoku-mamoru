@@ -140,10 +140,30 @@ src/app/
 メインヘッダーと CalendarPage の両方で**ファイルタブ型**を採用。
 
 - `すべて` / `個人` / `仕事`
-- 選択中タブ: `bg-white`、上・左・右にボーダー、`-mb-px` で下線を隠す
-- 未選択タブ: `bg-gray-100`、`mt-1` で低く表示
+- 選択中タブ: `bg-white`、上・左・右にボーダー（`2px solid #6b7280`）、`borderBottom: '2px solid white'` で下線を隠す、`borderRadius: '14px 14px 0 0'`、`marginBottom: '-2px'`、`zIndex: 10`
+- 未選択タブ: `bg-gray-100`、ボーダーなし、`borderRadius: '14px 14px 0 0'`（同じ角丸で統一）
 - コンテナ: `borderBottom: '2px solid #e5e7eb'`
-- inline style で実装（`style={{ padding, background, border, ... }}`）
+- すべて inline style で実装（Tailwind では `-mb-px` や `border-b-white` 等の表現が難しいため）
+
+**実装パターン（両方の場所で共通）：**
+```jsx
+<div className="flex items-end px-3 pt-2 bg-white" style={{borderBottom:'2px solid #e5e7eb'}}>
+  {tabs.map(({key,label})=>{
+    const active = currentFilter===key;
+    return (
+      <button key={...} onClick={...} className="shrink-0 relative"
+        style={active ? {
+          padding:'7px 18px', background:'white', color:'#111827', fontWeight:700, fontSize:'0.875rem',
+          border:'2px solid #6b7280', borderBottom:'2px solid white',
+          borderRadius:'14px 14px 0 0', marginBottom:'-2px', zIndex:10,
+        } : {
+          padding:'5px 18px', background:'#f3f4f6', color:'#9ca3af', fontWeight:600, fontSize:'0.875rem',
+          border:'none', borderRadius:'14px 14px 0 0',
+        }}>{label}</button>
+    );
+  })}
+</div>
+```
 
 ---
 
@@ -209,8 +229,9 @@ src/app/
 
 - `rounded-full` のカプセル型ボタンをメインナビに使わない（タグ選択等の補助UIは可）
 - 余白が広すぎる・カードが多すぎて縦に長くなる設計
-- 見た目が変わらない微調整だけで終わらせること
+- 見た目が変わらない微調整だけで終わらせる（構造から変えること）
 - グラデーション、アニメーション過多、過度な影
+- 既存のデザインパターンを無視した突発的なスタイル追加
 
 ---
 
@@ -222,12 +243,13 @@ src/app/
 
 ### 変更の原則
 
-1. **必要最小限の変更のみ**行う
-2. **既存コンポーネントを流用**することを優先する
+1. **必要最小限の変更のみ**行う — 関係ない箇所は触らない
+2. **既存コンポーネントを流用**することを優先する — 新しく作る前に既存を確認
 3. **大規模リファクタリングを避ける**（2700行の1ファイル構成は意図的）
 4. 不要なリファクタリング・抽象化・コメントアウトは行わない
-5. 見た目が変わらない微調整だけで終わらせない
+5. 見た目が変わらない微調整だけで終わらせない — 効果が見える変更にする
 6. iOS設定画面やStructured風の**自然なUI**を優先する
+7. **新しいセッションでも同じ品質で開発できる**ことを重視する
 
 ### コードスタイル
 
