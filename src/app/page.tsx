@@ -1744,7 +1744,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
   for(let i=0;i<dayItems.length;i++){
     const item=dayItems[i];
     if(item.type==='group'){
-      const top=Math.max(item.y,prevBottom+4);
+      const top=Math.max(item.y,prevBottom);
       groupLayout.push({g:item.g,top});
       prevBottom=top+item.g.h;
     } else {
