@@ -2844,6 +2844,7 @@ export default function App() {
 
   return (
     <div className="max-w-md mx-auto min-h-screen bg-gray-50 font-sans">
+      <div className="text-center text-red-500 font-bold text-sm py-1">TEST 2067d71</div>
       {/* ── Header ── */}
       <header className="sticky top-0 z-30 bg-white shadow-sm">
         {/* Category filter tabs */}
