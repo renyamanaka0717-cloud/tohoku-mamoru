@@ -2983,11 +2983,11 @@ export default function App() {
         <div className="px-4 pt-1 pb-0">
           {/* Date + nav */}
           <div className="flex items-center justify-between mb-1">
-            <span className="text-xl font-bold text-gray-900">{year}年{month}月{day}日</span>
+            <span className="text-2xl font-bold text-gray-900">{year}年{month}月{day}日</span>
             <div className="flex items-center gap-1">
-              <button onClick={()=>setCalOp(true)} className="w-8 h-8 flex items-center justify-center text-gray-400"><AppIcons.calendar size={20}/></button>
-              <button onClick={()=>setSearchOpen(true)} className="w-8 h-8 flex items-center justify-center text-gray-400"><AppIcons.search size={20}/></button>
-              <button onClick={()=>setSOp(true)} className="w-8 h-8 flex items-center justify-center text-gray-400"><AppIcons.settings size={20}/></button>
+              <button onClick={()=>setCalOp(true)} className="w-8 h-8 flex items-center justify-center text-gray-400"><AppIcons.calendar size={24}/></button>
+              <button onClick={()=>setSearchOpen(true)} className="w-8 h-8 flex items-center justify-center text-gray-400"><AppIcons.search size={24}/></button>
+              <button onClick={()=>setSOp(true)} className="w-8 h-8 flex items-center justify-center text-gray-400"><AppIcons.settings size={24}/></button>
             </div>
           </div>
 
