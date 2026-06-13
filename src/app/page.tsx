@@ -3007,7 +3007,6 @@ export default function App() {
                   <span className={`w-8 h-8 flex items-center justify-center rounded-full font-bold transition-colors ${isSel?'bg-[#7FAE8C] text-white':isToday?'bg-gray-100 text-gray-900':'text-gray-600'}`} style={{fontSize:'17px'}}>
                     {new Date(d+'T12:00:00').getDate()}
                   </span>
-                  <div className="w-1.5 h-1.5 mt-1"/>
                 </button>
               );
             })}
