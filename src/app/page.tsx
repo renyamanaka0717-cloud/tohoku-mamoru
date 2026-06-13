@@ -1743,14 +1743,13 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
 
   for(const item of dayItems){
     if(item.type==='group'){
-      const top=Math.max(item.y,prevBottom+16);
+      const top=prevBottom+8;
       groupLayout.push({g:item.g,top});
       prevBottom=top+item.g.h;
     } else {
       const freeY=Math.max(item.y,prevBottom)+16;
       const contentH=calcFreeContentH(laterPool);
-      const freeEndY=calcDayY(toMin(item.s.end));
-      const timeH=Math.max(freeEndY-freeY,0);
+      const timeH=item.s.min*PX_PER_MIN*0.7;
       const finalH=Math.max(timeH,contentH,36);
       freePassItems.push({slot:item.s,freeY,finalH});
       prevBottom=freeY+finalH;
