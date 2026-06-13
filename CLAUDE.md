@@ -12,7 +12,7 @@
 - アイコン: `@phosphor-icons/react`（weight="bold"、`AppIcons` で一元管理）
 - AI: Groq SDK（llama-3.3-70b-versatile）— Threads投稿生成のみ
 - データ永続化: localStorage（サーバーDBなし）
-- デプロイ: Vercel（`main` push で GitHub Actions 経由で自動デプロイ）
+- デプロイ: Vercel（`main` または `claude/**` push で GitHub Actions 経由で自動デプロイ）
 
 ---
 
@@ -41,7 +41,7 @@ Vercel は `main` push で自動デプロイされる。デプロイした場合
 
 ## アーキテクチャ
 
-ほぼすべての機能が `src/app/page.tsx` 1ファイルに集約されている（約3210行）。コンポーネント分割は最小限。
+ほぼすべての機能が `src/app/page.tsx` 1ファイルに集約されている（約3230行）。コンポーネント分割は最小限。
 
 ```
 src/app/
@@ -55,7 +55,7 @@ src/app/
       route.ts          # POST /api/generate — Groq でThreads投稿生成
 .github/
   workflows/
-    deploy.yml          # main push → Vercel deploy hook 呼び出し
+    deploy.yml          # main / claude/** push → Vercel deploy hook 呼び出し
 ```
 
 ### page.tsx の主要コンポーネント
@@ -80,12 +80,12 @@ src/app/
 
 ```typescript
 const TIME_LABEL_W = 40;  // px — "HH:MM" が text-xs で収まる幅
-const AXIS_GAP     = 4;   // px — ラベルエリアとアイコンの間
+const AXIS_GAP     = 12;  // px — ラベルエリアとアイコンの間
 const ICON_HALF    = 28;  // px — 56px アイコンカプセルの半分
-const CARD_GAP     = 4;   // px — アイコン右端とカード左端の間
+const CARD_GAP     = 8;   // px — アイコン右端とカード左端の間
 
-const AXIS_X    = TIME_LABEL_W + AXIS_GAP + ICON_HALF;  // 72px
-const CARD_LEFT = AXIS_X + ICON_HALF + CARD_GAP;         // 104px
+const AXIS_X    = TIME_LABEL_W + AXIS_GAP + ICON_HALF;  // 80px
+const CARD_LEFT = AXIS_X + ICON_HALF + CARD_GAP;         // 116px
 ```
 
 - `PX_PER_HOUR` = 40（1時間あたりのピクセル高さ）
@@ -93,6 +93,21 @@ const CARD_LEFT = AXIS_X + ICON_HALF + CARD_GAP;         // 104px
 - 時刻→Y座標: `layoutCalcY(min)`
 - タッチY→時刻: `yToTimeRef`（ピースワイズ補間、クランプ範囲は 0〜23:55）
 - **時刻ラベルはすべて `w-10 text-right pr-1`（40px）で統一**。`w-12` は使わない
+- 縦軸線: `left:${AXIS_X}px, width:'2px', bg-gray-200, transform:'translateX(-0.5px)'`
+
+### タイムラインのカード高さ計測（ResizeObserver）
+
+タスクカードの実際の高さを ResizeObserver で計測し、重なりを防ぐ。
+
+```typescript
+// Timeline内
+const [measuredH,setMeasuredH] = useState<Record<string,number>>({});
+const roRef = useRef<ResizeObserver|null>(null);
+// roRef.current は data-gk 属性（startTime）をキーにカード高さを記録
+// 単一タスクグループのカードに ref + data-gk を付与して observe
+```
+
+レイアウト計算では `measuredH[startTime] ?? MIN_CARD_H` を使い、カードの実際の高さに基づいてアイコンカプセルの高さも同期する。
 
 ---
 
@@ -130,11 +145,25 @@ const CARD_LEFT = AXIS_X + ICON_HALF + CARD_GAP;         // 104px
 
 ## 現在のUI実装状態
 
+### カラーシステム
+
+| 役割 | 値 | 用途 |
+|---|---|---|
+| メインアクセント | `#7FAE8C` | ファイルタブ背景・選択状態・FAB・バッジ・並び替えボタン |
+| ソフトレッド | `#D97A7A` | 削除・エラー・日曜日テキスト |
+| プライマリ黒 | `#1F1F1F` | アクティブタブテキスト・重要ラベル |
+| アンバー | `#E6B85C` | 注意・期限間近（将来用途） |
+| テキスト主 | `text-gray-800` | 通常テキスト |
+| テキスト副 | `text-gray-400` | サブテキスト・ラベル |
+
+`bg-gray-900` はTaskModalのヘッダー等で残存しているが、アクセントカラーとしては `#7FAE8C` を使う。
+
 ### ヘッダー
 
 - 日付表示: `2026年6月13日` の1行表示（年→月→日、日本語表記）
 - 日付ナビゲーション行（〈 今日 〉）は**削除済み**
 - 1週間カレンダー（日〜土）: 曜日13px・日付20px、縦余白を引き締めたコンパクト表示
+- **週スワイプ**: 1週間カレンダーを左右スワイプ（dx>50px かつ縦より横が大きい）→ ±7日移動
 - ファイルタブバー（横スクロール対応、ユーザー定義タブ + `+` ボタン）
 
 ### ファイルタブ（カスタムタブ）
@@ -147,30 +176,32 @@ const CARD_LEFT = AXIS_X + ICON_HALF + CARD_GAP;         // 104px
 - 設定画面の「ファイルタブ」からも名前変更・削除可能
 - タブを削除したタスクは自動的に `すべて`（`category: null`）扱いになる
 
-**ファイルタブ型スタイル（共通パターン）：**
+**ファイルタブ型スタイル（現在の実装）：**
 ```jsx
-<div className="flex items-end px-3 pt-2 bg-white"
-  style={{borderBottom:'2px solid #6b7280',overflowX:'auto',WebkitOverflowScrolling:'touch'}}>
-  {([{key:null,label:'すべて'},...customTabs.map(t=>({key:t.id,label:t.name}))]).map(({key,label})=>{
-    const active = currentFilter===key;
-    return (
-      <button key={String(key)} className="shrink-0 relative"
-        style={active ? {
-          padding:'7px 18px', background:'white', color:'#111827', fontWeight:700, fontSize:'0.875rem',
-          border:'2px solid #6b7280', borderBottom:'2px solid white',
-          borderRadius:'14px 14px 0 0', marginBottom:'-2px', zIndex:10,
-        } : {
-          padding:'5px 18px', background:'#f3f4f6', color:'#9ca3af', fontWeight:600, fontSize:'0.875rem',
-          border:'none', borderRadius:'14px 14px 0 0',
-        }}>{label}</button>
-    );
-  })}
+<div className="bg-[#7FAE8C]">
+  <div className="flex items-end px-3 pt-2" style={{overflowX:'auto',WebkitOverflowScrolling:'touch'}}>
+    {tabs.map(({key,label})=>{
+      const active = currentFilter===key;
+      return (
+        <button key={String(key)} className="shrink-0 relative"
+          style={active ? {
+            padding:'7px 18px 9px', background:'white', color:'#1F1F1F', fontWeight:700, fontSize:'0.875rem',
+            border:'none', borderRadius:'14px 14px 0 0', marginBottom:'-2px', zIndex:10,
+          } : {
+            padding:'5px 18px', background:'rgba(0,0,0,0.12)', color:'rgba(255,255,255,0.88)', fontWeight:600, fontSize:'0.875rem',
+            border:'none', borderRadius:'14px 14px 0 0', marginBottom:'2px',
+          }}>{label}</button>
+      );
+    })}
+  </div>
 </div>
 ```
 
-- 外枠の `borderBottom` は `#6b7280`（アクティブタブの枠線色と統一）
-- アクティブタブは `borderBottom:'2px solid white'` で下線を消す
+- 外枠（`bg-[#7FAE8C]`）がタブバーの背景色
+- アクティブタブは白背景・`marginBottom:'-2px'`・zIndex:10 で浮き出し
+- 非アクティブタブは `rgba(0,0,0,0.12)` 半透明黒の背景
 - すべて inline style で実装（Tailwind では `-mb-px` 等の表現が難しいため）
+- `+` ボタンは `text-white/70`
 
 ### TaskCard
 
@@ -217,7 +248,7 @@ const CARD_LEFT = AXIS_X + ICON_HALF + CARD_GAP;         // 104px
 
 ボトムシート型モーダル。上部ダークヘッダー + 下部ホワイトコンテンツの2層構成。
 
-**ダークヘッダー（bg-gray-900）**
+**ダークヘッダー（`bg-[#7FAE8C] rounded-t-3xl`）**
 - 閉じるボタン（×）
 - アイコン + タスク名入力欄
 - カテゴリチップ（ユーザー定義タブ）
@@ -271,15 +302,94 @@ const CARD_LEFT = AXIS_X + ICON_HALF + CARD_GAP;         // 104px
 - ドロップ時刻のクランプは**起床・就寝時間に縛られない**（0:00〜23:55 の全時間帯に配置可）
 - `yToTimeRef` でタッチY座標→時刻変換（ピースワイズアンカー補間）
 
-### BottomTabs（あとでやるリスト）
+### BottomTabs（あとでやる・買い物リスト）
 
-各タスクのアイコン表示はすべて `task.icon` / `task.color` を反映。
+iOS ボトムシートスタイル。フルスクリーンオーバーレイ＋シート本体の2層構成。
+
+**構造:**
+```jsx
+{/* オーバーレイ — タップで閉じる */}
+<div className="fixed inset-0 z-50 flex flex-col bg-black/20" onClick={onClose}>
+  <div className="flex-1"/>
+  {/* シート本体 */}
+  <div className="bg-white w-full max-w-md mx-auto rounded-t-3xl max-h-[85vh] flex flex-col shadow-2xl"
+    onClick={e=>e.stopPropagation()}
+    onTouchStart={...} onTouchEnd={onSheetSwipe}>
+    {/* ハンドルバー — タップ/下スワイプで閉じる */}
+    <button onClick={onClose} className="flex items-center justify-center pt-3 pb-2 w-full shrink-0 active:opacity-60">
+      <div className="w-12 h-1.5 bg-gray-300 rounded-full"/>
+    </button>
+    {/* タブバー */}
+    <div className="flex border-b border-gray-100 shrink-0 mt-1">
+      {/* activeTab に応じて border-[#7FAE8C] / border-transparent で下線切替 */}
+    </div>
+    {/* コンテンツ — CSS Grid stacking で高さ固定 */}
+    <div className="flex-1 overflow-hidden" style={{display:'grid',gridTemplateColumns:'1fr',gridTemplateRows:'1fr'}}>
+      <div className={`... ${activeTab==='later'?'':'invisible pointer-events-none'}`} style={{gridArea:'1/1'}}>
+        {/* あとでやるコンテンツ — 常にDOMに存在 */}
+      </div>
+      <div className={`... ${activeTab==='shop'?'':'invisible pointer-events-none'}`} style={{gridArea:'1/1'}}>
+        {/* 買い物リストコンテンツ — 常にDOMに存在 */}
+      </div>
+    </div>
+  </div>
+</div>
+```
+
+**閉じる操作:**
+- オーバーレイタップ → 閉じる
+- ハンドルバータップ → 閉じる
+- 下スワイプ（dy>60px かつ縦が横より大きい）→ 閉じる
+
+**タブ切替スワイプ:**
+- 左スワイプ（dx>70px かつ横が縦より大きい）→ 買い物リストへ
+- 右スワイプ → あとでやるへ
+
+**CSS Grid stacking の意図:**  
+両タブを常にDOMに保持し、`visibility:hidden` で非表示にすることでタブ切替時の高さ変化を防ぐ。`display:none` にすると高さがゼロになりレイアウトが崩れる。
+
+**タスクカードのレイアウト（時間が上、名前が下）:**
+```jsx
+<div className="flex-1 min-w-0" onClick={()=>onEdit(t)}>
+  {/* 時間・日付を上段に表示 */}
+  <p className="text-xs text-gray-400">{/* 時間 or 繰り返しラベル */}</p>
+  {/* タスク名を下段に表示 */}
+  <p className="text-sm font-semibold text-gray-900">{t.name}</p>
+</div>
+```
+
+**並び替えボタン（3ステート）:**
+```jsx
+<button onClick={()=>setSortDir(d=>d===null?'asc':d==='asc'?'desc':'asc')}
+  className="w-8 h-8 rounded-xl flex items-center justify-center text-sm bg-[#7FAE8C] text-white">
+  {sortDir===null?'↑↓':sortDir==='asc'?'↑':'↓'}
+</button>
+```
+- `null`（初期）: `↑↓` 表示、ソートなし（登録順）
+- `'asc'`: `↑` 表示、昇順
+- `'desc'`: `↓` 表示、降順
+- あとでやる・買い物リストそれぞれに独立した state（`sortDir` / `shopSortDir`）
+
+### Bottom Bar（画面下部のナビゲーションバー）
 
 ```jsx
-const Ic = getTaskIcon(t.icon ?? '');
-<div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-  style={{background: t.color || '#F3F4F6'}}>
-  <Ic size={14} className={t.color ? 'text-gray-600' : 'text-gray-400'}/>
+<div className="fixed bottom-0 left-0 right-0 z-40 max-w-md mx-auto bg-white rounded-t-2xl"
+  style={{boxShadow:'0 -4px 16px rgba(0,0,0,0.10)'}}>
+  {/* あとでやる | 買い物リスト の2ボタン */}
+</div>
+```
+
+- 上端角丸（`rounded-t-2xl`）、薄い影（`0 -4px 16px rgba(0,0,0,0.10)`）
+- バッジは `bg-[#7FAE8C] text-white rounded-full`
+- 上スワイプ（dy>30px）で `あとでやる` タブを開く
+
+### FAB（タスク追加ボタン）
+
+```jsx
+<div className="fixed bottom-16 right-4 z-50">
+  <button className="w-14 h-14 bg-[#7FAE8C] text-white rounded-full shadow-2xl active:bg-gray-700">
+    <AppIcons.plus size={28}/>
+  </button>
 </div>
 ```
 
@@ -340,7 +450,9 @@ const Ic = getTaskIcon(t.icon ?? '');
 - ベースフォントサイズ: `17px`（globals.css に設定済み）
 - テキスト: `text-gray-800`（primary）、`text-gray-400`（secondary）
 - カード背景: `bg-white`、アプリ背景: `bg-gray-50`
-- アクセント: `bg-gray-900`（ボタン・選択中状態）
+- **メインアクセント**: `#7FAE8C`（セージグリーン）— ファイルタブ背景・FAB・選択状態・バッジ
+- **削除・エラー**: `#D97A7A`（ソフトレッド）
+- **プライマリ黒**: `#1F1F1F`（アクティブタブ文字）
 
 ### タップ項目の標準スタイル
 
@@ -366,7 +478,8 @@ const Ic = getTaskIcon(t.icon ?? '');
 - グラデーション、アニメーション過多、過度な影
 - 既存のデザインパターンを無視した突発的なスタイル追加
 - タイムライン時刻ラベルに `w-12`（48px）を使う（`w-10` で統一）
-- ファイルタブの下線色に `#e5e7eb` を使う（`#6b7280` で統一）
+- ファイルタブに `#e5e7eb` や `#6b7280` の枠線を使う（現在は `bg-[#7FAE8C]` 背景で統一）
+- `bg-gray-900` を新たなアクセントカラーとして使う（既存のTaskModalヘッダー等はそのまま）
 
 ---
 
@@ -382,9 +495,9 @@ const Ic = getTaskIcon(t.icon ?? '');
 
 1. **必要最小限の変更のみ**行う — 関係ない箇所は触らない
 2. **既存コンポーネントを流用**することを優先する — 新しく作る前に既存を確認
-3. **大規模リファクタリングを避ける**（約3210行の1ファイル構成は意図的）
+3. **大規模リファクタリングを避ける**（約3230行の1ファイル構成は意図的）
 4. 不要なリファクタリング・抽象化・コメントアウトは行わない
-5. 見た目が変わらない微調整だけで終わらせない — 効果が見える変更にする
+5. **見た目が変わらない微調整だけで終わらせない** — 効果が見える変更にする
 6. iOS設定画面やStructured風の**自然なUI**を優先する
 7. **新しいセッションでも同じ品質で開発できる**ことを重視する
 8. **小さく直す** — 1つのリクエストで1箇所だけ変える
@@ -414,6 +527,7 @@ const Ic = getTaskIcon(t.icon ?? '');
 - スマートフォン最適化済み（`userScalable: false`、`overscroll-none`）
 - タイムラインの横レイアウトはセマンティックゾーン定数（`TIME_LABEL_W` 等）で管理。機種ごとに固定px調整しない
 - 写真データ（base64）は `PHOTOS_KEY` に `{[taskId]: string[]}` 形式で保存。タスク削除時は必ずクリーンアップ
+- BottomTabs のタブパネルは `visibility:hidden` + `pointer-events:none` で非表示にする（`display:none` にするとレイアウト崩れ）
 
 ---
 
@@ -427,6 +541,17 @@ const Ic = getTaskIcon(t.icon ?? '');
 - 作業完了後は必ず `npm run build` → `git push -u origin <branch>`
 - リモートが進んでいる場合は `git pull origin <branch> --rebase` してから push
 - **push すればセッションブランチ・main どちらでも自動デプロイされる**
+
+### ブランチ運用の注意
+
+セッションブランチと `main` が diverge することがある（過去のセッションで main に直接コミットしたため）。  
+その場合はリモート `main` に直接 push する:
+
+```bash
+git push origin main
+```
+
+`claude/xxx` ブランチへの force-push は避ける。diverge が発生したら `main` に push してデプロイ確認を優先する。
 
 ---
 
