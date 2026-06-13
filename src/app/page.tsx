@@ -3026,7 +3026,7 @@ export default function App() {
               padding:'5px 18px',background:'#F3F4F6',color:'#6B7280',fontWeight:600,fontSize:'0.875rem',
               border:'none',borderRadius:'14px 14px 0 0',marginBottom:'2px',
               boxShadow:'0 3px 7px rgba(0,0,0,0.12)',
-            }}>すべて</button>
+            }}>{activeCategory===null&&<><span style={{position:'absolute',bottom:0,left:0,width:14,height:14,background:'#f9fafb',borderRadius:'0 14px 0 0',pointerEvents:'none'}}/><span style={{position:'absolute',bottom:0,right:0,width:14,height:14,background:'#f9fafb',borderRadius:'14px 0 0 0',pointerEvents:'none'}}/></>}すべて</button>
           {customTabs.map(tab=>{
             const active=activeCategory===tab.id;
             return (
@@ -3042,7 +3042,7 @@ export default function App() {
                   padding:'5px 18px',background:'#F3F4F6',color:'#6B7280',fontWeight:600,fontSize:'0.875rem',
                   border:'none',borderRadius:'14px 14px 0 0',marginBottom:'2px',
                   boxShadow:'0 3px 7px rgba(0,0,0,0.12)',
-                }}>{tab.name}</button>
+                }}>{active&&<><span style={{position:'absolute',bottom:0,left:0,width:14,height:14,background:'#f9fafb',borderRadius:'0 14px 0 0',pointerEvents:'none'}}/><span style={{position:'absolute',bottom:0,right:0,width:14,height:14,background:'#f9fafb',borderRadius:'14px 0 0 0',pointerEvents:'none'}}/></>}{tab.name}</button>
             );
           })}
           <button onClick={addCustomTab}
@@ -3060,9 +3060,6 @@ export default function App() {
           </div>
         )}
       </header>
-
-      {/* selected tab → timeline: rounded corner connector */}
-      <div style={{height:'14px',background:'white',borderRadius:'0 0 14px 14px'}}/>
 
       {/* ── Timeline ── */}
       <main className="px-3 py-4 pb-24"
