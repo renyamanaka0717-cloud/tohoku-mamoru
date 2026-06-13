@@ -3061,8 +3061,8 @@ export default function App() {
         )}
       </header>
 
-      {/* selected tab → timeline connection strip */}
-      <div style={{height:'5px',background:'rgba(127,174,140,0.22)'}}/>
+      {/* selected tab → timeline: rounded corner connector */}
+      <div style={{height:'14px',background:'white',borderRadius:'0 0 14px 14px'}}/>
 
       {/* ── Timeline ── */}
       <main className="px-3 py-4 pb-24"
