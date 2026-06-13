@@ -3021,11 +3021,9 @@ export default function App() {
             style={activeCategory===null?{
               padding:'7px 18px 9px',background:'#7FAE8C',color:'white',fontWeight:700,fontSize:'0.875rem',
               border:'none',borderRadius:'14px 14px 0 0',marginBottom:'-2px',zIndex:10,
-              boxShadow:'0 3px 8px rgba(0,0,0,0.18)',
             }:{
               padding:'5px 18px',background:'#F3F4F6',color:'#6B7280',fontWeight:600,fontSize:'0.875rem',
               border:'none',borderRadius:'14px 14px 0 0',marginBottom:'2px',
-              boxShadow:'0 3px 7px rgba(0,0,0,0.12)',
             }}>すべて</button>
           {customTabs.map(tab=>{
             const active=activeCategory===tab.id;
@@ -3037,11 +3035,9 @@ export default function App() {
                 style={active?{
                   padding:'7px 18px 9px',background:'#7FAE8C',color:'white',fontWeight:700,fontSize:'0.875rem',
                   border:'none',borderRadius:'14px 14px 0 0',marginBottom:'-2px',zIndex:10,
-                  boxShadow:'0 3px 8px rgba(0,0,0,0.18)',
                 }:{
                   padding:'5px 18px',background:'#F3F4F6',color:'#6B7280',fontWeight:600,fontSize:'0.875rem',
                   border:'none',borderRadius:'14px 14px 0 0',marginBottom:'2px',
-                  boxShadow:'0 3px 7px rgba(0,0,0,0.12)',
                 }}>{tab.name}</button>
             );
           })}
