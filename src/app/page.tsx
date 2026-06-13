@@ -3062,7 +3062,7 @@ export default function App() {
       </header>
 
       {/* ── Timeline ── */}
-      <main className="px-3 py-4 pb-24"
+      <main className="px-3 pt-3 pb-24"
         onTouchStart={e=>{mainSwX.current=e.touches[0].clientX;mainSwY.current=e.touches[0].clientY;}}
         onTouchEnd={e=>{
           if(dragTask) return;
