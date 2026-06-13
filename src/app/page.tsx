@@ -3015,7 +3015,7 @@ export default function App() {
           </div>
         </div>
         {/* Category filter tabs */}
-        <div className="bg-white border-t border-gray-100 mt-1">
+        <div className="bg-white mt-1">
           <div className="flex items-end px-3 pt-2" style={{overflowX:'auto',WebkitOverflowScrolling:'touch'}}>
           <button onClick={()=>{setActiveCat(null);setEditTabId(null);}} className="shrink-0 relative"
             style={activeCategory===null?{
