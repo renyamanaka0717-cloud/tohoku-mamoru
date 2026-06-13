@@ -2979,7 +2979,7 @@ export default function App() {
   return (
     <div className="max-w-md mx-auto min-h-screen bg-gray-50 font-sans">
       {/* ── Header ── */}
-      <header className="sticky top-0 z-30 bg-white shadow-sm">
+      <header className="sticky top-0 z-30 bg-white">
         <div className="px-4 pt-1 pb-0">
           {/* Date + nav */}
           <div className="flex items-center justify-between mb-2">
