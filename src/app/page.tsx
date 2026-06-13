@@ -44,7 +44,7 @@ interface Task {
   photoCount?: number;
 }
 
-interface Settings { wakeTime: string; sleepTime: string; }
+interface Settings { wakeTime: string; sleepTime: string; keepIncomplete?: boolean; }
 interface FreeSlot  { start: string; end: string; min: number; }
 interface ShopItem  { id: string; name: string; checked: boolean; purchasedAt?: string; }
 interface TagDef    { name: string; color: string; }
@@ -2570,6 +2570,31 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
     </div>
   );
 
+  if(sub==='incomplete') return (
+    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
+      {subHeader('未完了タスクの扱い')}
+      <div className="flex-1 overflow-y-auto px-4 pb-8">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">就寝後の動作</p>
+        <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
+          {([
+            {val:false,label:'就寝後に「あとでやる」へ戻す',desc:'就寝時間を過ぎた未完了タスクを自動で「あとでやる」に移動します'},
+            {val:true, label:'過去に残す',desc:'未完了タスクはタイムラインに残したまま保持します'},
+          ] as {val:boolean;label:string;desc:string}[]).map(({val,label,desc},i,a)=>(
+            <button key={String(val)} onClick={()=>onSettings({...settings,keepIncomplete:val})}
+              className={`w-full flex items-center gap-3 px-4 py-3.5 text-left${i<a.length-1?' border-b border-gray-100':''}`}>
+              <div className="flex-1 min-w-0">
+                <p className="text-[15px] font-medium text-gray-900">{label}</p>
+                <p className="text-xs text-gray-400 mt-0.5">{desc}</p>
+              </div>
+              <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${(settings.keepIncomplete??false)===val?'border-[#D9A3B2]':'border-gray-300'}`}>
+                {(settings.keepIncomplete??false)===val&&<div className="w-2.5 h-2.5 rounded-full bg-[#D9A3B2]"/>}
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
   if(sub==='wakeSleep') return (
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
       {subHeader('起床・就寝')}
@@ -2643,6 +2668,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           <SettingsRow icon={<AppIcons.repeat size={18}/>} iconBg="bg-gray-100" title="繰り返しタスク" desc="繰り返しタスクを管理" onClick={()=>setSub('recurring')}/>
           <SettingsRow icon={<AppIcons.bell/>} iconBg="bg-gray-100" title="通知" desc="通知設定" onClick={()=>setSub('notifications')}/>
           <SettingsRow icon={<AppIcons.palette/>} iconBg="bg-gray-100" title="表示設定" desc="外観、言語など" onClick={()=>setSub('display')}/>
+          <SettingsRow icon={<AppIcons.postponed size={18}/>} iconBg="bg-gray-100" title="未完了タスクの扱い" desc={(settings.keepIncomplete??false)?'過去に残す':'就寝後にあとでやるへ戻す'} onClick={()=>setSub('incomplete')}/>
           <SettingsRow icon={<AppIcons.wake size={18}/>} iconBg="bg-gray-100" title="起床・就寝" desc="起床時間、就寝時間を設定" onClick={()=>setSub('wakeSleep')} isLast/>
         </div>
 
@@ -2752,6 +2778,7 @@ export default function App() {
     const today=todayStr();
     const nowM=toMin(now);
     const sleepM=toMin(settings.sleepTime);
+    if(settings.keepIncomplete) return;
     const shouldMove=(t:Task)=>
       !t.completed&&!t.isLater&&!!t.startTime&&!t.recurrence&&
       t.date===today&&nowM>=sleepM;
