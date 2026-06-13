@@ -2138,9 +2138,9 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
           ))}
         </div>
 
-        <div className="flex-1 relative min-h-0">
+        <div className="flex-1 overflow-hidden" style={{display:'grid',gridTemplateColumns:'1fr',gridTemplateRows:'1fr'}}>
         {/* ── あとでやる tab ── */}
-          <div className={`absolute inset-0 overflow-y-auto px-4 pb-10 ${activeTab==='later'?'':'invisible pointer-events-none'}`}>
+          <div className={`overflow-y-auto px-4 pb-10 ${activeTab==='later'?'':'invisible pointer-events-none'}`} style={{gridArea:'1/1'}}>
             <div className="flex items-center justify-between pt-3 pb-2">
               <h3 className="text-sm font-bold text-gray-900">
                 あとでやる
@@ -2263,7 +2263,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
           </div>
 
         {/* ── 買い物 tab ── */}
-          <div className={`absolute inset-0 flex flex-col overflow-hidden ${activeTab==='shop'?'':'invisible pointer-events-none'}`}>
+          <div className={`flex flex-col overflow-hidden ${activeTab==='shop'?'':'invisible pointer-events-none'}`} style={{gridArea:'1/1'}}>
             <div className="px-4 pt-3 pb-2 shrink-0">
               <div className="flex gap-2">
                 <input type="text" value={shopInput} onChange={e=>setShopInput(e.target.value)}
