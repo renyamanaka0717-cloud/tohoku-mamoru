@@ -63,6 +63,7 @@ const TAGS_KEY     = 'tl-tags-v1';
 const HISTORY_KEY      = 'tl-history-v1';
 const CUSTOM_TABS_KEY  = 'tl-custom-tabs-v1';
 const PHOTOS_KEY       = 'tl-photos-v1';
+const DAY_SETTINGS_KEY = 'tl-day-settings-v1';
 const TAG_COLORS: {bg:string;text:string}[] = [
   {bg:'#FFD6E0',text:'#9B2335'},{bg:'#FFE4CC',text:'#9C4A20'},
   {bg:'#FFF3CC',text:'#7A5800'},{bg:'#E2F5CC',text:'#3A6B0E'},
@@ -1591,7 +1592,7 @@ function CompactTaskCard({task,onToggle,onEdit}:{task:Task;onToggle:()=>void;onE
 
 // ── Timeline ──────────────────────────────────────────────────────────────────
 
-function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet,onSchedule,onAddAtTime,onDragStart,dragTaskId,yToTimeRef,layoutYRef,globalTags,todayHistory,onSubtaskToggle}:{
+function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet,onSchedule,onAddAtTime,onDragStart,dragTaskId,yToTimeRef,layoutYRef,globalTags,todayHistory,onSubtaskToggle,onDragWake,onDragSleep}:{
   date:string;tasks:Task[];later:Task[];settings:Settings;now:string;
   onToggle:(id:string)=>void;onEdit:(t:Task)=>void;onEditIconSheet:(t:Task)=>void;
   onSchedule:(t:Task,time:string)=>void;onAddAtTime:(time:string)=>void;
@@ -1601,11 +1602,16 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
   globalTags:TagDef[];
   todayHistory?:{taskNames:string[]};
   onSubtaskToggle:(taskId:string,subtaskId:string)=>void;
+  onDragWake:(x:number,y:number)=>void;
+  onDragSleep:(x:number,y:number)=>void;
 }) {
   const [pressingId,setPressingId] = useState<string|null>(null);
+  const [pressingWake,setPressingWake] = useState(false);
+  const [pressingSleep,setPressingSleep] = useState(false);
   const [historyOpen,setHistoryOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const lpTimer = useRef<ReturnType<typeof setTimeout>|null>(null);
+  const settingLPTimer = useRef<ReturnType<typeof setTimeout>|null>(null);
   const startLP=(task:Task,e:React.TouchEvent)=>{
     const touch=e.touches[0];
     setPressingId(task.id);
@@ -1618,6 +1624,19 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
   const cancelLP=()=>{
     if(lpTimer.current){clearTimeout(lpTimer.current);lpTimer.current=null;}
     setPressingId(null);
+  };
+  const startSettingLP=(type:'wake'|'sleep',e:React.TouchEvent)=>{
+    const touch=e.touches[0];
+    if(type==='wake') setPressingWake(true); else setPressingSleep(true);
+    settingLPTimer.current=setTimeout(()=>{
+      navigator.vibrate?.(40);
+      if(type==='wake'){setPressingWake(false);onDragWake(touch.clientX,touch.clientY);}
+      else{setPressingSleep(false);onDragSleep(touch.clientX,touch.clientY);}
+    },500);
+  };
+  const cancelSettingLP=()=>{
+    if(settingLPTimer.current){clearTimeout(settingLPTimer.current);settingLPTimer.current=null;}
+    setPressingWake(false);setPressingSleep(false);
   };
   const wakeMin=toMin(settings.wakeTime),sleepMin=toMin(settings.sleepTime);
   const nowMin=toMin(now);
@@ -1861,8 +1880,11 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
       )}
 
       {/* wake card */}
-      <div className="absolute z-10" style={{top:`${wakeCardTop}px`,left:`${CARD_LEFT}px`,right:'0px'}}>
-        <div className="flex items-center gap-2.5 bg-white rounded-2xl border border-gray-100 shadow-sm px-3 py-2.5">
+      <div className="absolute z-10" style={{top:`${wakeCardTop}px`,left:`${CARD_LEFT}px`,right:'0px'}}
+        onTouchStart={e=>startSettingLP('wake',e)}
+        onTouchEnd={cancelSettingLP}
+        onTouchMove={cancelSettingLP}>
+        <div className={`flex items-center gap-2.5 bg-white rounded-2xl border border-gray-100 shadow-sm px-3 py-2.5 select-none transition-transform${pressingWake?' scale-95':''}`}>
           <div className="flex-1 min-w-0">
             <p className="text-[11px] text-gray-400 leading-none mb-0.5">{settings.wakeTime}</p>
             <p className="text-sm font-semibold text-gray-900">起床</p>
@@ -1871,8 +1893,11 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
       </div>
 
       {/* sleep card */}
-      <div className="absolute z-10" style={{top:`${sleepCardTop}px`,left:`${CARD_LEFT}px`,right:'0px'}}>
-        <div className="flex items-center gap-2.5 bg-white rounded-2xl border border-gray-100 shadow-sm px-3 py-2.5">
+      <div className="absolute z-10" style={{top:`${sleepCardTop}px`,left:`${CARD_LEFT}px`,right:'0px'}}
+        onTouchStart={e=>startSettingLP('sleep',e)}
+        onTouchEnd={cancelSettingLP}
+        onTouchMove={cancelSettingLP}>
+        <div className={`flex items-center gap-2.5 bg-white rounded-2xl border border-gray-100 shadow-sm px-3 py-2.5 select-none transition-transform${pressingSleep?' scale-95':''}`}>
           <div className="flex-1 min-w-0">
             <p className="text-[11px] text-gray-400 leading-none mb-0.5">{settings.sleepTime}</p>
             <p className="text-sm font-semibold text-gray-900">就寝</p>
@@ -2637,6 +2662,9 @@ export default function App() {
   const [editScope,setEditScope]   = useState<'one'|'all'>('one');
   const [overTrash,setOverTrash]   = useState(false);
   const [overLater,setOverLater]   = useState(false);
+  const [dragSetting,setDragSetting] = useState<'wake'|'sleep'|null>(null);
+  const [settingConfirm,setSettingConfirm] = useState<{type:'wake'|'sleep';newTime:string}|null>(null);
+  const [dayOverrides,setDayOverrides] = useState<Record<string,{wakeTime?:string;sleepTime?:string}>>({});
 
   useEffect(()=>{
     try{
@@ -2664,6 +2692,8 @@ export default function App() {
       if(mh) setMoveHistory(JSON.parse(mh) as MoveHistory[]);
       const ct=localStorage.getItem(CUSTOM_TABS_KEY);
       if(ct) setCustomTabs(JSON.parse(ct) as CustomTab[]);
+      const ds=localStorage.getItem(DAY_SETTINGS_KEY);
+      if(ds) setDayOverrides(JSON.parse(ds) as Record<string,{wakeTime?:string;sleepTime?:string}>);
     }catch{}
     setLoaded(true);
   },[]);
@@ -2674,6 +2704,7 @@ export default function App() {
   useEffect(()=>{ if(loaded) localStorage.setItem(TAGS_KEY,JSON.stringify(globalTags)); },[globalTags,loaded]);
   useEffect(()=>{ if(loaded) localStorage.setItem(HISTORY_KEY,JSON.stringify(moveHistory)); },[moveHistory,loaded]);
   useEffect(()=>{ if(loaded) localStorage.setItem(CUSTOM_TABS_KEY,JSON.stringify(customTabs)); },[customTabs,loaded]);
+  useEffect(()=>{ if(loaded) localStorage.setItem(DAY_SETTINGS_KEY,JSON.stringify(dayOverrides)); },[dayOverrides,loaded]);
   useEffect(()=>{ const iv=setInterval(()=>setNow(nowStr()),60000); return ()=>clearInterval(iv); },[]);
 
   // 就寝時刻を過ぎた当日の未完了タスクを「あとでやる」へ自動移動し履歴を記録
@@ -2719,12 +2750,50 @@ export default function App() {
   const {day,month,year} = useMemo(()=>getDateInfo(date),[date]);
   const today = todayStr();
 
+  const effectiveSettings = useMemo(()=>{
+    const ov=dayOverrides[date]??{};
+    return {wakeTime:ov.wakeTime??settings.wakeTime, sleepTime:ov.sleepTime??settings.sleepTime};
+  },[settings,dayOverrides,date]);
+
   // Drag task from あとでやる to timeline
   const startDrag=(task:Task,x:number,y:number)=>{
     setDragTask(task);
     setDragPos({x,y});
     setActiveTab(null);
   };
+  const startDragSetting=(type:'wake'|'sleep',x:number,y:number)=>{
+    setDragSetting(type);
+    setDragPos({x,y});
+    setDropTime(type==='wake'?effectiveSettings.wakeTime:effectiveSettings.sleepTime);
+  };
+
+  useEffect(()=>{
+    if(!dragSetting) return;
+    const calcTime=(clientY:number)=>{
+      if(yToTimeRef.current) return yToTimeRef.current(clientY);
+      const header=document.querySelector('header');
+      const headerBottom=header?header.getBoundingClientRect().bottom:130;
+      const wakeMin=toMin(settings.wakeTime);
+      const rawMin=wakeMin+(clientY+window.scrollY-headerBottom-16)/PX_PER_MIN;
+      return fromMin(Math.max(0,Math.min(23*60+55,Math.round(rawMin/5)*5)));
+    };
+    const onMove=(e:TouchEvent)=>{
+      e.preventDefault();
+      const t=e.touches[0];
+      setDragPos({x:t.clientX,y:t.clientY});
+      setDropTime(calcTime(t.clientY));
+    };
+    const onEnd=(e:TouchEvent)=>{
+      const t=e.changedTouches[0];
+      const time=calcTime(t.clientY);
+      setSettingConfirm({type:dragSetting,newTime:time});
+      setDragSetting(null);
+      setDropTime(null);
+    };
+    document.addEventListener('touchmove',onMove,{passive:false});
+    document.addEventListener('touchend',onEnd);
+    return ()=>{document.removeEventListener('touchmove',onMove);document.removeEventListener('touchend',onEnd);};
+  },[dragSetting,settings]);
 
   useEffect(()=>{
     if(!dragTask) return;
@@ -2950,10 +3019,12 @@ export default function App() {
           const dy=e.changedTouches[0].clientY-mainSwY.current;
           if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)*1.5) setDate(shiftDate(date,dx<0?1:-1));
         }}>
-        <Timeline date={date} tasks={filteredTasks} later={laterTasks} settings={settings} now={now}
+        <Timeline date={date} tasks={filteredTasks} later={laterTasks} settings={effectiveSettings} now={now}
           onToggle={toggle} onEdit={openEdit} onEditIconSheet={openEditIconSheet} onSchedule={scheduleInSlot} onAddAtTime={openAdd}
           onDragStart={startDrag} dragTaskId={dragTask?.id} yToTimeRef={yToTimeRef} layoutYRef={layoutYRef} globalTags={globalTags}
-          todayHistory={moveHistory.find(h=>h.date===date)} onSubtaskToggle={subtaskToggle}/>
+          todayHistory={moveHistory.find(h=>h.date===date)} onSubtaskToggle={subtaskToggle}
+          onDragWake={(x,y)=>startDragSetting('wake',x,y)}
+          onDragSleep={(x,y)=>startDragSetting('sleep',x,y)}/>
       </main>
 
       {/* ── Bottom bar ── */}
@@ -3001,9 +3072,9 @@ export default function App() {
       )}
 
       {/* ── Drag overlay ── */}
-      {dragTask&&(
+      {(dragTask||dragSetting)&&(
         <div className="fixed inset-0 z-[70] pointer-events-none">
-          {/* Drop time line — starts after axis area (68px) */}
+          {/* Drop time line */}
           {dropTime&&!overTrash&&!overLater&&(
             <div className="absolute right-0 flex items-center gap-2"
               style={{top:`${layoutYRef.current?layoutYRef.current(toMin(dropTime)):dragPos.y}px`,left:'68px'}}>
@@ -3020,22 +3091,57 @@ export default function App() {
               transform:'rotate(-3deg) scale(1.05)',
             }}>
               <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 px-4 py-3 w-44">
-                <p className="text-sm font-bold text-gray-900 truncate">{dragTask.name}</p>
-                <p className="text-xs text-blue-500 mt-0.5 font-semibold">{dropTime??'ドラッグして配置'}</p>
+                {dragTask?(
+                  <>
+                    <p className="text-sm font-bold text-gray-900 truncate">{dragTask.name}</p>
+                    <p className="text-xs text-blue-500 mt-0.5 font-semibold">{dropTime??'ドラッグして配置'}</p>
+                  </>
+                ):(
+                  <>
+                    <p className="text-sm font-bold text-gray-900">{dragSetting==='wake'?'起床':'就寝'}</p>
+                    <p className="text-xs text-blue-500 mt-0.5 font-semibold">{dropTime??'ドラッグして配置'}</p>
+                  </>
+                )}
               </div>
             </div>
           )}
           {/* Bottom drop zones */}
           <div className="absolute bottom-0 left-0 right-0 h-24 flex">
-            {/* Left: Delete */}
-            <div className={`flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors ${overTrash?'bg-red-400':'bg-red-50'}`}>
-              <AppIcons.trash size={28} className={overTrash?'text-white':'text-red-400'}/>
-              <span className={`text-xs font-bold ${overTrash?'text-white':'text-red-400'}`}>削除する</span>
+            <div className={`flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors ${dragSetting?'bg-gray-50 opacity-30':overTrash?'bg-red-400':'bg-red-50'}`}>
+              <AppIcons.trash size={28} className={dragSetting?'text-gray-300':overTrash?'text-white':'text-red-400'}/>
+              <span className={`text-xs font-bold ${dragSetting?'text-gray-300':overTrash?'text-white':'text-red-400'}`}>削除する</span>
             </div>
-            {/* Right: Return to later */}
-            <div className={`flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors ${overLater?'bg-blue-400':'bg-blue-50'}`}>
-              <AppIcons.postponed size={28} className={overLater?'text-white':'text-blue-400'}/>
-              <span className={`text-xs font-bold ${overLater?'text-white':'text-blue-400'}`}>あとでやるに戻す</span>
+            <div className={`flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors ${dragSetting?'bg-gray-50 opacity-30':overLater?'bg-blue-400':'bg-blue-50'}`}>
+              <AppIcons.postponed size={28} className={dragSetting?'text-gray-300':overLater?'text-white':'text-blue-400'}/>
+              <span className={`text-xs font-bold ${dragSetting?'text-gray-300':overLater?'text-white':'text-blue-400'}`}>あとでやるに戻す</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Setting time confirm popup ── */}
+      {settingConfirm&&(
+        <div className="fixed inset-0 z-[200] bg-black/50 flex items-end justify-center" onClick={()=>setSettingConfirm(null)}>
+          <div className="bg-white w-full max-w-md rounded-t-3xl px-5 pt-6 pb-10 shadow-2xl" onClick={e=>e.stopPropagation()}>
+            <p className="text-base font-bold text-gray-900 mb-1">{settingConfirm.type==='wake'?'起床':'就寝'}時間を変更</p>
+            <p className="text-sm text-gray-500 mb-6">{settingConfirm.newTime} に変更します</p>
+            <div className="space-y-3">
+              <button onClick={()=>{
+                const key=settingConfirm.type==='wake'?'wakeTime':'sleepTime';
+                setDayOverrides(prev=>({...prev,[date]:{...prev[date],[key]:settingConfirm.newTime}}));
+                setSettingConfirm(null);
+              }} className="w-full py-3.5 bg-gray-100 rounded-2xl text-sm font-semibold text-gray-900">この日だけ変更</button>
+              <button onClick={()=>{
+                const key=settingConfirm.type==='wake'?'wakeTime':'sleepTime';
+                setSettings(prev=>({...prev,[key]:settingConfirm.newTime}));
+                setDayOverrides(prev=>{
+                  const n={...prev};
+                  if(n[date]){const d={...n[date]};delete d[key];if(!Object.keys(d).length)delete n[date];else n[date]=d;}
+                  return n;
+                });
+                setSettingConfirm(null);
+              }} className="w-full py-3.5 bg-gray-900 rounded-2xl text-sm font-semibold text-white">他の日も全部この時間に変更</button>
+              <button onClick={()=>setSettingConfirm(null)} className="w-full py-2.5 text-sm text-gray-400 font-semibold">キャンセル</button>
             </div>
           </div>
         </div>
