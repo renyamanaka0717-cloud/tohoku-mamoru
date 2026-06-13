@@ -3004,7 +3004,7 @@ export default function App() {
               const isSel=d===date, isToday=d===today;
               return (
                 <button key={i} onClick={()=>setDate(d)} className="flex flex-col items-center py-1">
-                  <span className={`text-[13px] font-medium ${i===0?'text-[#D97A7A]':i===6?'text-blue-400':'text-gray-400'}`}>{name}</span>
+                  <span className="text-[13px] font-medium text-gray-400">{name}</span>
                   <span className={`w-8 h-8 flex items-center justify-center rounded-full font-bold transition-colors ${isSel?'bg-[#7FAE8C] text-white':isToday?'bg-gray-100 text-gray-900':'text-gray-600'}`} style={{fontSize:'20px'}}>
                     {new Date(d+'T12:00:00').getDate()}
                   </span>
