@@ -419,14 +419,14 @@ const Ic = getTaskIcon(t.icon ?? '');
 
 ## Vercel / Git 運用
 
-- `main` branch への push で **GitHub Actions** が Vercel deploy hook を呼び出して自動デプロイ
-  - `.github/workflows/deploy.yml` — `curl -s -X POST "${{ secrets.VERCEL_DEPLOY_HOOK }}"`
+- `main` または `claude/**` branch への push で **GitHub Actions** が Vercel deploy hook を呼び出して自動デプロイ
+  - `.github/workflows/deploy.yml` — `on: push: branches: [main, 'claude/**']`
+  - `curl -s -X POST "${{ secrets.VERCEL_DEPLOY_HOOK }}"` で deploy hook を呼び出す
   - deploy hook URL は GitHub リポジトリの `VERCEL_DEPLOY_HOOK` シークレットに設定済み
-- feature branch は `claude/xxx` 形式
-- 作業完了後は必ず `npm run build` → `git push origin main`
-- リモートが進んでいる場合は `git pull origin main --rebase` してから push
-- push は `git push -u origin <branch>` を使う
-- **作業ブランチから main に push するまでデプロイされない**
+- セッション指定のブランチが `claude/xxx` 形式の場合はそのブランチへ push すれば自動デプロイされる
+- 作業完了後は必ず `npm run build` → `git push -u origin <branch>`
+- リモートが進んでいる場合は `git pull origin <branch> --rebase` してから push
+- **push すればセッションブランチ・main どちらでも自動デプロイされる**
 
 ---
 
