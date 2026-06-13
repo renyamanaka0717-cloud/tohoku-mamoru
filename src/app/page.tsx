@@ -1743,7 +1743,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
 
   for(const item of dayItems){
     if(item.type==='group'){
-      const top=Math.max(item.y,prevBottom);
+      const top=Math.max(item.y,prevBottom+12);
       groupLayout.push({g:item.g,top});
       prevBottom=top+item.g.h;
     } else {
