@@ -2992,7 +2992,7 @@ export default function App() {
           </div>
 
           {/* Week calendar */}
-          <div className="grid grid-cols-7 pt-2 pb-0.5 border-t border-gray-50"
+          <div className="grid grid-cols-7 pt-2 pb-0.5"
             onTouchStart={e=>{weekSwX.current=e.touches[0].clientX;weekSwY.current=e.touches[0].clientY;}}
             onTouchEnd={e=>{
               const dx=e.changedTouches[0].clientX-weekSwX.current;
