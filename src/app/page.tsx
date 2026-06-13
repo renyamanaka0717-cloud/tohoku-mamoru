@@ -528,8 +528,8 @@ function getTaskIcon(key:string){
 
 // ── TaskModal ─────────────────────────────────────────────────────────────────
 
-function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:initIconSheet,onSave,onUpdate,onDelete,onClose,globalTags,customTabs}:{
-  task:Task|null; currentDate:string; prefillTime?:string; prefillCategory?:string; openIconSheet?:boolean;
+function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:initIconSheet,scrollToPhotos,onSave,onUpdate,onDelete,onClose,globalTags,customTabs}:{
+  task:Task|null; currentDate:string; prefillTime?:string; prefillCategory?:string; openIconSheet?:boolean; scrollToPhotos?:boolean;
   onSave:(tasks:Omit<Task,'id'>[], pendingPhotos?:string[])=>void; onUpdate?:(data:Omit<Task,'id'>)=>void; onDelete?:()=>void; onClose:()=>void;
   globalTags:TagDef[]; customTabs:CustomTab[];
 }) {
@@ -614,6 +614,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
   const [photos,setPhotos]       = useState<string[]>([]);
   const [photoViewIdx,setPhotoViewIdx] = useState<number|null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const photoSectionRef = useRef<HTMLDivElement>(null);
 
   useEffect(()=>{
     if(!task) return;
@@ -621,6 +622,13 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
       const store=JSON.parse(localStorage.getItem(PHOTOS_KEY)||'{}') as Record<string,string[]>;
       setPhotos(store[task.id]??[]);
     }catch{}
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[]);
+
+  useEffect(()=>{
+    if(!scrollToPhotos) return;
+    const t=setTimeout(()=>photoSectionRef.current?.scrollIntoView({behavior:'smooth',block:'start'}),120);
+    return ()=>clearTimeout(t);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[]);
 
@@ -1302,7 +1310,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
           {/* Photos */}
           <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden"
             onChange={e=>{addPhotos(e.target.files);if(fileInputRef.current)fileInputRef.current.value='';}}/>
-          <div className="bg-white mx-3 mt-3 rounded-2xl p-4">
+          <div ref={photoSectionRef} className="bg-white mx-3 mt-3 rounded-2xl p-4">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <AppIcons.camera size={16} className="text-gray-400"/>
@@ -1432,7 +1440,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
 
 // ── TaskCard ──────────────────────────────────────────────────────────────────
 
-function TaskCard({task,onToggle,onEdit,globalTags,onSubtaskToggle}:{task:Task;onToggle:()=>void;onEdit:()=>void;globalTags:TagDef[];onSubtaskToggle?:(subtaskId:string)=>void;}) {
+function TaskCard({task,onToggle,onEdit,globalTags,onSubtaskToggle,onCameraClick}:{task:Task;onToggle:()=>void;onEdit:()=>void;globalTags:TagDef[];onSubtaskToggle?:(subtaskId:string)=>void;onCameraClick?:()=>void;}) {
   const [openPanel,setOpenPanel] = useState<'subtask'|'memo'|null>(null);
   const endTime = (task.startTime&&(task.duration??0)>0) ? fromMin(toMin(task.startTime)+(task.duration??0)) : null;
   const subtasks = task.subtasks??[];
@@ -1480,9 +1488,11 @@ function TaskCard({task,onToggle,onEdit,globalTags,onSubtaskToggle}:{task:Task;o
                 </button>
               )}
               {(task.photoCount??0)>0&&(
-                <div className="flex items-center justify-center" style={{width:'24px',height:'32px'}}>
+                <button onClick={e=>{e.stopPropagation();onCameraClick?.();}}
+                  className="flex items-center justify-center active:opacity-70"
+                  style={{width:'24px',height:'32px'}}>
                   <AppIcons.camera size={13} className="text-gray-400"/>
-                </div>
+                </button>
               )}
             </div>
           )}
@@ -1592,7 +1602,7 @@ function CompactTaskCard({task,onToggle,onEdit}:{task:Task;onToggle:()=>void;onE
 
 // ── Timeline ──────────────────────────────────────────────────────────────────
 
-function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet,onSchedule,onAddAtTime,onDragStart,dragTaskId,yToTimeRef,layoutYRef,globalTags,todayHistory,onSubtaskToggle,onDragWake,onDragSleep}:{
+function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet,onSchedule,onAddAtTime,onDragStart,dragTaskId,yToTimeRef,layoutYRef,globalTags,todayHistory,onSubtaskToggle,onDragWake,onDragSleep,onCameraClick}:{
   date:string;tasks:Task[];later:Task[];settings:Settings;now:string;
   onToggle:(id:string)=>void;onEdit:(t:Task)=>void;onEditIconSheet:(t:Task)=>void;
   onSchedule:(t:Task,time:string)=>void;onAddAtTime:(time:string)=>void;
@@ -1604,6 +1614,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
   onSubtaskToggle:(taskId:string,subtaskId:string)=>void;
   onDragWake:(x:number,y:number)=>void;
   onDragSleep:(x:number,y:number)=>void;
+  onCameraClick:(taskId:string)=>void;
 }) {
   const [pressingId,setPressingId] = useState<string|null>(null);
   const [pressingWake,setPressingWake] = useState(false);
@@ -1960,7 +1971,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
               onTouchStart={e=>startLP(task,e)}
               onTouchEnd={cancelLP}
               onTouchMove={cancelLP}>
-              <TaskCard task={task} onToggle={()=>onToggle(task.id)} onEdit={()=>onEdit(task)} globalTags={globalTags} onSubtaskToggle={(sid)=>onSubtaskToggle(task.id,sid)}/>
+              <TaskCard task={task} onToggle={()=>onToggle(task.id)} onEdit={()=>onEdit(task)} globalTags={globalTags} onSubtaskToggle={(sid)=>onSubtaskToggle(task.id,sid)} onCameraClick={()=>onCameraClick(task.id)}/>
             </div>,
           ];
         }
@@ -2639,7 +2650,7 @@ export default function App() {
   const [globalTags,setGlobalTags] = useState<TagDef[]>([]);
   const [moveHistory,setMoveHistory] = useState<MoveHistory[]>([]);
   const [date,setDate]           = useState(todayStr());
-  const [modal,setModal]         = useState<{open:boolean;task:Task|null;prefillTime?:string;prefillCategory?:string;iconSheet?:boolean}>({open:false,task:null});
+  const [modal,setModal]         = useState<{open:boolean;task:Task|null;prefillTime?:string;prefillCategory?:string;iconSheet?:boolean;scrollToPhotos?:boolean}>({open:false,task:null});
   const [activeCategory,setActiveCat] = useState<string|null>(null);
   const [customTabs,setCustomTabs]   = useState<CustomTab[]>([]);
   const [editTabId,setEditTabId]     = useState<string|null>(null);
@@ -2885,6 +2896,10 @@ export default function App() {
   const openEdit = (task:Task) => {
     if(task.recurrence) { setRecConfirm(task); } else { setModal({open:true,task}); }
   };
+  const openEditAtPhotos = (taskId:string) => {
+    const task=tasks.find(t=>t.id===taskId); if(!task) return;
+    setModal({open:true,task,scrollToPhotos:true});
+  };
   const openEditIconSheet=(task:Task)=>{
     if(task.recurrence){setRecConfirm(task);}else{setModal({open:true,task,iconSheet:true});}
   };
@@ -3024,7 +3039,8 @@ export default function App() {
           onDragStart={startDrag} dragTaskId={dragTask?.id} yToTimeRef={yToTimeRef} layoutYRef={layoutYRef} globalTags={globalTags}
           todayHistory={moveHistory.find(h=>h.date===date)} onSubtaskToggle={subtaskToggle}
           onDragWake={(x,y)=>startDragSetting('wake',x,y)}
-          onDragSleep={(x,y)=>startDragSetting('sleep',x,y)}/>
+          onDragSleep={(x,y)=>startDragSetting('sleep',x,y)}
+          onCameraClick={openEditAtPhotos}/>
       </main>
 
       {/* ── Bottom bar ── */}
@@ -3161,6 +3177,7 @@ export default function App() {
       {/* ── Task Modal ── */}
       {modal.open&&(
         <TaskModal task={modal.task} currentDate={date} prefillTime={modal.prefillTime} prefillCategory={modal.prefillCategory} openIconSheet={!!modal.iconSheet}
+          scrollToPhotos={!!modal.scrollToPhotos}
           onSave={saveTasks} onUpdate={modal.task?updateTask:undefined}
           onDelete={modal.task?()=>delTask(modal.task!.id):undefined}
           onClose={closeModal} globalTags={globalTags} customTabs={customTabs}/>
