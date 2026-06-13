@@ -3067,7 +3067,8 @@ export default function App() {
 
       {/* ── Bottom bar ── */}
       <div
-        className="fixed bottom-0 left-0 right-0 z-40 max-w-md mx-auto bg-white border-t border-gray-100"
+        className="fixed bottom-0 left-0 right-0 z-40 max-w-md mx-auto bg-white rounded-t-2xl"
+        style={{boxShadow:'0 -4px 16px rgba(0,0,0,0.06)'}}
         onTouchStart={e=>setTouchY(e.touches[0].clientY)}
         onTouchEnd={e=>{ if(touchY-e.changedTouches[0].clientY>30) setActiveTab('later'); }}
       >
