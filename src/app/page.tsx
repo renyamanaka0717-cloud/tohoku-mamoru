@@ -3026,7 +3026,7 @@ export default function App() {
               padding:'5px 18px',background:'#F3F4F6',color:'#6B7280',fontWeight:600,fontSize:'0.875rem',
               border:'none',borderRadius:'14px 14px 0 0',marginBottom:'2px',
               boxShadow:'0 3px 7px rgba(0,0,0,0.12)',
-            }}>{activeCategory===null&&<><span style={{position:'absolute',bottom:0,left:0,width:14,height:14,background:'#f9fafb',borderRadius:'0 14px 0 0',pointerEvents:'none'}}/><span style={{position:'absolute',bottom:0,right:0,width:14,height:14,background:'#f9fafb',borderRadius:'14px 0 0 0',pointerEvents:'none'}}/></>}すべて</button>
+            }}>すべて</button>
           {customTabs.map(tab=>{
             const active=activeCategory===tab.id;
             return (
@@ -3042,7 +3042,7 @@ export default function App() {
                   padding:'5px 18px',background:'#F3F4F6',color:'#6B7280',fontWeight:600,fontSize:'0.875rem',
                   border:'none',borderRadius:'14px 14px 0 0',marginBottom:'2px',
                   boxShadow:'0 3px 7px rgba(0,0,0,0.12)',
-                }}>{active&&<><span style={{position:'absolute',bottom:0,left:0,width:14,height:14,background:'#f9fafb',borderRadius:'0 14px 0 0',pointerEvents:'none'}}/><span style={{position:'absolute',bottom:0,right:0,width:14,height:14,background:'#f9fafb',borderRadius:'14px 0 0 0',pointerEvents:'none'}}/></>}{tab.name}</button>
+                }}>{tab.name}</button>
             );
           })}
           <button onClick={addCustomTab}
