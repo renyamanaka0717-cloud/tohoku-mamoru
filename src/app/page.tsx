@@ -2055,8 +2055,8 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
   onDragStart:(t:Task,x:number,y:number)=>void;
 }) {
   const [shopInput,setShopInput] = useState('');
-  const [sortDir,setSortDir]     = useState<'asc'|'desc'>('asc');
-  const [shopSortDir,setShopSortDir] = useState<'asc'|'desc'>('asc');
+  const [sortDir,setSortDir]     = useState<null|'asc'|'desc'>(null);
+  const [shopSortDir,setShopSortDir] = useState<null|'asc'|'desc'>(null);
   const [pressingId,setPressingId]= useState<string|null>(null);
   const lpTimer = useRef<ReturnType<typeof setTimeout>|null>(null);
   const swX=useRef(0), swY=useRef(0);
@@ -2095,14 +2095,14 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
   const normalLater = (() => {
     const pinned  = laterPending.filter(t=>t.pinned&&!t.recurrence);
     const normal  = laterPending.filter(t=>!t.pinned&&!t.recurrence);
-    const ordered = sortDir==='asc' ? normal : [...normal].reverse();
+    const ordered = sortDir!=='desc' ? normal : [...normal].reverse();
     return [...pinned,...ordered];
   })();
 
   const scheduledRaw = tasks.filter(t=>!t.isLater&&t.startTime&&!t.completed&&!t.recurrence)
     .sort((a,b)=>{
       const cmp=a.date.localeCompare(b.date)||toMin(a.startTime!)-toMin(b.startTime!);
-      return sortDir==='asc'?cmp:-cmp;
+      return sortDir!=='desc'?cmp:-cmp;
     });
 
   // Recurring tasks grouped (one row per series)
@@ -2118,7 +2118,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
     return sortDir==='asc'?cmp:-cmp;
   });
 
-  const shopPendingItems=[...shopItems.filter(i=>!i.checked)].sort((a,b)=>shopSortDir==='asc'?a.name.localeCompare(b.name,'ja'):b.name.localeCompare(a.name,'ja'));
+  const shopPendingItems=[...shopItems.filter(i=>!i.checked)].sort((a,b)=>shopSortDir!=='desc'?a.name.localeCompare(b.name,'ja'):b.name.localeCompare(a.name,'ja'));
   const shopDoneItems=shopItems.filter(i=>i.checked);
 
 
@@ -2150,9 +2150,9 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
                 あとでやる
                 {pendingCount>0&&<span className="ml-1.5 text-gray-400 font-normal">{pendingCount}</span>}
               </h3>
-              <button onClick={()=>setSortDir(d=>d==='asc'?'desc':'asc')}
+              <button onClick={()=>setSortDir(d=>d===null?'asc':d==='asc'?'desc':'asc')}
                 className="w-8 h-8 rounded-xl flex items-center justify-center text-sm bg-[#7FAE8C] text-white transition-colors">
-                ↑↓
+                {sortDir===null?'↑↓':sortDir==='asc'?'↑':'↓'}
               </button>
             </div>
 
@@ -2271,9 +2271,9 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
             <div className="px-4 pt-3 pb-2 shrink-0">
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-sm font-bold text-gray-900">買い物リスト</h3>
-                <button onClick={()=>setShopSortDir(d=>d==='asc'?'desc':'asc')}
+                <button onClick={()=>setShopSortDir(d=>d===null?'asc':d==='asc'?'desc':'asc')}
                   className="w-8 h-8 rounded-xl flex items-center justify-center text-sm bg-[#7FAE8C] text-white transition-colors">
-                  ↑↓
+                  {shopSortDir===null?'↑↓':shopSortDir==='asc'?'↑':'↓'}
                 </button>
               </div>
               <div className="flex gap-2">
