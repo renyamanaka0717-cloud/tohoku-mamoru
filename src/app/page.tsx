@@ -2062,8 +2062,9 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
   const tabs:('later'|'shop')[]=['later','shop'];
   const onSheetSwipe=(e:React.TouchEvent)=>{
     const dx=e.changedTouches[0].clientX-swX.current;
-    const dy=Math.abs(e.changedTouches[0].clientY-swY.current);
-    if(Math.abs(dx)>70&&Math.abs(dx)>dy){
+    const dy=e.changedTouches[0].clientY-swY.current;
+    if(dy>60&&Math.abs(dy)>Math.abs(dx)){onClose();return;}
+    if(Math.abs(dx)>70&&Math.abs(dx)>Math.abs(dy)){
       const idx=tabs.indexOf(activeTab);
       if(dx<0&&idx<1) onSwitchTab('shop');
       else if(dx>0&&idx>0) onSwitchTab('later');
@@ -2126,7 +2127,10 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
       <div className="bg-white w-full max-w-md mx-auto rounded-t-3xl max-h-[85vh] flex flex-col shadow-2xl" onClick={e=>e.stopPropagation()}
         onTouchStart={e=>{swX.current=e.touches[0].clientX;swY.current=e.touches[0].clientY;}}
         onTouchEnd={onSheetSwipe}>
-        <div className="flex justify-center pt-3 shrink-0"><div className="w-10 h-1 bg-gray-200 rounded-full"/></div>
+        <button onClick={onClose} className="flex flex-col items-center pt-3 pb-0.5 w-full shrink-0 active:opacity-60">
+          <div className="w-10 h-1 bg-gray-300 rounded-full"/>
+          <span className="text-gray-300 text-base leading-none mt-0.5">⌄</span>
+        </button>
         {/* Tab bar */}
         <div className="flex border-b border-gray-100 shrink-0 mt-1">
           {([['later','あとでやる',pendingCount],['shop','買い物リスト',shopPending]] as const).map(([t,label,cnt])=>(
