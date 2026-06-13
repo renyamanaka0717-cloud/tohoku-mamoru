@@ -2754,7 +2754,7 @@ export default function App() {
     const sleepM=toMin(settings.sleepTime);
     const shouldMove=(t:Task)=>
       !t.completed&&!t.isLater&&!!t.startTime&&!t.recurrence&&
-      (t.date<today||(t.date===today&&nowM>=sleepM));
+      t.date===today&&nowM>=sleepM;
     const toMove=tasks.filter(shouldMove);
     if(toMove.length===0) return;
     setTasks(prev=>prev.map(t=>{
