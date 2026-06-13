@@ -1460,15 +1460,18 @@ function TaskCard({task,onToggle,onEdit,globalTags,onSubtaskToggle}:{task:Task;o
               })}
             </div>
           )}
-          {(task.photoCount??0)>0&&<AppIcons.camera size={11} className="text-gray-400 mt-0.5"/>}
+          {(task.photoCount??0)>0&&subtasks.length===0&&<AppIcons.camera size={11} className="text-gray-400 mt-0.5"/>}
           {subtasks.length>0&&(
-            <button onClick={e=>{e.stopPropagation();setSubtaskOpen(o=>!o);}}
-              className="mt-2 inline-flex items-center gap-2 bg-gray-100 rounded-2xl px-3 active:bg-gray-200"
-              style={{height:'32px'}}>
-              <AppIcons.checkSquare size={13} className="text-gray-500"/>
-              <span className="text-xs font-semibold text-gray-600">{doneCount}/{subtasks.length}</span>
-              <span style={subtaskOpen?{transform:'rotate(90deg)',transition:'transform 0.15s',display:'inline-flex'}:{transition:'transform 0.15s',display:'inline-flex'}}><AppIcons.caretRight size={12} className="text-gray-400"/></span>
-            </button>
+            <div className="flex items-center gap-2 mt-2">
+              <button onClick={e=>{e.stopPropagation();setSubtaskOpen(o=>!o);}}
+                className="inline-flex items-center gap-2 bg-gray-100 rounded-2xl px-3 active:bg-gray-200"
+                style={{height:'32px'}}>
+                <AppIcons.checkSquare size={13} className="text-gray-500"/>
+                <span className="text-xs font-semibold text-gray-600">{doneCount}/{subtasks.length}</span>
+                <span style={subtaskOpen?{transform:'rotate(90deg)',transition:'transform 0.15s',display:'inline-flex'}:{transition:'transform 0.15s',display:'inline-flex'}}><AppIcons.caretRight size={12} className="text-gray-400"/></span>
+              </button>
+              {(task.photoCount??0)>0&&<AppIcons.camera size={13} className="text-gray-400"/>}
+            </div>
           )}
         </div>
         <button onClick={e=>{e.stopPropagation();onToggle();}}
