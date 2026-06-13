@@ -3046,8 +3046,7 @@ export default function App() {
             );
           })}
           <button onClick={addCustomTab}
-            className="shrink-0 w-8 h-7 flex items-center justify-center text-gray-400 text-xl font-light ml-1 mb-0.5"
-            style={{boxShadow:'0 4px 10px rgba(0,0,0,0.07)'}}>+</button>
+            className="shrink-0 w-8 h-7 flex items-center justify-center text-gray-400 text-xl font-light ml-1 mb-0.5">+</button>
           </div>
         </div>
         {editTabId&&(
