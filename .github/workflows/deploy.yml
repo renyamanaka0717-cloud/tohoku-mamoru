@@ -11,4 +11,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Trigger Vercel deploy hook
-        run: curl -s -X POST "${{ secrets.VERCEL_DEPLOY_HOOK }}"
+        run: |
+          RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" -X POST "${{ secrets.VERCEL_DEPLOY_HOOK }}")
+          echo "$RESPONSE"
+          HTTP_STATUS=$(echo "$RESPONSE" | grep "HTTP_STATUS:" | cut -d: -f2)
+          echo "HTTP Status: $HTTP_STATUS"
+          if [ "$HTTP_STATUS" != "200" ] && [ "$HTTP_STATUS" != "201" ]; then
+            echo "Deploy hook returned unexpected status: $HTTP_STATUS"
+            exit 1
+          fi
