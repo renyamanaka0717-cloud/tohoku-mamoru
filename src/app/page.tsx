@@ -1840,7 +1840,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
   return (
     <div ref={containerRef} className="relative" style={{height:`${totalHeight+32}px`,minHeight:'400px'}}>
       {/* vertical line */}
-      <div className="absolute bg-gray-200" style={{left:`${AXIS_X}px`,width:'1px',top:0,height:`${totalHeight}px`}}/>
+      <div className="absolute bg-gray-200" style={{left:`${AXIS_X}px`,width:'2px',top:0,height:`${totalHeight}px`,transform:'translateX(-0.5px)'}}/>
 
 
       {/* task start time labels — 1 per group, center-aligned, skip wake/sleep */}
