@@ -409,7 +409,9 @@ function SearchPage({tasks,onClose,onSelect}:{tasks:Task[];onClose:()=>void;onSe
     const q=query.trim().toLowerCase();
     if(!q) return [];
     return tasks.filter(t=>
-      t.name.toLowerCase().includes(q)||(t.memo??'').toLowerCase().includes(q)
+      t.name.toLowerCase().includes(q)||
+      (t.memo??'').toLowerCase().includes(q)||
+      (t.tags??[]).some(tag=>tag.toLowerCase().includes(q))
     ).sort((a,b)=>b.date.localeCompare(a.date)||(a.startTime??'').localeCompare(b.startTime??''));
   },[tasks,query]);
 
