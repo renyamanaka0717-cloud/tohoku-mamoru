@@ -1743,13 +1743,14 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
 
   for(const item of dayItems){
     if(item.type==='group'){
-      const top=Math.max(item.y,prevBottom+16);
+      const top=Math.max(item.y,prevBottom);
       groupLayout.push({g:item.g,top});
       prevBottom=top+item.g.h;
     } else {
       const freeY=Math.max(item.y,prevBottom)+16;
       const contentH=calcFreeContentH(laterPool);
-      const timeH=item.s.min*PX_PER_MIN*0.7;
+      const endMin=toMin(item.s.end);
+      const timeH=Math.max(calcDayY(endMin)-freeY,0);
       const finalH=Math.max(timeH,contentH,36);
       freePassItems.push({slot:item.s,freeY,finalH});
       prevBottom=freeY+finalH;
@@ -1880,7 +1881,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
         const startMin=toMin(slot.start);
         const endMin=toMin(slot.end);
         const slotMin=endMin-startMin;
-        const cardY=(m:number)=>slotMin>0?freeY+(m-startMin)/slotMin*finalH:freeY;
+        const cardY=(m:number)=>calcDayY(m);
         const labels:number[]=[];
         for(let m=Math.ceil(startMin/60)*60;m<=endMin;m+=60){
           if(usedMins.has(m)) continue;
