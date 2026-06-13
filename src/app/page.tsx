@@ -1764,7 +1764,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
       }
     }
     const snapped=Math.round(min/5)*5;
-    return fromMin(Math.max(wakeMin,Math.min(sleepMin,snapped)));
+    return fromMin(Math.max(0,Math.min(23*60+55,snapped)));
   };
 
   // 実レイアウト座標（min→スクリーンY）をドラッグオーバーレイ用に公開
@@ -2718,7 +2718,7 @@ export default function App() {
       const wakeMin=toMin(settings.wakeTime);
       const rawMin=wakeMin+(clientY+window.scrollY-headerBottom-16)/PX_PER_MIN;
       const snapped=Math.round(rawMin/5)*5;
-      return fromMin(Math.max(wakeMin,Math.min(toMin(settings.sleepTime),snapped)));
+      return fromMin(Math.max(0,Math.min(23*60+55,snapped)));
     };
     const TRASH_H=100;
     const isInBottomZone=(y:number)=>y>window.innerHeight-TRASH_H;
