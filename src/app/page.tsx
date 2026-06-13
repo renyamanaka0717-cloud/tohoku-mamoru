@@ -1490,9 +1490,9 @@ function TaskCard({task,onToggle,onEdit,globalTags,onSubtaskToggle,onCameraClick
               )}
               {(task.photoCount??0)>0&&(
                 <button onClick={e=>{e.stopPropagation();onCameraClick?.();}}
-                  className="flex items-center justify-center active:opacity-70"
-                  style={{width:'24px',height:'32px'}}>
-                  <AppIcons.camera size={13} className="text-gray-400"/>
+                  className="inline-flex items-center justify-center bg-gray-100 rounded-xl active:bg-gray-200"
+                  style={{width:'32px',height:'32px'}}>
+                  <AppIcons.camera size={14} className="text-gray-500"/>
                 </button>
               )}
             </div>
