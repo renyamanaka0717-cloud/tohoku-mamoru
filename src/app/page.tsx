@@ -3015,14 +3015,14 @@ export default function App() {
           </div>
         </div>
         {/* Category filter tabs */}
-        <div className="bg-[#7FAE8C] mt-1">
+        <div className="bg-white border-t border-gray-100 mt-1">
           <div className="flex items-end px-3 pt-2" style={{overflowX:'auto',WebkitOverflowScrolling:'touch'}}>
           <button onClick={()=>{setActiveCat(null);setEditTabId(null);}} className="shrink-0 relative"
             style={activeCategory===null?{
-              padding:'7px 18px 9px',background:'white',color:'#1F1F1F',fontWeight:700,fontSize:'0.875rem',
+              padding:'7px 18px 9px',background:'#7FAE8C',color:'white',fontWeight:700,fontSize:'0.875rem',
               border:'none',borderRadius:'14px 14px 0 0',marginBottom:'-2px',zIndex:10,
             }:{
-              padding:'5px 18px',background:'rgba(0,0,0,0.12)',color:'rgba(255,255,255,0.88)',fontWeight:600,fontSize:'0.875rem',
+              padding:'5px 18px',background:'#F3F4F6',color:'#6B7280',fontWeight:600,fontSize:'0.875rem',
               border:'none',borderRadius:'14px 14px 0 0',marginBottom:'2px',
             }}>すべて</button>
           {customTabs.map(tab=>{
@@ -3033,16 +3033,16 @@ export default function App() {
                 else{setActiveCat(tab.id);setEditTabId(null);}
               }} className="shrink-0 relative"
                 style={active?{
-                  padding:'7px 18px 9px',background:'white',color:'#1F1F1F',fontWeight:700,fontSize:'0.875rem',
+                  padding:'7px 18px 9px',background:'#7FAE8C',color:'white',fontWeight:700,fontSize:'0.875rem',
                   border:'none',borderRadius:'14px 14px 0 0',marginBottom:'-2px',zIndex:10,
                 }:{
-                  padding:'5px 18px',background:'rgba(0,0,0,0.12)',color:'rgba(255,255,255,0.88)',fontWeight:600,fontSize:'0.875rem',
+                  padding:'5px 18px',background:'#F3F4F6',color:'#6B7280',fontWeight:600,fontSize:'0.875rem',
                   border:'none',borderRadius:'14px 14px 0 0',marginBottom:'2px',
                 }}>{tab.name}</button>
             );
           })}
           <button onClick={addCustomTab}
-            className="shrink-0 w-8 h-7 flex items-center justify-center text-white/70 text-xl font-light ml-1 mb-0.5">+</button>
+            className="shrink-0 w-8 h-7 flex items-center justify-center text-gray-400 text-xl font-light ml-1 mb-0.5">+</button>
           </div>
         </div>
         {editTabId&&(
