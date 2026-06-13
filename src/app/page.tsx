@@ -3061,6 +3061,9 @@ export default function App() {
         )}
       </header>
 
+      {/* selected tab → timeline connection strip */}
+      <div style={{height:'5px',background:'rgba(127,174,140,0.22)'}}/>
+
       {/* ── Timeline ── */}
       <main className="px-3 py-4 pb-24"
         onTouchStart={e=>{mainSwX.current=e.touches[0].clientX;mainSwY.current=e.touches[0].clientY;}}
