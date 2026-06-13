@@ -2684,6 +2684,8 @@ export default function App() {
   const [dropTime,setDropTime]   = useState<string|null>(null);
   const mainSwX = useRef(0);
   const mainSwY = useRef(0);
+  const weekSwX = useRef(0);
+  const weekSwY = useRef(0);
   const yToTimeRef = useRef<((clientY:number)=>string)|null>(null);
   const layoutYRef = useRef<((min:number)=>number)|null>(null);
   const [recConfirm,setRecConfirm] = useState<Task|null>(null);
@@ -3024,7 +3026,13 @@ export default function App() {
 
 
           {/* Week calendar */}
-          <div className="grid grid-cols-7 pt-2 pb-0.5 border-t border-gray-50">
+          <div className="grid grid-cols-7 pt-2 pb-0.5 border-t border-gray-50"
+            onTouchStart={e=>{weekSwX.current=e.touches[0].clientX;weekSwY.current=e.touches[0].clientY;}}
+            onTouchEnd={e=>{
+              const dx=e.changedTouches[0].clientX-weekSwX.current;
+              const dy=e.changedTouches[0].clientY-weekSwY.current;
+              if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)*1.5) setDate(shiftDate(date,dx<0?7:-7));
+            }}>
             {DAY_NAMES.map((name,i)=>{
               const d=weekDates[i];
               const isSel=d===date, isToday=d===today;
