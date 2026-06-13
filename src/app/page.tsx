@@ -2992,7 +2992,7 @@ export default function App() {
           </div>
 
           {/* Week calendar */}
-          <div className="grid grid-cols-7 pt-1 pb-0"
+          <div className="grid grid-cols-7 pt-1 pb-0.5"
             onTouchStart={e=>{weekSwX.current=e.touches[0].clientX;weekSwY.current=e.touches[0].clientY;}}
             onTouchEnd={e=>{
               const dx=e.changedTouches[0].clientX-weekSwX.current;
@@ -3016,7 +3016,7 @@ export default function App() {
         </div>
         {/* Category filter tabs */}
         <div className="bg-white">
-          <div className="flex items-end px-3 pt-0" style={{overflowX:'auto',WebkitOverflowScrolling:'touch'}}>
+          <div className="flex items-end px-3 pt-1" style={{overflowX:'auto',WebkitOverflowScrolling:'touch'}}>
           <button onClick={()=>{setActiveCat(null);setEditTabId(null);}} className="shrink-0 relative"
             style={activeCategory===null?{
               padding:'7px 18px 9px',background:'#7FAE8C',color:'white',fontWeight:700,fontSize:'0.875rem',
