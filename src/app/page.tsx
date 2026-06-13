@@ -1432,10 +1432,11 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
 // ── TaskCard ──────────────────────────────────────────────────────────────────
 
 function TaskCard({task,onToggle,onEdit,globalTags,onSubtaskToggle}:{task:Task;onToggle:()=>void;onEdit:()=>void;globalTags:TagDef[];onSubtaskToggle?:(subtaskId:string)=>void;}) {
-  const [subtaskOpen,setSubtaskOpen] = useState(false);
+  const [openPanel,setOpenPanel] = useState<'subtask'|'memo'|null>(null);
   const endTime = (task.startTime&&(task.duration??0)>0) ? fromMin(toMin(task.startTime)+(task.duration??0)) : null;
   const subtasks = task.subtasks??[];
   const doneCount = subtasks.filter(s=>s.completed).length;
+  const hasIcons = subtasks.length>0||!!task.memo||(task.photoCount??0)>0;
   return (
     <div className={`bg-white rounded-2xl border border-gray-100 shadow-sm px-3 py-2.5 ${task.completed?'opacity-50':''}`}
       onClick={onEdit}>
@@ -1448,7 +1449,6 @@ function TaskCard({task,onToggle,onEdit,globalTags,onSubtaskToggle}:{task:Task;o
             </p>
           )}
           <p className={`text-sm font-semibold leading-snug ${task.completed?'line-through text-gray-400':'text-gray-900'}`}>{task.name}</p>
-          {task.memo&&<p className="text-xs text-gray-400 mt-0.5 truncate">{task.memo}</p>}
           {(task.tags??[]).length>0&&(
             <div className="flex flex-wrap gap-1 mt-1">
               {(task.tags??[]).map(tag=>{
@@ -1460,17 +1460,29 @@ function TaskCard({task,onToggle,onEdit,globalTags,onSubtaskToggle}:{task:Task;o
               })}
             </div>
           )}
-          {(task.photoCount??0)>0&&subtasks.length===0&&<AppIcons.camera size={11} className="text-gray-400 mt-0.5"/>}
-          {subtasks.length>0&&(
+          {hasIcons&&(
             <div className="flex items-center gap-2 mt-2">
-              <button onClick={e=>{e.stopPropagation();setSubtaskOpen(o=>!o);}}
-                className="inline-flex items-center gap-2 bg-gray-100 rounded-2xl px-3 active:bg-gray-200"
-                style={{height:'32px'}}>
-                <AppIcons.checkSquare size={13} className="text-gray-500"/>
-                <span className="text-xs font-semibold text-gray-600">{doneCount}/{subtasks.length}</span>
-                <span style={subtaskOpen?{transform:'rotate(90deg)',transition:'transform 0.15s',display:'inline-flex'}:{transition:'transform 0.15s',display:'inline-flex'}}><AppIcons.caretRight size={12} className="text-gray-400"/></span>
-              </button>
-              {(task.photoCount??0)>0&&<AppIcons.camera size={13} className="text-gray-400"/>}
+              {subtasks.length>0&&(
+                <button onClick={e=>{e.stopPropagation();setOpenPanel(p=>p==='subtask'?null:'subtask');}}
+                  className="inline-flex items-center gap-2 bg-gray-100 rounded-2xl px-3 active:bg-gray-200"
+                  style={{height:'32px'}}>
+                  <AppIcons.checkSquare size={13} className="text-gray-500"/>
+                  <span className="text-xs font-semibold text-gray-600">{doneCount}/{subtasks.length}</span>
+                  <span style={openPanel==='subtask'?{transform:'rotate(90deg)',transition:'transform 0.15s',display:'inline-flex'}:{transition:'transform 0.15s',display:'inline-flex'}}><AppIcons.caretRight size={12} className="text-gray-400"/></span>
+                </button>
+              )}
+              {task.memo&&(
+                <button onClick={e=>{e.stopPropagation();setOpenPanel(p=>p==='memo'?null:'memo');}}
+                  className={`inline-flex items-center justify-center bg-gray-100 rounded-xl active:bg-gray-200 ${openPanel==='memo'?'ring-1 ring-gray-300':''}`}
+                  style={{width:'32px',height:'32px'}}>
+                  <AppIcons.task size={14} className="text-gray-500"/>
+                </button>
+              )}
+              {(task.photoCount??0)>0&&(
+                <div className="flex items-center justify-center" style={{width:'24px',height:'32px'}}>
+                  <AppIcons.camera size={13} className="text-gray-400"/>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -1479,7 +1491,7 @@ function TaskCard({task,onToggle,onEdit,globalTags,onSubtaskToggle}:{task:Task;o
           {task.completed&&<span className="text-white text-[10px] font-bold leading-none">✓</span>}
         </button>
       </div>
-      {subtaskOpen&&subtasks.length>0&&(
+      {openPanel==='subtask'&&subtasks.length>0&&(
         <div className="mt-2 space-y-1.5 pb-0.5" onClick={e=>e.stopPropagation()}>
           {subtasks.map(st=>(
             <div key={st.id} className="flex items-center gap-2">
@@ -1490,6 +1502,11 @@ function TaskCard({task,onToggle,onEdit,globalTags,onSubtaskToggle}:{task:Task;o
               <span className={`text-xs ${st.completed?'line-through text-gray-400':'text-gray-700'}`}>{st.name}</span>
             </div>
           ))}
+        </div>
+      )}
+      {openPanel==='memo'&&task.memo&&(
+        <div className="mt-2 pb-0.5 text-xs text-gray-600 leading-relaxed whitespace-pre-wrap" onClick={e=>e.stopPropagation()}>
+          {task.memo}
         </div>
       )}
     </div>
