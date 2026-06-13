@@ -2982,7 +2982,7 @@ export default function App() {
       <header className="sticky top-0 z-30 bg-white">
         <div className="px-4 pt-1 pb-0">
           {/* Date + nav */}
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between mb-1">
             <span className="text-xl font-bold text-gray-900">{year}年{month}月{day}日</span>
             <div className="flex items-center gap-1">
               <button onClick={()=>setCalOp(true)} className="w-8 h-8 flex items-center justify-center text-gray-400"><AppIcons.calendar size={20}/></button>
@@ -2992,7 +2992,7 @@ export default function App() {
           </div>
 
           {/* Week calendar */}
-          <div className="grid grid-cols-7 pt-2 pb-0.5"
+          <div className="grid grid-cols-7 pt-1 pb-0.5"
             onTouchStart={e=>{weekSwX.current=e.touches[0].clientX;weekSwY.current=e.touches[0].clientY;}}
             onTouchEnd={e=>{
               const dx=e.changedTouches[0].clientX-weekSwX.current;
@@ -3015,7 +3015,7 @@ export default function App() {
           </div>
         </div>
         {/* Category filter tabs */}
-        <div className="bg-white mt-1">
+        <div className="bg-white">
           <div className="flex items-end px-3 pt-2" style={{overflowX:'auto',WebkitOverflowScrolling:'touch'}}>
           <button onClick={()=>{setActiveCat(null);setEditTabId(null);}} className="shrink-0 relative"
             style={activeCategory===null?{
