@@ -2056,6 +2056,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
 }) {
   const [shopInput,setShopInput] = useState('');
   const [sortDir,setSortDir]     = useState<'asc'|'desc'>('asc');
+  const [shopSortDir,setShopSortDir] = useState<'asc'|'desc'>('asc');
   const [pressingId,setPressingId]= useState<string|null>(null);
   const lpTimer = useRef<ReturnType<typeof setTimeout>|null>(null);
   const swX=useRef(0), swY=useRef(0);
@@ -2117,7 +2118,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
     return sortDir==='asc'?cmp:-cmp;
   });
 
-  const shopPendingItems=shopItems.filter(i=>!i.checked);
+  const shopPendingItems=[...shopItems.filter(i=>!i.checked)].sort((a,b)=>shopSortDir==='asc'?a.name.localeCompare(b.name,'ja'):b.name.localeCompare(a.name,'ja'));
   const shopDoneItems=shopItems.filter(i=>i.checked);
 
 
@@ -2151,7 +2152,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
               </h3>
               <button onClick={()=>setSortDir(d=>d==='asc'?'desc':'asc')}
                 className="w-8 h-8 rounded-xl flex items-center justify-center text-sm bg-[#7FAE8C] text-white transition-colors">
-                {sortDir==='asc'?'↓':'↑'}
+                ↑↓
               </button>
             </div>
 
@@ -2268,6 +2269,13 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
         {/* ── 買い物 tab ── */}
           <div className={`flex flex-col overflow-hidden ${activeTab==='shop'?'':'invisible pointer-events-none'}`} style={{gridArea:'1/1'}}>
             <div className="px-4 pt-3 pb-2 shrink-0">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-bold text-gray-900">買い物リスト</h3>
+                <button onClick={()=>setShopSortDir(d=>d==='asc'?'desc':'asc')}
+                  className="w-8 h-8 rounded-xl flex items-center justify-center text-sm bg-[#7FAE8C] text-white transition-colors">
+                  ↑↓
+                </button>
+              </div>
               <div className="flex gap-2">
                 <input type="text" value={shopInput} onChange={e=>setShopInput(e.target.value)}
                   onKeyDown={e=>e.key==='Enter'&&addShop()}
