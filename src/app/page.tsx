@@ -2176,8 +2176,8 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
                         <LaterIc size={14} className={t.color?'text-gray-600':'text-gray-400'}/>
                       </div>
                       <div className="flex-1 min-w-0" onClick={()=>onEdit(t)}>
-                        <p className="text-sm font-semibold text-gray-900">{t.name}</p>
                         {(t.duration??0)>0&&<p className="text-xs text-gray-400">{durLabel(t.duration??0)}</p>}
+                        <p className="text-sm font-semibold text-gray-900">{t.name}</p>
                       </div>
                       {(t.postponedCount??0)>0&&(
                         <span className="flex items-center gap-0.5 text-xs text-gray-400 font-semibold shrink-0"><AppIcons.postponed size={11}/>{t.postponedCount}</span>
@@ -2205,8 +2205,8 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
                         <SchedIc size={14} className={t.color?'text-gray-600':'text-gray-400'}/>
                       </div>
                       <div className="flex-1 min-w-0" onClick={()=>onEdit(t)}>
-                        <p className="text-sm font-semibold text-gray-900">{t.name}</p>
                         <p className="text-xs text-gray-400">{t.date.slice(5).replace('-','/')} {t.startTime}</p>
+                        <p className="text-sm font-semibold text-gray-900">{t.name}</p>
                       </div>
                       <button onClick={()=>onToggle(t.id)} className="w-6 h-6 rounded-full border-2 border-gray-300 shrink-0"/>
                     </div>
@@ -2233,8 +2233,8 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
                         <RecIc size={14} className={t.color?'text-gray-600':'text-gray-400'}/>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-gray-900">{t.name}</p>
                         <p className="text-xs text-gray-400">{recLabel(t)}{t.startTime?` ${t.startTime}`:''}</p>
+                        <p className="text-sm font-semibold text-gray-900">{t.name}</p>
                       </div>
                     </div>
                   );})}
