@@ -2122,14 +2122,13 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
 
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex flex-col bg-black/20" onClick={onClose}>
       <div className="flex-1"/>
       <div className="bg-white w-full max-w-md mx-auto rounded-t-3xl max-h-[85vh] flex flex-col shadow-2xl" onClick={e=>e.stopPropagation()}
         onTouchStart={e=>{swX.current=e.touches[0].clientX;swY.current=e.touches[0].clientY;}}
         onTouchEnd={onSheetSwipe}>
-        <button onClick={onClose} className="flex flex-col items-center pt-3 pb-0.5 w-full shrink-0 active:opacity-60">
-          <div className="w-10 h-1 bg-gray-300 rounded-full"/>
-          <span className="text-gray-300 text-base leading-none mt-0.5">⌄</span>
+        <button onClick={onClose} className="flex items-center justify-center pt-3 pb-2 w-full shrink-0 active:opacity-60">
+          <div className="w-12 h-1.5 bg-gray-300 rounded-full"/>
         </button>
         {/* Tab bar */}
         <div className="flex border-b border-gray-100 shrink-0 mt-1">
