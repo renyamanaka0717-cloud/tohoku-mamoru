@@ -1775,7 +1775,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
   const totalHeight=Math.max(prevBottom,sleepCardTop+SLEEP_CARD_H+(hasHistoryCard?HISTORY_CARD_H+12:0))+32;
 
   // Piecewise linear time→Y mapping using card layout as anchor points
-  const rawAnchors:[number,number][]=[[wakeMin,wakeCardTop]];
+  const rawAnchors:[number,number][]=[[wakeMin,wakeCardTop+WAKE_CARD_H]];
   for(const {g,top} of groupLayout){
     const sm=toMin(g.startTime);
     const maxDur=Math.max(...g.tasks.map(t=>t.duration??0));
