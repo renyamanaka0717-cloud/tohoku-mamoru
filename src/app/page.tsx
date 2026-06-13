@@ -2004,14 +2004,14 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
           </div>,
           <div key={g.startTime} className="absolute z-10"
             style={{top:`${top}px`,left:`${CARD_LEFT}px`,right:'0px'}}>
-            <div style={{display:'flex',flexDirection:'column',gap:'10px'}}>
-              {g.tasks.map(task=>{
+            <div style={{display:'flex',flexDirection:'column'}}>
+              {g.tasks.map((task,idx)=>{
                 const isDragging=dragTaskId===task.id;
                 const isPressing=pressingId===task.id;
                 return (
                   <div key={task.id}
                     className={`select-none transition-transform${isPressing?' scale-95':''}`}
-                    style={{height:`${MIN_CARD_H}px`,opacity:isDragging?0.25:1,pointerEvents:isDragging?'none':'auto'}}
+                    style={{height:`${MIN_CARD_H}px`,marginTop:idx>0?'10px':0,opacity:isDragging?0.25:1,pointerEvents:isDragging?'none':'auto'}}
                     onTouchStart={e=>startLP(task,e)}
                     onTouchEnd={cancelLP}
                     onTouchMove={cancelLP}>
