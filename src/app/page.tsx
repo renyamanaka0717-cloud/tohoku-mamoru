@@ -428,7 +428,7 @@ function SearchPage({tasks,onClose,onSelect}:{tasks:Task[];onClose:()=>void;onSe
         <div className="flex-1 flex items-center gap-2 bg-gray-100 rounded-xl px-3 py-2.5">
           <AppIcons.search size={16} className="text-gray-400 shrink-0"/>
           <input ref={inputRef} type="text" value={query} onChange={e=>setQuery(e.target.value)}
-            placeholder="タスクを検索..."
+            placeholder="タスク・メモ・タブを検索..."
             className="flex-1 text-sm bg-transparent outline-none text-gray-900 placeholder-gray-400"/>
           {query&&<button onClick={()=>setQuery('')} className="text-gray-400 text-lg leading-none">×</button>}
         </div>
@@ -437,7 +437,7 @@ function SearchPage({tasks,onClose,onSelect}:{tasks:Task[];onClose:()=>void;onSe
       {/* Results */}
       <div className="flex-1 overflow-y-auto">
         {!query?(
-          <div className="py-20 text-center"><AppIcons.search size={40} className="mx-auto mb-2 text-gray-300"/><p className="text-sm text-gray-400">タスク名・メモで検索</p></div>
+          <div className="py-20 text-center"><AppIcons.search size={40} className="mx-auto mb-2 text-gray-300"/><p className="text-sm text-gray-400">タスク名・メモ・タブで検索</p></div>
         ):results.length===0?(
           <div className="py-20 text-center"><AppIcons.smileySad className="mx-auto mb-2 text-gray-300"/><p className="text-sm text-gray-400">「{query}」は見つかりませんでした</p></div>
         ):(
