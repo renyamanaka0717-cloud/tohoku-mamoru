@@ -1689,7 +1689,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
       const rows=Math.ceil(tasks.length/COLS);
       const h=tasks.length===1
         ?Math.max(measuredH[startTime]??MIN_CARD_H,(tasks[0].duration??0)*PX_PER_MIN)
-        :rows*MIN_CARD_H+(rows-1)*ROW_GAP;
+        :tasks.length*MIN_CARD_H+(tasks.length-1)*10;
       return {startTime,tasks,rows,h};
     });
 
@@ -1993,7 +1993,6 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
             </div>,
           ];
         }
-        const cols=Math.min(g.tasks.length,COLS);
         return [
           <div key={`cap-${g.startTime}`} className="absolute z-10 pointer-events-none"
             style={{top:`${top}px`,left:`${AXIS_X-28}px`,width:'56px',height:`${Math.max(g.h,56)}px`}}>
@@ -2003,7 +2002,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
           </div>,
           <div key={g.startTime} className="absolute z-10"
             style={{top:`${top}px`,left:`${CARD_LEFT}px`,right:'0px'}}>
-            <div style={{display:'grid',gridTemplateColumns:`repeat(${cols},1fr)`,gap:`${ROW_GAP}px`}}>
+            <div style={{display:'flex',flexDirection:'column',gap:'10px'}}>
               {g.tasks.map(task=>{
                 const isDragging=dragTaskId===task.id;
                 const isPressing=pressingId===task.id;
