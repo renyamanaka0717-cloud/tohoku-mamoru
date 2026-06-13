@@ -1741,17 +1741,15 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
     ...freeSlots.map(s=>({type:'free' as const,s,y:calcDayY(toMin(s.start))})),
   ].sort((a,b)=>a.y-b.y||(a.type==='group'?-1:1));
 
-  for(let i=0;i<dayItems.length;i++){
-    const item=dayItems[i];
+  for(const item of dayItems){
     if(item.type==='group'){
-      const top=Math.max(item.y,prevBottom);
+      const top=Math.max(item.y,prevBottom+16);
       groupLayout.push({g:item.g,top});
       prevBottom=top+item.g.h;
     } else {
       const freeY=Math.max(item.y,prevBottom)+16;
       const contentH=calcFreeContentH(laterPool);
-      const nextY=dayItems[i+1]?.y??calcDayY(sleepMin);
-      const timeH=Math.max(nextY-freeY,0);
+      const timeH=item.s.min*PX_PER_MIN*0.7;
       const finalH=Math.max(timeH,contentH,36);
       freePassItems.push({slot:item.s,freeY,finalH});
       prevBottom=freeY+finalH;
@@ -2004,14 +2002,14 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
           </div>,
           <div key={g.startTime} className="absolute z-10"
             style={{top:`${top}px`,left:`${CARD_LEFT}px`,right:'0px'}}>
-            <div style={{display:'flex',flexDirection:'column'}}>
-              {g.tasks.map((task,idx)=>{
+            <div style={{display:'flex',flexDirection:'column',gap:'10px'}}>
+              {g.tasks.map(task=>{
                 const isDragging=dragTaskId===task.id;
                 const isPressing=pressingId===task.id;
                 return (
                   <div key={task.id}
                     className={`select-none transition-transform${isPressing?' scale-95':''}`}
-                    style={{height:`${MIN_CARD_H}px`,marginTop:idx>0?'10px':0,opacity:isDragging?0.25:1,pointerEvents:isDragging?'none':'auto'}}
+                    style={{height:`${MIN_CARD_H}px`,opacity:isDragging?0.25:1,pointerEvents:isDragging?'none':'auto'}}
                     onTouchStart={e=>startLP(task,e)}
                     onTouchEnd={cancelLP}
                     onTouchMove={cancelLP}>
