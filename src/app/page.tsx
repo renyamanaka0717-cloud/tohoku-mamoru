@@ -256,7 +256,7 @@ function MonthCalendar({selected,onSelect,onClose,tasks}:{selected:string;onSele
           </div>
           <div className="grid grid-cols-7 mb-1">
             {DAY_NAMES.map((n,i)=>(
-              <div key={i} className={`text-center text-xs font-semibold py-1 ${i===0?'text-red-400':i===6?'text-blue-400':'text-gray-400'}`}>{n}</div>
+              <div key={i} className={`text-center text-xs font-semibold py-1 ${i===0?'text-[#D97A7A]':i===6?'text-blue-400':'text-gray-400'}`}>{n}</div>
             ))}
           </div>
         </div>
@@ -271,7 +271,7 @@ function MonthCalendar({selected,onSelect,onClose,tasks}:{selected:string;onSele
                   onClick={()=>{if(d){onSelect(d);onClose();}}}
                   className="flex flex-col items-center px-0.5 py-0.5 rounded-xl active:bg-gray-50">
                   <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                    !d?'':isSel?'bg-gray-900 text-white':isToday?'bg-gray-100 font-bold text-gray-900':'text-gray-600'
+                    !d?'':isSel?'bg-[#7FAE8C] text-white':isToday?'bg-gray-100 font-bold text-gray-900':'text-gray-600'
                   }`}>
                     {d?new Date(d+'T12:00:00').getDate():''}
                   </span>
@@ -335,11 +335,11 @@ function CalendarPage({date,tasks,customTabs,onSelect,onClose}:{date:string;task
             className="w-9 h-9 flex items-center justify-center text-gray-500 bg-gray-100 rounded-xl"><AppIcons.caretRight/></button>
         </div>
         <button onClick={()=>{const d=new Date();setVm({year:d.getFullYear(),month:d.getMonth()});onSelect(today);}}
-          className="text-xs font-bold px-3 py-1.5 bg-gray-900 text-white rounded-full">今日</button>
+          className="text-xs font-bold px-3 py-1.5 bg-[#7FAE8C] text-white rounded-full">今日</button>
       </div>
 
       {/* Category filter - file tabs */}
-      <div className="bg-white" style={{boxShadow:'inset 0 -3px 0 0 #6b7280'}}>
+      <div className="bg-white" style={{boxShadow:'inset 0 -3px 0 0 #7FAE8C'}}>
         <div className="flex items-end px-3 pt-2" style={{overflowX:'auto',WebkitOverflowScrolling:'touch'}}>
           {([{key:null as string|null,label:'すべて'},...customTabs.map(t=>({key:t.id,label:t.name}))]).map(({key,label})=>{
             const active=catFilter===key;
@@ -347,8 +347,8 @@ function CalendarPage({date,tasks,customTabs,onSelect,onClose}:{date:string;task
               <button key={String(key)} onClick={()=>setCatF(key)}
                 className="shrink-0 relative"
                 style={active?{
-                  padding:'7px 18px',background:'white',color:'#111827',fontWeight:700,fontSize:'0.875rem',
-                  border:'2px solid #6b7280',borderBottom:'none',
+                  padding:'7px 18px',background:'white',color:'#1F1F1F',fontWeight:700,fontSize:'0.875rem',
+                  border:'2px solid #7FAE8C',borderBottom:'none',
                   borderRadius:'14px 14px 0 0',zIndex:10,
                 }:{
                   padding:'5px 18px',background:'#f3f4f6',color:'#9ca3af',fontWeight:600,fontSize:'0.875rem',
@@ -362,7 +362,7 @@ function CalendarPage({date,tasks,customTabs,onSelect,onClose}:{date:string;task
       {/* Day headers */}
       <div className="grid grid-cols-7 px-2 pt-3 pb-1">
         {DAY_NAMES.map((n,i)=>(
-          <div key={i} className={`text-center text-xs font-semibold ${i===0?'text-red-400':i===6?'text-blue-400':'text-gray-400'}`}>{n}</div>
+          <div key={i} className={`text-center text-xs font-semibold ${i===0?'text-[#D97A7A]':i===6?'text-blue-400':'text-gray-400'}`}>{n}</div>
         ))}
       </div>
 
@@ -376,7 +376,7 @@ function CalendarPage({date,tasks,customTabs,onSelect,onClose}:{date:string;task
               <button key={i} disabled={!d} onClick={()=>{if(d){onSelect(d);}}}
                 className="flex flex-col items-start py-1 px-0.5 rounded-2xl active:bg-gray-50" style={{minHeight:'100px'}}>
                 <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold mx-auto ${
-                  !d?'':isSel?'bg-gray-900 text-white':isToday?'bg-gray-100 text-gray-900':'text-gray-700'
+                  !d?'':isSel?'bg-[#7FAE8C] text-white':isToday?'bg-gray-100 text-gray-900':'text-gray-700'
                 }`}>
                   {d?new Date(d+'T12:00:00').getDate():''}
                 </span>
@@ -830,7 +830,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
     <div className="fixed inset-0 z-50 bg-black/60" onClick={handleClose}>
       <div className="absolute bottom-0 left-0 right-0 max-w-md mx-auto" onClick={e=>e.stopPropagation()}>
         {/* ── Dark header ── */}
-        <div className="bg-gray-900 rounded-t-3xl px-4 pt-4"
+        <div className="bg-[#7FAE8C] rounded-t-3xl px-4 pt-4"
           onTouchStart={e=>{modalSwX.current=e.touches[0].clientX;modalSwY.current=e.touches[0].clientY;}}
           onTouchEnd={onModalSwipe}>
           {/* Buttons row */}
@@ -841,7 +841,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                 <>
                   {saveStatus!=='idle'&&(
                     <span style={{transition:'opacity 0.3s',opacity:saveFading?0:1}}
-                      className={`text-xs ${saveStatus==='error'?'text-red-400':saveStatus==='saved'?'text-green-400':'text-gray-400'}`}>
+                      className={`text-xs ${saveStatus==='error'?'text-[#D97A7A]':saveStatus==='saved'?'text-green-400':'text-gray-400'}`}>
                       {saveStatus==='saving'?'保存中…':saveStatus==='saved'?'✓ 保存済み':'保存に失敗しました'}
                     </span>
                   )}
@@ -913,7 +913,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                 <div className="flex gap-2 overflow-x-auto pb-0.5" style={{scrollbarWidth:'none',WebkitOverflowScrolling:'touch'} as React.CSSProperties}>
                   {(['daily','weekly','monthly','yearly','custom'] as const).map((r,i)=>(
                     <button key={r} onClick={()=>setRecur(r)}
-                      className={`shrink-0 px-4 py-2 rounded-full text-sm font-semibold ${recur===r?'bg-gray-900 text-white':'bg-gray-100 text-gray-600'}`}>
+                      className={`shrink-0 px-4 py-2 rounded-full text-sm font-semibold ${recur===r?'bg-[#7FAE8C] text-white':'bg-gray-100 text-gray-600'}`}>
                       {['毎日','毎週','毎月','毎年','カスタム'][i]}
                     </button>
                   ))}
@@ -924,7 +924,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
               {recur==='custom'&&(
                 <>
                   {/* Summary */}
-                  <div className="mx-3 mt-3 bg-gray-900 rounded-2xl px-4 py-3">
+                  <div className="mx-3 mt-3 bg-[#7FAE8C] rounded-2xl px-4 py-3">
                     <p className="text-white text-sm font-bold">{summarizeCustomRec(customRec)}</p>
                   </div>
 
@@ -941,7 +941,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                     <div className="flex gap-2">
                       {(['hour','day','week','month','year'] as const).map((u,i)=>(
                         <button key={u} onClick={()=>setCR('frequency',u)}
-                          className={`flex-1 py-2.5 rounded-full text-sm font-semibold ${customRec.frequency===u?'bg-gray-900 text-white':'bg-gray-100 text-gray-600'}`}>
+                          className={`flex-1 py-2.5 rounded-full text-sm font-semibold ${customRec.frequency===u?'bg-[#7FAE8C] text-white':'bg-gray-100 text-gray-600'}`}>
                           {['時','日','週','月','年'][i]}
                         </button>
                       ))}
@@ -960,7 +960,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                               const wds=customRec.weekdays??[];
                               setCR('weekdays',wds.includes(i)?wds.filter(x=>x!==i):[...wds,i]);
                             }}
-                              className={`flex-1 h-10 rounded-full text-sm font-semibold ${(customRec.weekdays??[]).includes(i)?'bg-gray-900 text-white':'bg-gray-100 text-gray-600'}`}>
+                              className={`flex-1 h-10 rounded-full text-sm font-semibold ${(customRec.weekdays??[]).includes(i)?'bg-[#7FAE8C] text-white':'bg-gray-100 text-gray-600'}`}>
                               {n}
                             </button>
                           ))}
@@ -971,11 +971,11 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                         <>
                           <div className="flex gap-2 mb-4">
                             <button onClick={()=>setCR('monthlyType','date')}
-                              className={`flex-1 py-2 rounded-full text-sm font-semibold ${customRec.monthlyType!=='weekday'?'bg-gray-900 text-white':'bg-gray-100 text-gray-600'}`}>
+                              className={`flex-1 py-2 rounded-full text-sm font-semibold ${customRec.monthlyType!=='weekday'?'bg-[#7FAE8C] text-white':'bg-gray-100 text-gray-600'}`}>
                               日付で指定
                             </button>
                             <button onClick={()=>setCR('monthlyType','weekday')}
-                              className={`flex-1 py-2 rounded-full text-sm font-semibold ${customRec.monthlyType==='weekday'?'bg-gray-900 text-white':'bg-gray-100 text-gray-600'}`}>
+                              className={`flex-1 py-2 rounded-full text-sm font-semibold ${customRec.monthlyType==='weekday'?'bg-[#7FAE8C] text-white':'bg-gray-100 text-gray-600'}`}>
                               曜日で指定
                             </button>
                           </div>
@@ -983,7 +983,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                             <div className="flex gap-2 overflow-x-auto pb-0.5" style={{scrollbarWidth:'none'} as React.CSSProperties}>
                               {([1,5,10,15,20,25,'last' as const]).map(d=>(
                                 <button key={String(d)} onClick={()=>setCR('dayOfMonth',d)}
-                                  className={`shrink-0 px-3 py-2 rounded-full text-sm font-semibold ${customRec.dayOfMonth===d?'bg-gray-900 text-white':'bg-gray-100 text-gray-600'}`}>
+                                  className={`shrink-0 px-3 py-2 rounded-full text-sm font-semibold ${customRec.dayOfMonth===d?'bg-[#7FAE8C] text-white':'bg-gray-100 text-gray-600'}`}>
                                   {d==='last'?'月末':`${d}日`}
                                 </button>
                               ))}
@@ -993,7 +993,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                               <div className="flex gap-1.5 overflow-x-auto pb-0.5" style={{scrollbarWidth:'none'} as React.CSSProperties}>
                                 {([1,2,3,4,'last' as const]).map(wn=>(
                                   <button key={String(wn)} onClick={()=>setCR('weekNumber',wn)}
-                                    className={`shrink-0 flex-1 py-2 rounded-full text-sm font-semibold min-w-[3rem] ${customRec.weekNumber===wn?'bg-gray-900 text-white':'bg-gray-100 text-gray-600'}`}>
+                                    className={`shrink-0 flex-1 py-2 rounded-full text-sm font-semibold min-w-[3rem] ${customRec.weekNumber===wn?'bg-[#7FAE8C] text-white':'bg-gray-100 text-gray-600'}`}>
                                     {wn==='last'?'最終':`第${wn}`}
                                   </button>
                                 ))}
@@ -1001,7 +1001,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                               <div className="flex gap-1.5">
                                 {DAY_NAMES.map((n,i)=>(
                                   <button key={i} onClick={()=>setCR('weekday',i)}
-                                    className={`flex-1 h-9 rounded-full text-sm font-semibold ${customRec.weekday===i?'bg-gray-900 text-white':'bg-gray-100 text-gray-600'}`}>
+                                    className={`flex-1 h-9 rounded-full text-sm font-semibold ${customRec.weekday===i?'bg-[#7FAE8C] text-white':'bg-gray-100 text-gray-600'}`}>
                                     {n}
                                   </button>
                                 ))}
@@ -1018,7 +1018,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                             <div className="flex gap-1.5 overflow-x-auto pb-0.5" style={{scrollbarWidth:'none'} as React.CSSProperties}>
                               {Array.from({length:12},(_,i)=>(
                                 <button key={i} onClick={()=>setCR('yearMonth',i+1)}
-                                  className={`shrink-0 w-12 h-10 rounded-full text-sm font-semibold ${customRec.yearMonth===i+1?'bg-gray-900 text-white':'bg-gray-100 text-gray-600'}`}>
+                                  className={`shrink-0 w-12 h-10 rounded-full text-sm font-semibold ${customRec.yearMonth===i+1?'bg-[#7FAE8C] text-white':'bg-gray-100 text-gray-600'}`}>
                                   {i+1}月
                                 </button>
                               ))}
@@ -1029,7 +1029,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                             <div className="flex gap-1.5 overflow-x-auto pb-0.5" style={{scrollbarWidth:'none'} as React.CSSProperties}>
                               {[1,5,10,15,20,25,0].map(d=>(
                                 <button key={d} onClick={()=>setCR('yearDay',d)}
-                                  className={`shrink-0 px-3 py-2 rounded-full text-sm font-semibold ${customRec.yearDay===d?'bg-gray-900 text-white':'bg-gray-100 text-gray-600'}`}>
+                                  className={`shrink-0 px-3 py-2 rounded-full text-sm font-semibold ${customRec.yearDay===d?'bg-[#7FAE8C] text-white':'bg-gray-100 text-gray-600'}`}>
                                   {d===0?'末':`${d}日`}
                                 </button>
                               ))}
@@ -1046,7 +1046,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                     <div className="flex gap-2 mb-4">
                       {([['never','終了なし'],['date','指定日まで'],['count','回数で終了']] as const).map(([t,l])=>(
                         <button key={t} onClick={()=>setCR('endType',t)}
-                          className={`flex-1 py-2 rounded-full text-xs font-semibold ${customRec.endType===t?'bg-gray-900 text-white':'bg-gray-100 text-gray-600'}`}>
+                          className={`flex-1 py-2 rounded-full text-xs font-semibold ${customRec.endType===t?'bg-[#7FAE8C] text-white':'bg-gray-100 text-gray-600'}`}>
                           {l}
                         </button>
                       ))}
@@ -1093,7 +1093,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                     </div>
                     <div className="grid grid-cols-7 mb-1">
                       {DAY_NAMES.map((n,i)=>(
-                        <div key={i} className={`text-center text-[11px] font-semibold py-1 ${i===0?'text-red-400':i===6?'text-blue-400':'text-gray-400'}`}>{n}</div>
+                        <div key={i} className={`text-center text-[11px] font-semibold py-1 ${i===0?'text-[#D97A7A]':i===6?'text-blue-400':'text-gray-400'}`}>{n}</div>
                       ))}
                     </div>
                     <div className="grid grid-cols-7">
@@ -1101,7 +1101,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                         const isSel=d===taskDate, isToday=d===todayStr();
                         return (
                           <button key={i} disabled={!d} onClick={()=>{if(d){setTaskDate(d);setDateOpen(false);}}} className="flex items-center justify-center py-1">
-                            <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${!d?'':isSel?'bg-gray-900 text-white':isToday?'bg-gray-100 font-bold text-gray-900':'text-gray-600'}`}>
+                            <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${!d?'':isSel?'bg-[#7FAE8C] text-white':isToday?'bg-gray-100 font-bold text-gray-900':'text-gray-600'}`}>
                               {d?new Date(d+'T12:00:00').getDate():''}
                             </span>
                           </button>
@@ -1139,12 +1139,12 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                 <div className="flex gap-2 overflow-x-auto pb-0.5" style={{scrollbarWidth:'none',WebkitOverflowScrolling:'touch'} as React.CSSProperties}>
                   {DUR_OPTS.map(({v,l})=>(
                     <button key={v} onClick={()=>{setDur(v);setCDurOpen(false);}}
-                      className={`shrink-0 px-4 py-2 rounded-full text-sm font-semibold ${duration===v&&!custDurOpen?'bg-gray-900 text-white':'bg-gray-100 text-gray-600'}`}>
+                      className={`shrink-0 px-4 py-2 rounded-full text-sm font-semibold ${duration===v&&!custDurOpen?'bg-[#7FAE8C] text-white':'bg-gray-100 text-gray-600'}`}>
                       {l}
                     </button>
                   ))}
                   <button onClick={()=>setCDurOpen(o=>!o)}
-                    className={`shrink-0 px-4 py-2 rounded-full text-sm font-semibold ${custDurOpen?'bg-gray-900 text-white':'bg-gray-100 text-gray-600'}`}>
+                    className={`shrink-0 px-4 py-2 rounded-full text-sm font-semibold ${custDurOpen?'bg-[#7FAE8C] text-white':'bg-gray-100 text-gray-600'}`}>
                     カスタム
                   </button>
                 </div>
@@ -1155,7 +1155,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                       className="w-20 border border-gray-200 rounded-xl px-3 py-2 text-sm text-center outline-none"/>
                     <span className="text-sm text-gray-600">分</span>
                     <button onClick={()=>{setDur(custDurMin);setCDurOpen(false);}}
-                      className="px-4 py-2 bg-gray-900 text-white rounded-xl text-sm font-semibold">設定</button>
+                      className="px-4 py-2 bg-[#7FAE8C] text-white rounded-xl text-sm font-semibold">設定</button>
                   </div>
                 )}
               </div>
@@ -1184,12 +1184,12 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                     <div className="flex gap-2 overflow-x-auto pb-0.5 mb-2" style={{scrollbarWidth:'none',WebkitOverflowScrolling:'touch'} as React.CSSProperties}>
                       {NOTIF_OPTS.map(({v,l})=>(
                         <button key={v} onClick={()=>toggleNotif(v)}
-                          className={`shrink-0 px-3 py-1.5 rounded-full text-sm font-semibold ${notifications.includes(v)?'bg-gray-900 text-white':'bg-gray-100 text-gray-600'}`}>
+                          className={`shrink-0 px-3 py-1.5 rounded-full text-sm font-semibold ${notifications.includes(v)?'bg-[#7FAE8C] text-white':'bg-gray-100 text-gray-600'}`}>
                           {l}
                         </button>
                       ))}
                       <button onClick={()=>setCNOpen(o=>!o)}
-                        className={`shrink-0 px-3 py-1.5 rounded-full text-sm font-semibold ${custNotifOpen?'bg-gray-900 text-white':'bg-gray-100 text-gray-600'}`}>
+                        className={`shrink-0 px-3 py-1.5 rounded-full text-sm font-semibold ${custNotifOpen?'bg-[#7FAE8C] text-white':'bg-gray-100 text-gray-600'}`}>
                         カスタム
                       </button>
                     </div>
@@ -1199,13 +1199,13 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                           onChange={e=>setCNMin(Math.max(1,Number(e.target.value)))}
                           className="w-20 border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none text-center"/>
                         <span className="text-sm text-gray-600">分前</span>
-                        <button onClick={addCustNotif} className="px-3 py-2 bg-gray-900 text-white rounded-xl text-sm font-semibold">追加</button>
+                        <button onClick={addCustNotif} className="px-3 py-2 bg-[#7FAE8C] text-white rounded-xl text-sm font-semibold">追加</button>
                       </div>
                     )}
                     {notifications.filter(v=>!NOTIF_OPTS.find(o=>o.v===v)).length>0&&(
                       <div className="flex flex-wrap gap-2 mb-2">
                         {notifications.filter(v=>!NOTIF_OPTS.find(o=>o.v===v)).map(v=>(
-                          <span key={v} className="inline-flex items-center gap-1 bg-gray-900 text-white text-xs font-semibold px-2.5 py-1.5 rounded-full">
+                          <span key={v} className="inline-flex items-center gap-1 bg-[#7FAE8C] text-white text-xs font-semibold px-2.5 py-1.5 rounded-full">
                             {v}分前<button onClick={()=>setNotifs(prev=>prev.filter(x=>x!==v))} className="opacity-70 leading-none ml-0.5">×</button>
                           </span>
                         ))}
@@ -1217,7 +1217,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                         <p className="text-xs text-gray-400">タスクが未完了の場合に通知</p>
                       </div>
                       <button onClick={()=>setIncRem(r=>!r)}
-                        className={`w-12 h-6 rounded-full transition-colors relative shrink-0 ${incompleteRem?'bg-gray-900':'bg-gray-200'}`}>
+                        className={`w-12 h-6 rounded-full transition-colors relative shrink-0 ${incompleteRem?'bg-[#7FAE8C]':'bg-gray-200'}`}>
                         <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${incompleteRem?'left-[22px]':'left-0.5'}`}/>
                       </button>
                     </div>
@@ -1256,7 +1256,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                       return (
                         <button key={td.name} onClick={()=>toggleTag(td.name)}
                           style={{backgroundColor:td.color,color:getTagTextColor(td.color)}}
-                          className={`px-3 py-1 rounded-full text-sm font-medium transition-all ${active?'ring-2 ring-gray-800 ring-offset-1':''}`}>
+                          className={`px-3 py-1 rounded-full text-sm font-medium transition-all ${active?'ring-2 ring-[#7FAE8C] ring-offset-1':''}`}>
                           {td.name}
                         </button>
                       );
@@ -1278,7 +1278,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                 <button
                   disabled={!subtaskInput.trim()}
                   onClick={()=>{if(subtaskInput.trim()){setSubtasks(prev=>[...prev,{id:Date.now().toString(),name:subtaskInput.trim(),completed:false}]);setSubtaskInput('');}}}
-                  className={`text-sm font-semibold shrink-0 px-3 py-1.5 rounded-lg transition-colors ${subtaskInput.trim()?'bg-gray-700 text-white active:bg-gray-900':'bg-gray-100 text-gray-300'}`}>
+                  className={`text-sm font-semibold shrink-0 px-3 py-1.5 rounded-lg transition-colors ${subtaskInput.trim()?'bg-gray-700 text-white active:bg-[#6a9677]':'bg-gray-100 text-gray-300'}`}>
                   追加
                 </button>
               </div>
@@ -1287,7 +1287,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                   {subtasks.map((st,i)=>(
                     <div key={st.id} className="flex items-center gap-2 pl-7">
                       <button onClick={()=>setSubtasks(prev=>prev.map((s,j)=>j===i?{...s,completed:!s.completed}:s))}
-                        className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 ${st.completed?'bg-gray-900 border-gray-900':'border-gray-300'}`}>
+                        className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 ${st.completed?'bg-[#7FAE8C] border-[#7FAE8C]':'border-gray-300'}`}>
                         {st.completed&&<AppIcons.checkSquare size={9} className="text-white"/>}
                       </button>
                       <span className={`flex-1 text-sm ${st.completed?'line-through text-gray-400':'text-gray-700'}`}>{st.name}</span>
@@ -1328,7 +1328,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                     <img src={src} alt="" className="w-20 h-20 rounded-xl object-cover cursor-pointer"
                       onClick={()=>setPhotoViewIdx(i)}/>
                     <button onClick={e=>{e.stopPropagation();removePhoto(i);}}
-                      className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-gray-900 rounded-full text-white text-[10px] flex items-center justify-center leading-none">×</button>
+                      className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-[#D97A7A] rounded-full text-white text-[10px] flex items-center justify-center leading-none">×</button>
                   </div>
                 ))}
               </div>
@@ -1343,7 +1343,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
           {/* Delete */}
           {task&&onDelete&&(
             <button onClick={()=>{onDelete();onClose();}}
-              className="w-full mt-3 mb-2 py-3 text-sm text-red-400 font-medium">
+              className="w-full mt-3 mb-2 py-3 text-sm text-[#D97A7A] font-medium">
               削除する
             </button>
           )}
@@ -1381,7 +1381,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                       const sel=icon===key;
                       return (
                         <button key={key} onClick={()=>pickIcon(key)}
-                          className={`flex flex-col items-center gap-1.5 py-3 rounded-2xl ${sel?'bg-gray-900':'bg-gray-50'}`}>
+                          className={`flex flex-col items-center gap-1.5 py-3 rounded-2xl ${sel?'bg-[#7FAE8C]':'bg-gray-50'}`}>
                           <Ic size={22} className={sel?'text-white':'text-gray-700'}/>
                           <span className={`text-[10px] leading-none ${sel?'text-gray-100':'text-gray-500'}`}>{opt.label}</span>
                         </button>
@@ -1400,7 +1400,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                       const sel=icon===opt.key;
                       return (
                         <button key={opt.key} onClick={()=>pickIcon(opt.key)}
-                          className={`flex flex-col items-center gap-1.5 py-3 rounded-2xl ${sel?'bg-gray-900':'bg-gray-50'}`}>
+                          className={`flex flex-col items-center gap-1.5 py-3 rounded-2xl ${sel?'bg-[#7FAE8C]':'bg-gray-50'}`}>
                           <Ic size={22} className={sel?'text-white':'text-gray-700'}/>
                           <span className={`text-[10px] leading-none ${sel?'text-gray-100':'text-gray-500'}`}>{opt.label}</span>
                         </button>
@@ -1422,7 +1422,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
               <button onClick={()=>setShowDiscard(false)}
                 className="flex-1 py-2.5 bg-gray-100 text-gray-900 rounded-xl text-sm font-semibold">キャンセル</button>
               <button onClick={()=>{setShowDiscard(false);onClose();}}
-                className="flex-1 py-2.5 bg-red-500 text-white rounded-xl text-sm font-semibold">破棄する</button>
+                className="flex-1 py-2.5 bg-[#D97A7A] text-white rounded-xl text-sm font-semibold">破棄する</button>
             </div>
           </div>
         </div>
@@ -1498,7 +1498,7 @@ function TaskCard({task,onToggle,onEdit,globalTags,onSubtaskToggle,onCameraClick
           )}
         </div>
         <button onClick={e=>{e.stopPropagation();onToggle();}}
-          className={`w-6 h-6 rounded-full border-2 shrink-0 flex items-center justify-center transition-colors ${task.completed?'border-gray-900 bg-gray-900':'border-gray-300'}`}>
+          className={`w-6 h-6 rounded-full border-2 shrink-0 flex items-center justify-center transition-colors ${task.completed?'border-[#7FAE8C] bg-[#7FAE8C]':'border-gray-300'}`}>
           {task.completed&&<span className="text-white text-[10px] font-bold leading-none">✓</span>}
         </button>
       </div>
@@ -1507,7 +1507,7 @@ function TaskCard({task,onToggle,onEdit,globalTags,onSubtaskToggle,onCameraClick
           {subtasks.map(st=>(
             <div key={st.id} className="flex items-center gap-2">
               <button onClick={e=>{e.stopPropagation();onSubtaskToggle?.(st.id);}}
-                className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 ${st.completed?'bg-gray-900 border-gray-900':'border-gray-300'}`}>
+                className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 ${st.completed?'bg-[#7FAE8C] border-[#7FAE8C]':'border-gray-300'}`}>
                 {st.completed&&<span className="text-white text-[8px] font-bold leading-none">✓</span>}
               </button>
               <span className={`text-xs ${st.completed?'line-through text-gray-400':'text-gray-700'}`}>{st.name}</span>
@@ -1587,7 +1587,7 @@ function CompactTaskCard({task,onToggle,onEdit}:{task:Task;onToggle:()=>void;onE
       onClick={onEdit}>
       <div className="flex items-center justify-between gap-0.5">
         <button onClick={e=>{e.stopPropagation();onToggle();}}
-          className={`w-5 h-5 rounded-full border-2 shrink-0 flex items-center justify-center transition-colors${task.completed?' border-gray-900 bg-gray-900':' border-gray-300'}`}>
+          className={`w-5 h-5 rounded-full border-2 shrink-0 flex items-center justify-center transition-colors${task.completed?' border-[#7FAE8C] bg-[#7FAE8C]':' border-gray-300'}`}>
           {task.completed&&<span className="text-white text-[8px] font-bold leading-none">✓</span>}
         </button>
       </div>
@@ -1900,7 +1900,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
       {/* current time */}
       {date===todayStr()&&nowMin>=wakeMin&&nowMin<=sleepMin&&(
         <div className="absolute flex items-center z-20 gap-1.5" style={{top:`${layoutCalcY(nowMin)-12}px`,left:0,right:0}}>
-          <div className="bg-gray-900 text-white text-xs font-bold px-2 py-1 rounded-full whitespace-nowrap">{now}</div>
+          <div className="bg-[#7FAE8C] text-white text-xs font-bold px-2 py-1 rounded-full whitespace-nowrap">{now}</div>
           <button onClick={()=>onAddAtTime(now)} className="w-5 h-5 bg-gray-200 rounded-full flex items-center justify-center text-xs font-bold text-gray-600 shrink-0">+</button>
           <div className="flex-1 h-px bg-gray-300"/>
         </div>
@@ -2132,9 +2132,9 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
         <div className="flex border-b border-gray-100 shrink-0 mt-1">
           {([['later','あとでやる',pendingCount],['shop','買い物リスト',shopPending]] as const).map(([t,label,cnt])=>(
             <button key={t} onClick={()=>onSwitchTab(t)}
-              className={`flex-1 py-3 text-sm font-semibold flex items-center justify-center gap-1.5 border-b-2 transition-colors ${activeTab===t?'border-gray-900 text-gray-900':'border-transparent text-gray-400'}`}>
+              className={`flex-1 py-3 text-sm font-semibold flex items-center justify-center gap-1.5 border-b-2 transition-colors ${activeTab===t?'border-[#7FAE8C] text-gray-900':'border-transparent text-gray-400'}`}>
               {label}
-              {cnt>0&&<span className="text-[11px] bg-gray-900 text-white min-w-[18px] h-[18px] rounded-full flex items-center justify-center font-bold px-1">{cnt}</span>}
+              {cnt>0&&<span className="text-[11px] bg-[#7FAE8C] text-white min-w-[18px] h-[18px] rounded-full flex items-center justify-center font-bold px-1">{cnt}</span>}
             </button>
           ))}
         </div>
@@ -2148,7 +2148,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
                 {pendingCount>0&&<span className="ml-1.5 text-gray-400 font-normal">{pendingCount}</span>}
               </h3>
               <button onClick={()=>setSortDir(d=>d==='asc'?'desc':'asc')}
-                className="w-8 h-8 rounded-xl flex items-center justify-center text-sm bg-gray-900 text-white transition-colors">
+                className="w-8 h-8 rounded-xl flex items-center justify-center text-sm bg-[#7FAE8C] text-white transition-colors">
                 {sortDir==='asc'?'↓':'↑'}
               </button>
             </div>
@@ -2253,7 +2253,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
                     <div key={t.id} className="flex items-center gap-2.5 bg-gray-50 border border-gray-100 rounded-2xl px-3 py-3 opacity-60">
                       <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center shrink-0"><AppIcons.task size={16} className="text-gray-400"/></div>
                       <div className="flex-1"><p className="text-sm font-semibold text-gray-400 line-through">{t.name}</p></div>
-                      <button onClick={()=>onToggle(t.id)} className="w-6 h-6 rounded-full border-2 border-gray-900 bg-gray-900 shrink-0 flex items-center justify-center">
+                      <button onClick={()=>onToggle(t.id)} className="w-6 h-6 rounded-full border-2 border-[#7FAE8C] bg-[#7FAE8C] shrink-0 flex items-center justify-center">
                         <span className="text-white text-[10px] font-bold">✓</span>
                       </button>
                     </div>
@@ -2274,7 +2274,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
                   placeholder="商品を追加..."
                   className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-gray-400 bg-gray-50"/>
                 <button onClick={addShop} disabled={!shopInput.trim()}
-                  className="px-4 py-2 bg-gray-900 text-white rounded-xl text-sm font-semibold disabled:opacity-40">追加</button>
+                  className="px-4 py-2 bg-[#7FAE8C] text-white rounded-xl text-sm font-semibold disabled:opacity-40">追加</button>
               </div>
             </div>
             <div className="overflow-y-auto px-4 pb-10 flex-1">
@@ -2293,7 +2293,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
                     <p className="text-xs text-gray-300 pt-3 pb-1">購入済み（7日後に自動削除）</p>
                     {shopDoneItems.map(item=>(
                       <div key={item.id} className="flex items-center gap-3 bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3 opacity-60">
-                        <button onClick={()=>onToggleShop(item.id)} className="w-5 h-5 rounded border-2 border-gray-900 bg-gray-900 shrink-0 flex items-center justify-center">
+                        <button onClick={()=>onToggleShop(item.id)} className="w-5 h-5 rounded border-2 border-[#7FAE8C] bg-[#7FAE8C] shrink-0 flex items-center justify-center">
                           <span className="text-white text-[10px] font-bold">✓</span>
                         </button>
                         <p className="flex-1 text-sm font-medium text-gray-400 line-through">{item.name}</p>
@@ -2405,7 +2405,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
               placeholder="タブ名を入力"
               className="flex-1 text-[15px] bg-transparent outline-none text-gray-900 placeholder-gray-300 border-b border-gray-200 pb-1"/>
             <button onClick={()=>{const v=tabInput.trim();if(v){onCustomTabs([...customTabs,{id:uid(),name:v}]);setTabInput('');}}}
-              className="px-4 py-1.5 bg-gray-900 text-white text-sm font-semibold rounded-xl shrink-0">追加</button>
+              className="px-4 py-1.5 bg-[#7FAE8C] text-white text-sm font-semibold rounded-xl shrink-0">追加</button>
           </div>
         </div>
         {customTabs.length>0&&(
@@ -2428,7 +2428,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                     </button>
                     {editTabId===tab.id
                       ? <button onClick={()=>setEditTabId(null)} className="text-xs text-gray-400 font-medium px-2 py-1">キャンセル</button>
-                      : <button onClick={()=>onCustomTabs(customTabs.filter(t=>t.id!==tab.id))} className="text-xs text-red-400 font-medium px-2 py-1">削除</button>
+                      : <button onClick={()=>onCustomTabs(customTabs.filter(t=>t.id!==tab.id))} className="text-xs text-[#D97A7A] font-medium px-2 py-1">削除</button>
                     }
                   </div>
                 </div>
@@ -2455,7 +2455,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             {TAG_COLORS.map(c=>(
               <button key={c.bg} onClick={()=>setNewTagColor(c.bg)}
                 style={{backgroundColor:c.bg}}
-                className={`w-7 h-7 rounded-full border border-gray-200 transition-all ${newTagColor===c.bg?'ring-2 ring-gray-800 ring-offset-1 scale-110':''}`}/>
+                className={`w-7 h-7 rounded-full border border-gray-200 transition-all ${newTagColor===c.bg?'ring-2 ring-[#7FAE8C] ring-offset-1 scale-110':''}`}/>
             ))}
           </div>
           <div className="flex gap-2 items-center">
@@ -2464,7 +2464,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
               placeholder="タグ名を入力"
               className="flex-1 text-[15px] bg-transparent outline-none text-gray-900 placeholder-gray-300 border-b border-gray-200 pb-1"/>
             <button onClick={addTag}
-              className="px-4 py-1.5 bg-gray-900 text-white text-sm font-semibold rounded-xl shrink-0">追加</button>
+              className="px-4 py-1.5 bg-[#7FAE8C] text-white text-sm font-semibold rounded-xl shrink-0">追加</button>
           </div>
           {tagInput.trim()&&(
             <div className="mt-3">
@@ -2489,7 +2489,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                         {TAG_COLORS.map(c=>(
                           <button key={c.bg} onClick={()=>setEditColor(c.bg)}
                             style={{backgroundColor:c.bg}}
-                            className={`w-6 h-6 rounded-full border border-gray-200 transition-all ${editColor===c.bg?'ring-2 ring-gray-800 ring-offset-1 scale-110':''}`}/>
+                            className={`w-6 h-6 rounded-full border border-gray-200 transition-all ${editColor===c.bg?'ring-2 ring-[#7FAE8C] ring-offset-1 scale-110':''}`}/>
                         ))}
                       </div>
                       <input autoFocus value={editVal}
@@ -2510,7 +2510,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                     </button>
                     {editIdx===i
                       ? <button onClick={()=>setEditIdx(null)} className="text-xs text-gray-400 font-medium px-2 py-1">キャンセル</button>
-                      : <button onClick={()=>deleteTag(i)} className="text-xs text-red-400 font-medium px-2 py-1">削除</button>
+                      : <button onClick={()=>deleteTag(i)} className="text-xs text-[#D97A7A] font-medium px-2 py-1">削除</button>
                     }
                   </div>
                 </div>
@@ -2971,12 +2971,12 @@ export default function App() {
       {/* ── Header ── */}
       <header className="sticky top-0 z-30 bg-white shadow-sm">
         {/* Category filter tabs */}
-        <div className="bg-white" style={{boxShadow:'inset 0 -3px 0 0 #6b7280'}}>
+        <div className="bg-white" style={{boxShadow:'inset 0 -3px 0 0 #7FAE8C'}}>
           <div className="flex items-end px-3 pt-2" style={{overflowX:'auto',WebkitOverflowScrolling:'touch'}}>
           <button onClick={()=>{setActiveCat(null);setEditTabId(null);}} className="shrink-0 relative"
             style={activeCategory===null?{
-              padding:'7px 18px',background:'white',color:'#111827',fontWeight:700,fontSize:'0.875rem',
-              border:'2px solid #6b7280',borderBottom:'none',
+              padding:'7px 18px',background:'white',color:'#1F1F1F',fontWeight:700,fontSize:'0.875rem',
+              border:'2px solid #7FAE8C',borderBottom:'none',
               borderRadius:'14px 14px 0 0',zIndex:10,
             }:{
               padding:'5px 18px',background:'#f3f4f6',color:'#9ca3af',fontWeight:600,fontSize:'0.875rem',
@@ -2990,8 +2990,8 @@ export default function App() {
                 else{setActiveCat(tab.id);setEditTabId(null);}
               }} className="shrink-0 relative"
                 style={active?{
-                  padding:'7px 18px',background:'white',color:'#111827',fontWeight:700,fontSize:'0.875rem',
-                  border:'2px solid #6b7280',borderBottom:'none',
+                  padding:'7px 18px',background:'white',color:'#1F1F1F',fontWeight:700,fontSize:'0.875rem',
+                  border:'2px solid #7FAE8C',borderBottom:'none',
                   borderRadius:'14px 14px 0 0',zIndex:10,
                 }:{
                   padding:'5px 18px',background:'#f3f4f6',color:'#9ca3af',fontWeight:600,fontSize:'0.875rem',
@@ -3009,8 +3009,8 @@ export default function App() {
               onKeyDown={e=>{if(e.key==='Enter') saveEditTab();}}
               autoFocus
               className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm outline-none focus:border-gray-400 bg-gray-50"/>
-            <button onClick={saveEditTab} className="px-3 py-1.5 bg-gray-900 text-white rounded-lg text-xs font-semibold">完了</button>
-            <button onClick={()=>deleteCustomTab(editTabId)} className="p-1.5 text-red-400"><AppIcons.trash size={16}/></button>
+            <button onClick={saveEditTab} className="px-3 py-1.5 bg-[#7FAE8C] text-white rounded-lg text-xs font-semibold">完了</button>
+            <button onClick={()=>deleteCustomTab(editTabId)} className="p-1.5 text-[#D97A7A]"><AppIcons.trash size={16}/></button>
           </div>
         )}
         <div className="px-4 pt-1 pb-0">
@@ -3038,8 +3038,8 @@ export default function App() {
               const isSel=d===date, isToday=d===today;
               return (
                 <button key={i} onClick={()=>setDate(d)} className="flex flex-col items-center py-1">
-                  <span className={`text-[13px] font-medium ${i===0?'text-red-400':i===6?'text-blue-400':'text-gray-400'}`}>{name}</span>
-                  <span className={`w-8 h-8 flex items-center justify-center rounded-full font-bold transition-colors ${isSel?'bg-gray-900 text-white':isToday?'bg-gray-100 text-gray-900':'text-gray-600'}`} style={{fontSize:'20px'}}>
+                  <span className={`text-[13px] font-medium ${i===0?'text-[#D97A7A]':i===6?'text-blue-400':'text-gray-400'}`}>{name}</span>
+                  <span className={`w-8 h-8 flex items-center justify-center rounded-full font-bold transition-colors ${isSel?'bg-[#7FAE8C] text-white':isToday?'bg-gray-100 text-gray-900':'text-gray-600'}`} style={{fontSize:'20px'}}>
                     {new Date(d+'T12:00:00').getDate()}
                   </span>
                   <div className={`w-1.5 h-1.5 rounded-full mt-1 ${taskDateSet.has(d)?(isSel?'bg-gray-400':'bg-gray-400'):'bg-transparent'}`}/>
@@ -3079,7 +3079,7 @@ export default function App() {
             <button key={tab} onClick={()=>setActiveTab(t=>t===tab?null:tab)}
               className={`flex-1 flex items-center justify-center gap-2 py-3 transition-colors ${i===0?'border-r border-gray-100':''} ${activeTab===tab?'bg-gray-50':''}`}>
               <span className={`text-sm font-semibold ${activeTab===tab?'text-gray-900':'text-gray-500'}`}>{label}</span>
-              {cnt>0&&<span className="text-[11px] bg-gray-900 text-white min-w-[18px] h-[18px] rounded-full flex items-center justify-center font-bold px-1">{cnt}</span>}
+              {cnt>0&&<span className="text-[11px] bg-[#7FAE8C] text-white min-w-[18px] h-[18px] rounded-full flex items-center justify-center font-bold px-1">{cnt}</span>}
             </button>
           ))}
         </div>
@@ -3088,7 +3088,7 @@ export default function App() {
       {/* ── FAB ── */}
       <div className="fixed bottom-16 right-4 z-50">
         <button onClick={()=>openAdd()}
-          className="w-14 h-14 bg-gray-900 text-white rounded-full shadow-2xl active:bg-gray-700"
+          className="w-14 h-14 bg-[#7FAE8C] text-white rounded-full shadow-2xl active:bg-gray-700"
           style={{display:'grid',placeItems:'center'}}>
           <AppIcons.plus size={28} className="block"/>
         </button>
@@ -3107,7 +3107,7 @@ export default function App() {
       {activeTab==='later'&&(
         <div className="fixed bottom-6 right-4 z-[60]">
           <button onClick={()=>{setActiveTab(null);openAdd();}}
-            className="w-14 h-14 bg-gray-900 text-white rounded-full shadow-2xl active:bg-gray-700"
+            className="w-14 h-14 bg-[#7FAE8C] text-white rounded-full shadow-2xl active:bg-gray-700"
             style={{display:'grid',placeItems:'center'}}><AppIcons.plus size={28} className="block"/></button>
         </div>
       )}
@@ -3148,9 +3148,9 @@ export default function App() {
           )}
           {/* Bottom drop zones */}
           <div className="absolute bottom-0 left-0 right-0 h-24 flex">
-            <div className={`flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors ${dragSetting?'bg-gray-50 opacity-30':overTrash?'bg-red-400':'bg-red-50'}`}>
-              <AppIcons.trash size={28} className={dragSetting?'text-gray-300':overTrash?'text-white':'text-red-400'}/>
-              <span className={`text-xs font-bold ${dragSetting?'text-gray-300':overTrash?'text-white':'text-red-400'}`}>削除する</span>
+            <div className={`flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors ${dragSetting?'bg-gray-50 opacity-30':overTrash?'bg-[#D97A7A]':'bg-red-50'}`}>
+              <AppIcons.trash size={28} className={dragSetting?'text-gray-300':overTrash?'text-white':'text-[#D97A7A]'}/>
+              <span className={`text-xs font-bold ${dragSetting?'text-gray-300':overTrash?'text-white':'text-[#D97A7A]'}`}>削除する</span>
             </div>
             <div className={`flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors ${dragSetting?'bg-gray-50 opacity-30':overLater?'bg-blue-400':'bg-blue-50'}`}>
               <AppIcons.postponed size={28} className={dragSetting?'text-gray-300':overLater?'text-white':'text-blue-400'}/>
@@ -3181,7 +3181,7 @@ export default function App() {
                   return n;
                 });
                 setSettingConfirm(null);
-              }} className="w-full py-3.5 bg-gray-900 rounded-2xl text-sm font-semibold text-white">他の日も全部この時間に変更</button>
+              }} className="w-full py-3.5 bg-[#7FAE8C] rounded-2xl text-sm font-semibold text-white">他の日も全部この時間に変更</button>
               <button onClick={()=>setSettingConfirm(null)} className="w-full py-2.5 text-sm text-gray-400 font-semibold">キャンセル</button>
             </div>
           </div>
@@ -3223,7 +3223,7 @@ export default function App() {
               <button onClick={()=>{setEditScope('one');setModal({open:true,task:recConfirm});setRecConfirm(null);}}
                 className="w-full py-3.5 bg-gray-100 rounded-2xl text-sm font-semibold text-gray-900">この予定のみ変更</button>
               <button onClick={()=>{setEditScope('all');setModal({open:true,task:recConfirm});setRecConfirm(null);}}
-                className="w-full py-3.5 bg-gray-900 rounded-2xl text-sm font-semibold text-white">すべての予定を変更</button>
+                className="w-full py-3.5 bg-[#7FAE8C] rounded-2xl text-sm font-semibold text-white">すべての予定を変更</button>
               <button onClick={()=>setRecConfirm(null)}
                 className="w-full py-2.5 text-sm text-gray-400 font-semibold">キャンセル</button>
             </div>
