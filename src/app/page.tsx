@@ -2978,8 +2978,42 @@ export default function App() {
     <div className="max-w-md mx-auto min-h-screen bg-gray-50 font-sans">
       {/* ── Header ── */}
       <header className="sticky top-0 z-30 bg-white shadow-sm">
+        <div className="px-4 pt-1 pb-0">
+          {/* Date + nav */}
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xl font-bold text-gray-900">{year}年{month}月{day}日</span>
+            <div className="flex items-center gap-1">
+              <button onClick={()=>setCalOp(true)} className="w-8 h-8 flex items-center justify-center text-gray-400"><AppIcons.calendar size={20}/></button>
+              <button onClick={()=>setSearchOpen(true)} className="w-8 h-8 flex items-center justify-center text-gray-400"><AppIcons.search size={20}/></button>
+              <button onClick={()=>setSOp(true)} className="w-8 h-8 flex items-center justify-center text-gray-400"><AppIcons.settings size={20}/></button>
+            </div>
+          </div>
+
+          {/* Week calendar */}
+          <div className="grid grid-cols-7 pt-2 pb-0.5 border-t border-gray-50"
+            onTouchStart={e=>{weekSwX.current=e.touches[0].clientX;weekSwY.current=e.touches[0].clientY;}}
+            onTouchEnd={e=>{
+              const dx=e.changedTouches[0].clientX-weekSwX.current;
+              const dy=e.changedTouches[0].clientY-weekSwY.current;
+              if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)*1.5) setDate(shiftDate(date,dx<0?7:-7));
+            }}>
+            {DAY_NAMES.map((name,i)=>{
+              const d=weekDates[i];
+              const isSel=d===date, isToday=d===today;
+              return (
+                <button key={i} onClick={()=>setDate(d)} className="flex flex-col items-center py-1">
+                  <span className={`text-[13px] font-medium ${i===0?'text-[#D97A7A]':i===6?'text-blue-400':'text-gray-400'}`}>{name}</span>
+                  <span className={`w-8 h-8 flex items-center justify-center rounded-full font-bold transition-colors ${isSel?'bg-[#7FAE8C] text-white':isToday?'bg-gray-100 text-gray-900':'text-gray-600'}`} style={{fontSize:'20px'}}>
+                    {new Date(d+'T12:00:00').getDate()}
+                  </span>
+                  <div className={`w-1.5 h-1.5 rounded-full mt-1 ${taskDateSet.has(d)?(isSel?'bg-gray-400':'bg-gray-400'):'bg-transparent'}`}/>
+                </button>
+              );
+            })}
+          </div>
+        </div>
         {/* Category filter tabs */}
-        <div className="bg-[#7FAE8C]">
+        <div className="bg-[#7FAE8C] mt-1">
           <div className="flex items-end px-3 pt-2" style={{overflowX:'auto',WebkitOverflowScrolling:'touch'}}>
           <button onClick={()=>{setActiveCat(null);setEditTabId(null);}} className="shrink-0 relative"
             style={activeCategory===null?{
@@ -3019,41 +3053,6 @@ export default function App() {
             <button onClick={()=>deleteCustomTab(editTabId)} className="p-1.5 text-[#D97A7A]"><AppIcons.trash size={16}/></button>
           </div>
         )}
-        <div className="px-4 pt-1 pb-0">
-          {/* Date + nav */}
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xl font-bold text-gray-900">{year}年{month}月{day}日</span>
-            <div className="flex items-center gap-1">
-              <button onClick={()=>setCalOp(true)} className="w-8 h-8 flex items-center justify-center text-gray-400"><AppIcons.calendar size={20}/></button>
-              <button onClick={()=>setSearchOpen(true)} className="w-8 h-8 flex items-center justify-center text-gray-400"><AppIcons.search size={20}/></button>
-              <button onClick={()=>setSOp(true)} className="w-8 h-8 flex items-center justify-center text-gray-400"><AppIcons.settings size={20}/></button>
-            </div>
-          </div>
-
-
-          {/* Week calendar */}
-          <div className="grid grid-cols-7 pt-2 pb-0.5 border-t border-gray-50"
-            onTouchStart={e=>{weekSwX.current=e.touches[0].clientX;weekSwY.current=e.touches[0].clientY;}}
-            onTouchEnd={e=>{
-              const dx=e.changedTouches[0].clientX-weekSwX.current;
-              const dy=e.changedTouches[0].clientY-weekSwY.current;
-              if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)*1.5) setDate(shiftDate(date,dx<0?7:-7));
-            }}>
-            {DAY_NAMES.map((name,i)=>{
-              const d=weekDates[i];
-              const isSel=d===date, isToday=d===today;
-              return (
-                <button key={i} onClick={()=>setDate(d)} className="flex flex-col items-center py-1">
-                  <span className={`text-[13px] font-medium ${i===0?'text-[#D97A7A]':i===6?'text-blue-400':'text-gray-400'}`}>{name}</span>
-                  <span className={`w-8 h-8 flex items-center justify-center rounded-full font-bold transition-colors ${isSel?'bg-[#7FAE8C] text-white':isToday?'bg-gray-100 text-gray-900':'text-gray-600'}`} style={{fontSize:'20px'}}>
-                    {new Date(d+'T12:00:00').getDate()}
-                  </span>
-                  <div className={`w-1.5 h-1.5 rounded-full mt-1 ${taskDateSet.has(d)?(isSel?'bg-gray-400':'bg-gray-400'):'bg-transparent'}`}/>
-                </button>
-              );
-            })}
-          </div>
-        </div>
       </header>
 
       {/* ── Timeline ── */}
