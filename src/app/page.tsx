@@ -1620,7 +1620,23 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
   const [pressingWake,setPressingWake] = useState(false);
   const [pressingSleep,setPressingSleep] = useState(false);
   const [historyOpen,setHistoryOpen] = useState(false);
+  const [measuredH,setMeasuredH] = useState<Record<string,number>>({});
   const containerRef = useRef<HTMLDivElement>(null);
+  const roRef = useRef<ResizeObserver|null>(null);
+  if (roRef.current===null) {
+    roRef.current = new ResizeObserver(entries=>{
+      setMeasuredH(prev=>{
+        const next={...prev}; let changed=false;
+        for(const e of entries){
+          const k=(e.target as HTMLElement).dataset.gk; if(!k) continue;
+          const h=Math.ceil(e.borderBoxSize?.[0]?.blockSize??e.contentRect.height);
+          if(next[k]!==h){next[k]=h;changed=true;}
+        }
+        return changed?next:prev;
+      });
+    });
+  }
+  useEffect(()=>()=>{roRef.current?.disconnect();},[]);
   const lpTimer = useRef<ReturnType<typeof setTimeout>|null>(null);
   const settingLPTimer = useRef<ReturnType<typeof setTimeout>|null>(null);
   const startLP=(task:Task,e:React.TouchEvent)=>{
@@ -1671,7 +1687,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
     .map(([startTime,tasks])=>{
       const rows=Math.ceil(tasks.length/COLS);
       const h=tasks.length===1
-        ?Math.max(MIN_CARD_H,(tasks[0].duration??0)*PX_PER_MIN)
+        ?Math.max(measuredH[startTime]??MIN_CARD_H,(tasks[0].duration??0)*PX_PER_MIN)
         :rows*MIN_CARD_H+(rows-1)*ROW_GAP;
       return {startTime,tasks,rows,h};
     });
@@ -1959,14 +1975,15 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
           const CapsuleIc=getTaskIcon(task.icon??'');
           return [
             <div key={`cap-${g.startTime}`} className="absolute z-10 cursor-pointer"
-              style={{top:`${top}px`,left:`${AXIS_X-28}px`,width:'56px',height:`${Math.max(g.h,56)}px`}}
+              style={{top:`${top}px`,left:`${AXIS_X-28}px`,width:'56px',height:`${Math.max(measuredH[g.startTime]??g.h,56)}px`}}
               onClick={e=>{e.stopPropagation();onEditIconSheet(task);}}>
               <div className="w-full h-full flex items-center justify-center active:opacity-70 transition-opacity" style={{borderRadius:'28px',background:task.color||'#F3F4F6'}}>
                 <CapsuleIc size={24} className={task.color?'text-gray-600':'text-gray-400'}/>
               </div>
             </div>,
             <div key={g.startTime} className={`absolute z-10 transition-transform select-none ${isPressing?'scale-95':''}`}
-              style={{top:`${top}px`,left:`${CARD_LEFT}px`,right:'0px',minHeight:`${g.h}px`,
+              ref={el=>{if(el){el.dataset.gk=g.startTime;roRef.current?.observe(el);}}}
+              style={{top:`${top}px`,left:`${CARD_LEFT}px`,right:'0px',
                 opacity:isDragging?0.25:1,pointerEvents:isDragging?'none':'auto'}}
               onTouchStart={e=>startLP(task,e)}
               onTouchEnd={cancelLP}
