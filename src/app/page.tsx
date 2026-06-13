@@ -1741,7 +1741,8 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
     ...freeSlots.map(s=>({type:'free' as const,s,y:calcDayY(toMin(s.start))})),
   ].sort((a,b)=>a.y-b.y||(a.type==='group'?-1:1));
 
-  for(const item of dayItems){
+  for(let i=0;i<dayItems.length;i++){
+    const item=dayItems[i];
     if(item.type==='group'){
       const top=Math.max(item.y,prevBottom+16);
       groupLayout.push({g:item.g,top});
@@ -1749,7 +1750,8 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
     } else {
       const freeY=Math.max(item.y,prevBottom)+16;
       const contentH=calcFreeContentH(laterPool);
-      const timeH=item.s.min*PX_PER_MIN*0.7;
+      const nextY=dayItems[i+1]?.y??calcDayY(sleepMin);
+      const timeH=Math.max(nextY-freeY-8,0);
       const finalH=Math.max(timeH,contentH,36);
       freePassItems.push({slot:item.s,freeY,finalH});
       prevBottom=freeY+finalH;
