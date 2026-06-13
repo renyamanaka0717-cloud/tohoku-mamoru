@@ -1749,7 +1749,8 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
     } else {
       const freeY=Math.max(item.y,prevBottom)+16;
       const contentH=calcFreeContentH(laterPool);
-      const timeH=item.s.min*PX_PER_MIN*0.7;
+      const freeEndY=calcDayY(toMin(item.s.end));
+      const timeH=Math.max(freeEndY-freeY,0);
       const finalH=Math.max(timeH,contentH,36);
       freePassItems.push({slot:item.s,freeY,finalH});
       prevBottom=freeY+finalH;
