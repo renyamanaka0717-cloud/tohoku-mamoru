@@ -12,7 +12,7 @@
 - アイコン: `@phosphor-icons/react`（weight="bold"、`AppIcons` で一元管理）
 - AI: Groq SDK（llama-3.3-70b-versatile）— Threads投稿生成のみ
 - データ永続化: localStorage（サーバーDBなし）
-- デプロイ: Vercel（`main` push で自動）
+- デプロイ: Vercel（`main` push で GitHub Actions 経由で自動デプロイ）
 
 ---
 
@@ -29,7 +29,7 @@ npm run lint    # ESLint
 ## 作業完了時の必須手順
 
 ```
-npm install → npm run build → git add → git commit → git push origin main
+npm run build → git add → git commit → git push origin main
 ```
 
 **node_modules がない状態でビルド確認をせずにコミット・プッシュしないこと。**  
@@ -41,7 +41,7 @@ Vercel は `main` push で自動デプロイされる。デプロイした場合
 
 ## アーキテクチャ
 
-ほぼすべての機能が `src/app/page.tsx` 1ファイルに集約されている（約2930行）。コンポーネント分割は最小限。
+ほぼすべての機能が `src/app/page.tsx` 1ファイルに集約されている（約3210行）。コンポーネント分割は最小限。
 
 ```
 src/app/
@@ -53,6 +53,9 @@ src/app/
   api/
     generate/
       route.ts          # POST /api/generate — Groq でThreads投稿生成
+.github/
+  workflows/
+    deploy.yml          # main push → Vercel deploy hook 呼び出し
 ```
 
 ### page.tsx の主要コンポーネント
@@ -61,8 +64,8 @@ src/app/
 |---|---|
 | `App` | ルートコンポーネント。state管理・localStorage同期・ドラッグ処理 |
 | `Timeline` | タイムライン描画。絶対配置で構築 |
-| `TaskModal` | タスク作成・編集モーダル（繰り返し設定含む） |
-| `TaskCard` | タイムライン上のタスクカード |
+| `TaskModal` | タスク作成・編集モーダル（繰り返し設定・写真添付含む） |
+| `TaskCard` | タイムライン上のタスクカード（サブタスク・メモ・写真プルダウン付き） |
 | `CompactTaskCard` | 同時刻タスクが複数ある場合のコンパクト表示 |
 | `FreeTimeCard` | 空き時間スロットカード |
 | `MonthCalendar` | ポップアップ型月間カレンダー |
@@ -88,7 +91,7 @@ const CARD_LEFT = AXIS_X + ICON_HALF + CARD_GAP;         // 104px
 - `PX_PER_HOUR` = 40（1時間あたりのピクセル高さ）
 - タイムラインは `position: absolute` で各要素を配置
 - 時刻→Y座標: `layoutCalcY(min)`
-- タッチY→時刻: `yToTimeRef`
+- タッチY→時刻: `yToTimeRef`（ピースワイズ補間、クランプ範囲は 0〜23:55）
 - **時刻ラベルはすべて `w-10 text-right pr-1`（40px）で統一**。`w-12` は使わない
 
 ---
@@ -97,7 +100,7 @@ const CARD_LEFT = AXIS_X + ICON_HALF + CARD_GAP;         // 104px
 
 | 型 | 説明 |
 |---|---|
-| `Task` | id, name, startTime, duration, memo, icon, completed, date, isLater, recurrence, customRec, pinned, tags, notifications, incompleteReminder, category, postponedCount, color, subtasks |
+| `Task` | id, name, startTime, duration, memo, icon, completed, date, isLater, recurrence, customRec, pinned, tags, notifications, incompleteReminder, category, postponedCount, color, subtasks, photoCount |
 | `Settings` | wakeTime, sleepTime |
 | `FreeSlot` | タイムライン上の空き時間スロット |
 | `ShopItem` | 買い物リストのアイテム（7日後に自動削除） |
@@ -107,18 +110,21 @@ const CARD_LEFT = AXIS_X + ICON_HALF + CARD_GAP;         // 104px
 | `CustomTab` | ユーザー定義ファイルタブ（`{id:string; name:string}`） |
 | `TaskMode` | `'later'` / `'scheduled'` / `'recurring'` |
 
-`Task.subtasks` は `{id:string; name:string; completed:boolean}[]` 型。
+`Task.subtasks` は `{id:string; name:string; completed:boolean}[]` 型。  
+`Task.photoCount` は添付写真枚数（写真データ本体は `PHOTOS_KEY` に別途保存）。
 
 ## localStorage キー
 
 | 定数 | キー | 内容 |
 |---|---|---|
 | `TASKS_KEY` | `'tl-tasks-v2'` | タスク一覧 |
-| `SETTINGS_KEY` | `'tl-settings-v2'` | 起床・就寝設定 |
+| `SETTINGS_KEY` | `'tl-settings-v2'` | 起床・就寝設定（グローバル） |
+| `DAY_SETTINGS_KEY` | `'tl-day-settings-v1'` | 日別の起床・就寝オーバーライド |
 | `SHOP_KEY` | `'tl-shop-v1'` | 買い物リスト |
 | `TAGS_KEY` | `'tl-tags-v1'` | グローバルタグ定義 |
 | `HISTORY_KEY` | `'tl-history-v1'` | 移動履歴 |
 | `CUSTOM_TABS_KEY` | `'tl-custom-tabs-v1'` | ユーザー定義ファイルタブ |
+| `PHOTOS_KEY` | `'tl-photos-v1'` | タスクIDをキーとした写真データ（base64） |
 
 ---
 
@@ -126,9 +132,10 @@ const CARD_LEFT = AXIS_X + ICON_HALF + CARD_GAP;         // 104px
 
 ### ヘッダー
 
-- 日付表示: `2026年6月12日` の1行表示（年→月→日、日本語表記）
+- 日付表示: `2026年6月13日` の1行表示（年→月→日、日本語表記）
 - 日付ナビゲーション行（〈 今日 〉）は**削除済み**
-- ファイルタブバー（横スクロール対応、ユーザー定義タブ + + ボタン）
+- 1週間カレンダー（日〜土）: 曜日13px・日付20px、縦余白を引き締めたコンパクト表示
+- ファイルタブバー（横スクロール対応、ユーザー定義タブ + `+` ボタン）
 
 ### ファイルタブ（カスタムタブ）
 
@@ -143,7 +150,7 @@ const CARD_LEFT = AXIS_X + ICON_HALF + CARD_GAP;         // 104px
 **ファイルタブ型スタイル（共通パターン）：**
 ```jsx
 <div className="flex items-end px-3 pt-2 bg-white"
-  style={{borderBottom:'2px solid #e5e7eb',overflowX:'auto',WebkitOverflowScrolling:'touch'}}>
+  style={{borderBottom:'2px solid #6b7280',overflowX:'auto',WebkitOverflowScrolling:'touch'}}>
   {([{key:null,label:'すべて'},...customTabs.map(t=>({key:t.id,label:t.name}))]).map(({key,label})=>{
     const active = currentFilter===key;
     return (
@@ -161,7 +168,50 @@ const CARD_LEFT = AXIS_X + ICON_HALF + CARD_GAP;         // 104px
 </div>
 ```
 
-すべて inline style で実装（Tailwind では `-mb-px` や `border-b-white` 等の表現が難しいため）。
+- 外枠の `borderBottom` は `#6b7280`（アクティブタブの枠線色と統一）
+- アクティブタブは `borderBottom:'2px solid white'` で下線を消す
+- すべて inline style で実装（Tailwind では `-mb-px` 等の表現が難しいため）
+
+### TaskCard
+
+タイムライン上のタスクカード。下部にアイコン行を持つ。
+
+**アイコン行（hasIcons = サブタスクあり OR メモあり OR 写真あり）**
+
+```jsx
+<div className="flex items-center gap-2 mt-2">
+  {/* サブタスク進捗カプセル（サブタスクありの場合） */}
+  <button onClick={e=>{e.stopPropagation();setOpenPanel(p=>p==='subtask'?null:'subtask');}}
+    className="inline-flex items-center gap-2 bg-gray-100 rounded-2xl px-3 active:bg-gray-200"
+    style={{height:'32px'}}>
+    <AppIcons.checkSquare size={13}/>
+    <span>{doneCount}/{subtasks.length}</span>
+    <span style={openPanel==='subtask'?{transform:'rotate(90deg)',...}:{...}}>
+      <AppIcons.caretRight size={12}/>
+    </span>
+  </button>
+  {/* メモアイコン（メモありの場合） */}
+  <button onClick={e=>{e.stopPropagation();setOpenPanel(p=>p==='memo'?null:'memo');}}
+    className="inline-flex items-center justify-center bg-gray-100 rounded-xl active:bg-gray-200"
+    style={{width:'32px',height:'32px'}}>
+    <AppIcons.task size={14}/>
+  </button>
+  {/* カメラアイコン（写真ありの場合）→ タップで詳細画面の写真欄へスクロール */}
+  <button onClick={e=>{e.stopPropagation();onCameraClick?.();}}
+    className="flex items-center justify-center active:opacity-70"
+    style={{width:'24px',height:'32px'}}>
+    <AppIcons.camera size={13}/>
+  </button>
+</div>
+```
+
+- `openPanel: 'subtask' | 'memo' | null` — 排他的プルダウン。どちらか1つのみ展開
+- カメラアイコンをタップ → `onCameraClick()` → TaskModal を写真欄スクロール付きで開く
+
+**TaskCard のプロップス:**
+```typescript
+{task, onToggle, onEdit, globalTags, onSubtaskToggle?, onCameraClick?}
+```
 
 ### TaskModal（タスク詳細画面）
 
@@ -177,15 +227,13 @@ const CARD_LEFT = AXIS_X + ICON_HALF + CARD_GAP;         // 104px
 **新規作成モード（task=null）**
 - 名前が空なら `保存` ボタンは disabled
 - × ボタンで閉じる際、入力済みなら「入力内容を破棄しますか？」確認ダイアログを表示
-- ダイアログはモーダル内 `z-[110]` のオーバーレイで実装
 
 **編集モード（task!=null）**
 - 変更を400ms debounce で自動保存（`onUpdate` コールバック経由）
 - 保存状態表示: `保存中…` / `✓ 保存済み`（1秒後フェードアウト）/ `保存に失敗しました`
 - `完了` ボタン → 未送信のpendingデータを即時フラッシュして閉じる（`flushAndClose`）
-- × ボタンも `flushAndClose` を呼ぶ（確認ダイアログなし）
 
-**ホワイトコンテンツ（bg-gray-50）**
+**ホワイトコンテンツ（bg-gray-50、`max-h-[55vh] overflow-y-auto`）**
 1. 繰り返し設定カード（繰り返しモード時のみ）
 2. **設定カード**（1枚の白い角丸カード、iOS設定画面スタイル）
    - 日付（時間指定モードのみ）
@@ -194,11 +242,34 @@ const CARD_LEFT = AXIS_X + ICON_HALF + CARD_GAP;         // 104px
    - タグ（プルダウン形式、全モード）
    - サブタスク入力欄（全モード：later含む）
    - 行間に `h-px bg-gray-100 mx-4` の区切り線
-3. **メモカード**（設定カードの下）
-4. 削除ボタン（タスク編集時のみ）
+3. **メモカード**（textarea、bg-white mx-3 mt-3 rounded-2xl）
+4. **写真カード**（`ref={photoSectionRef}`、bg-white mx-3 mt-3 rounded-2xl p-4）
+   - 最大3枚、Canvas API で圧縮（max 800px、JPEG quality 0.7）
+   - `scrollToPhotos` prop が true の場合、マウント後に写真欄へ自動スクロール
+5. 削除ボタン（タスク編集時のみ）
 
 **ピン留めは削除済み**（設定カードから除外）。  
 **アラートのデフォルト値**：新規タスク作成時は `[0]`（開始時）。
+
+**TaskModal のプロップス:**
+```typescript
+{task, currentDate, prefillTime?, prefillCategory?, openIconSheet?, scrollToPhotos?,
+ onSave, onUpdate?, onDelete?, onClose, globalTags, customTabs}
+```
+
+### 起床・就寝カード（Timeline 内）
+
+- 長押し 500ms → vibrate → ドラッグで時間変更
+- ドラッグ終了時に確認ポップアップ（この日のみ変更 / すべての日に適用 / キャンセル）
+- **この日のみ変更** → `dayOverrides[date]` に保存（`DAY_SETTINGS_KEY`）
+- **すべての日に適用** → グローバル `settings` を更新（`SETTINGS_KEY`）
+- タイムラインには `effectiveSettings`（グローバル + 日別オーバーライドをマージ）を渡す
+
+### ドラッグ＆ドロップ（タスク移動）
+
+- 長押し 500ms → vibrate → drag 開始
+- ドロップ時刻のクランプは**起床・就寝時間に縛られない**（0:00〜23:55 の全時間帯に配置可）
+- `yToTimeRef` でタッチY座標→時刻変換（ピースワイズアンカー補間）
 
 ### BottomTabs（あとでやるリスト）
 
@@ -211,8 +282,6 @@ const Ic = getTaskIcon(t.icon ?? '');
   <Ic size={14} className={t.color ? 'text-gray-600' : 'text-gray-400'}/>
 </div>
 ```
-
-対象：あとでやる通常タスク、あとでやる繰り返しタスク、時間指定グループ、繰り返しグループ。どこに表示されても同じアイコン・色。
 
 ### SettingsScreen（設定画面）
 
@@ -246,6 +315,14 @@ const Ic = getTaskIcon(t.icon ?? '');
 | `question` | Question | `caretLeft` | CaretLeft |
 | `smileySad` | SmileySad | `caretDown` | CaretDown |
 | `sparkle` | Sparkle | `checkSquare` | CheckSquare |
+| `camera` | Camera | `plus` | Plus |
+| `food` | ForkKnife | `clean` | Broom |
+| `work` | Briefcase | `travel` | Car |
+| `rest` | Coffee | `music` | MusicNote |
+| `book` | Book | `exercise` | Barbell |
+| `health` | Heart | `phone` | Phone |
+| `home` | House | `study` | GraduationCap |
+| `money` | Wallet | `game` | GameController |
 
 ---
 
@@ -289,26 +366,28 @@ const Ic = getTaskIcon(t.icon ?? '');
 - グラデーション、アニメーション過多、過度な影
 - 既存のデザインパターンを無視した突発的なスタイル追加
 - タイムライン時刻ラベルに `w-12`（48px）を使う（`w-10` で統一）
+- ファイルタブの下線色に `#e5e7eb` を使う（`#6b7280` で統一）
 
 ---
 
 ## 開発ルール
 
-### 修正前の確認
+### 修正前の確認（最重要）
 
 **必ず現在の実装を Read/Grep で確認してから変更する。** 既存コードを見ずに書き直さない。  
-関連する定数・型・コンポーネントを grep で把握してから手を入れる。
+関連する定数・型・コンポーネントを grep で把握してから手を入れる。  
+「こうなっているはず」という推測で変更しない。
 
 ### 変更の原則
 
 1. **必要最小限の変更のみ**行う — 関係ない箇所は触らない
 2. **既存コンポーネントを流用**することを優先する — 新しく作る前に既存を確認
-3. **大規模リファクタリングを避ける**（約2930行の1ファイル構成は意図的）
+3. **大規模リファクタリングを避ける**（約3210行の1ファイル構成は意図的）
 4. 不要なリファクタリング・抽象化・コメントアウトは行わない
 5. 見た目が変わらない微調整だけで終わらせない — 効果が見える変更にする
 6. iOS設定画面やStructured風の**自然なUI**を優先する
 7. **新しいセッションでも同じ品質で開発できる**ことを重視する
-8. 小さく直す — 1つのリクエストで1箇所だけ変える
+8. **小さく直す** — 1つのリクエストで1箇所だけ変える
 
 ### コードスタイル
 
@@ -334,17 +413,20 @@ const Ic = getTaskIcon(t.icon ?? '');
 - 「あとでやる」タスクは `isLater: true`、日付をまたいで持ち越し可能
 - スマートフォン最適化済み（`userScalable: false`、`overscroll-none`）
 - タイムラインの横レイアウトはセマンティックゾーン定数（`TIME_LABEL_W` 等）で管理。機種ごとに固定px調整しない
+- 写真データ（base64）は `PHOTOS_KEY` に `{[taskId]: string[]}` 形式で保存。タスク削除時は必ずクリーンアップ
 
 ---
 
 ## Vercel / Git 運用
 
-- `main` branch への push で Vercel が自動デプロイ
+- `main` branch への push で **GitHub Actions** が Vercel deploy hook を呼び出して自動デプロイ
+  - `.github/workflows/deploy.yml` — `curl -s -X POST "${{ secrets.VERCEL_DEPLOY_HOOK }}"`
+  - deploy hook URL は GitHub リポジトリの `VERCEL_DEPLOY_HOOK` シークレットに設定済み
 - feature branch は `claude/xxx` 形式
 - 作業完了後は必ず `npm run build` → `git push origin main`
-- **作業ブランチから main にマージ・push するまでデプロイされない**
 - リモートが進んでいる場合は `git pull origin main --rebase` してから push
 - push は `git push -u origin <branch>` を使う
+- **作業ブランチから main に push するまでデプロイされない**
 
 ---
 
