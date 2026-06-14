@@ -959,7 +959,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
           </div>
 
           {/* Category file tabs */}
-          <div className="tabs-scroll flex items-end" style={{overflowX:'auto',WebkitOverflowScrolling:'touch',overflowY:'hidden',touchAction:'pan-x',marginLeft:'-16px',marginRight:'-16px',paddingLeft:'16px'}}>
+          <div className="tabs-scroll flex items-end" style={{overflowX:'auto',WebkitOverflowScrolling:'touch',touchAction:'pan-x',marginLeft:'-16px',marginRight:'-16px',paddingLeft:'16px'}}>
             {([{id:null as string|null,name:'すべて'},...customTabs]).map(tab=>{
               const active=category===tab.id;
               return (
