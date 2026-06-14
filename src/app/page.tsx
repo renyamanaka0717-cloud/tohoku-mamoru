@@ -1909,27 +1909,17 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
       <div className="absolute bg-gray-200" style={{left:`${AXIS_X}px`,width:'2px',top:0,height:`${totalHeight}px`,transform:'translateX(-0.5px)'}}/>
 
 
-      {/* hourly labels — every full hour from wake to sleep */}
-      {(()=>{
-        const items:React.ReactNode[]=[];
-        const startH=Math.ceil(wakeMin/60);
-        const endH=Math.floor(sleepMin/60);
-        for(let h=startH;h<=endH;h++){
-          const m=h*60;
-          if(m===wakeMin||m===sleepMin) continue;
-          const y=calcDayY(m);
-          items.push(
-            <div key={`h-${m}`} className="absolute flex items-center" style={{top:`${y}px`,transform:'translateY(-50%)',left:0}}>
-              <button onClick={()=>onAddAtTime(fromMin(m))}
-                className="text-xs w-10 text-right pr-1 leading-none text-gray-400 active:text-gray-900 transition-colors">
-                {fromMin(m)}
-              </button>
-            </div>,
-            <div key={`h-dot-${m}`} className="absolute z-10 rounded-full bg-gray-200" style={{width:'4px',height:'4px',left:`${AXIS_X}px`,top:`${y}px`,transform:'translate(-50%,-50%)'}}/>,
-          );
-        }
-        return items;
-      })()}
+      {/* task start time labels — 1 per group, center-aligned, skip wake/sleep */}
+      {groupLayout.map(({g,top})=>{
+        const stMin=toMin(g.startTime);
+        if(stMin===wakeMin||stMin===sleepMin) return null;
+        const centerY=top+g.h/2;
+        return [
+          <div key={`tl-${g.startTime}`} className="absolute flex items-center" style={{top:`${centerY}px`,transform:'translateY(-50%)',left:0}}>
+            <span className="text-xs w-10 text-right pr-1 leading-none text-gray-400">{g.startTime}</span>
+          </div>,
+        ];
+      })}
 
       {/* wake/sleep axis labels */}
       <div className="absolute flex items-center" style={{top:`${wakeCardTop+WAKE_CARD_H/2}px`,transform:'translateY(-50%)',left:0}}>
@@ -1949,6 +1939,29 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
         </div>
       </div>
 
+      {/* free slot hourly labels on left axis — skip wake/sleep and task start times */}
+      {freeLayout.flatMap(({slot,freeY,finalH})=>{
+        const usedMins=new Set([wakeMin,sleepMin,...groupLayout.map(({g})=>toMin(g.startTime))]);
+        const startMin=toMin(slot.start);
+        const endMin=toMin(slot.end);
+        const slotMin=endMin-startMin;
+        const cardY=(m:number)=>calcDayY(m);
+        const labels:number[]=[];
+        for(let m=Math.ceil(startMin/60)*60;m<=endMin;m+=60){
+          if(usedMins.has(m)) continue;
+          const y=cardY(m);
+          if(y>=freeY&&y<=freeY+finalH) labels.push(m);
+        }
+        return labels.flatMap(m=>[
+          <div key={`fh-${m}`} className="absolute flex items-center" style={{top:`${cardY(m)}px`,transform:'translateY(-50%)',left:0}}>
+            <button onClick={()=>onAddAtTime(fromMin(m))}
+              className="text-xs w-10 text-right pr-1 leading-none text-gray-400 active:text-gray-900 transition-colors">
+              {fromMin(m)}
+            </button>
+          </div>,
+          <div key={`fh-dot-${m}`} className="absolute z-10 rounded-full bg-gray-200" style={{width:'4px',height:'4px',left:`${AXIS_X}px`,top:`${cardY(m)}px`,transform:'translate(-50%,-50%)'}}/>,
+        ]);
+      })}
 
       {/* current time */}
       {date===todayStr()&&nowMin>=wakeMin&&nowMin<=sleepMin&&(
