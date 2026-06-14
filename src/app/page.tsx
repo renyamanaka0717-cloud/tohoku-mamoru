@@ -880,20 +880,8 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
             </div>
           </div>
 
-          {/* Category chips */}
-          {customTabs.length>0&&(
-          <div className="flex gap-2 mb-3 overflow-x-auto" style={{WebkitOverflowScrolling:'touch'}}>
-            {customTabs.map(tab=>(
-              <button key={tab.id} onClick={()=>setCategory(c=>c===tab.id?null:tab.id)}
-                className={`shrink-0 px-3 py-1 rounded-full text-xs font-semibold transition-colors ${category===tab.id?'bg-white/90 text-gray-800':'bg-white/20 text-white/80'}`}>
-                {tab.name}
-              </button>
-            ))}
-          </div>
-          )}
-
           {/* Tabs */}
-          <div className="flex bg-white/20 rounded-xl p-1">
+          <div className="flex bg-white/20 rounded-xl p-1 mb-3">
             {([['later','あとで'],['scheduled','時間指定'],['recurring','繰り返し']] as [TaskMode,string][]).map(([m,l])=>(
               <button key={m} onClick={()=>setMode(m)}
                 className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-colors ${mode===m?'bg-white/90 text-gray-800':'text-white/70'}`}>
@@ -901,7 +889,23 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
               </button>
             ))}
           </div>
-          <div className="h-1"/>
+
+          {/* Category file tabs */}
+          <div className="flex items-end" style={{overflowX:'auto',WebkitOverflowScrolling:'touch',marginLeft:'-16px',marginRight:'-16px',paddingLeft:'16px'}}>
+            {([{id:null as string|null,name:'すべて'},...customTabs]).map(tab=>{
+              const active=category===tab.id;
+              return (
+                <button key={tab.id??'all'} onClick={()=>setCategory(tab.id)}
+                  style={active?{
+                    padding:'6px 16px 8px',background:'rgba(255,255,255,0.95)',color:'#374151',fontWeight:700,fontSize:'0.8125rem',
+                    border:'none',borderRadius:'12px 12px 0 0',marginBottom:'-1px',flexShrink:0,
+                  }:{
+                    padding:'4px 16px 6px',background:'rgba(255,255,255,0.2)',color:'rgba(255,255,255,0.8)',fontWeight:600,fontSize:'0.8125rem',
+                    border:'none',borderRadius:'12px 12px 0 0',marginBottom:'2px',flexShrink:0,
+                  }}>{tab.name}</button>
+              );
+            })}
+          </div>
         </div>
 
         {/* ── White content ── */}
