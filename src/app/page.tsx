@@ -66,6 +66,18 @@ const PHOTOS_KEY       = 'tl-photos-v1';
 const DAY_SETTINGS_KEY = 'tl-day-settings-v1';
 const MORNING_NOTIF_KEY = 'tl-morning-notif-v1';
 const MORNING_SNOOZE_KEY = 'tl-morning-snooze-v1'; // stores snooze timestamp (ms)
+
+// テーマカラー — 将来的にここを差し替えるだけで全体の色が変わる
+const THEME = {
+  primary:       'var(--c-primary)',
+  danger:        'var(--c-danger)',
+  cardBg:        'var(--c-card-bg)',
+  background:    'var(--c-background)',
+  border:        'var(--c-border)',
+  textPrimary:   'var(--c-text-primary)',
+  textSecondary: 'var(--c-text-secondary)',
+} as const;
+
 const TAG_COLORS: {bg:string;text:string}[] = [
   {bg:'#FFD6E0',text:'#9B2335'},{bg:'#FFE4CC',text:'#9C4A20'},
   {bg:'#FFF3CC',text:'#7A5800'},{bg:'#E2F5CC',text:'#3A6B0E'},
@@ -2703,7 +2715,7 @@ function MorningCheckModal({tasks,selected,onToggle,onSelectAll,onAction,onSnooz
           <button onClick={()=>setSub('main')}
             className="flex-1 py-3 bg-gray-100 rounded-xl text-sm font-semibold text-gray-800 active:bg-gray-200">戻る</button>
           <button onClick={onClose}
-            className="flex-1 py-3 bg-[#D97A7A] rounded-xl text-sm font-semibold text-white active:opacity-80">閉じる</button>
+            className="flex-1 py-3 rounded-xl text-sm font-semibold text-white active:opacity-80" style={{background:THEME.danger}}>閉じる</button>
         </div>
       </div>
     </div>
@@ -2746,7 +2758,8 @@ function MorningCheckModal({tasks,selected,onToggle,onSelectAll,onAction,onSnooz
         </div>
         <div className="flex-1 overflow-y-auto">
           <button className="w-full flex items-center gap-3 px-5 py-2.5 border-b border-gray-100" onClick={onSelectAll}>
-            <div className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 ${allSel?'bg-[#D9A3B2] border-[#D9A3B2]':'border-gray-300'}`}>
+            <div className="w-5 h-5 rounded border-2 flex items-center justify-center shrink-0"
+              style={allSel?{background:THEME.primary,borderColor:THEME.primary}:{borderColor:'#D1D5DB'}}>
               {allSel&&<span className="text-white text-[10px] font-bold">✓</span>}
             </div>
             <span className="text-sm text-gray-500 font-medium">すべて選択</span>
@@ -2756,8 +2769,10 @@ function MorningCheckModal({tasks,selected,onToggle,onSelectAll,onAction,onSnooz
             const Ic=getTaskIcon(t.icon??'');
             return (
               <button key={t.id} onClick={()=>onToggle(t.id)}
-                className={`w-full flex items-center gap-3 px-5 py-3 border-b border-gray-100 ${isSel?'bg-pink-50':''}`}>
-                <div className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 ${isSel?'bg-[#D9A3B2] border-[#D9A3B2]':'border-gray-300'}`}>
+                className="w-full flex items-center gap-3 px-5 py-3 border-b border-gray-100"
+                style={isSel?{background:'color-mix(in srgb, var(--c-primary) 10%, white)'}:{}}>
+                <div className="w-5 h-5 rounded border-2 flex items-center justify-center shrink-0"
+                  style={isSel?{background:THEME.primary,borderColor:THEME.primary}:{borderColor:'#D1D5DB'}}>
                   {isSel&&<span className="text-white text-[10px] font-bold">✓</span>}
                 </div>
                 <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0" style={{background:t.color||'#F3F4F6'}}>
@@ -2778,7 +2793,8 @@ function MorningCheckModal({tasks,selected,onToggle,onSelectAll,onAction,onSnooz
               完了した
             </button>
             <button disabled={selCount===0} onClick={()=>onAction('later')}
-              className={`py-3 rounded-xl text-sm font-semibold ${selCount>0?'bg-[#D9A3B2] text-white active:opacity-80':'bg-gray-50 text-gray-300'}`}>
+              className={`py-3 rounded-xl text-sm font-semibold ${selCount>0?'text-white active:opacity-80':'bg-gray-50 text-gray-300'}`}
+              style={selCount>0?{background:THEME.primary}:{}}>
               あとでやるに戻す
             </button>
           </div>

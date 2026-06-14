@@ -2,6 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --c-primary:        #D9A3B2;
+  --c-danger:         #D97A7A;
+  --c-card-bg:        #ffffff;
+  --c-background:     #F9FAFB;
+  --c-border:         #F3F4F6;
+  --c-text-primary:   #1F1F1F;
+  --c-text-secondary: #9CA3AF;
+}
+
 html, body {
   -webkit-overflow-scrolling: touch;
   font-size: 17px;
