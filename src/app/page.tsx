@@ -540,6 +540,22 @@ function getTaskIcon(key:string){
   } as Record<string,typeof AppIcons.task>;
   return m[key]??AppIcons.task;
 }
+function defaultIconKey(name:string):string {
+  if(/食|飯|昼|夕|朝|ご飯|食事|弁当|外食|レストラン|カフェ|ランチ|ディナー|料理/.test(name)) return 'food';
+  if(/運動|走|ジョギング|ランニング|筋トレ|ジム|スポーツ|水泳|トレーニング/.test(name)) return 'exercise';
+  if(/仕事|会議|ミーティング|打ち合わせ|報告|プレゼン|業務|出社|退社|資料/.test(name)) return 'work';
+  if(/買い物|ショッピング|スーパー|購入/.test(name)) return 'shopping';
+  if(/掃除|洗濯|片付|家事/.test(name)) return 'clean';
+  if(/読書/.test(name)) return 'book';
+  if(/勉強|学習|テスト|試験|宿題|課題|授業|講義/.test(name)) return 'study';
+  if(/薬|病院|診察|通院|クリニック|歯医者/.test(name)) return 'health';
+  if(/電話|通話|連絡/.test(name)) return 'phone';
+  if(/音楽|歌|ピアノ|ギター/.test(name)) return 'music';
+  if(/散歩|移動|電車|バス|車/.test(name)) return 'travel';
+  if(/ゲーム/.test(name)) return 'game';
+  if(/お金|支払|振込|請求/.test(name)) return 'money';
+  return 'task';
+}
 
 // ── TaskModal ─────────────────────────────────────────────────────────────────
 
@@ -2000,7 +2016,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
           const task=g.tasks[0];
           const isDragging=dragTaskId===task.id;
           const isPressing=pressingId===task.id;
-          const CapsuleIc=getTaskIcon(task.icon??'');
+          const CapsuleIc=getTaskIcon(task.icon||defaultIconKey(task.name));
           return [
             <div key={`cap-${g.startTime}`} className="absolute z-10 cursor-pointer"
               style={{top:`${top}px`,left:`${AXIS_X-28}px`,width:'56px',height:`${Math.max(measuredH[g.startTime]??g.h,56)}px`}}
@@ -2193,7 +2209,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
                 </div>
                 <div className="space-y-2">
                   {normalLater.map(t=>{
-                    const LaterIc=getTaskIcon(t.icon??'');
+                    const LaterIc=getTaskIcon(t.icon||defaultIconKey(t.name));
                     return (
                     <div key={t.id}
                       className={`flex items-center gap-2.5 bg-white border border-gray-100 rounded-2xl shadow-sm px-3 py-3 transition-transform select-none ${pressingId===t.id?'scale-95 shadow-lg border-blue-200':''}`}
@@ -2226,7 +2242,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
                 </div>
                 <div className="space-y-2">
                   {scheduledRaw.map(t=>{
-                    const SchedIc=getTaskIcon(t.icon??'');
+                    const SchedIc=getTaskIcon(t.icon||defaultIconKey(t.name));
                     return (
                     <div key={t.id} className="flex items-center gap-2.5 bg-white border border-gray-100 rounded-2xl shadow-sm px-3 py-3">
                       <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{background:t.color||'#F3F4F6'}}>
@@ -2252,7 +2268,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
                 </div>
                 <div className="space-y-2">
                   {recurringGroups.map(t=>{
-                    const RecIc=getTaskIcon(t.icon??'');
+                    const RecIc=getTaskIcon(t.icon||defaultIconKey(t.name));
                     return (
                     <div key={`${t.name}||${t.recurrence}||${t.startTime??''}`}
                       className="flex items-center gap-2.5 bg-white border border-gray-100 rounded-2xl shadow-sm px-3 py-3"
