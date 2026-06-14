@@ -827,11 +827,17 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
     else{onClose();}
   };
 
+  const headerBg=(()=>{
+    const hex=color||'#D9A3B2';
+    const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+    return `rgb(${Math.round(r*0.82)},${Math.round(g*0.82)},${Math.round(b*0.82)})`;
+  })();
+
   return (
     <div className="fixed inset-0 z-50 bg-black/60" onClick={handleClose}>
       <div className="absolute bottom-0 left-0 right-0 max-w-md mx-auto" onClick={e=>e.stopPropagation()}>
         {/* ── Dark header ── */}
-        <div className="bg-[#D9A3B2] rounded-t-3xl px-4 pt-4"
+        <div className="rounded-t-3xl px-4 pt-4" style={{background:headerBg}}
           onTouchStart={e=>{modalSwX.current=e.touches[0].clientX;modalSwY.current=e.touches[0].clientY;}}
           onTouchEnd={onModalSwipe}>
           {/* Buttons row */}
