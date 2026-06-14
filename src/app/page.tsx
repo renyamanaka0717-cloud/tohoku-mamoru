@@ -1886,35 +1886,21 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
   const AXIS_X    = TIME_LABEL_W + AXIS_GAP + ICON_HALF;  // 72
   const CARD_LEFT = AXIS_X + ICON_HALF + CARD_GAP;         // 108
 
-  // anchors の逆引き（Y座標→時刻）を App のドラッグハンドラに渡す
+  // Y座標→時刻の逆引き（calcDayY の逆関数）
   yToTimeRef.current=(clientY:number):string=>{
     const el=containerRef.current;
-    const baseY=el?(el.getBoundingClientRect().top+window.scrollY):0;
-    const timelineY=clientY+window.scrollY-baseY;
-    let min:number;
-    if(!anchors.length||timelineY<=anchors[0][1]){
-      min=anchors[0]?.[0]??wakeMin;
-    } else if(timelineY>=anchors[anchors.length-1][1]){
-      min=anchors[anchors.length-1][0];
-    } else {
-      min=wakeMin;
-      for(let i=0;i<anchors.length-1;i++){
-        const [m0,y0]=anchors[i],[m1,y1]=anchors[i+1];
-        if(timelineY>=y0&&timelineY<=y1){
-          min=y1===y0?m0:m0+(timelineY-y0)/(y1-y0)*(m1-m0);
-          break;
-        }
-      }
-    }
+    if(!el) return fromMin(wakeMin);
+    const containerY=clientY-el.getBoundingClientRect().top;
+    const min=wakeMin+(containerY-wakeCardTop-WAKE_CARD_H)/PX_PER_MIN;
     const snapped=Math.round(min/5)*5;
     return fromMin(Math.max(0,Math.min(23*60+55,snapped)));
   };
 
-  // 実レイアウト座標（min→スクリーンY）をドラッグオーバーレイ用に公開
+  // 時刻→スクリーンY（calcDayY ベース、ドラッグオーバーレイ用）
   layoutYRef.current=(min:number):number=>{
     const el=containerRef.current;
     if(!el) return 0;
-    return el.getBoundingClientRect().top+layoutCalcY(min);
+    return el.getBoundingClientRect().top+calcDayY(min);
   };
 
   return (
