@@ -905,9 +905,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
     <div className="fixed inset-0 z-50 bg-black/60" onClick={handleClose}>
       <div className="absolute bottom-0 left-0 right-0 max-w-md mx-auto" onClick={e=>e.stopPropagation()}>
         {/* ── Dark header ── */}
-        <div className="rounded-t-3xl px-4 pt-4" style={{background:headerBg}}
-          onTouchStart={e=>{modalSwX.current=e.touches[0].clientX;modalSwY.current=e.touches[0].clientY;}}
-          onTouchEnd={onModalSwipe}>
+        <div className="rounded-t-3xl px-4 pt-4" style={{background:headerBg}}>
           {/* Buttons row */}
           <div className="flex items-center justify-between mb-4">
             <button onClick={handleClose} className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center text-white">×</button>
@@ -977,9 +975,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
         </div>
 
         {/* ── White content ── */}
-        <div className="bg-gray-50 max-h-[55vh] overflow-y-auto"
-          onTouchStart={e=>{modalSwX.current=e.touches[0].clientX;modalSwY.current=e.touches[0].clientY;}}
-          onTouchEnd={onModalSwipe}>
+        <div className="bg-gray-50 max-h-[55vh] overflow-y-auto">
           {/* Recurring settings */}
           {mode==='recurring'&&(
             <>
