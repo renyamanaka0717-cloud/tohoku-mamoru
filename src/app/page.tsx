@@ -64,7 +64,8 @@ const HISTORY_KEY      = 'tl-history-v1';
 const CUSTOM_TABS_KEY  = 'tl-custom-tabs-v1';
 const PHOTOS_KEY       = 'tl-photos-v1';
 const DAY_SETTINGS_KEY = 'tl-day-settings-v1';
-const MORNING_NOTIF_KEY = 'tl-morning-notif-v1'; // stores date of last wake notification
+const MORNING_NOTIF_KEY = 'tl-morning-notif-v1';
+const MORNING_SNOOZE_KEY = 'tl-morning-snooze-v1'; // stores snooze timestamp (ms)
 const TAG_COLORS: {bg:string;text:string}[] = [
   {bg:'#FFD6E0',text:'#9B2335'},{bg:'#FFE4CC',text:'#9C4A20'},
   {bg:'#FFF3CC',text:'#7A5800'},{bg:'#E2F5CC',text:'#3A6B0E'},
@@ -2685,17 +2686,60 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
 
 // ── MorningCheckModal ─────────────────────────────────────────────────────────
 
-function MorningCheckModal({tasks,selected,onToggle,onSelectAll,onAction,onDismiss}:{
+function MorningCheckModal({tasks,selected,onToggle,onSelectAll,onAction,onSnooze,onClose}:{
   tasks:Task[];selected:Set<string>;onToggle:(id:string)=>void;onSelectAll:()=>void;
-  onAction:(type:'done'|'today'|'later')=>void;onDismiss:()=>void;
+  onAction:(type:'done'|'later')=>void;onSnooze:(minutes:number)=>void;onClose:()=>void;
 }){
+  const [sub,setSub]=useState<'main'|'snooze'|'closeConfirm'>('main');
   const allSel=tasks.length>0&&tasks.every(t=>selected.has(t.id));
   const selCount=tasks.filter(t=>selected.has(t.id)).length;
+  const SNOOZE_OPTS=[{m:15,l:'15分後'},{m:30,l:'30分後'},{m:60,l:'1時間後'},{m:120,l:'2時間後'}];
+
+  if(sub==='closeConfirm') return (
+    <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/30 px-6">
+      <div className="bg-white rounded-2xl w-full max-w-sm p-6 shadow-2xl">
+        <p className="text-[15px] font-bold text-gray-900 mb-2">確認</p>
+        <p className="text-sm text-gray-500 mb-6">処理していないタスクは前日のまま残ります。</p>
+        <div className="flex gap-3">
+          <button onClick={()=>setSub('main')}
+            className="flex-1 py-3 bg-gray-100 rounded-xl text-sm font-semibold text-gray-800 active:bg-gray-200">戻る</button>
+          <button onClick={onClose}
+            className="flex-1 py-3 bg-[#D97A7A] rounded-xl text-sm font-semibold text-white active:opacity-80">閉じる</button>
+        </div>
+      </div>
+    </div>
+  );
+
+  if(sub==='snooze') return (
+    <div className="fixed inset-0 z-[150] flex items-end bg-black/30">
+      <div className="w-full max-w-md mx-auto bg-white rounded-t-3xl shadow-2xl">
+        <div className="pt-3 pb-1 flex justify-center">
+          <div className="w-10 h-1 bg-gray-300 rounded-full"/>
+        </div>
+        <div className="px-5 pt-3 pb-2">
+          <p className="text-[16px] font-bold text-gray-900">何分後に再通知しますか？</p>
+        </div>
+        <div className="px-4 pb-8 space-y-2">
+          {SNOOZE_OPTS.map(({m,l})=>(
+            <button key={m} onClick={()=>onSnooze(m)}
+              className="w-full py-3.5 bg-gray-50 rounded-xl text-sm font-semibold text-gray-800 active:bg-gray-100 border border-gray-100">
+              {l}
+            </button>
+          ))}
+          <button onClick={()=>setSub('main')}
+            className="w-full py-2.5 text-sm text-gray-400 font-medium">戻る</button>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="fixed inset-0 z-[150] flex items-end bg-black/30">
       <div className="w-full max-w-md mx-auto bg-white rounded-t-3xl max-h-[80vh] flex flex-col shadow-2xl">
-        <div className="pt-3 pb-1 flex justify-center shrink-0">
+        <div className="pt-3 pb-1 flex justify-center shrink-0 relative">
           <div className="w-10 h-1 bg-gray-300 rounded-full"/>
+          <button onClick={()=>setSub('closeConfirm')}
+            className="absolute right-4 top-1.5 w-7 h-7 flex items-center justify-center text-gray-400 text-lg active:text-gray-600">×</button>
         </div>
         <div className="px-5 pt-2 pb-3 shrink-0">
           <p className="text-[17px] font-bold text-gray-900">昨日の未完了タスク</p>
@@ -2729,21 +2773,17 @@ function MorningCheckModal({tasks,selected,onToggle,onSelectAll,onAction,onDismi
           })}
         </div>
         <div className="px-4 pt-3 pb-6 shrink-0 border-t border-gray-100">
-          <div className="grid grid-cols-3 gap-2 mb-2">
+          <div className="grid grid-cols-2 gap-2 mb-2">
             <button disabled={selCount===0} onClick={()=>onAction('done')}
               className={`py-3 rounded-xl text-sm font-semibold ${selCount>0?'bg-gray-100 text-gray-800 active:bg-gray-200':'bg-gray-50 text-gray-300'}`}>
               完了した
             </button>
-            <button disabled={selCount===0} onClick={()=>onAction('today')}
-              className={`py-3 rounded-xl text-sm font-semibold ${selCount>0?'bg-[#D9A3B2] text-white active:opacity-80':'bg-gray-50 text-gray-300'}`}>
-              今日に移動
-            </button>
             <button disabled={selCount===0} onClick={()=>onAction('later')}
-              className={`py-3 rounded-xl text-sm font-semibold ${selCount>0?'bg-gray-100 text-gray-800 active:bg-gray-200':'bg-gray-50 text-gray-300'}`}>
-              あとでやる
+              className={`py-3 rounded-xl text-sm font-semibold ${selCount>0?'bg-[#D9A3B2] text-white active:opacity-80':'bg-gray-50 text-gray-300'}`}>
+              あとでやるに戻す
             </button>
           </div>
-          <button onClick={onDismiss}
+          <button onClick={()=>setSub('snooze')}
             className="w-full py-2.5 text-sm text-gray-400 font-medium active:text-gray-600">
             あとで確認する
           </button>
@@ -2837,18 +2877,30 @@ export default function App() {
   useEffect(()=>{ if(loaded) localStorage.setItem(DAY_SETTINGS_KEY,JSON.stringify(dayOverrides)); },[dayOverrides,loaded]);
   useEffect(()=>{ const iv=setInterval(()=>setNow(nowStr()),60000); return ()=>clearInterval(iv); },[]);
 
-  // 起床時間後、初回起動時に過去の未完了タスクをポップアップで確認
+  // 起床時間後、初回起動時に過去の未完了タスクをポップアップで確認（スヌーズ対応）
   useEffect(()=>{
-    if(!loaded||morningShownRef.current) return;
+    if(!loaded) return;
     const today=todayStr();
     const nowM=toMin(now);
     const wakeM=toMin(settings.wakeTime);
     if(nowM<wakeM) return;
+    // スヌーズ中か確認
+    const snoozeTs=localStorage.getItem(MORNING_SNOOZE_KEY);
+    if(snoozeTs){
+      if(Date.now()<parseInt(snoozeTs)) return;
+      localStorage.removeItem(MORNING_SNOOZE_KEY);
+      morningShownRef.current=false;
+      if(typeof Notification!=='undefined'&&Notification.permission==='granted'){
+        const past2=tasks.filter(t=>!t.completed&&!t.isLater&&!!t.startTime&&!t.recurrence&&t.date<today);
+        if(past2.length>0) new Notification('未完了タスクがあります',{body:`昨日以前の未完了タスクが${past2.length}件あります`});
+      }
+    }
+    if(morningShownRef.current) return;
     const past=tasks.filter(t=>!t.completed&&!t.isLater&&!!t.startTime&&!t.recurrence&&t.date<today);
     if(past.length===0) return;
     morningShownRef.current=true;
     setMorningTasks(past);
-    setMorningSel(new Set(past.map(t=>t.id)));
+    setMorningSel(new Set());
   },[loaded,tasks,settings.wakeTime,now]);
 
   // 起床時間に未完了タスク通知を送信
@@ -3057,16 +3109,26 @@ export default function App() {
   const toggle   = (id:string) => setTasks(prev=>prev.map(t=>t.id===id?{...t,completed:!t.completed}:t));
   const scheduleInSlot=(task:Task,startTime:string)=>setModal({open:true,task:{...task,isLater:false,startTime,date}});
   const moveToTimeline=(task:Task)=>setModal({open:true,task:{...task,isLater:false}});
-  const handleMorningAction=(type:'done'|'today'|'later')=>{
-    const today=todayStr();
+  const handleMorningAction=(type:'done'|'later')=>{
     const ids=morningSelected;
     setTasks(prev=>prev.map(t=>{
       if(!ids.has(t.id)) return t;
       if(type==='done') return {...t,completed:true};
-      if(type==='today') return {...t,date:today,startTime:null,isLater:true};
       return {...t,isLater:true,startTime:null};
     }));
+    const remaining=(morningTasks||[]).filter(t=>!ids.has(t.id));
+    if(remaining.length===0){setMorningTasks(null);}
+    else{setMorningTasks(remaining);setMorningSel(new Set());}
+  };
+  const handleMorningSnooze=(minutes:number)=>{
+    const ts=Date.now()+minutes*60*1000;
+    localStorage.setItem(MORNING_SNOOZE_KEY,String(ts));
     setMorningTasks(null);
+    morningShownRef.current=false;
+  };
+  const handleMorningClose=()=>{
+    setMorningTasks(null);
+    morningShownRef.current=true;
   };
   const carryOver=()=>{
     const next=shiftDate(date,1);
@@ -3377,7 +3439,8 @@ export default function App() {
           onToggle={id=>setMorningSel(prev=>{const s=new Set(prev);s.has(id)?s.delete(id):s.add(id);return s;})}
           onSelectAll={()=>setMorningSel(prev=>prev.size===morningTasks.length?new Set():new Set(morningTasks.map(t=>t.id)))}
           onAction={handleMorningAction}
-          onDismiss={()=>setMorningTasks(null)}
+          onSnooze={handleMorningSnooze}
+          onClose={handleMorningClose}
         />
       )}
     </div>
