@@ -3230,7 +3230,7 @@ export default function App() {
         </div>
         {/* Category filter tabs */}
         <div className="bg-gray-50">
-          <div className="tabs-scroll flex items-end pl-3 pt-2" style={{overflowX:'auto',WebkitOverflowScrolling:'touch'}}>
+          <div className="tabs-scroll flex items-end pl-3 pt-2" style={{overflowX:'auto',WebkitOverflowScrolling:'touch',overflowY:'hidden',touchAction:'pan-x'}}>
           <button onClick={()=>{setActiveCat(null);setEditTabId(null);}} className="shrink-0 relative"
             style={activeCategory===null?{
               padding:'7px 18px 9px',background:'#D9A3B2',color:'white',fontWeight:700,fontSize:'0.875rem',
