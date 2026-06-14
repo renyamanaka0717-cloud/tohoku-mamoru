@@ -959,14 +959,14 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
           </div>
 
           {/* Category file tabs */}
-          <div className="flex items-end" style={{overflowX:'auto',WebkitOverflowScrolling:'touch',marginLeft:'-16px',marginRight:'-16px',paddingLeft:'16px'}}>
+          <div className="tabs-scroll flex items-end" style={{overflowX:'auto',WebkitOverflowScrolling:'touch',overflowY:'hidden',touchAction:'pan-x',marginLeft:'-16px',marginRight:'-16px',paddingLeft:'16px'}}>
             {([{id:null as string|null,name:'すべて'},...customTabs]).map(tab=>{
               const active=category===tab.id;
               return (
                 <button key={tab.id??'all'} onClick={()=>setCategory(tab.id)}
                   style={active?{
-                    padding:'6px 16px 8px',background:'rgba(255,255,255,0.95)',color:'#374151',fontWeight:700,fontSize:'0.8125rem',
-                    border:'none',borderRadius:'12px 12px 0 0',marginBottom:'-1px',flexShrink:0,
+                    padding:'6px 16px 8px',background:'#F9FAFB',color:'#374151',fontWeight:700,fontSize:'0.8125rem',
+                    border:'none',borderRadius:'12px 12px 0 0',marginBottom:'-2px',flexShrink:0,
                   }:{
                     padding:'4px 16px 6px',background:'rgba(255,255,255,0.2)',color:'rgba(255,255,255,0.8)',fontWeight:600,fontSize:'0.8125rem',
                     border:'none',borderRadius:'12px 12px 0 0',marginBottom:'2px',flexShrink:0,
