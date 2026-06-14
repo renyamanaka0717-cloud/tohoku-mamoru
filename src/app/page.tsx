@@ -2703,9 +2703,15 @@ function MorningCheckModal({tasks,selected,onToggle,onSelectAll,onAction,onSnooz
   onAction:(type:'done'|'later')=>void;onSnooze:(minutes:number)=>void;onClose:()=>void;
 }){
   const [sub,setSub]=useState<'main'|'snooze'|'closeConfirm'>('main');
+  const [snoozeIdx,setSnoozeIdx]=useState(0);
+  const snoozeScrollRef=useRef<HTMLDivElement>(null);
   const allSel=tasks.length>0&&tasks.every(t=>selected.has(t.id));
   const selCount=tasks.filter(t=>selected.has(t.id)).length;
-  const SNOOZE_OPTS=[{m:15,l:'15分後'},{m:30,l:'30分後'},{m:60,l:'1時間後'},{m:120,l:'2時間後'}];
+  const ITEM_H=44;
+  const SNOOZE_ITEMS=Array.from({length:20},(_,i)=>{
+    const m=(i+1)*15,h=Math.floor(m/60),rem=m%60;
+    return {m,l:h===0?`${m}分後`:rem===0?`${h}時間後`:`${h}時間${rem}分後`};
+  });
 
   if(sub==='closeConfirm') return (
     <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/30 px-6">
@@ -2728,15 +2734,45 @@ function MorningCheckModal({tasks,selected,onToggle,onSelectAll,onAction,onSnooz
           <div className="w-10 h-1 bg-gray-300 rounded-full"/>
         </div>
         <div className="px-5 pt-3 pb-2">
-          <p className="text-[16px] font-bold text-gray-900">何分後に再通知しますか？</p>
+          <p className="text-[16px] font-bold text-gray-900">何時間後に再通知しますか？</p>
         </div>
-        <div className="px-4 pb-8 space-y-2">
-          {SNOOZE_OPTS.map(({m,l})=>(
-            <button key={m} onClick={()=>onSnooze(m)}
-              className="w-full py-3.5 bg-gray-50 rounded-xl text-sm font-semibold text-gray-800 active:bg-gray-100 border border-gray-100">
-              {l}
-            </button>
-          ))}
+        <div className="relative" style={{height:ITEM_H*5}}>
+          <div style={{
+            position:'absolute',top:ITEM_H*2,left:0,right:0,height:ITEM_H,
+            borderTop:'1px solid #E5E7EB',borderBottom:'1px solid #E5E7EB',
+            pointerEvents:'none',zIndex:1,
+          }}/>
+          <div ref={snoozeScrollRef}
+            style={{
+              height:'100%',overflowY:'scroll',scrollSnapType:'y mandatory',
+              WebkitOverflowScrolling:'touch',position:'relative',
+            }}
+            onScroll={e=>{
+              const idx=Math.round(e.currentTarget.scrollTop/ITEM_H);
+              setSnoozeIdx(Math.max(0,Math.min(SNOOZE_ITEMS.length-1,idx)));
+            }}
+          >
+            <div style={{height:ITEM_H*2}}/>
+            {SNOOZE_ITEMS.map(({m,l},i)=>(
+              <div key={m} style={{
+                height:ITEM_H,scrollSnapAlign:'center',display:'flex',
+                alignItems:'center',justifyContent:'center',
+                fontSize:i===snoozeIdx?'17px':'15px',
+                fontWeight:i===snoozeIdx?700:400,
+                color:i===snoozeIdx?'#1F1F1F':'#9CA3AF',
+              }}>
+                {l}
+              </div>
+            ))}
+            <div style={{height:ITEM_H*2}}/>
+          </div>
+        </div>
+        <div className="px-4 pt-3 pb-8 space-y-2">
+          <button onClick={()=>onSnooze(SNOOZE_ITEMS[snoozeIdx].m)}
+            className="w-full py-3.5 rounded-xl text-sm font-semibold text-white active:opacity-80"
+            style={{background:THEME.primary}}>
+            この時間後に再通知する
+          </button>
           <button onClick={()=>setSub('main')}
             className="w-full py-2.5 text-sm text-gray-400 font-medium">戻る</button>
         </div>
