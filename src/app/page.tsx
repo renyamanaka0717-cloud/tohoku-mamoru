@@ -2716,7 +2716,7 @@ function MorningCheckModal({tasks,selected,onToggle,onSelectAll,onAction,onSnooz
   if(sub==='closeConfirm') return (
     <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/30 px-6">
       <div className="bg-white rounded-2xl w-full max-w-sm p-6 shadow-2xl">
-        <p className="text-sm text-gray-700 mb-6">このまま閉じると、未完了タスクは前日に残ります。閉じますか？</p>
+        <p className="text-sm text-gray-700 mb-6">このまま閉じると、昨日のタスクは前日に残ります。閉じますか？</p>
         <div className="flex gap-3">
           <button onClick={()=>setSub('main')}
             className="flex-1 py-3 bg-gray-100 rounded-xl text-sm font-semibold text-gray-800 active:bg-gray-200">戻る</button>
@@ -2789,7 +2789,7 @@ function MorningCheckModal({tasks,selected,onToggle,onSelectAll,onAction,onSnooz
             className="absolute right-4 top-1.5 w-7 h-7 flex items-center justify-center text-gray-400 text-lg active:text-gray-600">×</button>
         </div>
         <div className="px-5 pt-2 pb-3 shrink-0">
-          <p className="text-[17px] font-bold text-gray-900">昨日の未完了タスク</p>
+          <p className="text-[17px] font-bold text-gray-900">昨日のタスク</p>
           <p className="text-sm text-gray-400 mt-1">{tasks.length}件のタスクが残っています</p>
         </div>
         <div className="flex-1 overflow-y-auto">
@@ -2943,7 +2943,7 @@ export default function App() {
       morningShownRef.current=false;
       if(typeof Notification!=='undefined'&&Notification.permission==='granted'){
         const past2=tasks.filter(t=>!t.completed&&!t.isLater&&!!t.startTime&&!t.recurrence&&t.date<today);
-        if(past2.length>0) new Notification('未完了タスクがあります',{body:`昨日以前の未完了タスクが${past2.length}件あります`});
+        if(past2.length>0) new Notification('昨日のタスクが残っています',{body:`昨日のタスクが${past2.length}件残っています`});
       }
     }
     if(morningShownRef.current) return;
@@ -2967,7 +2967,7 @@ export default function App() {
     if(past.length===0) return;
     localStorage.setItem(MORNING_NOTIF_KEY,today);
     if(typeof Notification!=='undefined'&&Notification.permission==='granted'){
-      new Notification('未完了タスクがあります',{body:`昨日以前の未完了タスクが${past.length}件あります`});
+      new Notification('昨日のタスクが残っています',{body:`昨日のタスクが${past.length}件残っています`});
     }
   },[loaded,now,tasks,settings.wakeTime]);
 
