@@ -2698,8 +2698,7 @@ function MorningCheckModal({tasks,selected,onToggle,onSelectAll,onAction,onSnooz
   if(sub==='closeConfirm') return (
     <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/30 px-6">
       <div className="bg-white rounded-2xl w-full max-w-sm p-6 shadow-2xl">
-        <p className="text-[15px] font-bold text-gray-900 mb-2">確認</p>
-        <p className="text-sm text-gray-500 mb-6">処理していないタスクは前日のまま残ります。</p>
+        <p className="text-sm text-gray-700 mb-6">このまま閉じると、未完了タスクは前日に残ります。閉じますか？</p>
         <div className="flex gap-3">
           <button onClick={()=>setSub('main')}
             className="flex-1 py-3 bg-gray-100 rounded-xl text-sm font-semibold text-gray-800 active:bg-gray-200">戻る</button>
