@@ -2726,6 +2726,7 @@ export default function App() {
   const yToTimeRef = useRef<((clientY:number)=>string)|null>(null);
   const layoutYRef = useRef<((min:number)=>number)|null>(null);
   const [recConfirm,setRecConfirm] = useState<Task|null>(null);
+  const [pendingDragMove,setPendingDragMove] = useState<{task:Task;time:string}|null>(null);
   const [editScope,setEditScope]   = useState<'one'|'all'>('one');
   const [overTrash,setOverTrash]   = useState(false);
   const [overLater,setOverLater]   = useState(false);
@@ -2897,10 +2898,14 @@ export default function App() {
         ));
       } else {
         const time=calcTime(t.clientY);
-        setTasks(prev=>prev.map(tk=>tk.id===dragTask.id
-          ? dragTask.isLater ? {...tk,isLater:false,startTime:time,date} : {...tk,startTime:time}
-          : tk
-        ));
+        if(dragTask.recurrence){
+          setPendingDragMove({task:dragTask,time});
+        } else {
+          setTasks(prev=>prev.map(tk=>tk.id===dragTask.id
+            ? dragTask.isLater ? {...tk,isLater:false,startTime:time,date} : {...tk,startTime:time}
+            : tk
+          ));
+        }
       }
       setDragTask(null);
       setDropTime(null);
@@ -3253,6 +3258,31 @@ export default function App() {
       )}
 
       {/* ── Recurrence edit confirm ── */}
+      {pendingDragMove&&(
+        <div className="fixed inset-0 z-[200] bg-black/50 flex items-end justify-center" onClick={()=>setPendingDragMove(null)}>
+          <div className="bg-white w-full max-w-md rounded-t-3xl px-5 pt-6 pb-10 shadow-2xl" onClick={e=>e.stopPropagation()}>
+            <p className="text-base font-bold text-gray-900 mb-1">繰り返し予定の移動</p>
+            <p className="text-sm text-gray-500 mb-6">「{pendingDragMove.task.name}」を {pendingDragMove.time} に移動しますか？</p>
+            <div className="space-y-3">
+              <button onClick={()=>{
+                const {task:orig,time}=pendingDragMove;
+                setTasks(prev=>prev.map(tk=>tk.id===orig.id?{...tk,startTime:time}:tk));
+                setPendingDragMove(null);
+              }} className="w-full py-3.5 bg-gray-100 rounded-2xl text-sm font-semibold text-gray-900">この予定のみ変更</button>
+              <button onClick={()=>{
+                const {task:orig,time}=pendingDragMove;
+                setTasks(prev=>prev.map(tk=>
+                  tk.name===orig.name&&tk.recurrence===orig.recurrence&&tk.startTime===orig.startTime
+                    ?{...tk,startTime:time}:tk
+                ));
+                setPendingDragMove(null);
+              }} className="w-full py-3.5 bg-[#D9A3B2] rounded-2xl text-sm font-semibold text-white">すべての予定を変更</button>
+              <button onClick={()=>setPendingDragMove(null)}
+                className="w-full py-2.5 text-sm text-gray-400 font-semibold">キャンセル</button>
+            </div>
+          </div>
+        </div>
+      )}
       {recConfirm&&(
         <div className="fixed inset-0 z-[200] bg-black/50 flex items-end justify-center" onClick={()=>setRecConfirm(null)}>
           <div className="bg-white w-full max-w-md rounded-t-3xl px-5 pt-6 pb-10 shadow-2xl" onClick={e=>e.stopPropagation()}>
