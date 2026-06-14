@@ -3049,7 +3049,7 @@ export default function App() {
               border:'none',borderRadius:'14px 14px 0 0',marginBottom:'-2px',zIndex:10,
               boxShadow:'0 4px 12px rgba(0,0,0,0.10)',
             }:{
-              padding:'5px 18px',background:'#F3F4F6',color:'#6B7280',fontWeight:600,fontSize:'0.875rem',
+              padding:'5px 18px',background:'#FFFFFF',color:'#6B7280',fontWeight:600,fontSize:'0.875rem',
               border:'none',borderRadius:'14px 14px 0 0',marginBottom:'2px',
               boxShadow:'0 4px 10px rgba(0,0,0,0.08)',
             }}>すべて</button>
@@ -3065,7 +3065,7 @@ export default function App() {
                   border:'none',borderRadius:'14px 14px 0 0',marginBottom:'-2px',zIndex:10,
                   boxShadow:'0 4px 12px rgba(0,0,0,0.10)',
                 }:{
-                  padding:'5px 18px',background:'#F3F4F6',color:'#6B7280',fontWeight:600,fontSize:'0.875rem',
+                  padding:'5px 18px',background:'#FFFFFF',color:'#6B7280',fontWeight:600,fontSize:'0.875rem',
                   border:'none',borderRadius:'14px 14px 0 0',marginBottom:'2px',
                   boxShadow:'0 4px 10px rgba(0,0,0,0.08)',
                 }}>{tab.name}</button>
