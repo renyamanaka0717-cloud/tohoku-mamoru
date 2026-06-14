@@ -64,6 +64,7 @@ const HISTORY_KEY      = 'tl-history-v1';
 const CUSTOM_TABS_KEY  = 'tl-custom-tabs-v1';
 const PHOTOS_KEY       = 'tl-photos-v1';
 const DAY_SETTINGS_KEY = 'tl-day-settings-v1';
+const MORNING_NOTIF_KEY = 'tl-morning-notif-v1'; // stores date of last wake notification
 const TAG_COLORS: {bg:string;text:string}[] = [
   {bg:'#FFD6E0',text:'#9B2335'},{bg:'#FFE4CC',text:'#9C4A20'},
   {bg:'#FFF3CC',text:'#7A5800'},{bg:'#E2F5CC',text:'#3A6B0E'},
@@ -2583,31 +2584,6 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
     </div>
   );
 
-  if(sub==='incomplete') return (
-    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
-      {subHeader('未完了タスクの扱い')}
-      <div className="flex-1 overflow-y-auto px-4 pb-8">
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">就寝後の動作</p>
-        <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
-          {([
-            {val:false,label:'就寝後に「あとでやる」へ戻す',desc:'就寝時間を過ぎた未完了タスクを自動で「あとでやる」に移動します'},
-            {val:true, label:'過去に残す',desc:'未完了タスクはタイムラインに残したまま保持します'},
-          ] as {val:boolean;label:string;desc:string}[]).map(({val,label,desc},i,a)=>(
-            <button key={String(val)} onClick={()=>onSettings({...settings,keepIncomplete:val})}
-              className={`w-full flex items-center gap-3 px-4 py-3.5 text-left${i<a.length-1?' border-b border-gray-100':''}`}>
-              <div className="flex-1 min-w-0">
-                <p className="text-[15px] font-medium text-gray-900">{label}</p>
-                <p className="text-xs text-gray-400 mt-0.5">{desc}</p>
-              </div>
-              <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${(settings.keepIncomplete??false)===val?'border-[#D9A3B2]':'border-gray-300'}`}>
-                {(settings.keepIncomplete??false)===val&&<div className="w-2.5 h-2.5 rounded-full bg-[#D9A3B2]"/>}
-              </div>
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
   if(sub==='wakeSleep') return (
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
       {subHeader('起床・就寝')}
@@ -2681,7 +2657,6 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           <SettingsRow icon={<AppIcons.repeat size={18}/>} iconBg="bg-gray-100" title="繰り返しタスク" desc="繰り返しタスクを管理" onClick={()=>setSub('recurring')}/>
           <SettingsRow icon={<AppIcons.bell/>} iconBg="bg-gray-100" title="通知" desc="通知設定" onClick={()=>setSub('notifications')}/>
           <SettingsRow icon={<AppIcons.palette/>} iconBg="bg-gray-100" title="表示設定" desc="外観、言語など" onClick={()=>setSub('display')}/>
-          <SettingsRow icon={<AppIcons.postponed size={18}/>} iconBg="bg-gray-100" title="未完了タスクの扱い" desc={(settings.keepIncomplete??false)?'過去に残す':'就寝後にあとでやるへ戻す'} onClick={()=>setSub('incomplete')}/>
           <SettingsRow icon={<AppIcons.wake size={18}/>} iconBg="bg-gray-100" title="起床・就寝" desc="起床時間、就寝時間を設定" onClick={()=>setSub('wakeSleep')} isLast/>
         </div>
 
@@ -2707,6 +2682,76 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
 }
 
 // ── App ───────────────────────────────────────────────────────────────────────
+
+// ── MorningCheckModal ─────────────────────────────────────────────────────────
+
+function MorningCheckModal({tasks,selected,onToggle,onSelectAll,onAction,onDismiss}:{
+  tasks:Task[];selected:Set<string>;onToggle:(id:string)=>void;onSelectAll:()=>void;
+  onAction:(type:'done'|'today'|'later')=>void;onDismiss:()=>void;
+}){
+  const allSel=tasks.length>0&&tasks.every(t=>selected.has(t.id));
+  const selCount=tasks.filter(t=>selected.has(t.id)).length;
+  return (
+    <div className="fixed inset-0 z-[150] flex items-end bg-black/30">
+      <div className="w-full max-w-md mx-auto bg-white rounded-t-3xl max-h-[80vh] flex flex-col shadow-2xl">
+        <div className="pt-3 pb-1 flex justify-center shrink-0">
+          <div className="w-10 h-1 bg-gray-300 rounded-full"/>
+        </div>
+        <div className="px-5 pt-2 pb-3 shrink-0">
+          <p className="text-[17px] font-bold text-gray-900">昨日の未完了タスク</p>
+          <p className="text-sm text-gray-400 mt-1">{tasks.length}件のタスクが残っています</p>
+        </div>
+        <div className="flex-1 overflow-y-auto">
+          <button className="w-full flex items-center gap-3 px-5 py-2.5 border-b border-gray-100" onClick={onSelectAll}>
+            <div className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 ${allSel?'bg-[#D9A3B2] border-[#D9A3B2]':'border-gray-300'}`}>
+              {allSel&&<span className="text-white text-[10px] font-bold">✓</span>}
+            </div>
+            <span className="text-sm text-gray-500 font-medium">すべて選択</span>
+          </button>
+          {tasks.map(t=>{
+            const isSel=selected.has(t.id);
+            const Ic=getTaskIcon(t.icon??'');
+            return (
+              <button key={t.id} onClick={()=>onToggle(t.id)}
+                className={`w-full flex items-center gap-3 px-5 py-3 border-b border-gray-100 ${isSel?'bg-pink-50':''}`}>
+                <div className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 ${isSel?'bg-[#D9A3B2] border-[#D9A3B2]':'border-gray-300'}`}>
+                  {isSel&&<span className="text-white text-[10px] font-bold">✓</span>}
+                </div>
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0" style={{background:t.color||'#F3F4F6'}}>
+                  <Ic size={15} className={t.color?'text-gray-600':'text-gray-400'}/>
+                </div>
+                <div className="flex-1 text-left min-w-0">
+                  <p className="text-sm font-semibold text-gray-800 truncate">{t.name}</p>
+                  <p className="text-xs text-gray-400">{t.date.slice(5).replace('-','/')} {t.startTime}</p>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+        <div className="px-4 pt-3 pb-6 shrink-0 border-t border-gray-100">
+          <div className="grid grid-cols-3 gap-2 mb-2">
+            <button disabled={selCount===0} onClick={()=>onAction('done')}
+              className={`py-3 rounded-xl text-sm font-semibold ${selCount>0?'bg-gray-100 text-gray-800 active:bg-gray-200':'bg-gray-50 text-gray-300'}`}>
+              完了した
+            </button>
+            <button disabled={selCount===0} onClick={()=>onAction('today')}
+              className={`py-3 rounded-xl text-sm font-semibold ${selCount>0?'bg-[#D9A3B2] text-white active:opacity-80':'bg-gray-50 text-gray-300'}`}>
+              今日に移動
+            </button>
+            <button disabled={selCount===0} onClick={()=>onAction('later')}
+              className={`py-3 rounded-xl text-sm font-semibold ${selCount>0?'bg-gray-100 text-gray-800 active:bg-gray-200':'bg-gray-50 text-gray-300'}`}>
+              あとでやる
+            </button>
+          </div>
+          <button onClick={onDismiss}
+            className="w-full py-2.5 text-sm text-gray-400 font-medium active:text-gray-600">
+            あとで確認する
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function App() {
   const [tasks,setTasks]         = useState<Task[]>([]);
@@ -2744,6 +2789,9 @@ export default function App() {
   const [dragSetting,setDragSetting] = useState<'wake'|'sleep'|null>(null);
   const [settingConfirm,setSettingConfirm] = useState<{type:'wake'|'sleep';newTime:string}|null>(null);
   const [dayOverrides,setDayOverrides] = useState<Record<string,{wakeTime?:string;sleepTime?:string}>>({});
+  const [morningTasks,setMorningTasks] = useState<Task[]|null>(null);
+  const [morningSelected,setMorningSel] = useState<Set<string>>(new Set());
+  const morningShownRef = useRef(false);
 
   useEffect(()=>{
     try{
@@ -2775,6 +2823,9 @@ export default function App() {
       if(ds) setDayOverrides(JSON.parse(ds) as Record<string,{wakeTime?:string;sleepTime?:string}>);
     }catch{}
     setLoaded(true);
+    if(typeof Notification!=='undefined'&&Notification.permission==='default'){
+      Notification.requestPermission();
+    }
   },[]);
 
   useEffect(()=>{ if(loaded) localStorage.setItem(TASKS_KEY,JSON.stringify(tasks)); },[tasks,loaded]);
@@ -2786,40 +2837,36 @@ export default function App() {
   useEffect(()=>{ if(loaded) localStorage.setItem(DAY_SETTINGS_KEY,JSON.stringify(dayOverrides)); },[dayOverrides,loaded]);
   useEffect(()=>{ const iv=setInterval(()=>setNow(nowStr()),60000); return ()=>clearInterval(iv); },[]);
 
-  // 就寝時刻を過ぎた当日の未完了タスクを「あとでやる」へ自動移動し履歴を記録
+  // 起床時間後、初回起動時に過去の未完了タスクをポップアップで確認
+  useEffect(()=>{
+    if(!loaded||morningShownRef.current) return;
+    const today=todayStr();
+    const nowM=toMin(now);
+    const wakeM=toMin(settings.wakeTime);
+    if(nowM<wakeM) return;
+    const past=tasks.filter(t=>!t.completed&&!t.isLater&&!!t.startTime&&!t.recurrence&&t.date<today);
+    if(past.length===0) return;
+    morningShownRef.current=true;
+    setMorningTasks(past);
+    setMorningSel(new Set(past.map(t=>t.id)));
+  },[loaded,tasks,settings.wakeTime,now]);
+
+  // 起床時間に未完了タスク通知を送信
   useEffect(()=>{
     if(!loaded) return;
     const today=todayStr();
     const nowM=toMin(now);
-    const sleepM=toMin(settings.sleepTime);
-    if(settings.keepIncomplete) return;
-    const shouldMove=(t:Task)=>
-      !t.completed&&!t.isLater&&!!t.startTime&&!t.recurrence&&
-      t.date===today&&nowM>=sleepM;
-    const toMove=tasks.filter(shouldMove);
-    if(toMove.length===0) return;
-    setTasks(prev=>prev.map(t=>{
-      if(!shouldMove(t)) return t;
-      const alreadyCounted=t.lastPostponedDate===today;
-      return {
-        ...t,
-        isLater:true,
-        startTime:null,
-        postponedCount:alreadyCounted?(t.postponedCount??0):(t.postponedCount??0)+1,
-        lastPostponedDate:today,
-      };
-    }));
-    setMoveHistory(prev=>{
-      const existing=prev.find(h=>h.date===today);
-      const newNames=toMove.map(t=>t.name);
-      if(existing){
-        const merged=[...new Set([...existing.taskNames,...newNames])];
-        if(merged.length===existing.taskNames.length) return prev;
-        return prev.map(h=>h.date===today?{...h,taskNames:merged}:h);
-      }
-      return [...prev,{id:uid(),date:today,taskNames:newNames}];
-    });
-  },[loaded,tasks,settings.sleepTime,now]);
+    const wakeM=toMin(settings.wakeTime);
+    if(nowM!==wakeM) return;
+    const lastDate=localStorage.getItem(MORNING_NOTIF_KEY);
+    if(lastDate===today) return;
+    const past=tasks.filter(t=>!t.completed&&!t.isLater&&!!t.startTime&&!t.recurrence&&t.date<today);
+    if(past.length===0) return;
+    localStorage.setItem(MORNING_NOTIF_KEY,today);
+    if(typeof Notification!=='undefined'&&Notification.permission==='granted'){
+      new Notification('未完了タスクがあります',{body:`昨日以前の未完了タスクが${past.length}件あります`});
+    }
+  },[loaded,now,tasks,settings.wakeTime]);
 
   const filteredTasks = useMemo(()=>activeCategory?tasks.filter(t=>t.category===activeCategory):tasks,[tasks,activeCategory]);
   const laterTasks    = useMemo(()=>filteredTasks.filter(t=>t.isLater),[filteredTasks]);
@@ -3010,6 +3057,17 @@ export default function App() {
   const toggle   = (id:string) => setTasks(prev=>prev.map(t=>t.id===id?{...t,completed:!t.completed}:t));
   const scheduleInSlot=(task:Task,startTime:string)=>setModal({open:true,task:{...task,isLater:false,startTime,date}});
   const moveToTimeline=(task:Task)=>setModal({open:true,task:{...task,isLater:false}});
+  const handleMorningAction=(type:'done'|'today'|'later')=>{
+    const today=todayStr();
+    const ids=morningSelected;
+    setTasks(prev=>prev.map(t=>{
+      if(!ids.has(t.id)) return t;
+      if(type==='done') return {...t,completed:true};
+      if(type==='today') return {...t,date:today,startTime:null,isLater:true};
+      return {...t,isLater:true,startTime:null};
+    }));
+    setMorningTasks(null);
+  };
   const carryOver=()=>{
     const next=shiftDate(date,1);
     const toMove=tasks.filter(t=>t.date===date&&!t.completed&&!t.isLater);
@@ -3309,6 +3367,18 @@ export default function App() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── Morning check popup ── */}
+      {morningTasks&&(
+        <MorningCheckModal
+          tasks={morningTasks}
+          selected={morningSelected}
+          onToggle={id=>setMorningSel(prev=>{const s=new Set(prev);s.has(id)?s.delete(id):s.add(id);return s;})}
+          onSelectAll={()=>setMorningSel(prev=>prev.size===morningTasks.length?new Set():new Set(morningTasks.map(t=>t.id)))}
+          onAction={handleMorningAction}
+          onDismiss={()=>setMorningTasks(null)}
+        />
       )}
     </div>
   );
