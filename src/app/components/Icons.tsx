@@ -53,6 +53,9 @@ import {
   Train,
   Gift,
   Scissors,
+  PersonSimpleRun,
+  PersonSimpleTaiChi,
+  Bicycle,
 } from '@phosphor-icons/react';
 
 type PhosphorComp = React.ComponentType<{
@@ -114,6 +117,9 @@ export const AppIcons = {
   game:       make(GameController, 18),
   camera:     make(Camera, 18),
   plus:       make(Plus, 28),
+  running:    make(PersonSimpleRun, 18),
+  yoga:       make(PersonSimpleTaiChi, 18),
+  bicycle:    make(Bicycle, 18),
   washing:    make(WashingMachine, 18),
   cooking:    make(CookingPot, 18),
   paw:        make(PawPrint, 18),

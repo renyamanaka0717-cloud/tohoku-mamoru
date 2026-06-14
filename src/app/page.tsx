@@ -528,6 +528,9 @@ const ICON_CATEGORIES:{label:string;icons:{key:string;label:string}[]}[]=[
     {key:'hospital', label:'病院'},
     {key:'medicine', label:'薬'},
     {key:'exercise', label:'運動'},
+    {key:'running',  label:'ランニング'},
+    {key:'yoga',     label:'ヨガ'},
+    {key:'bicycle',  label:'自転車'},
   ]},
   {label:'その他',icons:[
     {key:'travel',   label:'移動'},
@@ -561,6 +564,7 @@ function getTaskIcon(key:string){
     medicine:AppIcons.medicine,hospital:AppIcons.hospital,payment:AppIcons.payment,
     document:AppIcons.document,mail:AppIcons.mail,meeting:AppIcons.meeting,
     train:AppIcons.train,gift:AppIcons.gift,scissors:AppIcons.scissors,
+    running:AppIcons.running,yoga:AppIcons.yoga,bicycle:AppIcons.bicycle,
   } as Record<string,typeof AppIcons.task>;
   return m[key]??AppIcons.task;
 }
