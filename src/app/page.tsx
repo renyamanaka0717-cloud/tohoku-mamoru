@@ -541,7 +541,13 @@ const ICON_CATEGORIES:{label:string;icons:{key:string;label:string}[]}[]=[
   ]},
 ];
 const ICON_OPTIONS=ICON_CATEGORIES.flatMap(c=>c.icons);
-const TASK_COLORS=['','#C4888E','#C47A5E','#C4A44A','#7A9E8A','#6A8FAF','#8F82B8','#A67899','#8F8880'];
+const TASK_COLORS=[
+  '',
+  // 濃いめ（白文字映え）
+  '#C4888E','#C47A5E','#C4A44A','#7A9E8A','#6A8FAF','#8F82B8','#A67899','#8F8880',
+  // 明るめ（柔らかい雰囲気）
+  '#F4A7B0','#F4AA80','#F4D47A','#A8D8B0','#90C4E0','#B8AADC','#DDB0CC','#D4C8B8',
+];
 
 function getTaskIcon(key:string){
   const m={task:AppIcons.task,shopping:AppIcons.shopping,food:AppIcons.food,
@@ -1433,10 +1439,11 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
             <div className="overflow-y-auto px-5 pb-10 flex-1">
               {/* Color */}
               <p className="text-xs font-bold text-gray-400 mb-2 mt-1">カラー</p>
-              <div className="flex gap-2 mb-5">
+              <div className="tabs-scroll flex gap-2 mb-5 pb-1"
+                style={{overflowX:'auto',WebkitOverflowScrolling:'touch',overflowY:'hidden',touchAction:'pan-x'}}>
                 {TASK_COLORS.map((c,i)=>(
                   <button key={i} onClick={()=>setColor(c)}
-                    className={`w-8 h-8 rounded-full border-2 transition-all ${color===c?'border-gray-800 scale-110':'border-gray-100'}`}
+                    className={`shrink-0 w-8 h-8 rounded-full border-2 transition-all ${color===c?'border-gray-800 scale-110':'border-gray-100'}`}
                     style={{background:c||'#E5E7EB'}}/>
                 ))}
               </div>
