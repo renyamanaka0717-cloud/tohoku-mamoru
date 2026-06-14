@@ -939,7 +939,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
             </button>
             <div className="flex-1 min-w-0">
               {(mode==='scheduled'||mode==='recurring')&&startTime&&(
-                <p className="text-xs text-gray-400 mb-0.5">{startTime}{computedEnd?`〜${computedEnd}`:''}{mode==='recurring'&&' · 繰り返し'}</p>
+                <p className="text-xs text-white/60 mb-0.5">{startTime}{computedEnd?`〜${computedEnd}`:''}{mode==='recurring'&&' · 繰り返し'}</p>
               )}
               <input type="text" value={name} onChange={e=>setName(e.target.value)}
                 placeholder="タスク名を入力..."
