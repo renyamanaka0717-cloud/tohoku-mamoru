@@ -1651,8 +1651,7 @@ function FreeTimeCard({slot,fits,height,onSchedule,onDragStart}:{
               onTouchStart={e=>startLP(t,e)}
               onTouchEnd={cancelLP}
               onTouchMove={cancelLP}
-              className={`inline-flex items-center gap-1 bg-white rounded-full px-2.5 py-1 text-xs font-medium text-gray-700 shadow-sm select-none transition-transform${pressingId===t.id?' scale-95 shadow-md ring-2 ring-blue-300':''}`}>
-              <span className="w-3 h-3 border border-gray-300 rounded-sm shrink-0"/>
+              className={`inline-flex items-center bg-white rounded-full px-2.5 py-1 text-xs font-medium text-gray-700 shadow-sm select-none transition-transform${pressingId===t.id?' scale-95 shadow-md ring-2 ring-blue-300':''}`}>
               <span>{t.name}</span>
             </button>
           ))}
