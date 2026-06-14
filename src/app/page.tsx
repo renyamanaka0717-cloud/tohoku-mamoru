@@ -836,22 +836,22 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
           onTouchEnd={onModalSwipe}>
           {/* Buttons row */}
           <div className="flex items-center justify-between mb-4">
-            <button onClick={handleClose} className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center text-white">×</button>
+            <button onClick={handleClose} className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center text-white">×</button>
             <div className="flex items-center gap-3">
               {task ? (
                 <>
                   {saveStatus!=='idle'&&(
                     <span style={{transition:'opacity 0.3s',opacity:saveFading?0:1}}
-                      className={`text-xs ${saveStatus==='error'?'text-[#D97A7A]':saveStatus==='saved'?'text-green-400':'text-gray-400'}`}>
+                      className={`text-xs ${saveStatus==='error'?'text-[#D97A7A]':saveStatus==='saved'?'text-white/80':'text-white/50'}`}>
                       {saveStatus==='saving'?'保存中…':saveStatus==='saved'?'✓ 保存済み':'保存に失敗しました'}
                     </span>
                   )}
                   <button onClick={flushAndClose}
-                    className="px-4 py-1.5 text-sm font-semibold rounded-full bg-white text-gray-900">完了</button>
+                    className="px-4 py-1.5 text-sm font-semibold rounded-full bg-white/90 text-gray-800">完了</button>
                 </>
               ) : (
                 <button onClick={save} disabled={!name.trim()}
-                  className={`px-4 py-1.5 text-sm font-semibold rounded-full transition-colors ${name.trim()?'bg-white text-gray-900':'bg-gray-700 text-gray-500 cursor-not-allowed'}`}>保存</button>
+                  className={`px-4 py-1.5 text-sm font-semibold rounded-full transition-colors ${name.trim()?'bg-white/90 text-gray-800':'bg-white/20 text-white/40 cursor-not-allowed'}`}>保存</button>
               )}
             </div>
           </div>
@@ -859,7 +859,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
           {/* Icon + name */}
           <div className="flex items-center gap-3 mb-4">
             <button onClick={()=>setIconSheetOpen(true)}
-              className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 text-white bg-gray-700 active:bg-gray-600 transition-colors"
+              className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 text-white bg-white/20 active:bg-white/30 transition-colors"
               style={color?{background:color}:{}}>
               {(()=>{const Ic=getTaskIcon(icon);return <Ic size={24} className={color?'text-gray-700':'text-white'}/>;})()}
             </button>
@@ -869,7 +869,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
               )}
               <input type="text" value={name} onChange={e=>setName(e.target.value)}
                 placeholder="タスク名を入力..."
-                className="w-full bg-transparent text-white text-lg font-medium placeholder-gray-500 outline-none border-b border-gray-700 pb-1"
+                className="w-full bg-transparent text-white text-lg font-medium placeholder-white/40 outline-none border-b border-white/30 pb-1"
                 autoFocus/>
             </div>
           </div>
@@ -879,7 +879,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
           <div className="flex gap-2 mb-3 overflow-x-auto" style={{WebkitOverflowScrolling:'touch'}}>
             {customTabs.map(tab=>(
               <button key={tab.id} onClick={()=>setCategory(c=>c===tab.id?null:tab.id)}
-                className={`shrink-0 px-3 py-1 rounded-full text-xs font-semibold transition-colors ${category===tab.id?'bg-white text-gray-900':'bg-gray-700 text-gray-300'}`}>
+                className={`shrink-0 px-3 py-1 rounded-full text-xs font-semibold transition-colors ${category===tab.id?'bg-white/90 text-gray-800':'bg-white/20 text-white/80'}`}>
                 {tab.name}
               </button>
             ))}
@@ -887,10 +887,10 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
           )}
 
           {/* Tabs */}
-          <div className="flex bg-gray-800 rounded-xl p-1">
+          <div className="flex bg-white/20 rounded-xl p-1">
             {([['later','あとで'],['scheduled','時間指定'],['recurring','繰り返し']] as [TaskMode,string][]).map(([m,l])=>(
               <button key={m} onClick={()=>setMode(m)}
-                className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-colors ${mode===m?'bg-white text-gray-900':'text-gray-400'}`}>
+                className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-colors ${mode===m?'bg-white/90 text-gray-800':'text-white/70'}`}>
                 {l}
               </button>
             ))}
