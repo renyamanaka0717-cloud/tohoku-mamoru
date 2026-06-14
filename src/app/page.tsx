@@ -3004,9 +3004,9 @@ export default function App() {
   if(!loaded) return <div className="flex h-screen items-center justify-center text-gray-400">読み込み中…</div>;
 
   return (
-    <div className="max-w-md mx-auto min-h-screen bg-gray-50 font-sans">
+    <div className="max-w-md mx-auto min-h-screen bg-white font-sans">
       {/* ── Header ── */}
-      <header className="sticky top-0 z-30 bg-white">
+      <header className="sticky top-0 z-30 bg-gray-50">
         <div className="px-4 pt-1 pb-0">
           {/* Date + nav */}
           <div className="flex items-center justify-between mb-1">
@@ -3041,7 +3041,7 @@ export default function App() {
           </div>
         </div>
         {/* Category filter tabs */}
-        <div className="bg-white">
+        <div className="bg-gray-50">
           <div className="flex items-end px-3 pt-2" style={{overflowX:'auto',WebkitOverflowScrolling:'touch'}}>
           <button onClick={()=>{setActiveCat(null);setEditTabId(null);}} className="shrink-0 relative"
             style={activeCategory===null?{
@@ -3076,7 +3076,7 @@ export default function App() {
           </div>
         </div>
         {editTabId&&(
-          <div className="flex gap-2 px-4 py-2 bg-white border-b border-gray-100">
+          <div className="flex gap-2 px-4 py-2 bg-gray-50 border-b border-gray-100">
             <input value={editTabName} onChange={e=>setEditTabName(e.target.value)}
               onKeyDown={e=>{if(e.key==='Enter') saveEditTab();}}
               autoFocus
@@ -3107,7 +3107,7 @@ export default function App() {
 
       {/* ── Bottom bar ── */}
       <div
-        className="fixed bottom-0 left-0 right-0 z-40 max-w-md mx-auto bg-white rounded-t-2xl"
+        className="fixed bottom-0 left-0 right-0 z-40 max-w-md mx-auto bg-gray-50 rounded-t-2xl"
         style={{boxShadow:'0 -4px 16px rgba(0,0,0,0.10)'}}
         onTouchStart={e=>setTouchY(e.touches[0].clientY)}
         onTouchEnd={e=>{ if(touchY-e.changedTouches[0].clientY>30) setActiveTab('later'); }}
@@ -3115,7 +3115,7 @@ export default function App() {
         <div className="flex">
           {([['later','あとでやる',pendingCount],['shop','買い物リスト',shopPending]] as const).map(([tab,label,cnt],i)=>(
             <button key={tab} onClick={()=>setActiveTab(t=>t===tab?null:tab)}
-              className={`flex-1 flex items-center justify-center gap-2 py-3 transition-colors ${i===0?'border-r border-gray-100':''} ${activeTab===tab?'bg-gray-50':''}`}>
+              className={`flex-1 flex items-center justify-center gap-2 py-3 transition-colors ${i===0?'border-r border-gray-100':''} ${activeTab===tab?'bg-gray-100':''}`}>
               <span className={`text-sm font-semibold ${activeTab===tab?'text-gray-900':'text-gray-500'}`}>{label}</span>
               {cnt>0&&<span className="text-[11px] bg-[#D9A3B2] text-white min-w-[18px] h-[18px] rounded-full flex items-center justify-center font-bold px-1">{cnt}</span>}
             </button>
