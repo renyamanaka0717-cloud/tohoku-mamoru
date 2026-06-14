@@ -1360,7 +1360,6 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
               <span className="text-base font-bold text-gray-900">アイコンとカラー</span>
               <div className="flex items-center gap-2">
                 <button onClick={()=>setIconSheetOpen(false)} className="px-4 py-1.5 bg-[#D9A3B2] text-white text-sm font-semibold rounded-full">保存</button>
-                <button onClick={()=>setIconSheetOpen(false)} className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 font-bold text-sm">×</button>
               </div>
             </div>
             <div className="overflow-y-auto px-5 pb-10 flex-1">
@@ -1385,7 +1384,8 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                       const sel=icon===key;
                       return (
                         <button key={key} onClick={()=>pickIcon(key)}
-                          className={`flex flex-col items-center gap-1.5 py-3 rounded-2xl ${sel?'bg-[#D9A3B2]':'bg-gray-50'}`}>
+                          className={`flex flex-col items-center gap-1.5 py-3 rounded-2xl ${sel?'':'bg-gray-50'}`}
+                          style={sel?{background:color||'#D9A3B2'}:undefined}>
                           <Ic size={22} className={sel?'text-white':'text-gray-700'}/>
                           <span className={`text-[10px] leading-none ${sel?'text-gray-100':'text-gray-500'}`}>{opt.label}</span>
                         </button>
@@ -1404,7 +1404,8 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                       const sel=icon===opt.key;
                       return (
                         <button key={opt.key} onClick={()=>pickIcon(opt.key)}
-                          className={`flex flex-col items-center gap-1.5 py-3 rounded-2xl ${sel?'bg-[#D9A3B2]':'bg-gray-50'}`}>
+                          className={`flex flex-col items-center gap-1.5 py-3 rounded-2xl ${sel?'':'bg-gray-50'}`}
+                          style={sel?{background:color||'#D9A3B2'}:undefined}>
                           <Ic size={22} className={sel?'text-white':'text-gray-700'}/>
                           <span className={`text-[10px] leading-none ${sel?'text-gray-100':'text-gray-500'}`}>{opt.label}</span>
                         </button>
