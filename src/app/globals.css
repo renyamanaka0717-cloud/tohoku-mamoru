@@ -21,6 +21,14 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   opacity: 0.5;
 }
 
+.tabs-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.tabs-scroll::-webkit-scrollbar {
+  display: none;
+}
+
 .line-clamp-2 {
   display: -webkit-box;
   -webkit-line-clamp: 2;
