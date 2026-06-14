@@ -503,26 +503,40 @@ const ICON_CATEGORIES:{label:string;icons:{key:string;label:string}[]}[]=[
     {key:'task',    label:'メモ'},
     {key:'shopping',label:'買い物'},
     {key:'food',    label:'食事'},
+    {key:'cooking', label:'料理'},
     {key:'clean',   label:'掃除'},
+    {key:'washing', label:'洗濯'},
     {key:'rest',    label:'休憩'},
     {key:'sleep',   label:'睡眠'},
     {key:'home',    label:'家'},
+    {key:'paw',     label:'散歩'},
     {key:'health',  label:'健康'},
   ]},
   {label:'仕事・学習',icons:[
-    {key:'work',    label:'仕事'},
-    {key:'calendar',label:'予定'},
-    {key:'study',   label:'勉強'},
-    {key:'book',    label:'読書'},
-    {key:'phone',   label:'電話'},
-    {key:'money',   label:'お金'},
+    {key:'work',     label:'仕事'},
+    {key:'meeting',  label:'会議'},
+    {key:'document', label:'書類'},
+    {key:'mail',     label:'メール'},
+    {key:'calendar', label:'予定'},
+    {key:'study',    label:'勉強'},
+    {key:'book',     label:'読書'},
+    {key:'phone',    label:'電話'},
+    {key:'money',    label:'お金'},
+    {key:'payment',  label:'支払い'},
+  ]},
+  {label:'健康・医療',icons:[
+    {key:'hospital', label:'病院'},
+    {key:'medicine', label:'薬'},
+    {key:'exercise', label:'運動'},
   ]},
   {label:'その他',icons:[
     {key:'travel',   label:'移動'},
-    {key:'exercise', label:'運動'},
+    {key:'train',    label:'電車'},
     {key:'music',    label:'音楽'},
-    {key:'camera',   label:'カメラ'},
     {key:'game',     label:'ゲーム'},
+    {key:'gift',     label:'プレゼント'},
+    {key:'scissors', label:'趣味'},
+    {key:'camera',   label:'カメラ'},
     {key:'question', label:'その他'},
   ]},
 ];
@@ -537,23 +551,37 @@ function getTaskIcon(key:string){
     exercise:AppIcons.exercise,health:AppIcons.health,phone:AppIcons.phone,
     home:AppIcons.home,study:AppIcons.study,money:AppIcons.money,
     game:AppIcons.game,camera:AppIcons.camera,
+    washing:AppIcons.washing,cooking:AppIcons.cooking,paw:AppIcons.paw,
+    medicine:AppIcons.medicine,hospital:AppIcons.hospital,payment:AppIcons.payment,
+    document:AppIcons.document,mail:AppIcons.mail,meeting:AppIcons.meeting,
+    train:AppIcons.train,gift:AppIcons.gift,scissors:AppIcons.scissors,
   } as Record<string,typeof AppIcons.task>;
   return m[key]??AppIcons.task;
 }
 function defaultIconKey(name:string):string {
-  if(/食|飯|昼|夕|朝|ご飯|食事|弁当|外食|レストラン|カフェ|ランチ|ディナー|料理/.test(name)) return 'food';
+  if(/料理|炊事/.test(name)) return 'cooking';
+  if(/食|飯|昼|夕|朝|ご飯|食事|弁当|外食|レストラン|カフェ|ランチ|ディナー/.test(name)) return 'food';
+  if(/洗濯/.test(name)) return 'washing';
+  if(/掃除|片付|家事/.test(name)) return 'clean';
+  if(/散歩|ペット|犬|猫/.test(name)) return 'paw';
   if(/運動|走|ジョギング|ランニング|筋トレ|ジム|スポーツ|水泳|トレーニング/.test(name)) return 'exercise';
-  if(/仕事|会議|ミーティング|打ち合わせ|報告|プレゼン|業務|出社|退社|資料/.test(name)) return 'work';
+  if(/薬|服薬/.test(name)) return 'medicine';
+  if(/病院|診察|通院|クリニック|歯医者/.test(name)) return 'hospital';
+  if(/会議|ミーティング|打ち合わせ|MTG/.test(name)) return 'meeting';
+  if(/メール|mail/.test(name)) return 'mail';
+  if(/書類|資料|レポート|申請|手続/.test(name)) return 'document';
+  if(/仕事|業務|出社|退社|プレゼン|報告/.test(name)) return 'work';
   if(/買い物|ショッピング|スーパー|購入/.test(name)) return 'shopping';
-  if(/掃除|洗濯|片付|家事/.test(name)) return 'clean';
+  if(/支払|振込|請求|引落/.test(name)) return 'payment';
+  if(/お金|給料/.test(name)) return 'money';
   if(/読書/.test(name)) return 'book';
   if(/勉強|学習|テスト|試験|宿題|課題|授業|講義/.test(name)) return 'study';
-  if(/薬|病院|診察|通院|クリニック|歯医者/.test(name)) return 'health';
   if(/電話|通話|連絡/.test(name)) return 'phone';
   if(/音楽|歌|ピアノ|ギター/.test(name)) return 'music';
-  if(/散歩|移動|電車|バス|車/.test(name)) return 'travel';
+  if(/電車|バス|地下鉄/.test(name)) return 'train';
+  if(/移動|車/.test(name)) return 'travel';
+  if(/プレゼント|ギフト|贈り物/.test(name)) return 'gift';
   if(/ゲーム/.test(name)) return 'game';
-  if(/お金|支払|振込|請求/.test(name)) return 'money';
   return 'task';
 }
 
