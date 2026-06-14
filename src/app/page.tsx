@@ -1358,7 +1358,10 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
             <div className="flex justify-center pt-3 shrink-0"><div className="w-10 h-1 bg-gray-200 rounded-full"/></div>
             <div className="flex items-center justify-between px-5 pt-3 pb-2 shrink-0">
               <span className="text-base font-bold text-gray-900">アイコンとカラー</span>
-              <button onClick={()=>setIconSheetOpen(false)} className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 font-bold text-sm">×</button>
+              <div className="flex items-center gap-2">
+                <button onClick={()=>setIconSheetOpen(false)} className="px-4 py-1.5 bg-[#D9A3B2] text-white text-sm font-semibold rounded-full">保存</button>
+                <button onClick={()=>setIconSheetOpen(false)} className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 font-bold text-sm">×</button>
+              </div>
             </div>
             <div className="overflow-y-auto px-5 pb-10 flex-1">
               {/* Color */}
