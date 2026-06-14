@@ -527,7 +527,7 @@ const ICON_CATEGORIES:{label:string;icons:{key:string;label:string}[]}[]=[
   ]},
 ];
 const ICON_OPTIONS=ICON_CATEGORIES.flatMap(c=>c.icons);
-const TASK_COLORS=['','#FECACA','#FED7AA','#FEF08A','#BBF7D0','#BAE6FD','#C7D2FE','#FBCFE8'];
+const TASK_COLORS=['','#C4888E','#C47A5E','#C4A44A','#7A9E8A','#6A8FAF','#8F82B8','#A67899','#8F8880'];
 
 function getTaskIcon(key:string){
   const m={task:AppIcons.task,shopping:AppIcons.shopping,food:AppIcons.food,
@@ -897,7 +897,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
             <button onClick={()=>setIconSheetOpen(true)}
               className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 text-white bg-white/20 active:bg-white/30 transition-colors"
               style={color?{background:color}:{}}>
-              {(()=>{const Ic=getTaskIcon(icon);return <Ic size={24} className={color?'text-gray-700':'text-white'}/>;})()}
+              {(()=>{const Ic=getTaskIcon(icon);return <Ic size={24} className={color?'text-white':'text-white'}/>;})()}
             </button>
             <div className="flex-1 min-w-0">
               {(mode==='scheduled'||mode==='recurring')&&startTime&&(
@@ -2022,7 +2022,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
               style={{top:`${top}px`,left:`${AXIS_X-28}px`,width:'56px',height:`${Math.max(measuredH[g.startTime]??g.h,56)}px`}}
               onClick={e=>{e.stopPropagation();onEditIconSheet(task);}}>
               <div className="w-full h-full flex items-center justify-center active:opacity-70 transition-opacity" style={{borderRadius:'28px',background:task.color||'#D9A3B2'}}>
-                <CapsuleIc size={24} className={task.color?'text-gray-600':'text-white'}/>
+                <CapsuleIc size={24} className={task.color?'text-white':'text-white'}/>
               </div>
             </div>,
             <div key={g.startTime} className={`absolute z-10 transition-transform select-none ${isPressing?'scale-95':''}`}
@@ -2217,7 +2217,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
                       onTouchEnd={cancelLP}
                       onTouchMove={cancelLP}>
                       <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{background:t.color||'#F3F4F6'}}>
-                        <LaterIc size={14} className={t.color?'text-gray-600':'text-gray-400'}/>
+                        <LaterIc size={14} className={t.color?'text-white':'text-gray-400'}/>
                       </div>
                       <div className="flex-1 min-w-0" onClick={()=>onEdit(t)}>
                         {(t.duration??0)>0&&<p className="text-xs text-gray-400">{durLabel(t.duration??0)}</p>}
@@ -2246,7 +2246,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
                     return (
                     <div key={t.id} className="flex items-center gap-2.5 bg-white border border-gray-100 rounded-2xl shadow-sm px-3 py-3">
                       <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{background:t.color||'#F3F4F6'}}>
-                        <SchedIc size={14} className={t.color?'text-gray-600':'text-gray-400'}/>
+                        <SchedIc size={14} className={t.color?'text-white':'text-gray-400'}/>
                       </div>
                       <div className="flex-1 min-w-0" onClick={()=>onEdit(t)}>
                         <p className="text-xs text-gray-400">{t.date.slice(5).replace('-','/')} {t.startTime}</p>
@@ -2274,7 +2274,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
                       className="flex items-center gap-2.5 bg-white border border-gray-100 rounded-2xl shadow-sm px-3 py-3"
                       onClick={()=>onEdit(t)}>
                       <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{background:t.color||'#F3F4F6'}}>
-                        <RecIc size={14} className={t.color?'text-gray-600':'text-gray-400'}/>
+                        <RecIc size={14} className={t.color?'text-white':'text-gray-400'}/>
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs text-gray-400">{recLabel(t)}{t.startTime?` ${t.startTime}`:''}</p>
@@ -2828,7 +2828,7 @@ function MorningCheckModal({tasks,selected,onToggle,onSelectAll,onAction,onSnooz
                   {isSel&&<span className="text-white text-[10px] font-bold">✓</span>}
                 </div>
                 <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0" style={{background:t.color||'#F3F4F6'}}>
-                  <Ic size={15} className={t.color?'text-gray-600':'text-gray-400'}/>
+                  <Ic size={15} className={t.color?'text-white':'text-gray-400'}/>
                 </div>
                 <div className="flex-1 text-left min-w-0">
                   <p className="text-sm font-semibold text-gray-800 truncate">{t.name}</p>
