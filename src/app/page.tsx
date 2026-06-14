@@ -1909,17 +1909,6 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
       <div className="absolute bg-gray-200" style={{left:`${AXIS_X}px`,width:'2px',top:0,height:`${totalHeight}px`,transform:'translateX(-0.5px)'}}/>
 
 
-      {/* task start time labels — 1 per group, center-aligned, skip wake/sleep */}
-      {groupLayout.map(({g,top})=>{
-        const stMin=toMin(g.startTime);
-        if(stMin===wakeMin||stMin===sleepMin) return null;
-        const centerY=top+g.h/2;
-        return [
-          <div key={`tl-${g.startTime}`} className="absolute flex items-center" style={{top:`${centerY}px`,transform:'translateY(-50%)',left:0}}>
-            <span className="text-xs w-10 text-right pr-1 leading-none text-gray-400">{g.startTime}</span>
-          </div>,
-        ];
-      })}
 
       {/* wake/sleep axis labels */}
       <div className="absolute flex items-center" style={{top:`${wakeCardTop+WAKE_CARD_H/2}px`,transform:'translateY(-50%)',left:0}}>
