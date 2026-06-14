@@ -3157,8 +3157,8 @@ export default function App() {
           {dropTime&&!overTrash&&!overLater&&(
             <div className="absolute right-0 flex items-center gap-2"
               style={{top:`${layoutYRef.current?layoutYRef.current(toMin(dropTime)):dragPos.y}px`,left:'68px'}}>
-              <div className="flex-1 h-0.5 bg-blue-400 rounded-full"/>
-              <span className="bg-blue-500 text-white text-xs font-bold px-2 py-0.5 rounded-full whitespace-nowrap shrink-0 mr-2">{dropTime}</span>
+              <div className="flex-1 h-0.5 bg-gray-300 rounded-full"/>
+              <span className="bg-gray-600 text-white text-xs font-bold px-2 py-0.5 rounded-full whitespace-nowrap shrink-0 mr-2">{dropTime}</span>
             </div>
           )}
           {/* Floating card */}
