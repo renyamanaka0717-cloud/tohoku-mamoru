@@ -1444,7 +1444,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
               {/* Color */}
               <p className="text-xs font-bold text-gray-400 mb-2 mt-1">カラー</p>
               <div className="tabs-scroll flex gap-2 mb-4"
-                style={{overflowX:'auto',WebkitOverflowScrolling:'touch',overflowY:'visible',touchAction:'pan-x',paddingTop:'5px',paddingBottom:'5px'}}>
+                style={{overflowX:'auto',WebkitOverflowScrolling:'touch',overflowY:'visible',touchAction:'pan-x',paddingTop:'5px',paddingBottom:'5px',marginLeft:'-20px',marginRight:'-20px',paddingLeft:'20px',paddingRight:'20px'}}>
                 {TASK_COLORS.map((c,i)=>(
                   <button key={i} onClick={()=>setColor(c)}
                     className={`shrink-0 w-8 h-8 rounded-full border-2 transition-all ${color===c?'border-gray-800 scale-110':'border-gray-100'}`}
