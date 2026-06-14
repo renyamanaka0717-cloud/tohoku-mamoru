@@ -3049,7 +3049,7 @@ export default function App() {
               return (
                 <button key={i} onClick={()=>setDate(d)} className="flex flex-col items-center py-1">
                   <span className="text-[13px] font-medium text-gray-400">{name}</span>
-                  <span className={`w-8 h-8 flex items-center justify-center rounded-full font-bold transition-colors ${isSel?'bg-[#D9A3B2] text-white':isToday?'bg-gray-100 text-gray-900':'text-gray-600'}`} style={{fontSize:'17px'}}>
+                  <span className={`w-8 h-8 flex items-center justify-center rounded-full font-bold transition-colors ${isSel?'bg-[#D9A3B2] text-white':isToday?'bg-gray-200 text-gray-900':'text-gray-600'}`} style={{fontSize:'17px'}}>
                     {new Date(d+'T12:00:00').getDate()}
                   </span>
                 </button>
