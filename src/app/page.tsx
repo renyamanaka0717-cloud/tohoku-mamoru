@@ -3400,9 +3400,8 @@ export default function App() {
         <div className="fixed inset-0 z-[70] pointer-events-none">
           {/* Drop time line */}
           {dropTime&&!overTrash&&!overLater&&(
-            <div className="absolute right-0 flex items-center gap-2"
+            <div className="absolute right-0 flex items-center justify-end"
               style={{top:`${layoutYRef.current?layoutYRef.current(toMin(dropTime)):dragPos.y}px`,left:'68px'}}>
-              <div className="flex-1 h-0.5 bg-gray-300 rounded-full"/>
               <span className="bg-gray-600 text-white text-xs font-bold px-2 py-0.5 rounded-full whitespace-nowrap shrink-0 mr-2">{dropTime}</span>
             </div>
           )}
