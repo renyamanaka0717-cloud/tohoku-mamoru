@@ -1948,12 +1948,14 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
           .filter(({g})=>{const sm=toMin(g.startTime);return sm!==wakeMin&&sm!==sleepMin;})
           .map(({g,top})=>({y:top+g.h/2,text:g.startTime}));
         const taskYs=taskLabels.map(l=>l.y);
+        const taskHours=new Set(groupLayout.map(({g})=>Math.floor(toMin(g.startTime)/60)));
         const usedMins=new Set([wakeMin,sleepMin,...groupLayout.map(({g})=>toMin(g.startTime))]);
         const hourlyItems:{y:number;m:number}[]=[];
         for(const {slot} of freeLayout){
           const startMin=toMin(slot.start),endMin=toMin(slot.end);
           for(let m=Math.ceil(startMin/60)*60;m<=endMin;m+=60){
             if(usedMins.has(m)) continue;
+            if(taskHours.has(m/60)) continue;
             const y=layoutCalcY(m);
             if(taskYs.some(ty=>Math.abs(ty-y)<16)) continue;
             hourlyItems.push({y,m});
