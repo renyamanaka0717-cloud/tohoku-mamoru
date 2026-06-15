@@ -1860,6 +1860,24 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
     rawAnchors.push([sm,top],[sm+maxDur,top+g.h]);
   }
   rawAnchors.push([sleepMin,sleepCardTop]);
+  // Add evenly distributed free-slot hourly positions so drag tracks the visual axis
+  {
+    const freeTaskHours=new Set(groupLayout.map(({g})=>Math.floor(toMin(g.startTime)/60)));
+    const freeUsedMins=new Set([wakeMin,sleepMin,...groupLayout.map(({g})=>toMin(g.startTime))]);
+    for(const {slot,freeY,finalH} of freeLayout){
+      const sm=toMin(slot.start),em=toMin(slot.end);
+      const hrs:number[]=[];
+      for(let m=Math.ceil(sm/60)*60;m<=em;m+=60){
+        if(freeUsedMins.has(m)||freeTaskHours.has(m/60)) continue;
+        hrs.push(m);
+      }
+      const n=hrs.length;
+      hrs.forEach((m,i)=>{
+        const y=n===1?freeY+finalH/2:freeY+(i/(n-1))*finalH;
+        rawAnchors.push([m,y]);
+      });
+    }
+  }
   rawAnchors.sort((a,b)=>a[0]-b[0]);
   const anchors:[number,number][]=[];
   for(const [m,y] of rawAnchors){
