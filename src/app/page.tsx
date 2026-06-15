@@ -1942,28 +1942,40 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
         </div>
       </div>
 
-      {/* free slot hourly labels on left axis — skip wake/sleep and task start times */}
-      {freeLayout.flatMap(({slot,freeY,finalH})=>{
+      {/* left axis: task times at card positions + hourly marks in free slots */}
+      {(()=>{
+        const taskLabels=groupLayout
+          .filter(({g})=>{const sm=toMin(g.startTime);return sm!==wakeMin&&sm!==sleepMin;})
+          .map(({g,top})=>({y:top,text:g.startTime}));
+        const taskYs=taskLabels.map(l=>l.y);
         const usedMins=new Set([wakeMin,sleepMin,...groupLayout.map(({g})=>toMin(g.startTime))]);
-        const startMin=toMin(slot.start);
-        const endMin=toMin(slot.end);
-        const slotMin=endMin-startMin;
-        const cardY=(m:number)=>layoutCalcY(m);
-        const labels:number[]=[];
-        for(let m=Math.ceil(startMin/60)*60;m<=endMin;m+=60){
-          if(usedMins.has(m)) continue;
-          labels.push(m);
+        const hourlyItems:{y:number;m:number}[]=[];
+        for(const {slot} of freeLayout){
+          const startMin=toMin(slot.start),endMin=toMin(slot.end);
+          for(let m=Math.ceil(startMin/60)*60;m<=endMin;m+=60){
+            if(usedMins.has(m)) continue;
+            const y=layoutCalcY(m);
+            if(taskYs.some(ty=>Math.abs(ty-y)<16)) continue;
+            hourlyItems.push({y,m});
+          }
         }
-        return labels.flatMap(m=>[
-          <div key={`fh-${m}`} className="absolute flex items-center" style={{top:`${cardY(m)}px`,transform:'translateY(-50%)',left:0}}>
-            <button onClick={()=>onAddAtTime(fromMin(m))}
-              className="text-xs w-10 text-right pr-1 leading-none text-gray-400 active:text-gray-900 transition-colors">
-              {fromMin(m)}
-            </button>
-          </div>,
-          <div key={`fh-dot-${m}`} className="absolute z-10 rounded-full bg-gray-200" style={{width:'4px',height:'4px',left:`${AXIS_X}px`,top:`${cardY(m)}px`,transform:'translate(-50%,-50%)'}}/>,
-        ]);
-      })}
+        return [
+          ...taskLabels.map(({y,text})=>(
+            <div key={`tl-${text}`} className="absolute flex items-center" style={{top:`${y}px`,transform:'translateY(-50%)',left:0}}>
+              <span className="text-xs w-10 text-right pr-1 leading-none text-gray-500 font-medium">{text}</span>
+            </div>
+          )),
+          ...hourlyItems.flatMap(({y,m})=>[
+            <div key={`fh-${m}`} className="absolute flex items-center" style={{top:`${y}px`,transform:'translateY(-50%)',left:0}}>
+              <button onClick={()=>onAddAtTime(fromMin(m))}
+                className="text-xs w-10 text-right pr-1 leading-none text-gray-400 active:text-gray-900 transition-colors">
+                {fromMin(m)}
+              </button>
+            </div>,
+            <div key={`fh-dot-${m}`} className="absolute z-10 rounded-full bg-gray-200" style={{width:'4px',height:'4px',left:`${AXIS_X}px`,top:`${y}px`,transform:'translate(-50%,-50%)'}}/>,
+          ]),
+        ];
+      })()}
 
       {/* current time */}
       {date===todayStr()&&nowMin>=wakeMin&&nowMin<=sleepMin&&(
