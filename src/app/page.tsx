@@ -1860,24 +1860,6 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
     rawAnchors.push([sm,top],[sm+maxDur,top+g.h]);
   }
   rawAnchors.push([sleepMin,sleepCardTop]);
-  // Add evenly distributed free-slot hourly positions so drag tracks the visual axis
-  {
-    const freeTaskHours=new Set(groupLayout.map(({g})=>Math.floor(toMin(g.startTime)/60)));
-    const freeUsedMins=new Set([wakeMin,sleepMin,...groupLayout.map(({g})=>toMin(g.startTime))]);
-    for(const {slot,freeY,finalH} of freeLayout){
-      const sm=toMin(slot.start),em=toMin(slot.end);
-      const hrs:number[]=[];
-      for(let m=Math.ceil(sm/60)*60;m<=em;m+=60){
-        if(freeUsedMins.has(m)||freeTaskHours.has(m/60)) continue;
-        hrs.push(m);
-      }
-      const n=hrs.length;
-      hrs.forEach((m,i)=>{
-        const y=n===1?freeY+finalH/2:freeY+(i/(n-1))*finalH;
-        rawAnchors.push([m,y]);
-      });
-    }
-  }
   rawAnchors.sort((a,b)=>a[0]-b[0]);
   const anchors:[number,number][]=[];
   for(const [m,y] of rawAnchors){
@@ -1960,45 +1942,25 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
         </div>
       </div>
 
-      {/* left axis: task times at card positions + hourly marks in free slots */}
+      {/* left axis: event times only (wake, tasks, sleep) */}
       {(()=>{
-        const taskLabels=groupLayout
-          .filter(({g})=>{const sm=toMin(g.startTime);return sm!==wakeMin&&sm!==sleepMin;})
-          .map(({g,top})=>({y:top+g.h/2,text:g.startTime}));
-        const taskYs=taskLabels.map(l=>l.y);
-        const taskHours=new Set(groupLayout.map(({g})=>Math.floor(toMin(g.startTime)/60)));
-        const usedMins=new Set([wakeMin,sleepMin,...groupLayout.map(({g})=>toMin(g.startTime))]);
-        const hourlyItems:{y:number;m:number}[]=[];
-        for(const {slot,freeY,finalH} of freeLayout){
-          const startMin=toMin(slot.start),endMin=toMin(slot.end);
-          const slotHours:number[]=[];
-          for(let m=Math.ceil(startMin/60)*60;m<=endMin;m+=60){
-            if(usedMins.has(m)) continue;
-            if(taskHours.has(m/60)) continue;
-            slotHours.push(m);
-          }
-          const n=slotHours.length;
-          slotHours.forEach((m,i)=>{
-            const y=n===1?freeY+finalH/2:freeY+(i/(n-1))*finalH;
-            if(taskYs.some(ty=>Math.abs(ty-y)<16)) return;
-            hourlyItems.push({y,m});
-          });
-        }
-        return [
-          ...taskLabels.map(({y,text})=>(
-            <div key={`tl-${text}`} className="absolute flex items-center" style={{top:`${y}px`,transform:'translateY(-50%)',left:0}}>
-              <span className="text-xs w-10 text-right pr-1 leading-none text-gray-500 font-medium">{text}</span>
-            </div>
-          )),
-          ...hourlyItems.map(({y,m})=>(
-            <div key={`fh-${m}`} className="absolute flex items-center" style={{top:`${y}px`,transform:'translateY(-50%)',left:0}}>
-              <button onClick={()=>onAddAtTime(fromMin(m))}
-                className="text-xs w-10 text-right pr-1 leading-none text-gray-400 active:text-gray-900 transition-colors">
-                {fromMin(m)}
-              </button>
-            </div>
-          )),
+        const items:{y:number;text:string}[]=[
+          {y:wakeCardTop+WAKE_CARD_H/2,text:settings.wakeTime},
+          ...groupLayout
+            .filter(({g})=>{const sm=toMin(g.startTime);return sm!==wakeMin&&sm!==sleepMin;})
+            .map(({g,top})=>({y:top+g.h/2,text:g.startTime})),
+          {y:sleepCardTop+SLEEP_CARD_H/2,text:settings.sleepTime},
         ];
+        // proximity filter: skip labels within 16px of an earlier one
+        const visible:{y:number;text:string}[]=[];
+        for(const item of items){
+          if(!visible.some(v=>Math.abs(v.y-item.y)<16)) visible.push(item);
+        }
+        return visible.map(({y,text})=>(
+          <div key={`al-${text}`} className="absolute flex items-center" style={{top:`${y}px`,transform:'translateY(-50%)',left:0}}>
+            <span className="text-xs w-10 text-right pr-1 leading-none text-gray-500 font-medium">{text}</span>
+          </div>
+        ));
       })()}
 
       {/* current time */}
