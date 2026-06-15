@@ -1920,7 +1920,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
   return (
     <div ref={containerRef} className="relative" style={{height:`${totalHeight+32}px`,minHeight:'400px'}}>
       {/* vertical line */}
-      <div className="absolute bg-gray-200" style={{left:`${AXIS_X}px`,width:'2px',top:0,height:`${totalHeight}px`,transform:'translateX(-0.5px)'}}/>
+      <div className="absolute bg-gray-200" style={{left:`${AXIS_X}px`,width:'3px',top:0,height:`${totalHeight}px`,transform:'translateX(-0.5px)'}}/>
 
 
 
@@ -1972,15 +1972,14 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
               <span className="text-xs w-10 text-right pr-1 leading-none text-gray-500 font-medium">{text}</span>
             </div>
           )),
-          ...hourlyItems.flatMap(({y,m})=>[
+          ...hourlyItems.map(({y,m})=>(
             <div key={`fh-${m}`} className="absolute flex items-center" style={{top:`${y}px`,transform:'translateY(-50%)',left:0}}>
               <button onClick={()=>onAddAtTime(fromMin(m))}
                 className="text-xs w-10 text-right pr-1 leading-none text-gray-400 active:text-gray-900 transition-colors">
                 {fromMin(m)}
               </button>
-            </div>,
-            <div key={`fh-dot-${m}`} className="absolute z-10 rounded-full bg-gray-200" style={{width:'4px',height:'4px',left:`${AXIS_X}px`,top:`${y}px`,transform:'translate(-50%,-50%)'}}/>,
-          ]),
+            </div>
+          )),
         ];
       })()}
 
