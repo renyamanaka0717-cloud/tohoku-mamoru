@@ -1886,21 +1886,35 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
   const AXIS_X    = TIME_LABEL_W + AXIS_GAP + ICON_HALF;  // 72
   const CARD_LEFT = AXIS_X + ICON_HALF + CARD_GAP;         // 108
 
-  // Y座標→時刻の逆引き（calcDayY の逆関数）
+  // Y座標→時刻の逆引き（layoutCalcY のピースワイズ逆関数）
   yToTimeRef.current=(clientY:number):string=>{
     const el=containerRef.current;
-    if(!el) return fromMin(wakeMin);
-    const containerY=clientY-el.getBoundingClientRect().top;
-    const min=wakeMin+(containerY-wakeCardTop-WAKE_CARD_H)/PX_PER_MIN;
+    const baseY=el?(el.getBoundingClientRect().top+window.scrollY):0;
+    const timelineY=clientY+window.scrollY-baseY;
+    let min:number;
+    if(!anchors.length||timelineY<=anchors[0][1]){
+      min=anchors[0]?.[0]??wakeMin;
+    } else if(timelineY>=anchors[anchors.length-1][1]){
+      min=anchors[anchors.length-1][0];
+    } else {
+      min=wakeMin;
+      for(let i=0;i<anchors.length-1;i++){
+        const [m0,y0]=anchors[i],[m1,y1]=anchors[i+1];
+        if(timelineY>=y0&&timelineY<=y1){
+          min=y1===y0?m0:m0+(timelineY-y0)/(y1-y0)*(m1-m0);
+          break;
+        }
+      }
+    }
     const snapped=Math.round(min/5)*5;
     return fromMin(Math.max(0,Math.min(23*60+55,snapped)));
   };
 
-  // 時刻→スクリーンY（calcDayY ベース、ドラッグオーバーレイ用）
+  // 時刻→スクリーンY（layoutCalcY ベース、ドラッグオーバーレイ用）
   layoutYRef.current=(min:number):number=>{
     const el=containerRef.current;
     if(!el) return 0;
-    return el.getBoundingClientRect().top+calcDayY(min);
+    return el.getBoundingClientRect().top+layoutCalcY(min);
   };
 
   return (
@@ -1934,7 +1948,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
         const startMin=toMin(slot.start);
         const endMin=toMin(slot.end);
         const slotMin=endMin-startMin;
-        const cardY=(m:number)=>calcDayY(m);
+        const cardY=(m:number)=>layoutCalcY(m);
         const labels:number[]=[];
         for(let m=Math.ceil(startMin/60)*60;m<=endMin;m+=60){
           if(usedMins.has(m)) continue;
@@ -1953,7 +1967,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
 
       {/* current time */}
       {date===todayStr()&&nowMin>=wakeMin&&nowMin<=sleepMin&&(
-        <div className="absolute flex items-center z-20 gap-1.5" style={{top:`${calcDayY(nowMin)-12}px`,left:0,right:0}}>
+        <div className="absolute flex items-center z-20 gap-1.5" style={{top:`${layoutCalcY(nowMin)-12}px`,left:0,right:0}}>
           <div className="bg-[#D9A3B2] text-white text-xs font-bold px-2 py-1 rounded-full whitespace-nowrap">{now}</div>
         </div>
       )}
