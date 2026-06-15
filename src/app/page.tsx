@@ -2057,8 +2057,17 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
         return [
           <div key={`cap-${g.startTime}`} className="absolute z-10 pointer-events-none"
             style={{top:`${top}px`,left:`${AXIS_X-28}px`,width:'56px',height:`${Math.max(g.h,56)}px`}}>
-            <div className="w-full h-full bg-[#D9A3B2] flex items-center justify-center" style={{borderRadius:'28px'}}>
-              <AppIcons.task size={24} className="text-white"/>
+            <div className="relative" style={{width:'56px',height:'87px'}}>
+              {(()=>{const Ic2=getTaskIcon(g.tasks[1]?.icon||defaultIconKey(g.tasks[1]?.name||''));return(
+                <div className="absolute" style={{top:'31px',left:0,width:'56px',height:'56px',opacity:0.6,borderRadius:'28px',background:g.tasks[1]?.color||'#D9A3B2',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                  <Ic2 size={24} className="text-white"/>
+                </div>
+              );})()}
+              {(()=>{const Ic1=getTaskIcon(g.tasks[0]?.icon||defaultIconKey(g.tasks[0]?.name||''));return(
+                <div className="absolute z-10" style={{top:0,left:0,width:'56px',height:'56px',borderRadius:'28px',background:g.tasks[0]?.color||'#D9A3B2',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                  <Ic1 size={24} className="text-white"/>
+                </div>
+              );})()}
             </div>
           </div>,
           <div key={g.startTime} className="absolute z-10"
