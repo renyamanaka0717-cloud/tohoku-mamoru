@@ -1967,7 +1967,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
 
       {/* current time */}
       {date===todayStr()&&nowMin>=wakeMin&&nowMin<=sleepMin&&(
-        <div className="absolute flex items-center z-20 gap-1.5" style={{top:`${layoutCalcY(nowMin)-12}px`,left:0,right:0}}>
+        <div className="absolute flex items-center z-20 gap-1.5" style={{top:`${layoutCalcY(nowMin)-12}px`,left:'-4px',right:0}}>
           <div className="bg-[#D9A3B2] text-white text-xs font-bold px-2 py-1 rounded-full whitespace-nowrap">{now}</div>
         </div>
       )}
