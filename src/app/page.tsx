@@ -1946,7 +1946,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
       {(()=>{
         const taskLabels=groupLayout
           .filter(({g})=>{const sm=toMin(g.startTime);return sm!==wakeMin&&sm!==sleepMin;})
-          .map(({g,top})=>({y:top,text:g.startTime}));
+          .map(({g,top})=>({y:top+g.h/2,text:g.startTime}));
         const taskYs=taskLabels.map(l=>l.y);
         const usedMins=new Set([wakeMin,sleepMin,...groupLayout.map(({g})=>toMin(g.startTime))]);
         const hourlyItems:{y:number;m:number}[]=[];
