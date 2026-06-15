@@ -1951,15 +1951,20 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
         const taskHours=new Set(groupLayout.map(({g})=>Math.floor(toMin(g.startTime)/60)));
         const usedMins=new Set([wakeMin,sleepMin,...groupLayout.map(({g})=>toMin(g.startTime))]);
         const hourlyItems:{y:number;m:number}[]=[];
-        for(const {slot} of freeLayout){
+        for(const {slot,freeY,finalH} of freeLayout){
           const startMin=toMin(slot.start),endMin=toMin(slot.end);
+          const slotHours:number[]=[];
           for(let m=Math.ceil(startMin/60)*60;m<=endMin;m+=60){
             if(usedMins.has(m)) continue;
             if(taskHours.has(m/60)) continue;
-            const y=layoutCalcY(m);
-            if(taskYs.some(ty=>Math.abs(ty-y)<16)) continue;
-            hourlyItems.push({y,m});
+            slotHours.push(m);
           }
+          const n=slotHours.length;
+          slotHours.forEach((m,i)=>{
+            const y=n===1?freeY+finalH/2:freeY+(i/(n-1))*finalH;
+            if(taskYs.some(ty=>Math.abs(ty-y)<16)) return;
+            hourlyItems.push({y,m});
+          });
         }
         return [
           ...taskLabels.map(({y,text})=>(
