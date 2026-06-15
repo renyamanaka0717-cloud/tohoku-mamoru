@@ -1633,7 +1633,7 @@ function FreeTimeCard({slot,fits,height,onSchedule,onDragStart}:{
     <div className="bg-gray-100 rounded-2xl px-4 pt-3 pb-3 flex flex-col" style={{height:`${height}px`,overflow:'hidden'}}>
       <div className="flex items-center gap-1 mb-1">
         <AppIcons.freeTime size={12} className="text-gray-400"/>
-        <span className="text-xs text-gray-400 font-medium">空き時間</span>
+        <span className="text-xs text-gray-400 font-medium">空き時間 {slot.start}〜{slot.end}</span>
       </div>
       <p className="font-semibold text-gray-700 leading-none">
         {h>0&&<><span className="text-xl">{h}</span><span className="text-xs ml-0.5">時間</span></>}
