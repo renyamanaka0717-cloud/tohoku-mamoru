@@ -2057,19 +2057,24 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
         return [
           <div key={`cap-${g.startTime}`} className="absolute z-10 pointer-events-none"
             style={{top:`${top}px`,left:`${AXIS_X-28}px`,width:'56px',height:`${Math.max(g.h,56)}px`}}>
-            <div className="relative" style={{width:'56px',height:'128px'}}>
-              {(()=>{const Ic2=getTaskIcon(g.tasks[1]?.icon||defaultIconKey(g.tasks[1]?.name||''));return(
-                <div className="absolute" style={{top:'52px',left:0,width:'56px',height:'76px',borderRadius:'28px',background:g.tasks[1]?.color||'#D9A3B2',display:'flex',alignItems:'center',justifyContent:'center'}}>
-                  <Ic2 size={24} className="text-white"/>
+            {(()=>{
+              const CAPSULE_H=76,STEP=52,n=g.tasks.length,containerH=Math.max(g.h,56);
+              return(
+                <div className="relative" style={{width:'56px',height:`${containerH}px`}}>
+                  {g.tasks.map((task,i)=>{
+                    const Ic=getTaskIcon(task.icon||defaultIconKey(task.name||''));
+                    return(
+                      <div key={task.id} className="absolute" style={{top:`${i*STEP}px`,left:0,width:'56px',height:`${CAPSULE_H}px`,borderRadius:'28px',background:task.color||'#D9A3B2',display:'flex',alignItems:'center',justifyContent:'center',zIndex:n-i}}>
+                        <Ic size={24} className="text-white"/>
+                      </div>
+                    );
+                  })}
+                  {g.tasks.slice(0,-1).map((_,i)=>(
+                    <div key={`lens-${i}`} className="absolute" style={{top:`${(i+1)*STEP}px`,left:0,width:'56px',height:'24px',background:'white',zIndex:n+10,clipPath:"path('M 28 0 A 28 28 0 0 1 51 12 A 28 28 0 0 1 28 24 A 28 28 0 0 1 5 12 A 28 28 0 0 1 28 0 Z')"}}/>
+                  ))}
                 </div>
-              );})()}
-              {(()=>{const Ic1=getTaskIcon(g.tasks[0]?.icon||defaultIconKey(g.tasks[0]?.name||''));return(
-                <div className="absolute z-10" style={{top:0,left:0,width:'56px',height:'76px',borderRadius:'28px',background:g.tasks[0]?.color||'#D9A3B2',display:'flex',alignItems:'center',justifyContent:'center'}}>
-                  <Ic1 size={24} className="text-white"/>
-                </div>
-              );})()}
-              <div className="absolute" style={{top:'52px',left:0,width:'56px',height:'24px',background:'white',zIndex:20,clipPath:"path('M 28 0 A 28 28 0 0 1 51 12 A 28 28 0 0 1 28 24 A 28 28 0 0 1 5 12 A 28 28 0 0 1 28 0 Z')"}}/>
-            </div>
+              );
+            })()}
           </div>,
           <div key={g.startTime} className="absolute z-10"
             style={{top:`${top}px`,left:`${CARD_LEFT}px`,right:'0px'}}>
