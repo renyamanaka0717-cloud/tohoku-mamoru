@@ -1808,13 +1808,12 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
   const wakeCardTop=prevBottom+16;
   prevBottom=wakeCardTop+WAKE_CARD_H;
 
-  // Time→Y within activity window, anchored at wakeCardTop
-  const calcDayY=(min:number)=>wakeCardTop+WAKE_CARD_H+(min-wakeMin)*PX_PER_MIN;
-
-  // Phase 1: daytime tasks + free slots, merged by start time. Each item's Y
-  // starts from its clock-time position (calcDayY), but is pushed down just
-  // enough to keep a uniform minimum gap from the previous card — this keeps
-  // cards from crowding/overlapping when packed close together in time.
+  // Phase 1: daytime tasks + free slots, fully compacted in chronological
+  // order — each card sits exactly CARD_GAP_MIN below the previous one,
+  // regardless of the real clock-time gap between them. Wake/sleep join the
+  // same compacted sequence. Each item's (realMinute, compactedTop) is
+  // recorded as an anchor; current-time and drag interpolate between
+  // anchors so they stay visually consistent with the compacted cards.
   const CARD_GAP_MIN=16;
   type DayItem=
     |{kind:'task';g:TaskGroupData;startMin:number;h:number}
@@ -1827,18 +1826,23 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
       h:calcFreeContentH(laterPool)})),
   ].sort((a,b)=>a.startMin-b.startMin);
 
+  type Anchor={min:number;y:number};
+  const anchors:Anchor[]=[{min:wakeMin,y:wakeCardTop+WAKE_CARD_H}];
+
   let dayPrevBottom=wakeCardTop+WAKE_CARD_H;
   for(const item of dayItems){
-    const top=Math.max(calcDayY(item.startMin),dayPrevBottom+CARD_GAP_MIN);
+    const top=dayPrevBottom+CARD_GAP_MIN;
     if(item.kind==='task') groupLayout.push({g:item.g,top});
     else freePassItems.push({slot:item.slot,freeY:top,finalH:item.h});
+    anchors.push({min:item.startMin,y:top});
     dayPrevBottom=top+item.h;
   }
 
   const freeLayout:{slot:FreeSlot;freeY:number;finalH:number}[]=freePassItems;
 
-  // Sleep card: clock-time Y, but never overlapping the last daytime card
-  const sleepCardTop=Math.max(calcDayY(sleepMin),dayPrevBottom+CARD_GAP_MIN);
+  // Sleep card: right after the last daytime card, fully compacted
+  const sleepCardTop=dayPrevBottom+CARD_GAP_MIN;
+  anchors.push({min:sleepMin,y:sleepCardTop});
 
   // Phase 2: post-sleep tasks — compact (card order, no time gap)
   prevBottom=sleepCardTop+SLEEP_CARD_H;
@@ -1852,8 +1856,19 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
   const HISTORY_CARD_H=44;
   const totalHeight=Math.max(prevBottom,sleepCardTop+SLEEP_CARD_H+(hasHistoryCard?HISTORY_CARD_H+12:0))+32;
 
-  // time→Y is now purely calcDayY; no piecewise mapping needed
-  const layoutCalcY=calcDayY;
+  // Piecewise time→Y: linear interpolation between the compacted anchors,
+  // so current-time / drag stay visually aligned with the compacted cards.
+  const layoutCalcY=(min:number):number=>{
+    if(min<=anchors[0].min) return anchors[0].y;
+    for(let i=0;i<anchors.length-1;i++){
+      const a=anchors[i],b=anchors[i+1];
+      if(min>=a.min&&min<=b.min){
+        if(b.min===a.min) return a.y;
+        return a.y+(min-a.min)/(b.min-a.min)*(b.y-a.y);
+      }
+    }
+    return anchors[anchors.length-1].y;
+  };
 
   // Layout zones: [time label area] [gap] [icon area centered on axis] [gap] [card area → right:0]
   const TIME_LABEL_W = 40;  // px — fits "HH:MM" at text-xs
@@ -1864,21 +1879,31 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
   const AXIS_X    = TIME_LABEL_W + AXIS_GAP + ICON_HALF;  // 72
   const CARD_LEFT = AXIS_X + ICON_HALF + CARD_GAP;         // 108
 
-  // Y座標→時刻の逆引き（calcDayY の線形逆関数）
+  // Y座標→時刻の逆引き（アンカー区分線形補間の逆関数）
   yToTimeRef.current=(clientY:number):string=>{
     const el=containerRef.current;
     const baseY=el?(el.getBoundingClientRect().top+window.scrollY):0;
     const timelineY=clientY+window.scrollY-baseY;
-    const min=wakeMin+(timelineY-(wakeCardTop+WAKE_CARD_H))/PX_PER_MIN;
+    let min=anchors[0].min;
+    if(timelineY>anchors[0].y){
+      min=anchors[anchors.length-1].min;
+      for(let i=0;i<anchors.length-1;i++){
+        const a=anchors[i],b=anchors[i+1];
+        if(timelineY>=a.y&&timelineY<=b.y){
+          min=b.y===a.y?a.min:a.min+(timelineY-a.y)/(b.y-a.y)*(b.min-a.min);
+          break;
+        }
+      }
+    }
     const snapped=Math.round(min/5)*5;
     return fromMin(Math.max(0,Math.min(23*60+55,snapped)));
   };
 
-  // 時刻→スクリーンY（calcDayY ベース、ドラッグオーバーレイ用）
+  // 時刻→スクリーンY（アンカー補間ベース、ドラッグオーバーレイ用）
   layoutYRef.current=(min:number):number=>{
     const el=containerRef.current;
     if(!el) return 0;
-    return el.getBoundingClientRect().top+calcDayY(min);
+    return el.getBoundingClientRect().top+layoutCalcY(min);
   };
 
   return (
@@ -1929,7 +1954,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
 
       {/* current time */}
       {date===todayStr()&&nowMin>=wakeMin&&nowMin<=sleepMin&&(
-        <div className="absolute flex items-center z-20 gap-1.5" style={{top:`${calcDayY(nowMin)-12}px`,left:'-4px',right:0}}>
+        <div className="absolute flex items-center z-20 gap-1.5" style={{top:`${layoutCalcY(nowMin)-12}px`,left:'-4px',right:0}}>
           <div className="bg-[#D9A3B2] text-white text-xs font-bold px-2 py-1 rounded-full whitespace-nowrap">{now}</div>
         </div>
       )}
