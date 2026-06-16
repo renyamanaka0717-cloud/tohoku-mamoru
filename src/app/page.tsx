@@ -2057,22 +2057,18 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
         return [
           <div key={`cap-${g.startTime}`} className="absolute z-10 pointer-events-none"
             style={{top:`${top}px`,left:`${AXIS_X-28}px`,width:'56px',height:`${Math.max(g.h,56)}px`}}>
-            {(()=>{
-              const topH=68,overlap=22,botTop=topH-overlap;
-              const botH=Math.max(g.h,56)-botTop;
-              const Ic1=getTaskIcon(g.tasks[0]?.icon||defaultIconKey(g.tasks[0]?.name||''));
-              const Ic2=getTaskIcon(g.tasks[1]?.icon||defaultIconKey(g.tasks[1]?.name||''));
-              return(
-                <div className="relative" style={{width:'56px',height:`${Math.max(g.h,56)}px`}}>
-                  <div className="absolute" style={{top:`${botTop}px`,left:0,width:'56px',height:`${botH}px`,borderRadius:'28px',background:g.tasks[1]?.color||'#D9A3B2',display:'flex',alignItems:'center',justifyContent:'center'}}>
-                    <Ic2 size={24} className="text-white"/>
-                  </div>
-                  <div className="absolute z-10" style={{top:0,left:0,width:'56px',height:`${topH}px`,borderRadius:'28px',background:g.tasks[0]?.color||'#D9A3B2',display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 0 0 3px white'}}>
-                    <Ic1 size={24} className="text-white"/>
-                  </div>
+            <div className="relative" style={{width:'56px',height:'128px'}}>
+              {(()=>{const Ic2=getTaskIcon(g.tasks[1]?.icon||defaultIconKey(g.tasks[1]?.name||''));return(
+                <div className="absolute" style={{top:'52px',left:0,width:'56px',height:'76px',borderRadius:'28px',background:g.tasks[1]?.color||'#D9A3B2',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                  <Ic2 size={24} className="text-white"/>
                 </div>
-              );
-            })()}
+              );})()}
+              {(()=>{const Ic1=getTaskIcon(g.tasks[0]?.icon||defaultIconKey(g.tasks[0]?.name||''));return(
+                <div className="absolute z-10" style={{top:0,left:0,width:'56px',height:'76px',borderRadius:'28px',background:g.tasks[0]?.color||'#D9A3B2',display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 0 0 3px white'}}>
+                  <Ic1 size={24} className="text-white"/>
+                </div>
+              );})()}
+            </div>
           </div>,
           <div key={g.startTime} className="absolute z-10"
             style={{top:`${top}px`,left:`${CARD_LEFT}px`,right:'0px'}}>
