@@ -2059,21 +2059,16 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
             style={{top:`${top}px`,left:`${AXIS_X-28}px`,width:'56px',height:`${Math.max(g.h,56)}px`}}>
             <div className="relative" style={{width:'56px',height:'128px'}}>
               {(()=>{const Ic2=getTaskIcon(g.tasks[1]?.icon||defaultIconKey(g.tasks[1]?.name||''));return(
-                <div className="absolute" style={{top:'52px',left:0,width:'56px',height:'76px',borderRadius:'28px',background:g.tasks[1]?.color||'#D9A3B2',overflow:'hidden'}}>
-                  <div style={{height:'24px',background:'white'}}/>
-                  <div style={{height:'52px',display:'flex',alignItems:'center',justifyContent:'center'}}>
-                    <Ic2 size={24} className="text-white"/>
-                  </div>
+                <div className="absolute" style={{top:'52px',left:0,width:'56px',height:'76px',borderRadius:'28px',background:g.tasks[1]?.color||'#D9A3B2',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                  <Ic2 size={24} className="text-white"/>
                 </div>
               );})()}
               {(()=>{const Ic1=getTaskIcon(g.tasks[0]?.icon||defaultIconKey(g.tasks[0]?.name||''));return(
-                <div className="absolute z-10" style={{top:0,left:0,width:'56px',height:'76px',borderRadius:'28px',background:g.tasks[0]?.color||'#D9A3B2',overflow:'hidden'}}>
-                  <div style={{height:'52px',display:'flex',alignItems:'center',justifyContent:'center'}}>
-                    <Ic1 size={24} className="text-white"/>
-                  </div>
-                  <div style={{height:'24px',background:'white'}}/>
+                <div className="absolute z-10" style={{top:0,left:0,width:'56px',height:'76px',borderRadius:'28px',background:g.tasks[0]?.color||'#D9A3B2',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                  <Ic1 size={24} className="text-white"/>
                 </div>
               );})()}
+              <div className="absolute" style={{top:'52px',left:0,width:'56px',height:'24px',background:'white',zIndex:20,clipPath:"path('M 28 0 A 28 28 0 0 1 51 12 A 28 28 0 0 1 28 24 A 28 28 0 0 1 5 12 A 28 28 0 0 1 28 0 Z')"}}/>
             </div>
           </div>,
           <div key={g.startTime} className="absolute z-10"
