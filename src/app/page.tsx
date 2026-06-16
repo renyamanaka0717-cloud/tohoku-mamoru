@@ -2008,31 +2008,27 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
             </div>,
           ];
         }
+        const CAPSULE_H=56,GAP=10,n=g.tasks.length;
+        const cardHeights=g.tasks.map(t=>Math.max(measuredH[t.id]??MIN_CARD_H,CAPSULE_H));
+        const cardTops:number[]=[];
+        { let acc=0; for(let i=0;i<n;i++){cardTops.push(acc);acc+=cardHeights[i]+GAP;} }
+        const stackH=cardTops[n-1]+cardHeights[n-1];
+        const iconTops=g.tasks.map((_,i)=>cardTops[i]+cardHeights[i]/2-CAPSULE_H/2);
         return [
           <div key={`cap-${g.startTime}`} className="absolute z-10 pointer-events-none"
-            style={{top:`${top}px`,left:`${AXIS_X-28}px`,width:'56px',height:'56px',overflow:'visible'}}>
-            {(()=>{
-              const CAPSULE_H=56,STEP=40,n=g.tasks.length,containerH=Math.max((n-1)*STEP+CAPSULE_H,56);
+            style={{top:`${top}px`,left:`${AXIS_X-28}px`,width:'56px',height:`${stackH}px`,overflow:'visible'}}>
+            {g.tasks.map((task,i)=>{
+              const Ic=getTaskIcon(task.icon||defaultIconKey(task.name||''));
               return(
-                <div className="relative" style={{width:'56px',height:`${containerH}px`}}>
-                  {g.tasks.map((task,i)=>{
-                    const Ic=getTaskIcon(task.icon||defaultIconKey(task.name||''));
-                    return(
-                      <div key={task.id} className="absolute" style={{top:`${i*STEP}px`,left:0,width:'56px',height:`${CAPSULE_H}px`,borderRadius:'28px',background:task.color||'#D9A3B2',display:'flex',alignItems:'center',justifyContent:'center',zIndex:n-i}}>
-                        <Ic size={24} className="text-white"/>
-                      </div>
-                    );
-                  })}
-                  {g.tasks.slice(0,-1).map((_,i)=>(
-                    <div key={`lens-${i}`} className="absolute" style={{top:`${(i+1)*STEP}px`,left:0,width:'56px',height:'16px',background:'white',zIndex:n+10,clipPath:"path('M 28 0 A 28 28 0 0 1 48 8 A 28 28 0 0 1 28 16 A 28 28 0 0 1 8 8 A 28 28 0 0 1 28 0 Z')"}}/>
-                  ))}
+                <div key={task.id} className="absolute" style={{top:`${iconTops[i]}px`,left:0,width:'56px',height:`${CAPSULE_H}px`,borderRadius:'28px',background:task.color||'#D9A3B2',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                  <Ic size={24} className="text-white"/>
                 </div>
               );
-            })()}
+            })}
           </div>,
           <div key={g.startTime} className="absolute z-10"
             style={{top:`${top}px`,left:`${CARD_LEFT}px`,right:'0px'}}>
-            <div style={{display:'flex',flexDirection:'column',gap:'10px'}}>
+            <div style={{display:'flex',flexDirection:'column',gap:`${GAP}px`}}>
               {g.tasks.map(task=>{
                 const isDragging=dragTaskId===task.id;
                 const isPressing=pressingId===task.id;
@@ -2040,6 +2036,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
                   <div key={task.id}
                     className={`select-none transition-transform${isPressing?' scale-95':''}`}
                     style={{opacity:isDragging?0.25:1,pointerEvents:isDragging?'none':'auto'}}
+                    ref={el=>{if(el){el.dataset.gk=task.id;roRef.current?.observe(el);}}}
                     onTouchStart={e=>startLP(task,e)}
                     onTouchEnd={cancelLP}
                     onTouchMove={cancelLP}>
