@@ -1767,7 +1767,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
       const rows=Math.ceil(tasks.length/COLS);
       const h=tasks.length===1
         ?Math.max(measuredH[startTime]??MIN_CARD_H,(tasks[0].duration??0)*PX_PER_MIN)
-        :tasks.reduce((sum,t)=>sum+Math.max(measuredH[t.id]??MIN_CARD_H,56),0)+(tasks.length-1)*10;
+        :tasks.reduce((sum,t)=>sum+Math.max(measuredH[t.id]??MIN_CARD_H,56),0)+(tasks.length-1)*16;
       return {startTime,tasks,rows,h};
     });
 
@@ -2051,7 +2051,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
             </div>,
           ];
         }
-        const CAPSULE_H=56,GAP=10,n=g.tasks.length;
+        const CAPSULE_H=56,GAP=16,n=g.tasks.length;
         const cardHeights=g.tasks.map(t=>Math.max(measuredH[t.id]??MIN_CARD_H,CAPSULE_H));
         const cardTops:number[]=[];
         { let acc=0; for(let i=0;i<n;i++){cardTops.push(acc);acc+=cardHeights[i]+GAP;} }
