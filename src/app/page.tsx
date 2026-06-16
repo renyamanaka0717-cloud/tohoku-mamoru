@@ -1801,7 +1801,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
   for(const g of taskGroupList.filter(g=>toMin(g.startTime)<wakeMin)){
     const top=prevBottom+16;
     groupLayout.push({g,top});
-    prevBottom=top+(g.tasks.length>1?MIN_CARD_H:g.h);
+    prevBottom=top+g.h;
   }
 
   // Wake card: right after pre-wake items (no clock-time gap)
@@ -1823,7 +1823,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
     if(item.type==='group'){
       const top=Math.max(item.y,prevBottom+12);
       groupLayout.push({g:item.g,top});
-      prevBottom=top+(item.g.tasks.length>1?MIN_CARD_H:item.g.h);
+      prevBottom=top+item.g.h;
     } else {
       const freeY=Math.max(item.y,prevBottom)+16;
       const contentH=calcFreeContentH(laterPool);
@@ -1843,7 +1843,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
   for(const g of taskGroupList.filter(g=>toMin(g.startTime)>=sleepMin)){
     const top=prevBottom+16;
     groupLayout.push({g,top});
-    prevBottom=top+(g.tasks.length>1?MIN_CARD_H:g.h);
+    prevBottom=top+g.h;
   }
 
   const hasHistoryCard=!!(todayHistory&&todayHistory.taskNames.length>0)&&date===todayStr();
@@ -1855,7 +1855,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
   for(const {g,top} of groupLayout){
     const sm=toMin(g.startTime);
     const maxDur=Math.max(...g.tasks.map(t=>t.duration??0));
-    rawAnchors.push([sm,top],[sm+maxDur,top+(g.tasks.length>1?MIN_CARD_H:g.h)]);
+    rawAnchors.push([sm,top],[sm+maxDur,top+g.h]);
   }
   rawAnchors.push([sleepMin,sleepCardTop]);
   rawAnchors.sort((a,b)=>a[0]-b[0]);
