@@ -1801,7 +1801,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
   for(const g of taskGroupList.filter(g=>toMin(g.startTime)<wakeMin)){
     const top=prevBottom+16;
     groupLayout.push({g,top});
-    prevBottom=top+g.h;
+    prevBottom=top+(g.tasks.length>1?MIN_CARD_H:g.h);
   }
 
   // Wake card: right after pre-wake items (no clock-time gap)
@@ -1823,7 +1823,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
     if(item.type==='group'){
       const top=Math.max(item.y,prevBottom+12);
       groupLayout.push({g:item.g,top});
-      prevBottom=top+item.g.h;
+      prevBottom=top+(item.g.tasks.length>1?MIN_CARD_H:item.g.h);
     } else {
       const freeY=Math.max(item.y,prevBottom)+16;
       const contentH=calcFreeContentH(laterPool);
@@ -1843,7 +1843,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
   for(const g of taskGroupList.filter(g=>toMin(g.startTime)>=sleepMin)){
     const top=prevBottom+16;
     groupLayout.push({g,top});
-    prevBottom=top+g.h;
+    prevBottom=top+(g.tasks.length>1?MIN_CARD_H:g.h);
   }
 
   const hasHistoryCard=!!(todayHistory&&todayHistory.taskNames.length>0)&&date===todayStr();
@@ -1855,7 +1855,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
   for(const {g,top} of groupLayout){
     const sm=toMin(g.startTime);
     const maxDur=Math.max(...g.tasks.map(t=>t.duration??0));
-    rawAnchors.push([sm,top],[sm+maxDur,top+g.h]);
+    rawAnchors.push([sm,top],[sm+maxDur,top+(g.tasks.length>1?MIN_CARD_H:g.h)]);
   }
   rawAnchors.push([sleepMin,sleepCardTop]);
   rawAnchors.sort((a,b)=>a[0]-b[0]);
@@ -1946,7 +1946,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
           {y:wakeCardTop+WAKE_CARD_H/2,text:settings.wakeTime},
           ...groupLayout
             .filter(({g})=>{const sm=toMin(g.startTime);return sm!==wakeMin&&sm!==sleepMin;})
-            .map(({g,top})=>({y:top+g.h/2,text:g.startTime})),
+            .map(({g,top})=>({y:top+(g.tasks.length>1?MIN_CARD_H:g.h)/2,text:g.startTime})),
           {y:sleepCardTop+SLEEP_CARD_H/2,text:settings.sleepTime},
         ];
         // proximity filter: skip labels within 16px of an earlier one
@@ -1963,7 +1963,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
 
       {/* current time */}
       {date===todayStr()&&nowMin>=wakeMin&&nowMin<=sleepMin&&(
-        <div className="absolute flex items-center z-20 gap-1.5" style={{top:`${layoutCalcY(nowMin)-12}px`,left:'-4px',right:0}}>
+        <div className="absolute flex items-center z-20 gap-1.5" style={{top:`${calcDayY(nowMin)-12}px`,left:'-4px',right:0}}>
           <div className="bg-[#D9A3B2] text-white text-xs font-bold px-2 py-1 rounded-full whitespace-nowrap">{now}</div>
         </div>
       )}
@@ -2056,9 +2056,9 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
         }
         return [
           <div key={`cap-${g.startTime}`} className="absolute z-10 pointer-events-none"
-            style={{top:`${top}px`,left:`${AXIS_X-28}px`,width:'56px',height:`${Math.max(g.h,56)}px`}}>
+            style={{top:`${top}px`,left:`${AXIS_X-28}px`,width:'56px',height:'56px',overflow:'visible'}}>
             {(()=>{
-              const CAPSULE_H=76,STEP=52,n=g.tasks.length,containerH=Math.max(g.h,56);
+              const CAPSULE_H=76,STEP=52,n=g.tasks.length,containerH=Math.max((n-1)*STEP+CAPSULE_H,56);
               return(
                 <div className="relative" style={{width:'56px',height:`${containerH}px`}}>
                   {g.tasks.map((task,i)=>{
