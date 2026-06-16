@@ -2078,6 +2078,9 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
           </div>,
           <div key={g.startTime} className="absolute z-10"
             style={{top:`${top}px`,left:`${CARD_LEFT}px`,right:'0px'}}>
+            <div className="text-xs text-gray-400 mb-1.5 flex items-center gap-1">
+              <span>●</span><span>{g.tasks.length}件のタスクが重複しています</span>
+            </div>
             <div style={{display:'flex',flexDirection:'column',gap:'10px'}}>
               {g.tasks.map(task=>{
                 const isDragging=dragTaskId===task.id;
