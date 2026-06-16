@@ -1835,8 +1835,8 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
 
   const freeLayout:{slot:FreeSlot;freeY:number;finalH:number}[]=freePassItems;
 
-  // Sleep card: right after daytime content
-  const sleepCardTop=prevBottom+16;
+  // Sleep card: at clock-time position, pushed down only if tasks overflow
+  const sleepCardTop=Math.max(calcDayY(sleepMin),prevBottom+16);
 
   // Phase 2: post-sleep tasks — compact (card order, no time gap)
   prevBottom=sleepCardTop+SLEEP_CARD_H;
