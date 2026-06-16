@@ -2051,7 +2051,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
             </div>,
           ];
         }
-        const CAPSULE_H=56,GAP=36,n=g.tasks.length;
+        const CAPSULE_H=56,GAP=16,n=g.tasks.length;
         const cardHeights=g.tasks.map(t=>Math.max(measuredH[t.id]??MIN_CARD_H,CAPSULE_H));
         const cardTops:number[]=[];
         { let acc=0; for(let i=0;i<n;i++){cardTops.push(acc);acc+=cardHeights[i]+GAP;} }
@@ -2060,21 +2060,16 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
         const boundaries=centers.slice(0,-1).map((c,i)=>(c+centers[i+1])/2);
         const capTops=centers.map((c,i)=>i===0?c-CAPSULE_H/2:boundaries[i-1]);
         const capBottoms=centers.map((c,i)=>i===n-1?c+CAPSULE_H/2:boundaries[i]);
-        const LENS_H=28,LENS_R=35;
         return [
           <div key={`cap-${g.startTime}`} className="absolute z-10 pointer-events-none"
             style={{top:`${top}px`,left:`${AXIS_X-28}px`,width:'56px',height:`${stackH}px`,overflow:'visible'}}>
             {g.tasks.map((task,i)=>(
               <div key={`bg-${task.id}`} className="absolute" style={{
                 top:`${capTops[i]}px`,left:0,width:'56px',height:`${capBottoms[i]-capTops[i]}px`,
-                background:task.color||'#D9A3B2',borderRadius:'28px',
+                background:task.color||'#D9A3B2',
+                borderTopLeftRadius:i===0?28:0,borderTopRightRadius:i===0?28:0,
+                borderBottomLeftRadius:i===n-1?28:0,borderBottomRightRadius:i===n-1?28:0,
               }}/>
-            ))}
-            {boundaries.map((b,i)=>(
-              <svg key={`lens-${i}`} className="absolute" style={{top:`${b-LENS_H/2}px`,left:0}}
-                width="56" height={LENS_H} viewBox={`0 0 56 ${LENS_H}`}>
-                <path d={`M0,${LENS_H/2} A${LENS_R},${LENS_R} 0 0 1 56,${LENS_H/2} A${LENS_R},${LENS_R} 0 0 1 0,${LENS_H/2} Z`} fill="white"/>
-              </svg>
             ))}
             {g.tasks.map((task,i)=>{
               const Ic=getTaskIcon(task.icon||defaultIconKey(task.name||''));
@@ -2086,28 +2081,24 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
             })}
           </div>,
           <div key={g.startTime} className="absolute z-10"
-            style={{top:`${top}px`,left:`${CARD_LEFT}px`,right:'0px',height:`${stackH}px`}}>
-            {g.tasks.map((task,i)=>{
-              const isDragging=dragTaskId===task.id;
-              const isPressing=pressingId===task.id;
-              return (
-                <div key={task.id} className="absolute left-0 right-0"
-                  style={{top:`${cardTops[i]}px`,opacity:isDragging?0.25:1,pointerEvents:isDragging?'none':'auto'}}>
-                  <div className={`select-none transition-transform${isPressing?' scale-95':''}`}
+            style={{top:`${top}px`,left:`${CARD_LEFT}px`,right:'0px'}}>
+            <div style={{display:'flex',flexDirection:'column',gap:`${GAP}px`}}>
+              {g.tasks.map(task=>{
+                const isDragging=dragTaskId===task.id;
+                const isPressing=pressingId===task.id;
+                return (
+                  <div key={task.id}
+                    className={`select-none transition-transform${isPressing?' scale-95':''}`}
+                    style={{opacity:isDragging?0.25:1,pointerEvents:isDragging?'none':'auto'}}
                     ref={el=>{if(el){el.dataset.gk=task.id;roRef.current?.observe(el);}}}
                     onTouchStart={e=>startLP(task,e)}
                     onTouchEnd={cancelLP}
                     onTouchMove={cancelLP}>
                     <TaskCard task={task} onToggle={()=>onToggle(task.id)} onEdit={()=>onEdit(task)} globalTags={globalTags} onSubtaskToggle={(sid)=>onSubtaskToggle(task.id,sid)} onCameraClick={()=>onCameraClick(task.id)}/>
                   </div>
-                </div>
-              );
-            })}
-            {boundaries.map((b,i)=>(
-              <div key={`dup-${i}`} className="absolute left-0 right-0 flex items-center" style={{top:`${b-9}px`,height:'18px'}}>
-                <span className="text-xs text-gray-400">タスクが<span className="text-[#D9A3B2] font-semibold">重複</span>しています</span>
-              </div>
-            ))}
+                );
+              })}
+            </div>
           </div>,
         ];
       })}
