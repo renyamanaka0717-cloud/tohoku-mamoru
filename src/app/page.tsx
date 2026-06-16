@@ -2080,11 +2080,11 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
                 return (
                   <div key={task.id}
                     className={`select-none transition-transform${isPressing?' scale-95':''}`}
-                    style={{height:`${MIN_CARD_H}px`,opacity:isDragging?0.25:1,pointerEvents:isDragging?'none':'auto'}}
+                    style={{opacity:isDragging?0.25:1,pointerEvents:isDragging?'none':'auto'}}
                     onTouchStart={e=>startLP(task,e)}
                     onTouchEnd={cancelLP}
                     onTouchMove={cancelLP}>
-                    <CompactTaskCard task={task} onToggle={()=>onToggle(task.id)} onEdit={()=>onEdit(task)}/>
+                    <TaskCard task={task} onToggle={()=>onToggle(task.id)} onEdit={()=>onEdit(task)} globalTags={globalTags} onSubtaskToggle={(sid)=>onSubtaskToggle(task.id,sid)} onCameraClick={()=>onCameraClick(task.id)}/>
                   </div>
                 );
               })}
