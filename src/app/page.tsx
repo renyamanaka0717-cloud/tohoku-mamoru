@@ -2056,14 +2056,25 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
         const cardTops:number[]=[];
         { let acc=0; for(let i=0;i<n;i++){cardTops.push(acc);acc+=cardHeights[i]+GAP;} }
         const stackH=cardTops[n-1]+cardHeights[n-1];
-        const iconTops=g.tasks.map((_,i)=>cardTops[i]+cardHeights[i]/2-CAPSULE_H/2);
+        const centers=g.tasks.map((_,i)=>cardTops[i]+cardHeights[i]/2);
+        const boundaries=centers.slice(0,-1).map((c,i)=>(c+centers[i+1])/2);
+        const capTops=centers.map((c,i)=>i===0?c-CAPSULE_H/2:boundaries[i-1]);
+        const capBottoms=centers.map((c,i)=>i===n-1?c+CAPSULE_H/2:boundaries[i]);
         return [
           <div key={`cap-${g.startTime}`} className="absolute z-10 pointer-events-none"
             style={{top:`${top}px`,left:`${AXIS_X-28}px`,width:'56px',height:`${stackH}px`,overflow:'visible'}}>
+            {g.tasks.map((task,i)=>(
+              <div key={`bg-${task.id}`} className="absolute" style={{
+                top:`${capTops[i]}px`,left:0,width:'56px',height:`${capBottoms[i]-capTops[i]}px`,
+                background:task.color||'#D9A3B2',
+                borderTopLeftRadius:i===0?28:0,borderTopRightRadius:i===0?28:0,
+                borderBottomLeftRadius:i===n-1?28:0,borderBottomRightRadius:i===n-1?28:0,
+              }}/>
+            ))}
             {g.tasks.map((task,i)=>{
               const Ic=getTaskIcon(task.icon||defaultIconKey(task.name||''));
               return(
-                <div key={task.id} className="absolute" style={{top:`${iconTops[i]}px`,left:0,width:'56px',height:`${CAPSULE_H}px`,borderRadius:'28px',background:task.color||'#D9A3B2',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                <div key={`ic-${task.id}`} className="absolute flex items-center justify-center" style={{top:`${centers[i]-12}px`,left:0,width:'56px',height:'24px'}}>
                   <Ic size={24} className="text-white"/>
                 </div>
               );
