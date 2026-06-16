@@ -1811,32 +1811,22 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
   // Time→Y within activity window, anchored at wakeCardTop
   const calcDayY=(min:number)=>wakeCardTop+WAKE_CARD_H+(min-wakeMin)*PX_PER_MIN;
 
-  // Phase 1: daytime tasks + free slots — real-time Y within wake–sleep window
-  type TLItem={type:'group';g:TaskGroupData;y:number}|{type:'free';s:FreeSlot;y:number};
-  const dayItems:TLItem[]=[
-    ...taskGroupList.filter(g=>toMin(g.startTime)>=wakeMin&&toMin(g.startTime)<sleepMin)
-      .map(g=>({type:'group' as const,g,y:calcDayY(toMin(g.startTime))})),
-    ...freeSlots.map(s=>({type:'free' as const,s,y:calcDayY(toMin(s.start))})),
-  ].sort((a,b)=>a.y-b.y||(a.type==='group'?-1:1));
+  // Phase 1: daytime tasks — each at its clock-time Y, independent of siblings
+  for(const g of taskGroupList.filter(g=>toMin(g.startTime)>=wakeMin&&toMin(g.startTime)<sleepMin)){
+    groupLayout.push({g,top:calcDayY(toMin(g.startTime))});
+  }
 
-  for(const item of dayItems){
-    if(item.type==='group'){
-      const top=Math.max(item.y,prevBottom+12);
-      groupLayout.push({g:item.g,top});
-      prevBottom=top+(item.g.tasks.length>1?MIN_CARD_H:item.g.h);
-    } else {
-      const freeY=item.y;
-      const contentH=calcFreeContentH(laterPool);
-      const finalH=Math.max(contentH,36);
-      freePassItems.push({slot:item.s,freeY,finalH});
-      prevBottom=freeY+finalH;
-    }
+  // Free slots: start and height purely time-based
+  for(const s of freeSlots){
+    const freeY=calcDayY(toMin(s.start));
+    const finalH=Math.max(calcDayY(toMin(s.end))-freeY,36);
+    freePassItems.push({slot:s,freeY,finalH});
   }
 
   const freeLayout:{slot:FreeSlot;freeY:number;finalH:number}[]=freePassItems;
 
-  // Sleep card: at clock-time position, pushed down only if tasks overflow
-  const sleepCardTop=Math.max(calcDayY(sleepMin),prevBottom+16);
+  // Sleep card: purely at its clock-time Y position
+  const sleepCardTop=calcDayY(sleepMin);
 
   // Phase 2: post-sleep tasks — compact (card order, no time gap)
   prevBottom=sleepCardTop+SLEEP_CARD_H;
@@ -1850,30 +1840,8 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
   const HISTORY_CARD_H=44;
   const totalHeight=Math.max(prevBottom,sleepCardTop+SLEEP_CARD_H+(hasHistoryCard?HISTORY_CARD_H+12:0))+32;
 
-  // Piecewise linear time→Y mapping using card layout as anchor points
-  const rawAnchors:[number,number][]=[[wakeMin,wakeCardTop+WAKE_CARD_H]];
-  for(const {g,top} of groupLayout){
-    const sm=toMin(g.startTime);
-    const maxDur=Math.max(...g.tasks.map(t=>t.duration??0));
-    rawAnchors.push([sm,top],[sm+maxDur,top+(g.tasks.length>1?MIN_CARD_H:g.h)]);
-  }
-  rawAnchors.push([sleepMin,sleepCardTop]);
-  rawAnchors.sort((a,b)=>a[0]-b[0]);
-  const anchors:[number,number][]=[];
-  for(const [m,y] of rawAnchors){
-    if(anchors.length>0&&anchors[anchors.length-1][0]===m){
-      anchors[anchors.length-1][1]=Math.max(anchors[anchors.length-1][1],y);
-    } else { anchors.push([m,y]); }
-  }
-  const layoutCalcY=(min:number):number=>{
-    if(min<=anchors[0][0]) return anchors[0][1];
-    if(min>=anchors[anchors.length-1][0]) return anchors[anchors.length-1][1];
-    for(let i=0;i<anchors.length-1;i++){
-      const [m0,y0]=anchors[i],[m1,y1]=anchors[i+1];
-      if(min>=m0&&min<=m1) return Math.round(y0+(min-m0)/(m1-m0)*(y1-y0));
-    }
-    return calcDayY(min);
-  };
+  // time→Y is now purely calcDayY; no piecewise mapping needed
+  const layoutCalcY=calcDayY;
 
   // Layout zones: [time label area] [gap] [icon area centered on axis] [gap] [card area → right:0]
   const TIME_LABEL_W = 40;  // px — fits "HH:MM" at text-xs
@@ -1884,35 +1852,21 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
   const AXIS_X    = TIME_LABEL_W + AXIS_GAP + ICON_HALF;  // 72
   const CARD_LEFT = AXIS_X + ICON_HALF + CARD_GAP;         // 108
 
-  // Y座標→時刻の逆引き（layoutCalcY のピースワイズ逆関数）
+  // Y座標→時刻の逆引き（calcDayY の線形逆関数）
   yToTimeRef.current=(clientY:number):string=>{
     const el=containerRef.current;
     const baseY=el?(el.getBoundingClientRect().top+window.scrollY):0;
     const timelineY=clientY+window.scrollY-baseY;
-    let min:number;
-    if(!anchors.length||timelineY<=anchors[0][1]){
-      min=anchors[0]?.[0]??wakeMin;
-    } else if(timelineY>=anchors[anchors.length-1][1]){
-      min=anchors[anchors.length-1][0];
-    } else {
-      min=wakeMin;
-      for(let i=0;i<anchors.length-1;i++){
-        const [m0,y0]=anchors[i],[m1,y1]=anchors[i+1];
-        if(timelineY>=y0&&timelineY<=y1){
-          min=y1===y0?m0:m0+(timelineY-y0)/(y1-y0)*(m1-m0);
-          break;
-        }
-      }
-    }
+    const min=wakeMin+(timelineY-(wakeCardTop+WAKE_CARD_H))/PX_PER_MIN;
     const snapped=Math.round(min/5)*5;
     return fromMin(Math.max(0,Math.min(23*60+55,snapped)));
   };
 
-  // 時刻→スクリーンY（layoutCalcY ベース、ドラッグオーバーレイ用）
+  // 時刻→スクリーンY（calcDayY ベース、ドラッグオーバーレイ用）
   layoutYRef.current=(min:number):number=>{
     const el=containerRef.current;
     if(!el) return 0;
-    return el.getBoundingClientRect().top+layoutCalcY(min);
+    return el.getBoundingClientRect().top+calcDayY(min);
   };
 
   return (
