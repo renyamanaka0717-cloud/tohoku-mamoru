@@ -1829,7 +1829,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
       .filter(g=>toMin(g.startTime)>=wakeMin&&toMin(g.startTime)<sleepMin)
       .map(g=>({kind:'task' as const,g,startMin:toMin(g.startTime),h:g.h})),
     ...freeSlots.map(s=>({kind:'free' as const,slot:s,startMin:toMin(s.start),
-      h:calcFreeContentH(laterPool)})),
+      h:measuredH[`free-${s.start}`]??calcFreeContentH(laterPool)})),
   ].sort((a,b)=>a.startMin-b.startMin);
 
   type Anchor={min:number;y:number};
@@ -2096,7 +2096,8 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
       {freeLayout.map(({slot,freeY,finalH},i)=>{
         const fits=laterPool;
         return (
-          <div key={i} className="absolute z-10" style={{top:`${freeY}px`,left:`${CARD_LEFT}px`,right:'0px'}}>
+          <div key={i} className="absolute z-10" style={{top:`${freeY}px`,left:`${CARD_LEFT}px`,right:'0px'}}
+            ref={el=>{if(el){el.dataset.gk=`free-${slot.start}`;roRef.current?.observe(el);}}}>
             <FreeTimeCard slot={slot} fits={fits} height={finalH} onSchedule={onSchedule} onDragStart={onDragStart}/>
           </div>
         );
