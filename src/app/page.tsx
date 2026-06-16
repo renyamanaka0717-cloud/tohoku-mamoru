@@ -1748,7 +1748,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
   const nowMin=toMin(now);
 
   const dayTasks=tasks.filter(t=>t.date===date&&!t.isLater&&t.startTime).sort((a,b)=>toMin(a.startTime!)-toMin(b.startTime!));
-  const freeSlots=calcFreeSlots(tasks,date,settings).filter(sl=>toMin(sl.end)<sleepMin);
+  const freeSlots=calcFreeSlots(tasks,date,settings);
   const laterPool=later.filter(t=>!t.completed);
 
   const MIN_CARD_H = 60;
