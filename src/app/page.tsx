@@ -2071,6 +2071,9 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
                 borderBottomLeftRadius:i===n-1?28:0,borderBottomRightRadius:i===n-1?28:0,
               }}/>
             ))}
+            {boundaries.map((b,i)=>(
+              <div key={`div-${i}`} className="absolute" style={{top:`${b-1}px`,left:0,width:'56px',height:'2px',background:'white'}}/>
+            ))}
             {g.tasks.map((task,i)=>{
               const Ic=getTaskIcon(task.icon||defaultIconKey(task.name||''));
               return(
