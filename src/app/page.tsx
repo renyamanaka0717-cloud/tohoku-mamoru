@@ -1748,7 +1748,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
   const nowMin=toMin(now);
 
   const dayTasks=tasks.filter(t=>t.date===date&&!t.isLater&&t.startTime).sort((a,b)=>toMin(a.startTime!)-toMin(b.startTime!));
-  const freeSlots=calcFreeSlots(tasks,date,settings);
+  const freeSlots=calcFreeSlots(tasks,date,settings).filter(sl=>toMin(sl.end)<sleepMin);
   const laterPool=later.filter(t=>!t.completed);
 
   const MIN_CARD_H = 60;
@@ -1825,7 +1825,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
       groupLayout.push({g:item.g,top});
       prevBottom=top+(item.g.tasks.length>1?MIN_CARD_H:item.g.h);
     } else {
-      const freeY=Math.max(item.y,prevBottom)+16;
+      const freeY=item.y;
       const contentH=calcFreeContentH(laterPool);
       const finalH=Math.max(contentH,36);
       freePassItems.push({slot:item.s,freeY,finalH});
@@ -2058,7 +2058,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
           <div key={`cap-${g.startTime}`} className="absolute z-10 pointer-events-none"
             style={{top:`${top}px`,left:`${AXIS_X-28}px`,width:'56px',height:'56px',overflow:'visible'}}>
             {(()=>{
-              const CAPSULE_H=76,STEP=52,n=g.tasks.length,containerH=Math.max((n-1)*STEP+CAPSULE_H,56);
+              const CAPSULE_H=56,STEP=40,n=g.tasks.length,containerH=Math.max((n-1)*STEP+CAPSULE_H,56);
               return(
                 <div className="relative" style={{width:'56px',height:`${containerH}px`}}>
                   {g.tasks.map((task,i)=>{
@@ -2070,7 +2070,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
                     );
                   })}
                   {g.tasks.slice(0,-1).map((_,i)=>(
-                    <div key={`lens-${i}`} className="absolute" style={{top:`${(i+1)*STEP}px`,left:0,width:'56px',height:'24px',background:'white',zIndex:n+10,clipPath:"path('M 28 0 A 28 28 0 0 1 51 12 A 28 28 0 0 1 28 24 A 28 28 0 0 1 5 12 A 28 28 0 0 1 28 0 Z')"}}/>
+                    <div key={`lens-${i}`} className="absolute" style={{top:`${(i+1)*STEP}px`,left:0,width:'56px',height:'16px',background:'white',zIndex:n+10,clipPath:"path('M 28 0 A 28 28 0 0 1 48 8 A 28 28 0 0 1 28 16 A 28 28 0 0 1 8 8 A 28 28 0 0 1 28 0 Z')"}}/>
                   ))}
                 </div>
               );
