@@ -1630,7 +1630,7 @@ function FreeTimeCard({slot,fits,height,onSchedule,onDragStart}:{
 
   const h=Math.floor(slot.min/60), m=slot.min%60;
   return (
-    <div className="bg-gray-100 rounded-2xl px-4 pt-3 pb-3 flex flex-col" style={{height:`${height}px`,overflow:'hidden'}}>
+    <div className="bg-gray-100 rounded-2xl px-4 pt-3 pb-3 flex flex-col" style={{minHeight:`${height}px`}}>
       <div className="flex items-center gap-1 mb-1">
         <AppIcons.freeTime size={12} className="text-gray-400"/>
         <span className="text-xs text-gray-400 font-medium">空き時間 {slot.start}〜{slot.end}</span>
@@ -1783,9 +1783,15 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
     const base=PAD*2+ICON_H+ICON_MB+DUR_H; // 72px — no mb on duration, no chips div
     if(tasks.length===0) return base;
     const innerW=(typeof window!=='undefined'?window.innerWidth:375)-108-32;
+    // 全角文字（日本語）は半角の倍近い幅になるため、文字種で重みを変える
+    const textW=(s:string)=>{
+      let w=0;
+      for(const ch of s) w+=/[　-鿿＀-￯]/.test(ch)?14:7;
+      return w;
+    };
     let rows=1,rowW=0;
     for(const t of tasks){
-      const w=36+t.name.length*9;
+      const w=20+textW(t.name);
       if(rowW>0&&rowW+GAP_X+w>innerW){rows++;rowW=w;}
       else{rowW+=(rowW>0?GAP_X:0)+w;}
     }
