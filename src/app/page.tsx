@@ -1755,6 +1755,13 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
   const WAKE_CARD_H=52, SLEEP_CARD_H=52;
   const COLS=5, ROW_GAP=6;
 
+  const groupStackH=(g:{tasks:Task[];h:number;startTime:string}):number=>{
+    if(g.tasks.length===1) return Math.max(measuredH[g.startTime]??g.h,56);
+    const CAPSULE_H=56,GAP=16;
+    const heights=g.tasks.map(t=>Math.max(measuredH[t.id]??MIN_CARD_H,CAPSULE_H));
+    return heights.reduce((a,h)=>a+h,0)+(g.tasks.length-1)*GAP;
+  };
+
   type TaskGroupData={startTime:string;tasks:Task[];rows:number;h:number};
   const tasksByTime=new Map<string,Task[]>();
   for(const t of dayTasks){
@@ -1943,7 +1950,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
           {y:wakeCardTop+WAKE_CARD_H/2,text:settings.wakeTime},
           ...groupLayout
             .filter(({g})=>{const sm=toMin(g.startTime);return sm!==wakeMin&&sm!==sleepMin;})
-            .map(({g,top})=>({y:top+(g.tasks.length>1?MIN_CARD_H:g.h)/2,text:g.startTime})),
+            .map(({g,top})=>({y:top+groupStackH(g)/2,text:g.startTime})),
           {y:sleepCardTop+SLEEP_CARD_H/2,text:settings.sleepTime},
         ];
         // proximity filter: skip labels within 16px of an earlier one
