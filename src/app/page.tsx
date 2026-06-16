@@ -1753,6 +1753,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
 
   const MIN_CARD_H = 60;
   const WAKE_CARD_H=52, SLEEP_CARD_H=52;
+  const DUP_LABEL_H=24;
   const COLS=5, ROW_GAP=6;
 
   const groupStackH=(g:{tasks:Task[];h:number;startTime:string}):number=>{
@@ -1761,6 +1762,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
     const heights=g.tasks.map(t=>Math.max(measuredH[t.id]??MIN_CARD_H,CAPSULE_H));
     return heights.reduce((a,h)=>a+h,0)+(g.tasks.length-1)*GAP;
   };
+  const groupIconTop=(g:{tasks:Task[]}):number=>g.tasks.length>1?DUP_LABEL_H:0;
 
   type TaskGroupData={startTime:string;tasks:Task[];rows:number;h:number};
   const tasksByTime=new Map<string,Task[]>();
@@ -1774,7 +1776,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
       const rows=Math.ceil(tasks.length/COLS);
       const h=tasks.length===1
         ?Math.max(measuredH[startTime]??MIN_CARD_H,(tasks[0].duration??0)*PX_PER_MIN)
-        :tasks.reduce((sum,t)=>sum+Math.max(measuredH[t.id]??MIN_CARD_H,56),0)+(tasks.length-1)*16;
+        :tasks.reduce((sum,t)=>sum+Math.max(measuredH[t.id]??MIN_CARD_H,56),0)+(tasks.length-1)*16+DUP_LABEL_H;
       return {startTime,tasks,rows,h};
     });
 
@@ -1950,7 +1952,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
           {y:wakeCardTop+WAKE_CARD_H/2,text:settings.wakeTime},
           ...groupLayout
             .filter(({g})=>{const sm=toMin(g.startTime);return sm!==wakeMin&&sm!==sleepMin;})
-            .map(({g,top})=>({y:top+groupStackH(g)/2,text:g.startTime})),
+            .map(({g,top})=>({y:top+groupIconTop(g)+groupStackH(g)/2,text:g.startTime})),
           {y:sleepCardTop+SLEEP_CARD_H/2,text:settings.sleepTime},
         ];
         // proximity filter: skip labels within 16px of an earlier one
@@ -2059,6 +2061,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
           ];
         }
         const CAPSULE_H=56,GAP=16,n=g.tasks.length;
+        const stackTop=top+DUP_LABEL_H;
         const cardHeights=g.tasks.map(t=>Math.max(measuredH[t.id]??MIN_CARD_H,CAPSULE_H));
         const cardTops:number[]=[];
         { let acc=0; for(let i=0;i<n;i++){cardTops.push(acc);acc+=cardHeights[i]+GAP;} }
@@ -2068,8 +2071,13 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
         const capTops=centers.map((c,i)=>i===0?c-CAPSULE_H/2:boundaries[i-1]);
         const capBottoms=centers.map((c,i)=>i===n-1?c+CAPSULE_H/2:boundaries[i]);
         return [
+          <div key={`dup-${g.startTime}`} className="absolute z-10 flex items-center gap-1"
+            style={{top:`${top}px`,left:`${CARD_LEFT}px`,right:'0px',height:`${DUP_LABEL_H}px`}}>
+            <span className="text-[#D9A3B2]" style={{fontSize:'10px'}}>●</span>
+            <span className="text-xs text-gray-400">タスクが重複しています</span>
+          </div>,
           <div key={`cap-${g.startTime}`} className="absolute z-10 pointer-events-none"
-            style={{top:`${top}px`,left:`${AXIS_X-28}px`,width:'56px',height:`${stackH}px`,overflow:'visible'}}>
+            style={{top:`${stackTop}px`,left:`${AXIS_X-28}px`,width:'56px',height:`${stackH}px`,overflow:'visible'}}>
             {g.tasks.map((task,i)=>(
               <div key={`bg-${task.id}`} className="absolute" style={{
                 top:`${capTops[i]}px`,left:0,width:'56px',height:`${capBottoms[i]-capTops[i]}px`,
@@ -2091,7 +2099,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
             })}
           </div>,
           <div key={g.startTime} className="absolute z-10"
-            style={{top:`${top}px`,left:`${CARD_LEFT}px`,right:'0px'}}>
+            style={{top:`${stackTop}px`,left:`${CARD_LEFT}px`,right:'0px'}}>
             <div style={{display:'flex',flexDirection:'column',gap:`${GAP}px`}}>
               {g.tasks.map(task=>{
                 const isDragging=dragTaskId===task.id;
