@@ -1767,7 +1767,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
       const rows=Math.ceil(tasks.length/COLS);
       const h=tasks.length===1
         ?Math.max(measuredH[startTime]??MIN_CARD_H,(tasks[0].duration??0)*PX_PER_MIN)
-        :tasks.length*MIN_CARD_H+(tasks.length-1)*10;
+        :tasks.reduce((sum,t)=>sum+Math.max(measuredH[t.id]??MIN_CARD_H,56),0)+(tasks.length-1)*10;
       return {startTime,tasks,rows,h};
     });
 
@@ -1811,22 +1811,34 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
   // Time→Y within activity window, anchored at wakeCardTop
   const calcDayY=(min:number)=>wakeCardTop+WAKE_CARD_H+(min-wakeMin)*PX_PER_MIN;
 
-  // Phase 1: daytime tasks — each at its clock-time Y, independent of siblings
-  for(const g of taskGroupList.filter(g=>toMin(g.startTime)>=wakeMin&&toMin(g.startTime)<sleepMin)){
-    groupLayout.push({g,top:calcDayY(toMin(g.startTime))});
-  }
+  // Phase 1: daytime tasks + free slots, merged by start time. Each item's Y
+  // starts from its clock-time position (calcDayY), but is pushed down just
+  // enough to keep a uniform minimum gap from the previous card — this keeps
+  // cards from crowding/overlapping when packed close together in time.
+  const CARD_GAP_MIN=16;
+  type DayItem=
+    |{kind:'task';g:TaskGroupData;startMin:number;h:number}
+    |{kind:'free';slot:FreeSlot;startMin:number;h:number};
+  const dayItems:DayItem[]=[
+    ...taskGroupList
+      .filter(g=>toMin(g.startTime)>=wakeMin&&toMin(g.startTime)<sleepMin)
+      .map(g=>({kind:'task' as const,g,startMin:toMin(g.startTime),h:g.h})),
+    ...freeSlots.map(s=>({kind:'free' as const,slot:s,startMin:toMin(s.start),
+      h:Math.max(calcDayY(toMin(s.end))-calcDayY(toMin(s.start)),36)})),
+  ].sort((a,b)=>a.startMin-b.startMin);
 
-  // Free slots: start and height purely time-based
-  for(const s of freeSlots){
-    const freeY=calcDayY(toMin(s.start));
-    const finalH=Math.max(calcDayY(toMin(s.end))-freeY,36);
-    freePassItems.push({slot:s,freeY,finalH});
+  let dayPrevBottom=wakeCardTop+WAKE_CARD_H;
+  for(const item of dayItems){
+    const top=Math.max(calcDayY(item.startMin),dayPrevBottom+CARD_GAP_MIN);
+    if(item.kind==='task') groupLayout.push({g:item.g,top});
+    else freePassItems.push({slot:item.slot,freeY:top,finalH:item.h});
+    dayPrevBottom=top+item.h;
   }
 
   const freeLayout:{slot:FreeSlot;freeY:number;finalH:number}[]=freePassItems;
 
-  // Sleep card: purely at its clock-time Y position
-  const sleepCardTop=calcDayY(sleepMin);
+  // Sleep card: clock-time Y, but never overlapping the last daytime card
+  const sleepCardTop=Math.max(calcDayY(sleepMin),dayPrevBottom+CARD_GAP_MIN);
 
   // Phase 2: post-sleep tasks — compact (card order, no time gap)
   prevBottom=sleepCardTop+SLEEP_CARD_H;
