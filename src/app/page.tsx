@@ -2218,7 +2218,7 @@ function ShopNotifPanel({settings,onChange}:{
           </div>
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">時間</p>
           <input type="time" value={editing.time} onChange={e=>setEditing({...editing,time:e.target.value})}
-            className="border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50 mb-4"/>
+            className="border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50 mb-4 w-full" style={{height:'40px'}}/>
           <div className="flex gap-2">
             <button onClick={()=>{setEditing(null);setAdding(false);}}
               className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200">
