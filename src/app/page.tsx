@@ -363,11 +363,13 @@ function CalendarPage({date,tasks,customTabs,onSelect,onClose}:{date:string;task
               <button key={String(key)} onClick={()=>setCatF(key)}
                 className="shrink-0 relative"
                 style={active?{
-                  padding:'7px 18px 9px',background:'white',color:'#1F1F1F',fontWeight:700,fontSize:'0.875rem',
+                  width:'80px',padding:'7px 12px 9px',background:'white',color:'#1F1F1F',fontWeight:700,fontSize:'0.875rem',
                   border:'none',borderRadius:'14px 14px 0 0',marginBottom:'-2px',zIndex:10,
+                  overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',
                 }:{
-                  padding:'5px 18px',background:'rgba(0,0,0,0.12)',color:'rgba(255,255,255,0.88)',fontWeight:600,fontSize:'0.875rem',
+                  width:'80px',padding:'5px 12px',background:'rgba(0,0,0,0.12)',color:'rgba(255,255,255,0.88)',fontWeight:600,fontSize:'0.875rem',
                   border:'none',borderRadius:'14px 14px 0 0',marginBottom:'2px',
+                  overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',
                 }}>{label}</button>
             );
           })}
@@ -965,11 +967,13 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
               return (
                 <button key={tab.id??'all'} onClick={()=>setCategory(tab.id)}
                   style={active?{
-                    padding:'6px 16px 8px',background:'#F9FAFB',color:'#374151',fontWeight:700,fontSize:'0.8125rem',
+                    width:'76px',padding:'6px 10px 8px',background:'#F9FAFB',color:'#374151',fontWeight:700,fontSize:'0.8125rem',
                     border:'none',borderRadius:'12px 12px 0 0',marginBottom:'-2px',flexShrink:0,
+                    overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',
                   }:{
-                    padding:'4px 16px 6px',background:'rgba(255,255,255,0.2)',color:'rgba(255,255,255,0.8)',fontWeight:600,fontSize:'0.8125rem',
+                    width:'76px',padding:'4px 10px 6px',background:'rgba(255,255,255,0.2)',color:'rgba(255,255,255,0.8)',fontWeight:600,fontSize:'0.8125rem',
                     border:'none',borderRadius:'12px 12px 0 0',marginBottom:'2px',flexShrink:0,
+                    overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',
                   }}>{tab.name}</button>
               );
             })}
@@ -3540,13 +3544,13 @@ export default function App() {
           <div className="tabs-scroll flex items-end pl-3 pt-2" style={{overflowX:'auto',WebkitOverflowScrolling:'touch',overflowY:'hidden',touchAction:'pan-x'}}>
           <button onClick={()=>{setActiveCat(null);setEditTabId(null);}} className="shrink-0 relative"
             style={activeCategory===null?{
-              padding:'7px 18px 9px',background:'#D9A3B2',color:'white',fontWeight:700,fontSize:'0.875rem',
+              width:'80px',padding:'7px 12px 9px',background:'#D9A3B2',color:'white',fontWeight:700,fontSize:'0.875rem',
               border:'none',borderRadius:'14px 14px 0 0',marginBottom:'-2px',zIndex:10,
-              boxShadow:'0 4px 12px rgba(0,0,0,0.10)',
+              boxShadow:'0 4px 12px rgba(0,0,0,0.10)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',
             }:{
-              padding:'5px 18px',background:'#FFFFFF',color:'#6B7280',fontWeight:600,fontSize:'0.875rem',
+              width:'80px',padding:'5px 12px',background:'#FFFFFF',color:'#6B7280',fontWeight:600,fontSize:'0.875rem',
               border:'none',borderRadius:'14px 14px 0 0',marginBottom:'2px',
-              boxShadow:'0 4px 10px rgba(0,0,0,0.08)',
+              boxShadow:'0 4px 10px rgba(0,0,0,0.08)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',
             }}>すべて</button>
           {customTabs.map(tab=>{
             const active=activeCategory===tab.id;
@@ -3556,13 +3560,13 @@ export default function App() {
                 else{setActiveCat(tab.id);setEditTabId(null);}
               }} className="shrink-0 relative"
                 style={active?{
-                  padding:'7px 18px 9px',background:'#D9A3B2',color:'white',fontWeight:700,fontSize:'0.875rem',
+                  width:'80px',padding:'7px 12px 9px',background:'#D9A3B2',color:'white',fontWeight:700,fontSize:'0.875rem',
                   border:'none',borderRadius:'14px 14px 0 0',marginBottom:'-2px',zIndex:10,
-                  boxShadow:'0 4px 12px rgba(0,0,0,0.10)',
+                  boxShadow:'0 4px 12px rgba(0,0,0,0.10)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',
                 }:{
-                  padding:'5px 18px',background:'#FFFFFF',color:'#6B7280',fontWeight:600,fontSize:'0.875rem',
+                  width:'80px',padding:'5px 12px',background:'#FFFFFF',color:'#6B7280',fontWeight:600,fontSize:'0.875rem',
                   border:'none',borderRadius:'14px 14px 0 0',marginBottom:'2px',
-                  boxShadow:'0 4px 10px rgba(0,0,0,0.08)',
+                  boxShadow:'0 4px 10px rgba(0,0,0,0.08)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',
                 }}>{tab.name}</button>
             );
           })}
