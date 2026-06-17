@@ -1871,7 +1871,13 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
 
   const hasHistoryCard=!!(todayHistory&&todayHistory.taskNames.length>0)&&date===todayStr();
   const HISTORY_CARD_H=44;
-  const totalHeight=Math.max(prevBottom,sleepCardTop+SLEEP_CARD_H+(hasHistoryCard?HISTORY_CARD_H+12:0))+32;
+
+  const completedToday=tasks.filter(t=>t.completed&&t.date===date&&!t.isLater&&t.startTime);
+  const showCompletedSection=date===todayStr();
+  const COMPLETED_SECTION_H=52+(completedToday.length>0?completedToday.length*36:40);
+  const historyBottom=sleepCardTop+SLEEP_CARD_H+(hasHistoryCard?HISTORY_CARD_H+12:0);
+  const completedSectionTop=historyBottom+16;
+  const totalHeight=Math.max(prevBottom,historyBottom+(showCompletedSection?COMPLETED_SECTION_H+16:0))+32;
 
   // Piecewise time→Y: linear interpolation between the compacted anchors,
   // so current-time / drag stay visually aligned with the compacted cards.
@@ -2034,6 +2040,38 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
             </div>
           )}
         </>
+      )}
+
+      {/* completed tasks section */}
+      {showCompletedSection&&(
+        <div className="absolute" style={{top:`${completedSectionTop}px`,left:`${CARD_LEFT}px`,right:'0px'}}>
+          <div className="rounded-2xl overflow-hidden" style={{background:'linear-gradient(135deg,#fce4ec 0%,#f8bbd9 50%,#f3e5f5 100%)'}}>
+            <div className="flex items-center gap-2 px-4 pt-3 pb-2">
+              <AppIcons.sparkle size={18} className="text-[#D9A3B2] shrink-0"/>
+              <span className="text-sm font-bold text-[#b06080]">今日完了したタスク</span>
+              {completedToday.length>0&&(
+                <span className="ml-auto text-xs font-bold bg-[#D9A3B2] text-white rounded-full px-2 py-0.5">{completedToday.length}</span>
+              )}
+            </div>
+            <div className="px-3 pb-3">
+              {completedToday.length===0?(
+                <p className="text-xs text-[#c090a0] text-center py-2">まだ完了したタスクはありません</p>
+              ):(
+                <div className="flex flex-col gap-1">
+                  {completedToday.map(t=>(
+                    <div key={t.id} className="flex items-center gap-2 bg-white/60 rounded-xl px-3 py-2">
+                      <div className="w-4 h-4 rounded bg-[#D9A3B2] flex items-center justify-center shrink-0">
+                        <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6L8 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                      </div>
+                      <span className="text-xs text-gray-700 flex-1 line-through decoration-[#D9A3B2]/60">{t.name}</span>
+                      {t.startTime&&<span className="text-xs text-gray-400">{t.startTime}</span>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
 
       {/* task groups */}
