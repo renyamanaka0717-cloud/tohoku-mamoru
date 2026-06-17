@@ -1931,26 +1931,49 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
 
   return (
     <div ref={containerRef} className="relative" style={{height:`${totalHeight+32}px`,minHeight:'400px'}}>
-      {/* vertical line — solid except dotted over free-time slots */}
+      {/* vertical line — gradient between adjacent icon colors, dotted over free-time slots */}
       {(()=>{
-        const segs:{top:number;h:number;dotted:boolean}[]=[];
-        let cur=0;
-        const sorted=[...freeLayout].sort((a,b)=>a.freeY-b.freeY);
-        for(const {freeY,finalH} of sorted){
-          if(freeY>cur) segs.push({top:cur,h:freeY-cur,dotted:false});
-          segs.push({top:freeY,h:finalH,dotted:true});
-          cur=freeY+finalH;
+        const nodes:{y:number;color:string}[]=[];
+        nodes.push({y:wakeCardTop+WAKE_CARD_H/2,color:'#D9A3B2'});
+        for(const {g,top} of groupLayout){
+          const mid=g.tasks[Math.floor(g.tasks.length/2)];
+          nodes.push({y:top+groupIconTop(g)+groupStackH(g)/2,color:mid?.color||'#D9A3B2'});
         }
-        if(cur<totalHeight) segs.push({top:cur,h:totalHeight-cur,dotted:false});
-        return segs.map((s,i)=>(
-          <div key={i} className="absolute" style={{
-            left:`${AXIS_X}px`,width:'4px',top:`${s.top}px`,height:`${s.h}px`,transform:'translateX(-0.5px)',
-            ...(s.dotted
-              ?{backgroundImage:'repeating-linear-gradient(to bottom,#e5e7eb 0px,#e5e7eb 5px,transparent 5px,transparent 10px)'}
-              :{backgroundColor:'#e5e7eb'}
-            )
-          }}/>
-        ));
+        nodes.push({y:sleepCardTop+SLEEP_CARD_H/2,color:'#D9A3B2'});
+        nodes.sort((a,b)=>a.y-b.y);
+        if(nodes.length===0) return null;
+
+        const freeRanges=freeLayout.map(({slot,freeY,finalH})=>({
+          top:freeY, h:measuredH[`free-${slot.start}`]??finalH
+        }));
+
+        const renderSeg=(key:string|number,top:number,h:number,c1:string,c2:string)=>{
+          if(h<=0) return null;
+          const overlaps=freeRanges
+            .map(r=>({rt:Math.max(r.top,top)-top, rb:Math.min(r.top+r.h,top+h)-top}))
+            .filter(o=>o.rb>o.rt);
+          return (
+            <div key={key} className="absolute overflow-hidden" style={{
+              left:`${AXIS_X}px`,width:'4px',top:`${top}px`,height:`${h}px`,transform:'translateX(-0.5px)',
+              background:c1===c2?c1:`linear-gradient(to bottom,${c1},${c2})`
+            }}>
+              {overlaps.map((o,oi)=>(
+                <div key={oi} className="absolute" style={{
+                  top:`${o.rt}px`,height:`${o.rb-o.rt}px`,left:0,right:0,
+                  backgroundImage:'repeating-linear-gradient(to bottom,transparent 0px,transparent 5px,white 5px,white 10px)'
+                }}/>
+              ))}
+            </div>
+          );
+        };
+
+        const elems=[];
+        if(nodes[0].y>0) elems.push(renderSeg('pre',0,nodes[0].y,nodes[0].color,nodes[0].color));
+        for(let i=0;i<nodes.length-1;i++)
+          elems.push(renderSeg(i,nodes[i].y,nodes[i+1].y-nodes[i].y,nodes[i].color,nodes[i+1].color));
+        const last=nodes[nodes.length-1];
+        if(last.y<totalHeight) elems.push(renderSeg('post',last.y,totalHeight-last.y,last.color,last.color));
+        return elems;
       })()}
 
 
