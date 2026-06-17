@@ -3321,7 +3321,7 @@ export default function App() {
 
   const effectiveSettings = useMemo(()=>{
     const ov=dayOverrides[date]??{};
-    return {wakeTime:ov.wakeTime??settings.wakeTime, sleepTime:ov.sleepTime??settings.sleepTime};
+    return {...settings, wakeTime:ov.wakeTime??settings.wakeTime, sleepTime:ov.sleepTime??settings.sleepTime};
   },[settings,dayOverrides,date]);
 
   // Drag task from あとでやる to timeline
