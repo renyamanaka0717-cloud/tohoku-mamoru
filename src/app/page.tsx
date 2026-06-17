@@ -312,6 +312,81 @@ function MonthCalendar({selected,onSelect,onClose,tasks}:{selected:string;onSele
   );
 }
 
+// ── WeekIconView ─────────────────────────────────────────────────────────────
+
+function WeekIconView({weekDates,tasks,currentDate,onSelectDate,onClose}:{
+  weekDates:string[]; tasks:Task[]; currentDate:string;
+  onSelectDate:(d:string)=>void; onClose:()=>void;
+}) {
+  const DOW=['日','月','火','水','木','金','土'];
+  const today=todayStr();
+  const ICON_SIZE=26;
+  const getDay=(d:string)=>tasks
+    .filter(t=>!t.isLater&&t.date===d&&t.startTime)
+    .sort((a,b)=>(a.startTime??'').localeCompare(b.startTime??''));
+
+  // 同色の連続タスクをグループ化
+  type Grp={color:string;tasks:Task[]};
+  const groupByColor=(ts:Task[]):Grp[]=>{
+    const gs:Grp[]=[];
+    for(const t of ts){
+      const c=t.color??'#D9A3B2';
+      const last=gs[gs.length-1];
+      if(last&&last.color===c) last.tasks.push(t);
+      else gs.push({color:c,tasks:[t]});
+    }
+    return gs;
+  };
+
+  return (
+    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-white flex flex-col max-w-md mx-auto">
+      <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center shrink-0">
+        <button onClick={onClose} className="flex items-center gap-0.5 text-gray-500 min-w-[60px]">
+          <AppIcons.caretLeft size={20}/>
+        </button>
+        <h2 className="flex-1 text-center text-[17px] font-semibold text-gray-900">週間</h2>
+        <div className="min-w-[60px]"/>
+      </div>
+      <div className="flex flex-1 overflow-hidden">
+        {weekDates.map((d,i)=>{
+          const dayTasks=getDay(d);
+          const groups=groupByColor(dayTasks);
+          const isToday=d===today;
+          const isSel=d===currentDate;
+          const {day}=getDateInfo(d);
+          return (
+            <button key={d} onClick={()=>{onSelectDate(d);onClose();}}
+              className={`flex-1 flex flex-col items-center pt-2 ${i<6?'border-r border-gray-100':''} active:bg-gray-50`}>
+              <span className={`text-[10px] mb-1 font-medium ${isToday||isSel?'text-[#D9A3B2]':'text-gray-400'}`}>{DOW[i]}</span>
+              <span className={`text-xs font-bold mb-2 w-6 h-6 flex items-center justify-center rounded-full ${isSel?'bg-[#D9A3B2] text-white':isToday?'bg-gray-100 text-gray-800':'text-gray-800'}`}>{day}</span>
+              <div className="flex flex-col items-center overflow-y-auto w-full pb-4" style={{maxHeight:'calc(100vh - 140px)'}}>
+                {groups.map((g,gi)=>{
+                  const n=g.tasks.length;
+                  return (
+                    <div key={gi} className="flex flex-col items-center mb-0.5">
+                      {g.tasks.map((t,ti)=>{
+                        const first=ti===0, last=ti===n-1, single=n===1;
+                        const borderRadius=single?'50%':first?'50% 50% 0 0':last?'0 0 50% 50%':'0';
+                        const Icon=(AppIcons as Record<string,React.ComponentType<{size?:number;className?:string}>>)[t.icon??'task']??AppIcons.task;
+                        return (
+                          <div key={t.id} className="flex items-center justify-center"
+                            style={{width:`${ICON_SIZE}px`,height:`${ICON_SIZE}px`,background:g.color,borderRadius,marginBottom:single||last?'0':'-1px'}}>
+                            <Icon size={13} className="text-white" />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ── CalendarPage ─────────────────────────────────────────────────────────────
 
 function CalendarPage({date,tasks,customTabs,onSelect,onClose}:{date:string;tasks:Task[];customTabs:CustomTab[];onSelect:(d:string)=>void;onClose:()=>void;}) {
@@ -3061,6 +3136,7 @@ export default function App() {
   const [editTabName,setEditTabName] = useState('');
   const [settingsOpen,setSOp]    = useState(false);
   const [calendarOpen,setCalOp]  = useState(false);
+  const [weekViewOpen,setWeekViewOpen] = useState(false);
   const [searchOpen,setSearchOpen] = useState(false);
   const [activeTab,setActiveTab] = useState<'later'|'shop'|null>(null);
   const [loaded,setLoaded]       = useState(false);
@@ -3424,7 +3500,12 @@ export default function App() {
         <div className="px-4 pt-1 pb-0">
           {/* Date + nav */}
           <div className="flex items-center justify-between mb-1">
-            <span className="text-2xl font-bold text-gray-900">{year}年{month}月</span>
+            <div className="flex items-center gap-2">
+              <span className="text-2xl font-bold text-gray-900">{year}年{month}月</span>
+              <button onClick={()=>setWeekViewOpen(true)} className="w-8 h-8 flex items-center justify-center text-gray-400 active:text-[#D9A3B2]">
+                <AppIcons.weekGrid/>
+              </button>
+            </div>
             <div className="flex items-center gap-1">
               <button onClick={()=>setCalOp(true)} className="w-8 h-8 flex items-center justify-center text-gray-400"><AppIcons.calendar size={24}/></button>
               <button onClick={()=>setSearchOpen(true)} className="w-8 h-8 flex items-center justify-center text-gray-400"><AppIcons.search size={24}/></button>
@@ -3639,6 +3720,12 @@ export default function App() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── Week Icon View ── */}
+      {weekViewOpen&&(
+        <WeekIconView weekDates={weekDates} tasks={tasks} currentDate={date}
+          onSelectDate={d=>{setDate(d);}} onClose={()=>setWeekViewOpen(false)}/>
       )}
 
       {/* ── Calendar ── */}
