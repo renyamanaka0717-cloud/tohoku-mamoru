@@ -1931,8 +1931,27 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
 
   return (
     <div ref={containerRef} className="relative" style={{height:`${totalHeight+32}px`,minHeight:'400px'}}>
-      {/* vertical line */}
-      <div className="absolute bg-gray-200" style={{left:`${AXIS_X}px`,width:'3px',top:0,height:`${totalHeight}px`,transform:'translateX(-0.5px)'}}/>
+      {/* vertical line — solid except dotted over free-time slots */}
+      {(()=>{
+        const segs:{top:number;h:number;dotted:boolean}[]=[];
+        let cur=0;
+        const sorted=[...freeLayout].sort((a,b)=>a.freeY-b.freeY);
+        for(const {freeY,finalH} of sorted){
+          if(freeY>cur) segs.push({top:cur,h:freeY-cur,dotted:false});
+          segs.push({top:freeY,h:finalH,dotted:true});
+          cur=freeY+finalH;
+        }
+        if(cur<totalHeight) segs.push({top:cur,h:totalHeight-cur,dotted:false});
+        return segs.map((s,i)=>(
+          <div key={i} className="absolute" style={{
+            left:`${AXIS_X}px`,width:'3px',top:`${s.top}px`,height:`${s.h}px`,transform:'translateX(-0.5px)',
+            ...(s.dotted
+              ?{backgroundImage:'repeating-linear-gradient(to bottom,#e5e7eb 0px,#e5e7eb 5px,transparent 5px,transparent 10px)'}
+              :{backgroundColor:'#e5e7eb'}
+            )
+          }}/>
+        ));
+      })()}
 
 
 
