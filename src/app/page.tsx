@@ -47,6 +47,7 @@ interface Task {
 interface Settings { wakeTime: string; sleepTime: string; keepIncomplete?: boolean; }
 interface FreeSlot  { start: string; end: string; min: number; }
 interface ShopItem  { id: string; name: string; checked: boolean; purchasedAt?: string; }
+interface ShopNotifSetting { id: string; days: number[]; time: string; enabled: boolean; }
 interface TagDef    { name: string; color: string; }
 interface MoveHistory { id: string; date: string; taskNames: string[]; }
 interface CustomTab  { id: string; name: string; }
@@ -66,6 +67,7 @@ const PHOTOS_KEY       = 'tl-photos-v1';
 const DAY_SETTINGS_KEY = 'tl-day-settings-v1';
 const MORNING_NOTIF_KEY = 'tl-morning-notif-v1';
 const MORNING_SNOOZE_KEY = 'tl-morning-snooze-v1'; // stores snooze timestamp (ms)
+const SHOP_NOTIF_KEY    = 'tl-shop-notif-v1';
 
 // テーマカラー — 将来的にここを差し替えるだけで全体の色が変わる
 const THEME = {
@@ -2144,21 +2146,112 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
   );
 }
 
+// ── ShopNotifPanel ────────────────────────────────────────────────────────────
+
+function ShopNotifPanel({settings,onChange}:{
+  settings:ShopNotifSetting[];
+  onChange:(s:ShopNotifSetting[])=>void;
+}) {
+  const DOW=['日','月','火','水','木','金','土'];
+  const [editing,setEditing]=useState<ShopNotifSetting|null>(null);
+  const [adding,setAdding]=useState(false);
+  const fmtDays=(days:number[])=>{
+    if(days.length===7) return '毎日';
+    if(days.length===2&&days.includes(0)&&days.includes(6)) return '週末';
+    if(days.length===5&&!days.includes(0)&&!days.includes(6)) return '平日';
+    return [...days].sort((a,b)=>a-b).map(d=>DOW[d]).join('・');
+  };
+  const startAdd=()=>{
+    setEditing({id:Math.random().toString(36).slice(2),days:[1,2,3,4,5],time:'09:00',enabled:true});
+    setAdding(true);
+  };
+  const save=(s:ShopNotifSetting)=>{
+    if(adding) onChange([...settings,s]);
+    else onChange(settings.map(x=>x.id===s.id?s:x));
+    setEditing(null);setAdding(false);
+  };
+  const del=(id:string)=>onChange(settings.filter(s=>s.id!==id));
+  const toggleEnabled=(id:string)=>onChange(settings.map(s=>s.id===id?{...s,enabled:!s.enabled}:s));
+  return (
+    <div className="px-4 pb-6">
+      <div className="flex items-center justify-between mb-3 mt-1">
+        <p className="text-sm font-semibold text-gray-700">買い物リストの通知</p>
+        <button onClick={startAdd} disabled={!!editing}
+          className="flex items-center gap-1 px-3 py-1.5 bg-[#D9A3B2] text-white rounded-xl text-sm font-semibold disabled:opacity-40">
+          <AppIcons.plus size={14}/>追加
+        </button>
+      </div>
+      {settings.length===0&&!editing&&(
+        <p className="text-sm text-gray-400 text-center py-4">通知が設定されていません</p>
+      )}
+      <div className="space-y-2">
+        {settings.map(s=>(
+          <div key={s.id} className="bg-white rounded-2xl shadow-sm px-4 py-3 flex items-center gap-3">
+            <AppIcons.bell size={16} className={s.enabled?'text-[#D9A3B2]':'text-gray-300'}/>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-gray-800">{fmtDays(s.days)}</p>
+              <p className="text-xs text-gray-400">{s.time}</p>
+            </div>
+            <button onClick={()=>toggleEnabled(s.id)}
+              className={`relative w-10 h-6 rounded-full transition-colors shrink-0 ${s.enabled?'bg-[#D9A3B2]':'bg-gray-200'}`}>
+              <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${s.enabled?'left-[18px]':'left-0.5'}`}/>
+            </button>
+            <button onClick={()=>del(s.id)} className="text-gray-300 active:text-[#D97A7A] shrink-0">
+              <AppIcons.trash size={16}/>
+            </button>
+          </div>
+        ))}
+      </div>
+      {editing&&(
+        <div className="mt-3 bg-white rounded-2xl shadow-sm p-4">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">曜日</p>
+          <div className="flex gap-2 flex-wrap mb-4">
+            {DOW.map((d,i)=>(
+              <button key={i} onClick={()=>{
+                const days=editing.days.includes(i)?editing.days.filter(x=>x!==i):[...editing.days,i];
+                setEditing({...editing,days});
+              }}
+                className={`w-9 h-9 rounded-full text-sm font-semibold transition-colors ${editing.days.includes(i)?'bg-[#D9A3B2] text-white':'bg-gray-100 text-gray-600'}`}>
+                {d}
+              </button>
+            ))}
+          </div>
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">時間</p>
+          <input type="time" value={editing.time} onChange={e=>setEditing({...editing,time:e.target.value})}
+            className="border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50 mb-4 w-full"/>
+          <div className="flex gap-2">
+            <button onClick={()=>{setEditing(null);setAdding(false);}}
+              className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200">
+              キャンセル
+            </button>
+            <button onClick={()=>save(editing)} disabled={editing.days.length===0}
+              className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-[#D9A3B2] text-white active:opacity-80 disabled:opacity-40">
+              保存
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── BottomTabs ────────────────────────────────────────────────────────────────
 
 function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,shopPending,
-  onToggle,onEdit,onAddShop,onToggleShop,onDeleteShop,onDragStart
+  onToggle,onEdit,onAddShop,onToggleShop,onDeleteShop,onDragStart,shopNotifSettings,onShopNotifSettings
 }:{
   activeTab:'later'|'shop'; onSwitchTab:(t:'later'|'shop')=>void; onClose:()=>void;
   tasks:Task[]; shopItems:ShopItem[]; pendingCount:number; shopPending:number;
   onToggle:(id:string)=>void; onEdit:(t:Task)=>void;
   onAddShop:(n:string)=>void; onToggleShop:(id:string)=>void; onDeleteShop:(id:string)=>void;
   onDragStart:(t:Task,x:number,y:number)=>void;
+  shopNotifSettings:ShopNotifSetting[]; onShopNotifSettings:(s:ShopNotifSetting[])=>void;
 }) {
   const [shopInput,setShopInput] = useState('');
   const [sortDir,setSortDir]     = useState<null|'asc'|'desc'>(null);
   const [shopSortDir,setShopSortDir] = useState<null|'asc'|'desc'>(null);
   const [pressingId,setPressingId]= useState<string|null>(null);
+  const [showShopNotif,setShowShopNotif] = useState(false);
   const lpTimer = useRef<ReturnType<typeof setTimeout>|null>(null);
   const swX=useRef(0), swY=useRef(0);
   const tabs:('later'|'shop')[]=['later','shop'];
@@ -2372,25 +2465,36 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
             <div className="px-4 pt-3 pb-2 shrink-0">
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-sm font-bold text-gray-900">買い物リスト</h3>
-                <button onClick={()=>setShopSortDir(d=>d===null?'asc':d==='asc'?'desc':'asc')}
-                  className="w-8 h-8 rounded-xl flex items-center justify-center text-sm bg-[#D9A3B2] text-white transition-colors">
-                  {shopSortDir===null?'↑↓':shopSortDir==='asc'?'↑':'↓'}
-                </button>
+                <div className="flex items-center gap-2">
+                  <button onClick={()=>setShowShopNotif(v=>!v)}
+                    className={`relative w-8 h-8 rounded-xl flex items-center justify-center transition-colors ${showShopNotif?'bg-[#D9A3B2] text-white':'bg-gray-100 text-gray-500'}`}>
+                    <AppIcons.bell size={15}/>
+                    {shopNotifSettings.filter(s=>s.enabled).length>0&&!showShopNotif&&(
+                      <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-[#D9A3B2] rounded-full border-2 border-white"/>
+                    )}
+                  </button>
+                  <button onClick={()=>setShopSortDir(d=>d===null?'asc':d==='asc'?'desc':'asc')}
+                    className="w-8 h-8 rounded-xl flex items-center justify-center text-sm bg-[#D9A3B2] text-white transition-colors">
+                    {shopSortDir===null?'↑↓':shopSortDir==='asc'?'↑':'↓'}
+                  </button>
+                </div>
               </div>
-              <div className="flex gap-2">
+              {!showShopNotif&&<div className="flex gap-2">
                 <input type="text" value={shopInput} onChange={e=>setShopInput(e.target.value)}
                   onKeyDown={e=>e.key==='Enter'&&addShop()}
                   placeholder="商品を追加..."
                   className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-gray-400 bg-gray-50"/>
                 <button onClick={addShop} disabled={!shopInput.trim()}
                   className="px-4 py-2 bg-[#D9A3B2] text-white rounded-xl text-sm font-semibold disabled:opacity-40">追加</button>
-              </div>
+              </div>}
             </div>
-            <div className="overflow-y-auto px-4 pb-10 flex-1">
-              {shopItems.length===0?(
-                <div className="py-12 text-center"><AppIcons.shopping size={40} className="mx-auto mb-2 text-gray-300"/><p className="text-sm text-gray-400">リストは空です</p></div>
+            <div className="overflow-y-auto pb-10 flex-1">
+              {showShopNotif?(
+                <ShopNotifPanel settings={shopNotifSettings} onChange={onShopNotifSettings}/>
+              ):shopItems.length===0?(
+                <div className="py-12 text-center px-4"><AppIcons.shopping size={40} className="mx-auto mb-2 text-gray-300"/><p className="text-sm text-gray-400">リストは空です</p></div>
               ):(
-                <div className="space-y-2">
+                <div className="space-y-2 px-4">
                   {shopPendingItems.map(item=>(
                     <div key={item.id} className="flex items-center gap-3 bg-white border border-gray-100 rounded-2xl shadow-sm px-4 py-3">
                       <button onClick={()=>onToggleShop(item.id)} className="w-5 h-5 rounded border-2 border-gray-300 shrink-0"/>
@@ -2442,10 +2546,11 @@ function SettingsRow({icon,iconBg,title,desc,onClick,isLast=false}:{
   );
 }
 
-function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,customTabs,onCustomTabs}:{
+function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,customTabs,onCustomTabs,shopNotifSettings,onShopNotifSettings}:{
   settings:Settings; onSettings:(s:Settings)=>void; onClose:()=>void;
   globalTags:TagDef[]; onGlobalTags:(tags:TagDef[])=>void;
   customTabs:CustomTab[]; onCustomTabs:(tabs:CustomTab[])=>void;
+  shopNotifSettings:ShopNotifSetting[]; onShopNotifSettings:(s:ShopNotifSetting[])=>void;
 }) {
   const [sub,setSub]           = useState<string|null>(null);
   const [tagInput,setTagInput] = useState('');
@@ -2644,7 +2749,10 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   if(sub==='notifications') return (
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
       {subHeader('通知')}
-      <div className="flex-1 overflow-y-auto px-4 pb-8">{comingSoon(<AppIcons.bell size={48}/>,'通知設定は近日公開予定です')}</div>
+      <div className="flex-1 overflow-y-auto pb-8">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-5 mb-2 mt-6">買い物リスト</p>
+        <ShopNotifPanel settings={shopNotifSettings} onChange={onShopNotifSettings}/>
+      </div>
     </div>
   );
 
@@ -2956,6 +3064,7 @@ export default function App() {
   const [morningTasks,setMorningTasks] = useState<Task[]|null>(null);
   const [morningSelected,setMorningSel] = useState<Set<string>>(new Set());
   const morningShownRef = useRef(false);
+  const [shopNotifSettings,setShopNotifSettings] = useState<ShopNotifSetting[]>([]);
 
   useEffect(()=>{
     try{
@@ -2985,6 +3094,8 @@ export default function App() {
       if(ct) setCustomTabs(JSON.parse(ct) as CustomTab[]);
       const ds=localStorage.getItem(DAY_SETTINGS_KEY);
       if(ds) setDayOverrides(JSON.parse(ds) as Record<string,{wakeTime?:string;sleepTime?:string}>);
+      const sn=localStorage.getItem(SHOP_NOTIF_KEY);
+      if(sn) setShopNotifSettings(JSON.parse(sn) as ShopNotifSetting[]);
     }catch{}
     setLoaded(true);
     if(typeof Notification!=='undefined'&&Notification.permission==='default'){
@@ -2998,6 +3109,7 @@ export default function App() {
   useEffect(()=>{ if(loaded) localStorage.setItem(TAGS_KEY,JSON.stringify(globalTags)); },[globalTags,loaded]);
   useEffect(()=>{ if(loaded) localStorage.setItem(HISTORY_KEY,JSON.stringify(moveHistory)); },[moveHistory,loaded]);
   useEffect(()=>{ if(loaded) localStorage.setItem(CUSTOM_TABS_KEY,JSON.stringify(customTabs)); },[customTabs,loaded]);
+  useEffect(()=>{ if(loaded) localStorage.setItem(SHOP_NOTIF_KEY,JSON.stringify(shopNotifSettings)); },[shopNotifSettings,loaded]);
   useEffect(()=>{ if(loaded) localStorage.setItem(DAY_SETTINGS_KEY,JSON.stringify(dayOverrides)); },[dayOverrides,loaded]);
   useEffect(()=>{ const iv=setInterval(()=>setNow(nowStr()),60000); return ()=>clearInterval(iv); },[]);
 
@@ -3043,6 +3155,25 @@ export default function App() {
       new Notification('昨日のタスクが残っています',{body:`昨日のタスクが${past.length}件残っています`});
     }
   },[loaded,now,tasks,settings.wakeTime]);
+
+  // 買い物リスト通知
+  useEffect(()=>{
+    if(!loaded||shopNotifSettings.length===0) return;
+    const dow=new Date().getDay();
+    const nowM=toMin(now);
+    shopNotifSettings.forEach(s=>{
+      if(!s.enabled||!s.days.includes(dow)||toMin(s.time)!==nowM) return;
+      const key=`tl-shop-notif-fired-${s.id}-${todayStr()}`;
+      if(localStorage.getItem(key)) return;
+      const pending=shopItems.filter(i=>!i.checked);
+      if(pending.length===0) return;
+      localStorage.setItem(key,'1');
+      if(typeof Notification!=='undefined'&&Notification.permission==='granted'){
+        const names=pending.slice(0,3).map(i=>i.name).join('・')+(pending.length>3?'…':'');
+        new Notification('買い物リスト',{body:`未購入 ${pending.length}件: ${names}`});
+      }
+    });
+  },[loaded,now,shopNotifSettings,shopItems]);
 
   const filteredTasks = useMemo(()=>activeCategory?tasks.filter(t=>t.category===activeCategory):tasks,[tasks,activeCategory]);
   const laterTasks    = useMemo(()=>filteredTasks.filter(t=>t.isLater),[filteredTasks]);
@@ -3400,7 +3531,8 @@ export default function App() {
           tasks={filteredTasks} shopItems={shopItems} pendingCount={pendingCount} shopPending={shopPending}
           onToggle={toggle} onEdit={openEdit}
           onAddShop={addShopItem} onToggleShop={toggleShop} onDeleteShop={deleteShop}
-          onDragStart={startDrag}/>
+          onDragStart={startDrag}
+          shopNotifSettings={shopNotifSettings} onShopNotifSettings={setShopNotifSettings}/>
       )}
 
       {/* あとでやる FAB */}
@@ -3509,7 +3641,7 @@ export default function App() {
 
       {/* ── Settings Screen ── */}
       {settingsOpen&&(
-        <SettingsScreen settings={settings} onSettings={setSettings} onClose={()=>setSOp(false)} globalTags={globalTags} onGlobalTags={setGlobalTags} customTabs={customTabs} onCustomTabs={setCustomTabs}/>
+        <SettingsScreen settings={settings} onSettings={setSettings} onClose={()=>setSOp(false)} globalTags={globalTags} onGlobalTags={setGlobalTags} customTabs={customTabs} onCustomTabs={setCustomTabs} shopNotifSettings={shopNotifSettings} onShopNotifSettings={setShopNotifSettings}/>
       )}
 
       {/* ── Recurrence edit confirm ── */}
