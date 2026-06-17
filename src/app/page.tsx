@@ -2045,6 +2045,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
       {/* completed tasks section */}
       {showCompletedSection&&(
         <div className="absolute" style={{top:`${completedSectionTop}px`,left:`${CARD_LEFT}px`,right:'0px'}}>
+          <div className="h-px bg-gray-200 mb-4"/>
           <div className="rounded-2xl overflow-hidden" style={{background:'linear-gradient(135deg,#fce4ec 0%,#f8bbd9 50%,#f3e5f5 100%)'}}>
             <div className="flex items-center gap-2 px-4 pt-3 pb-2">
               <AppIcons.sparkle size={18} className="text-[#D9A3B2] shrink-0"/>
