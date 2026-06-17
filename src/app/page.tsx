@@ -3570,7 +3570,7 @@ export default function App() {
           {([['later','あとでやる',pendingCount],['shop','買い物リスト',shopPending]] as const).map(([tab,label,cnt],i)=>(
             <button key={tab} onClick={()=>setActiveTab(t=>t===tab?null:tab)}
               className={`flex-1 flex items-center justify-center gap-2 py-8 transition-colors ${i===0?'border-r border-gray-300':''} ${activeTab===tab?'bg-gray-100':''}`}>
-              <span className={`text-sm font-semibold ${activeTab===tab?'text-gray-900':'text-gray-500'}`}>{label}</span>
+              <span className={`text-base font-semibold ${activeTab===tab?'text-gray-900':'text-gray-500'}`}>{label}</span>
               {cnt>0&&<span className="text-[13px] bg-[#D9A3B2] text-white min-w-[22px] h-[22px] rounded-full flex items-center justify-center font-bold px-1">{cnt}</span>}
             </button>
           ))}
