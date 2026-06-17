@@ -44,7 +44,7 @@ interface Task {
   photoCount?: number;
 }
 
-interface Settings { wakeTime: string; sleepTime: string; keepIncomplete?: boolean; }
+interface Settings { wakeTime: string; sleepTime: string; keepIncomplete?: boolean; showFreeCard?: boolean; freeCardMinMin?: number; }
 interface FreeSlot  { start: string; end: string; min: number; }
 interface ShopItem  { id: string; name: string; checked: boolean; purchasedAt?: string; }
 interface ShopNotifSetting { id: string; days: number[]; time: string; enabled: boolean; }
@@ -232,7 +232,7 @@ function calcFreeSlots(tasks: Task[], date: string, s: Settings): FreeSlot[] {
     cur=Math.max(cur,en);
   }
   if(cur<end) slots.push({start:fromMin(cur),end:fromMin(end),min:end-cur});
-  return slots.filter(sl=>sl.min>=60);
+  return slots;
 }
 
 // ── MonthCalendar ─────────────────────────────────────────────────────────────
@@ -1754,7 +1754,8 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
   const nowMin=toMin(now);
 
   const dayTasks=tasks.filter(t=>t.date===date&&!t.isLater&&t.startTime).sort((a,b)=>toMin(a.startTime!)-toMin(b.startTime!));
-  const freeSlots=calcFreeSlots(tasks,date,settings);
+  const freeCardMinMin=settings.freeCardMinMin??120;
+  const freeSlots=(settings.showFreeCard===false)?[]:calcFreeSlots(tasks,date,settings).filter(sl=>sl.min>=freeCardMinMin);
   const laterPool=later.filter(t=>!t.completed);
 
   const MIN_CARD_H = 60;
@@ -2867,6 +2868,33 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
       {subHeader('表示設定')}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">空き時間カード</p>
+        <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
+          <div className="px-4 py-3.5 flex items-center justify-between border-b border-gray-100">
+            <p className="text-[15px] font-medium text-gray-900">空き時間カードを表示</p>
+            <button onClick={()=>onSettings({...settings,showFreeCard:!(settings.showFreeCard??true)})}
+              className={`relative w-10 h-6 rounded-full transition-colors shrink-0 ${(settings.showFreeCard??true)?'bg-[#D9A3B2]':'bg-gray-200'}`}>
+              <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${(settings.showFreeCard??true)?'left-[18px]':'left-0.5'}`}/>
+            </button>
+          </div>
+          {(settings.showFreeCard??true)&&(
+            <div className="px-4 py-3.5">
+              <p className="text-[15px] font-medium text-gray-900 mb-3">最小表示時間</p>
+              <div className="flex gap-2 flex-wrap">
+                {([30,60,90,120,180] as const).map(m=>{
+                  const label=m<60?`${m}分`:m===60?'1時間':m===90?'1.5時間':m===120?'2時間':'3時間';
+                  const active=(settings.freeCardMinMin??120)===m;
+                  return (
+                    <button key={m} onClick={()=>onSettings({...settings,freeCardMinMin:m})}
+                      className={`px-3 py-1.5 rounded-xl text-sm font-medium transition-colors ${active?'bg-[#D9A3B2] text-white':'bg-gray-100 text-gray-600'}`}>
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">外観</p>
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
           <div className="px-4 py-3.5 flex items-center justify-between">
