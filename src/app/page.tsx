@@ -1944,7 +1944,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
         if(cur<totalHeight) segs.push({top:cur,h:totalHeight-cur,dotted:false});
         return segs.map((s,i)=>(
           <div key={i} className="absolute" style={{
-            left:`${AXIS_X}px`,width:'3px',top:`${s.top}px`,height:`${s.h}px`,transform:'translateX(-0.5px)',
+            left:`${AXIS_X}px`,width:'4px',top:`${s.top}px`,height:`${s.h}px`,transform:'translateX(-0.5px)',
             ...(s.dotted
               ?{backgroundImage:'repeating-linear-gradient(to bottom,#e5e7eb 0px,#e5e7eb 5px,transparent 5px,transparent 10px)'}
               :{backgroundColor:'#e5e7eb'}
