@@ -314,74 +314,113 @@ function MonthCalendar({selected,onSelect,onClose,tasks}:{selected:string;onSele
 
 // ── WeekIconView ─────────────────────────────────────────────────────────────
 
-function WeekIconView({weekDates,tasks,currentDate,onSelectDate,onClose}:{
+function WeekIconView({weekDates,tasks,currentDate,onSelectDate,onClose,settings}:{
   weekDates:string[]; tasks:Task[]; currentDate:string;
-  onSelectDate:(d:string)=>void; onClose:()=>void;
+  onSelectDate:(d:string)=>void; onClose:()=>void; settings:Settings;
 }) {
   const DOW=['日','月','火','水','木','金','土'];
   const today=todayStr();
-  const ICON_SIZE=26;
+  const PX_PER_MIN=40/60;   // メインタイムラインと同じ比率
+  const PX_PER_HOUR=PX_PER_MIN*60;
+  const TIME_W=40;            // 時刻ラベル列幅（メインと統一）
+  const ICON_D=24;            // アイコン円の直径
+
+  const wakeMin=toMin(settings.wakeTime);
+  const sleepMin=toMin(settings.sleepTime);
+  const startH=Math.floor(wakeMin/60);
+  const endH=Math.ceil(sleepMin/60);
+  const totalPx=(endH-startH)*PX_PER_HOUR;
+  const hours=Array.from({length:endH-startH+1},(_,i)=>startH+i);
+
+  const timeToY=(t:string)=>(toMin(t)-startH*60)*PX_PER_MIN;
+
   const getDay=(d:string)=>tasks
     .filter(t=>!t.isLater&&t.date===d&&t.startTime)
     .sort((a,b)=>(a.startTime??'').localeCompare(b.startTime??''));
 
-  // 同色の連続タスクをグループ化
-  type Grp={color:string;tasks:Task[]};
-  const groupByColor=(ts:Task[]):Grp[]=>{
-    const gs:Grp[]=[];
-    for(const t of ts){
-      const c=t.color??'#D9A3B2';
-      const last=gs[gs.length-1];
-      if(last&&last.color===c) last.tasks.push(t);
-      else gs.push({color:c,tasks:[t]});
-    }
-    return gs;
-  };
-
   return (
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-white flex flex-col max-w-md mx-auto">
+      {/* ヘッダー */}
       <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center shrink-0">
-        <button onClick={onClose} className="flex items-center gap-0.5 text-gray-500 min-w-[60px]">
+        <button onClick={onClose} className="flex items-center text-gray-500 min-w-[60px]">
           <AppIcons.caretLeft size={20}/>
         </button>
         <h2 className="flex-1 text-center text-[17px] font-semibold text-gray-900">週間</h2>
         <div className="min-w-[60px]"/>
       </div>
-      <div className="flex flex-1 overflow-hidden">
+
+      {/* 曜日ヘッダー */}
+      <div className="flex bg-white border-b border-gray-100 shrink-0">
+        <div className="shrink-0" style={{width:TIME_W}}/>
         {weekDates.map((d,i)=>{
-          const dayTasks=getDay(d);
-          const groups=groupByColor(dayTasks);
-          const isToday=d===today;
-          const isSel=d===currentDate;
+          const isToday=d===today, isSel=d===currentDate;
           const {day}=getDateInfo(d);
           return (
-            <button key={d} onClick={()=>{onSelectDate(d);onClose();}}
-              className={`flex-1 flex flex-col items-center pt-2 ${i<6?'border-r border-gray-100':''} active:bg-gray-50`}>
-              <span className={`text-[10px] mb-1 font-medium ${isToday||isSel?'text-[#D9A3B2]':'text-gray-400'}`}>{DOW[i]}</span>
-              <span className={`text-xs font-bold mb-2 w-6 h-6 flex items-center justify-center rounded-full ${isSel?'bg-[#D9A3B2] text-white':isToday?'bg-gray-100 text-gray-800':'text-gray-800'}`}>{day}</span>
-              <div className="flex flex-col items-center overflow-y-auto w-full pb-4" style={{maxHeight:'calc(100vh - 140px)'}}>
-                {groups.map((g,gi)=>{
-                  const n=g.tasks.length;
+            <div key={d} className="flex-1 flex flex-col items-center py-1.5">
+              <span className={`text-[10px] font-medium ${isToday||isSel?'text-[#D9A3B2]':'text-gray-400'}`}>{DOW[i]}</span>
+              <span className={`text-[11px] font-bold w-6 h-6 flex items-center justify-center rounded-full mt-0.5 ${isSel?'bg-[#D9A3B2] text-white':isToday?'bg-gray-100 text-gray-800':'text-gray-700'}`}>{day}</span>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* スクロール領域 */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="relative flex" style={{height:`${totalPx+32}px`}}>
+
+          {/* 水平グリッド線（全カラム） */}
+          <div className="absolute inset-0 pointer-events-none" style={{left:TIME_W}}>
+            {hours.map(h=>(
+              <div key={h} className="absolute left-0 right-0 bg-gray-100"
+                style={{top:`${(h-startH)*PX_PER_HOUR}px`,height:'1px'}}/>
+            ))}
+          </div>
+
+          {/* 時間軸 */}
+          <div className="shrink-0 relative" style={{width:TIME_W}}>
+            <div className="absolute top-0 bottom-0 bg-gray-200" style={{right:0,width:'1.5px'}}/>
+            {hours.map(h=>(
+              <div key={h}>
+                <span className="absolute text-[10px] text-gray-400 font-medium text-right"
+                  style={{top:`${(h-startH)*PX_PER_HOUR-6}px`,right:'6px',lineHeight:1}}>
+                  {String(h).padStart(2,'0')}
+                </span>
+                <div className="absolute bg-gray-200" style={{top:`${(h-startH)*PX_PER_HOUR}px`,right:0,width:5,height:'1px'}}/>
+              </div>
+            ))}
+          </div>
+
+          {/* 各日カラム */}
+          {weekDates.map((d,i)=>{
+            const dayTasks=getDay(d);
+            return (
+              <button key={d} onClick={()=>{onSelectDate(d);onClose();}}
+                className={`flex-1 relative active:bg-[#D9A3B2]/5 ${i<6?'border-r border-gray-100':''}`}>
+                {dayTasks.map(t=>{
+                  const y=timeToY(t.startTime!);
+                  const durH=Math.max(ICON_D,(t.duration??0)*PX_PER_MIN);
+                  const pillH=durH;
+                  const Icon=(AppIcons as Record<string,React.ComponentType<{size?:number;className?:string}>>)[t.icon??'task']??AppIcons.task;
                   return (
-                    <div key={gi} className="flex flex-col items-center mb-0.5">
-                      {g.tasks.map((t,ti)=>{
-                        const first=ti===0, last=ti===n-1, single=n===1;
-                        const borderRadius=single?'50%':first?'50% 50% 0 0':last?'0 0 50% 50%':'0';
-                        const Icon=(AppIcons as Record<string,React.ComponentType<{size?:number;className?:string}>>)[t.icon??'task']??AppIcons.task;
-                        return (
-                          <div key={t.id} className="flex items-center justify-center"
-                            style={{width:`${ICON_SIZE}px`,height:`${ICON_SIZE}px`,background:g.color,borderRadius,marginBottom:single||last?'0':'-1px'}}>
-                            <Icon size={13} className="text-white" />
-                          </div>
-                        );
-                      })}
+                    <div key={t.id} className="absolute flex items-center justify-center"
+                      style={{
+                        top:`${y}px`,
+                        left:'50%',
+                        transform:'translateX(-50%)',
+                        width:`${ICON_D}px`,
+                        height:`${pillH}px`,
+                        background:t.color??'#D9A3B2',
+                        borderRadius:`${ICON_D/2}px`,
+                        zIndex:1,
+                      }}>
+                      <Icon size={11} className="text-white"/>
                     </div>
                   );
                 })}
-              </div>
-            </button>
-          );
-        })}
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
@@ -3725,7 +3764,8 @@ export default function App() {
       {/* ── Week Icon View ── */}
       {weekViewOpen&&(
         <WeekIconView weekDates={weekDates} tasks={tasks} currentDate={date}
-          onSelectDate={d=>{setDate(d);}} onClose={()=>setWeekViewOpen(false)}/>
+          onSelectDate={d=>{setDate(d);}} onClose={()=>setWeekViewOpen(false)}
+          settings={settings}/>
       )}
 
       {/* ── Calendar ── */}
