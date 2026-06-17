@@ -1873,7 +1873,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
   const HISTORY_CARD_H=44;
 
   const completedToday=tasks.filter(t=>t.completed&&t.date===date&&!t.isLater&&t.startTime);
-  const showCompletedSection=date===todayStr();
+  const showCompletedSection=date===todayStr()&&completedToday.length>0;
   const COMPLETED_SECTION_H=52+(completedToday.length>0?completedToday.length*36:40);
   const historyBottom=sleepCardTop+SLEEP_CARD_H+(hasHistoryCard?HISTORY_CARD_H+12:0);
   const completedSectionTop=historyBottom+16;
