@@ -1,6 +1,5 @@
 import {
   CalendarBlank,
-  SquaresFour,
   MagnifyingGlass,
   Gear,
   SunHorizon,
@@ -77,7 +76,6 @@ const make = (Ic: PhosphorComp, defaultSize = 20) => {
 
 export const AppIcons = {
   calendar:  make(CalendarBlank),
-  weekGrid:  make(SquaresFour, 22),
   search:    make(MagnifyingGlass),
   settings:  make(Gear),
   wake:      make(SunHorizon, 18),

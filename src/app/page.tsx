@@ -312,120 +312,6 @@ function MonthCalendar({selected,onSelect,onClose,tasks}:{selected:string;onSele
   );
 }
 
-// ── WeekIconView ─────────────────────────────────────────────────────────────
-
-function WeekIconView({weekDates,tasks,currentDate,onSelectDate,onClose,settings}:{
-  weekDates:string[]; tasks:Task[]; currentDate:string;
-  onSelectDate:(d:string)=>void; onClose:()=>void; settings:Settings;
-}) {
-  const DOW=['日','月','火','水','木','金','土'];
-  const today=todayStr();
-  const PX_PER_HOUR=56;
-  const PX_PER_MIN=PX_PER_HOUR/60;
-  const TIME_W=40;
-  const ICON_D=26;
-
-  const wakeMin=toMin(settings.wakeTime);
-  const sleepMin=toMin(settings.sleepTime);
-  const startH=Math.floor(wakeMin/60);
-  const endH=Math.ceil(sleepMin/60);
-  const totalPx=(endH-startH)*PX_PER_HOUR;
-  const hours=Array.from({length:endH-startH+1},(_,i)=>startH+i);
-  const timeToY=(t:string)=>(toMin(t)-startH*60)*PX_PER_MIN;
-
-  const getDay=(d:string)=>tasks
-    .filter(t=>!t.isLater&&t.date===d&&t.startTime)
-    .sort((a,b)=>(a.startTime??'').localeCompare(b.startTime??''));
-
-  return (
-    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-white flex flex-col max-w-md mx-auto">
-      {/* ヘッダー */}
-      <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center shrink-0">
-        <button onClick={onClose} className="flex items-center text-gray-500 min-w-[60px]">
-          <AppIcons.caretLeft size={20}/>
-        </button>
-        <h2 className="flex-1 text-center text-[17px] font-semibold text-gray-900">週間</h2>
-        <div className="min-w-[60px]"/>
-      </div>
-
-      {/* 曜日ヘッダー */}
-      <div className="flex bg-white border-b border-gray-100 shrink-0">
-        <div className="shrink-0" style={{width:TIME_W}}/>
-        {weekDates.map((d,i)=>{
-          const isToday=d===today, isSel=d===currentDate;
-          const {day}=getDateInfo(d);
-          return (
-            <div key={d} className="flex-1 flex flex-col items-center py-1.5">
-              <span className={`text-[10px] font-medium ${isToday||isSel?'text-[#D9A3B2]':'text-gray-400'}`}>{DOW[i]}</span>
-              <span className={`text-[11px] font-bold w-6 h-6 flex items-center justify-center rounded-full mt-0.5 ${isSel?'bg-[#D9A3B2] text-white':isToday?'bg-gray-100 text-gray-800':'text-gray-700'}`}>{day}</span>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* スクロール領域 */}
-      <div className="flex-1 overflow-y-auto bg-white">
-        <div className="flex" style={{height:`${totalPx+32}px`,position:'relative'}}>
-
-          {/* 水平グリッド線（全列横断） */}
-          <div className="absolute inset-0 pointer-events-none" style={{left:TIME_W}}>
-            {hours.map(h=>(
-              <div key={h} className="absolute left-0 right-0"
-                style={{top:`${(h-startH)*PX_PER_HOUR}px`,height:'1px',background:'#f0f0f0'}}/>
-            ))}
-          </div>
-
-          {/* 時刻ラベル列 */}
-          <div className="shrink-0 relative" style={{width:TIME_W}}>
-            {hours.map(h=>(
-              <span key={h} className="absolute text-[10px] text-gray-400 font-medium"
-                style={{top:`${(h-startH)*PX_PER_HOUR-6}px`,right:8,lineHeight:1,whiteSpace:'nowrap'}}>
-                {h}:00
-              </span>
-            ))}
-          </div>
-
-          {/* 各日カラム */}
-          {weekDates.map((d,i)=>{
-            const dayTasks=getDay(d);
-            const isSel=d===currentDate;
-            return (
-              <button key={d} onClick={()=>{onSelectDate(d);onClose();}}
-                className={`flex-1 relative ${i<6?'border-r border-gray-50':''}`}
-                style={{background:isSel?'rgba(217,163,178,0.04)':'transparent'}}>
-                {/* 各列の縦軸線 */}
-                <div className="absolute top-0 bottom-0"
-                  style={{left:'50%',transform:'translateX(-50%)',width:'1.5px',background:'#e5e7eb'}}/>
-                {/* タスクアイコン */}
-                {dayTasks.map(t=>{
-                  const y=timeToY(t.startTime!);
-                  const durPx=Math.max(ICON_D,(t.duration??0)*PX_PER_MIN);
-                  const Icon=(AppIcons as Record<string,React.ComponentType<{size?:number;className?:string}>>)[t.icon??'task']??AppIcons.task;
-                  return (
-                    <div key={t.id} className="absolute flex items-center justify-center"
-                      style={{
-                        top:`${y}px`,
-                        left:'50%',
-                        transform:'translateX(-50%)',
-                        width:`${ICON_D}px`,
-                        height:`${durPx}px`,
-                        background:t.color??'#D9A3B2',
-                        borderRadius:`${ICON_D/2}px`,
-                        zIndex:2,
-                      }}>
-                      <Icon size={12} className="text-white"/>
-                    </div>
-                  );
-                })}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ── CalendarPage ─────────────────────────────────────────────────────────────
 
 function CalendarPage({date,tasks,customTabs,onSelect,onClose}:{date:string;tasks:Task[];customTabs:CustomTab[];onSelect:(d:string)=>void;onClose:()=>void;}) {
@@ -3175,7 +3061,6 @@ export default function App() {
   const [editTabName,setEditTabName] = useState('');
   const [settingsOpen,setSOp]    = useState(false);
   const [calendarOpen,setCalOp]  = useState(false);
-  const [weekViewOpen,setWeekViewOpen] = useState(false);
   const [searchOpen,setSearchOpen] = useState(false);
   const [activeTab,setActiveTab] = useState<'later'|'shop'|null>(null);
   const [loaded,setLoaded]       = useState(false);
@@ -3539,12 +3424,7 @@ export default function App() {
         <div className="px-4 pt-1 pb-0">
           {/* Date + nav */}
           <div className="flex items-center justify-between mb-1">
-            <div className="flex items-center gap-2">
-              <span className="text-2xl font-bold text-gray-900">{year}年{month}月</span>
-              <button onClick={()=>setWeekViewOpen(true)} className="w-8 h-8 flex items-center justify-center text-gray-400 active:text-[#D9A3B2]">
-                <AppIcons.weekGrid/>
-              </button>
-            </div>
+            <span className="text-2xl font-bold text-gray-900">{year}年{month}月</span>
             <div className="flex items-center gap-1">
               <button onClick={()=>setCalOp(true)} className="w-8 h-8 flex items-center justify-center text-gray-400"><AppIcons.calendar size={24}/></button>
               <button onClick={()=>setSearchOpen(true)} className="w-8 h-8 flex items-center justify-center text-gray-400"><AppIcons.search size={24}/></button>
@@ -3762,11 +3642,6 @@ export default function App() {
       )}
 
       {/* ── Week Icon View ── */}
-      {weekViewOpen&&(
-        <WeekIconView weekDates={weekDates} tasks={tasks} currentDate={date}
-          onSelectDate={d=>{setDate(d);}} onClose={()=>setWeekViewOpen(false)}
-          settings={settings}/>
-      )}
 
       {/* ── Calendar ── */}
       {calendarOpen&&(
