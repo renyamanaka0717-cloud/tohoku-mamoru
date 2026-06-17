@@ -320,10 +320,10 @@ function WeekIconView({weekDates,tasks,currentDate,onSelectDate,onClose,settings
 }) {
   const DOW=['日','月','火','水','木','金','土'];
   const today=todayStr();
-  const PX_PER_MIN=40/60;   // メインタイムラインと同じ比率
-  const PX_PER_HOUR=PX_PER_MIN*60;
-  const TIME_W=40;            // 時刻ラベル列幅（メインと統一）
-  const ICON_D=24;            // アイコン円の直径
+  const PX_PER_HOUR=56;
+  const PX_PER_MIN=PX_PER_HOUR/60;
+  const TIME_W=40;
+  const ICON_D=26;
 
   const wakeMin=toMin(settings.wakeTime);
   const sleepMin=toMin(settings.sleepTime);
@@ -331,7 +331,6 @@ function WeekIconView({weekDates,tasks,currentDate,onSelectDate,onClose,settings
   const endH=Math.ceil(sleepMin/60);
   const totalPx=(endH-startH)*PX_PER_HOUR;
   const hours=Array.from({length:endH-startH+1},(_,i)=>startH+i);
-
   const timeToY=(t:string)=>(toMin(t)-startH*60)*PX_PER_MIN;
 
   const getDay=(d:string)=>tasks
@@ -365,41 +364,42 @@ function WeekIconView({weekDates,tasks,currentDate,onSelectDate,onClose,settings
       </div>
 
       {/* スクロール領域 */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="relative flex" style={{height:`${totalPx+32}px`}}>
+      <div className="flex-1 overflow-y-auto bg-white">
+        <div className="flex" style={{height:`${totalPx+32}px`,position:'relative'}}>
 
-          {/* 水平グリッド線（全カラム） */}
+          {/* 水平グリッド線（全列横断） */}
           <div className="absolute inset-0 pointer-events-none" style={{left:TIME_W}}>
             {hours.map(h=>(
-              <div key={h} className="absolute left-0 right-0 bg-gray-100"
-                style={{top:`${(h-startH)*PX_PER_HOUR}px`,height:'1px'}}/>
+              <div key={h} className="absolute left-0 right-0"
+                style={{top:`${(h-startH)*PX_PER_HOUR}px`,height:'1px',background:'#f0f0f0'}}/>
             ))}
           </div>
 
-          {/* 時間軸 */}
+          {/* 時刻ラベル列 */}
           <div className="shrink-0 relative" style={{width:TIME_W}}>
-            <div className="absolute top-0 bottom-0 bg-gray-200" style={{right:0,width:'1.5px'}}/>
             {hours.map(h=>(
-              <div key={h}>
-                <span className="absolute text-[10px] text-gray-400 font-medium text-right"
-                  style={{top:`${(h-startH)*PX_PER_HOUR-6}px`,right:'6px',lineHeight:1}}>
-                  {String(h).padStart(2,'0')}
-                </span>
-                <div className="absolute bg-gray-200" style={{top:`${(h-startH)*PX_PER_HOUR}px`,right:0,width:5,height:'1px'}}/>
-              </div>
+              <span key={h} className="absolute text-[10px] text-gray-400 font-medium"
+                style={{top:`${(h-startH)*PX_PER_HOUR-6}px`,right:8,lineHeight:1,whiteSpace:'nowrap'}}>
+                {h}:00
+              </span>
             ))}
           </div>
 
           {/* 各日カラム */}
           {weekDates.map((d,i)=>{
             const dayTasks=getDay(d);
+            const isSel=d===currentDate;
             return (
               <button key={d} onClick={()=>{onSelectDate(d);onClose();}}
-                className={`flex-1 relative active:bg-[#D9A3B2]/5 ${i<6?'border-r border-gray-100':''}`}>
+                className={`flex-1 relative ${i<6?'border-r border-gray-50':''}`}
+                style={{background:isSel?'rgba(217,163,178,0.04)':'transparent'}}>
+                {/* 各列の縦軸線 */}
+                <div className="absolute top-0 bottom-0"
+                  style={{left:'50%',transform:'translateX(-50%)',width:'1.5px',background:'#e5e7eb'}}/>
+                {/* タスクアイコン */}
                 {dayTasks.map(t=>{
                   const y=timeToY(t.startTime!);
-                  const durH=Math.max(ICON_D,(t.duration??0)*PX_PER_MIN);
-                  const pillH=durH;
+                  const durPx=Math.max(ICON_D,(t.duration??0)*PX_PER_MIN);
                   const Icon=(AppIcons as Record<string,React.ComponentType<{size?:number;className?:string}>>)[t.icon??'task']??AppIcons.task;
                   return (
                     <div key={t.id} className="absolute flex items-center justify-center"
@@ -408,12 +408,12 @@ function WeekIconView({weekDates,tasks,currentDate,onSelectDate,onClose,settings
                         left:'50%',
                         transform:'translateX(-50%)',
                         width:`${ICON_D}px`,
-                        height:`${pillH}px`,
+                        height:`${durPx}px`,
                         background:t.color??'#D9A3B2',
                         borderRadius:`${ICON_D/2}px`,
-                        zIndex:1,
+                        zIndex:2,
                       }}>
-                      <Icon size={11} className="text-white"/>
+                      <Icon size={12} className="text-white"/>
                     </div>
                   );
                 })}
