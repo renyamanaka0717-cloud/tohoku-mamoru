@@ -2749,9 +2749,31 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   if(sub==='notifications') return (
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
       {subHeader('通知')}
+      <div className="flex-1 overflow-y-auto px-4 pb-8">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">リスト</p>
+        <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
+          <SettingsRow icon={<AppIcons.shopping size={18}/>} iconBg="bg-gray-100" title="買い物リスト"
+            desc={shopNotifSettings.filter(s=>s.enabled).length>0?`${shopNotifSettings.filter(s=>s.enabled).length}件の通知が有効`:'通知なし'}
+            onClick={()=>setSub('notifications-shop')} isLast/>
+        </div>
+      </div>
+    </div>
+  );
+
+  if(sub==='notifications-shop') return (
+    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
+      <div className="bg-white border-b border-gray-200 px-4 py-3.5 flex items-center shrink-0">
+        <button onClick={()=>setSub('notifications')} className="flex items-center gap-0.5 text-gray-900 min-w-[80px]">
+          <AppIcons.caretLeft size={20}/>
+          <span className="text-[15px]">通知</span>
+        </button>
+        <h2 className="flex-1 text-center text-[17px] font-semibold text-gray-900 -mx-4">買い物リスト</h2>
+        <div className="min-w-[80px]"/>
+      </div>
       <div className="flex-1 overflow-y-auto pb-8">
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-5 mb-2 mt-6">買い物リスト</p>
-        <ShopNotifPanel settings={shopNotifSettings} onChange={onShopNotifSettings}/>
+        <div className="mt-6">
+          <ShopNotifPanel settings={shopNotifSettings} onChange={onShopNotifSettings}/>
+        </div>
       </div>
     </div>
   );
