@@ -3569,16 +3569,16 @@ export default function App() {
         <div className="flex">
           {([['later','あとでやる',pendingCount],['shop','買い物リスト',shopPending]] as const).map(([tab,label,cnt],i)=>(
             <button key={tab} onClick={()=>setActiveTab(t=>t===tab?null:tab)}
-              className={`flex-1 flex items-center justify-center gap-2 py-4 transition-colors ${i===0?'border-r border-gray-100':''} ${activeTab===tab?'bg-gray-100':''}`}>
-              <span className={`text-base font-semibold ${activeTab===tab?'text-gray-900':'text-gray-500'}`}>{label}</span>
-              {cnt>0&&<span className="text-[12px] bg-[#D9A3B2] text-white min-w-[20px] h-[20px] rounded-full flex items-center justify-center font-bold px-1">{cnt}</span>}
+              className={`flex-1 flex items-center justify-center gap-2 py-6 transition-colors ${i===0?'border-r border-gray-100':''} ${activeTab===tab?'bg-gray-100':''}`}>
+              <span className={`text-xl font-semibold ${activeTab===tab?'text-gray-900':'text-gray-500'}`}>{label}</span>
+              {cnt>0&&<span className="text-[13px] bg-[#D9A3B2] text-white min-w-[22px] h-[22px] rounded-full flex items-center justify-center font-bold px-1">{cnt}</span>}
             </button>
           ))}
         </div>
       </div>
 
       {/* ── FAB ── */}
-      <div className="fixed bottom-20 right-4 z-50">
+      <div className="fixed bottom-24 right-4 z-50">
         <button onClick={()=>openAdd()}
           className="w-14 h-14 bg-[#D9A3B2] text-white rounded-full shadow-2xl active:bg-gray-700"
           style={{display:'grid',placeItems:'center'}}>
