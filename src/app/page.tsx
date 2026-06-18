@@ -624,7 +624,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
   });
   const [color,setColor]      = useState(task?.color??'');
   const [iconSheetOpen,setIconSheetOpen] = useState(initIconSheet??false);
-  const [autoIcon,setAutoIcon] = useState(task===null);
+  const [autoIcon,setAutoIcon] = useState(task===null || !task?.icon || task.icon==='task');
   const [recentIcons,setRecentIcons] = useState<string[]>(()=>{
     if(typeof window==='undefined') return [];
     try{return JSON.parse(localStorage.getItem('tl-recent-icons')||'[]');}catch{return [];}
