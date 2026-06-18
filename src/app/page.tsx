@@ -1638,7 +1638,7 @@ function FreeTimeCard({slot,fits,height,onSchedule,onDragStart}:{
 
   const h=Math.floor(slot.min/60), m=slot.min%60;
   return (
-    <div className="bg-gray-50 rounded-2xl px-4 pt-3 pb-3 flex flex-col border border-gray-100" style={{minHeight:`${height}px`}}>
+    <div className="bg-gray-50 rounded-2xl px-3 pt-3 pb-3 flex flex-col border border-gray-100" style={{minHeight:`${height}px`}}>
       <div className="flex items-center gap-1 mb-1">
         <AppIcons.freeTime size={12} className="text-gray-400"/>
         <span className="text-xs text-gray-400 font-medium">空き時間 {slot.start}〜{slot.end}</span>
