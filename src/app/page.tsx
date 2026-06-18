@@ -1533,7 +1533,7 @@ function TaskCard({task,onToggle,onEdit,globalTags,onSubtaskToggle,onCameraClick
   const doneCount = subtasks.filter(s=>s.completed).length;
   const hasIcons = subtasks.length>0||!!task.memo||(task.photoCount??0)>0;
   return (
-    <div className={`bg-white rounded-2xl border border-gray-100 px-3 py-2.5 ${task.completed?'opacity-50':''}`} style={{boxShadow:'0 4px 12px rgba(0,0,0,0.10)'}}
+    <div className={`bg-white rounded-2xl border border-gray-100 px-3 py-2.5 ${task.completed?'opacity-50':''}`} style={{boxShadow:'0 4px 12px rgba(0,0,0,0.10),inset 0 2px 8px rgba(0,0,0,0.08)'}}
       onClick={onEdit}>
       <div className="flex items-center gap-2.5">
         <div className="flex-1 min-w-0">
