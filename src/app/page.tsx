@@ -2976,10 +2976,6 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
       </div>
       <div className="flex-1 overflow-y-auto px-4 pb-10">
 
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-4">統計</p>
-        <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
-          <SettingsRow icon={<AppIcons.stats/>} iconBg="bg-gray-100" title="統計" desc="タスク完了の統計を確認" onClick={()=>setSub('stats')} isLast/>
-        </div>
 
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">一般</p>
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
