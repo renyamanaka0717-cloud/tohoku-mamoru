@@ -1641,7 +1641,7 @@ function FreeTimeCard({slot,fits,height,onSchedule,onDragStart}:{
         <AppIcons.freeTime size={12} className="text-gray-300"/>
         <span className="text-xs text-gray-300 font-medium">空き時間 {slot.start}〜{slot.end}</span>
       </div>
-      <p className="font-medium text-gray-400 leading-none">
+      <p className="font-medium text-gray-600 leading-none">
         {h>0&&<><span className="text-lg">{h}</span><span className="text-xs ml-0.5">時間</span></>}
         {m>0&&<><span className="text-lg ml-1">{m}</span><span className="text-xs ml-0.5">分</span></>}
       </p>
