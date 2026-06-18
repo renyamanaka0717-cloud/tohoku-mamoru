@@ -624,6 +624,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
   });
   const [color,setColor]      = useState(task?.color??'');
   const [iconSheetOpen,setIconSheetOpen] = useState(initIconSheet??false);
+  const [autoIcon,setAutoIcon] = useState(task===null);
   const [recentIcons,setRecentIcons] = useState<string[]>(()=>{
     if(typeof window==='undefined') return [];
     try{return JSON.parse(localStorage.getItem('tl-recent-icons')||'[]');}catch{return [];}
@@ -935,15 +936,18 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
           {/* Icon + name */}
           <div className="flex items-center gap-3 mb-4">
             <button onClick={()=>setIconSheetOpen(true)}
-              className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 text-white bg-white/20 active:bg-white/30 transition-colors"
+              className="relative w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 text-white bg-white/20 active:bg-white/30 transition-colors"
               style={color?{background:color}:{}}>
               {(()=>{const Ic=getTaskIcon(icon);return <Ic size={24} className={color?'text-white':'text-white'}/>;})()}
+              <div className="absolute bottom-0.5 right-0.5 w-4 h-4 bg-white rounded-full flex items-center justify-center shadow-sm">
+                <AppIcons.pencil size={9} className="text-gray-500"/>
+              </div>
             </button>
             <div className="flex-1 min-w-0">
               {(mode==='scheduled'||mode==='recurring')&&startTime&&(
                 <p className="text-xs text-white/60 mb-0.5">{startTime}{computedEnd?`〜${computedEnd}`:''}{mode==='recurring'&&' · 繰り返し'}</p>
               )}
-              <input type="text" value={name} onChange={e=>setName(e.target.value)}
+              <input type="text" value={name} onChange={e=>{const v=e.target.value;setName(v);if(autoIcon)setIcon(defaultIconKey(v));}}
                 placeholder="タスク名を入力..."
                 className="w-full bg-transparent text-white text-lg font-medium placeholder-white/40 outline-none border-b border-white/30 pb-1"
                 autoFocus/>
@@ -1439,7 +1443,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
             <div className="flex items-center justify-between px-5 pt-3 pb-2 shrink-0">
               <span className="text-base font-bold text-gray-900">アイコンとカラー</span>
               <div className="flex items-center gap-2">
-                <button onClick={()=>setIconSheetOpen(false)} className="px-4 py-1.5 bg-gray-700 text-white text-sm font-semibold rounded-full">保存</button>
+                <button onClick={()=>{setIconSheetOpen(false);setAutoIcon(false);}} className="px-4 py-1.5 bg-gray-700 text-white text-sm font-semibold rounded-full">保存</button>
               </div>
             </div>
             <div className="overflow-y-auto px-5 pb-10 flex-1">
