@@ -1965,7 +1965,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
               {overlaps.map((o,oi)=>(
                 <div key={oi} className="absolute" style={{
                   top:`${o.rt}px`,height:`${o.rb-o.rt}px`,left:0,right:0,
-                  backgroundImage:'repeating-linear-gradient(to bottom,transparent 0px,transparent 10px,white 10px,white 20px)'
+                  backgroundImage:'repeating-linear-gradient(to bottom,transparent 0px,transparent 8px,white 8px,white 13px)'
                 }}/>
               ))}
             </div>
