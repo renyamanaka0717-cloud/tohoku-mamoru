@@ -1985,7 +1985,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
 
       {/* wake/sleep axis labels */}
       <div className="absolute flex items-center" style={{top:`${wakeCardTop+WAKE_CARD_H/2}px`,transform:'translateY(-50%)',left:0}}>
-        <span className="text-xs w-10 text-right pr-1 leading-none text-gray-400">{settings.wakeTime}</span>
+        <span className="text-xs w-10 text-right pr-1 leading-none text-gray-300">{settings.wakeTime}</span>
       </div>
       <div className="absolute z-10 pointer-events-none" style={{top:`${wakeCardTop}px`,left:`${AXIS_X-28}px`,width:'56px',height:'56px'}}>
         <div className="w-full h-full bg-[#D9A3B2] flex items-center justify-center" style={{borderRadius:'28px'}}>
@@ -1993,7 +1993,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
         </div>
       </div>
       <div className="absolute flex items-center" style={{top:`${sleepCardTop+SLEEP_CARD_H/2}px`,transform:'translateY(-50%)',left:0}}>
-        <span className="text-xs w-10 text-right pr-1 leading-none text-gray-400">{settings.sleepTime}</span>
+        <span className="text-xs w-10 text-right pr-1 leading-none text-gray-300">{settings.sleepTime}</span>
       </div>
       <div className="absolute z-10 pointer-events-none" style={{top:`${sleepCardTop}px`,left:`${AXIS_X-28}px`,width:'56px',height:'56px'}}>
         <div className="w-full h-full bg-[#D9A3B2] flex items-center justify-center" style={{borderRadius:'28px'}}>
@@ -2017,7 +2017,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
         }
         return visible.map(({y,text})=>(
           <div key={`al-${text}`} className="absolute flex items-center" style={{top:`${y}px`,transform:'translateY(-50%)',left:0}}>
-            <span className="text-xs w-10 text-right pr-1 leading-none text-gray-500 font-medium">{text}</span>
+            <span className="text-xs w-10 text-right pr-1 leading-none text-gray-300 font-medium">{text}</span>
           </div>
         ));
       })()}
