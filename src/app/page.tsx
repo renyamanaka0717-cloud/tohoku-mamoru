@@ -1536,7 +1536,7 @@ function TaskCard({task,onToggle,onEdit,globalTags,onSubtaskToggle,onCameraClick
   return (
     <div className={`relative bg-white rounded-2xl border border-gray-100 px-3 py-2.5 overflow-hidden ${task.completed?'opacity-50':''}`} style={{boxShadow:'0 4px 12px rgba(0,0,0,0.06)'}}
       onClick={onEdit}>
-      {firstTagColor&&<div className="absolute left-0 top-0 bottom-0 w-1" style={{background:firstTagColor}}/>}
+      {firstTagColor&&<div className="absolute left-0 top-0 bottom-0 w-1.5" style={{background:firstTagColor}}/>}
       <div className="flex items-center gap-2.5">
         <div className="flex-1 min-w-0">
           {task.startTime&&(
