@@ -2881,8 +2881,8 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             <div className="px-4 py-3.5">
               <p className="text-[15px] font-medium text-gray-900 mb-3">最小表示時間</p>
               <div className="flex gap-2 flex-wrap">
-                {([30,60,90,120,180] as const).map(m=>{
-                  const label=m<60?`${m}分`:m===60?'1時間':m===90?'1.5時間':m===120?'2時間':'3時間';
+                {([30,60,90,120,150,180] as const).map(m=>{
+                  const label=m<60?`${m}分`:m===60?'1時間':m===90?'1.5時間':m===120?'2時間':m===150?'2.5時間':'3時間';
                   const active=(settings.freeCardMinMin??120)===m;
                   return (
                     <button key={m} onClick={()=>onSettings({...settings,freeCardMinMin:m})}
