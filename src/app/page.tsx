@@ -3539,6 +3539,10 @@ export default function App() {
           <div className="flex items-center justify-between mb-1">
             <span className="text-2xl font-bold text-gray-900">{year}年{month}月</span>
             <div className="flex items-center gap-1">
+              <button onClick={()=>setSettings(s=>({...s,showFreeCard:!(s.showFreeCard??true)}))}
+                className={`h-7 px-2.5 rounded-full text-xs font-semibold transition-colors ${(settings.showFreeCard??true)?'bg-[#D9A3B2] text-white':'bg-white text-gray-400 border border-gray-200'}`}>
+                空き時間
+              </button>
               <button onClick={()=>setCalOp(true)} className="w-8 h-8 flex items-center justify-center text-gray-400"><AppIcons.calendar size={24}/></button>
               <button onClick={()=>setSearchOpen(true)} className="w-8 h-8 flex items-center justify-center text-gray-400"><AppIcons.search size={24}/></button>
               <button onClick={()=>setSOp(true)} className="w-8 h-8 flex items-center justify-center text-gray-400"><AppIcons.settings size={24}/></button>
