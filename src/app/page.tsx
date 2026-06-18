@@ -1543,7 +1543,7 @@ function TaskCard({task,onToggle,onEdit,globalTags,onSubtaskToggle,onCameraClick
               {task.recurrence&&<AppIcons.repeat size={11} className="ml-1 inline-block align-middle"/>}
             </p>
           )}
-          <p className={`text-sm font-semibold leading-snug ${task.completed?'line-through text-gray-400':'text-gray-900'}`}>{task.name}</p>
+          <p className={`text-[15px] font-semibold leading-snug ${task.completed?'line-through text-gray-400':'text-gray-900'}`}>{task.name}</p>
           {(task.tags??[]).length>0&&(
             <div className="flex flex-wrap gap-1 mt-1">
               {(task.tags??[]).map(tag=>{
