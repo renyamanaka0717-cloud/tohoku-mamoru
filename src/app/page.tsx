@@ -3540,9 +3540,14 @@ export default function App() {
             <span className="text-2xl font-bold text-gray-900">{year}年{month}月</span>
             <div className="flex items-center gap-1">
               <button onClick={()=>setSettings(s=>({...s,showFreeCard:!(s.showFreeCard??true)}))}
-                className={`flex items-center gap-1.5 pl-2.5 pr-1.5 h-7 rounded-full text-xs font-medium transition-colors mr-1 ${(settings.showFreeCard??true)?'bg-[#D9A3B2] text-white':'bg-gray-200 text-gray-500'}`}>
-                <span>空き時間</span>
-                <span className="w-4 h-4 bg-white rounded-full shadow-sm shrink-0"/>
+                className={`flex items-center gap-1.5 h-7 rounded-full text-xs font-medium transition-colors mr-1 ${(settings.showFreeCard??true)?'bg-[#D9A3B2] text-white pl-2.5 pr-1.5':'bg-gray-200 text-gray-500 pl-1.5 pr-2.5'}`}>
+                {(settings.showFreeCard??true)?<>
+                  <span>空き時間</span>
+                  <span className="w-4 h-4 bg-white rounded-full shadow-sm shrink-0"/>
+                </>:<>
+                  <span className="w-4 h-4 bg-white rounded-full shadow-sm shrink-0"/>
+                  <span>空き時間</span>
+                </>}
               </button>
               <button onClick={()=>setCalOp(true)} className="w-8 h-8 flex items-center justify-center text-gray-400"><AppIcons.calendar size={24}/></button>
               <button onClick={()=>setSearchOpen(true)} className="w-8 h-8 flex items-center justify-center text-gray-400"><AppIcons.search size={24}/></button>
