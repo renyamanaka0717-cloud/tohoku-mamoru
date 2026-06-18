@@ -2812,14 +2812,14 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                       <span className="flex-1 text-[15px] text-gray-900">{tag.name}</span>
                     </>
                   )}
-                  <div className="flex gap-1 shrink-0">
+                  <div className="flex gap-1.5 shrink-0">
                     <button onClick={()=>editIdx===i?commitEdit():startEdit(i)}
-                      className="text-xs text-blue-500 font-medium px-2 py-1">
+                      className={`text-xs font-medium px-2.5 py-1 rounded-lg ${editIdx===i?'bg-[#D9A3B2] text-white':'bg-gray-100 text-gray-600'}`}>
                       {editIdx===i?'確定':'編集'}
                     </button>
                     {editIdx===i
-                      ? <button onClick={()=>setEditIdx(null)} className="text-xs text-gray-400 font-medium px-2 py-1">キャンセル</button>
-                      : <button onClick={()=>deleteTag(i)} className="text-xs text-[#D97A7A] font-medium px-2 py-1">削除</button>
+                      ? <button onClick={()=>setEditIdx(null)} className="text-xs font-medium px-2.5 py-1 rounded-lg bg-gray-100 text-gray-400">キャンセル</button>
+                      : <button onClick={()=>deleteTag(i)} className="text-xs font-medium px-2.5 py-1 rounded-lg bg-red-50 text-[#D97A7A]">削除</button>
                     }
                   </div>
                 </div>
