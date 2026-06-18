@@ -578,7 +578,10 @@ function defaultIconKey(name:string):string {
   if(/洗濯/.test(name)) return 'washing';
   if(/掃除|片付|家事/.test(name)) return 'clean';
   if(/散歩|ペット|犬|猫/.test(name)) return 'paw';
-  if(/運動|走|ジョギング|ランニング|筋トレ|ジム|スポーツ|水泳|トレーニング/.test(name)) return 'exercise';
+  if(/走|ジョギング|ランニング|マラソン/.test(name)) return 'running';
+  if(/自転車|サイクリング|チャリ/.test(name)) return 'bicycle';
+  if(/ヨガ|ストレッチ|瞑想/.test(name)) return 'yoga';
+  if(/筋トレ|ジム|ウエイト|ダンベル|トレーニング|スポーツ|水泳|泳|運動/.test(name)) return 'exercise';
   if(/薬|服薬/.test(name)) return 'medicine';
   if(/病院|診察|通院|クリニック|歯医者/.test(name)) return 'hospital';
   if(/会議|ミーティング|打ち合わせ|MTG/.test(name)) return 'meeting';
