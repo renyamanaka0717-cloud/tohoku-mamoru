@@ -1636,14 +1636,14 @@ function FreeTimeCard({slot,fits,height,onSchedule,onDragStart}:{
 
   const h=Math.floor(slot.min/60), m=slot.min%60;
   return (
-    <div className="bg-gray-100 rounded-2xl px-4 pt-3 pb-3 flex flex-col" style={{minHeight:`${height}px`,boxShadow:'inset 0 2px 8px rgba(0,0,0,0.08)'}}>
+    <div className="bg-gray-50 rounded-2xl px-4 pt-3 pb-3 flex flex-col border border-gray-100" style={{minHeight:`${height}px`}}>
       <div className="flex items-center gap-1 mb-1">
-        <AppIcons.freeTime size={12} className="text-gray-400"/>
-        <span className="text-xs text-gray-400 font-medium">空き時間 {slot.start}〜{slot.end}</span>
+        <AppIcons.freeTime size={12} className="text-gray-300"/>
+        <span className="text-xs text-gray-300 font-medium">空き時間 {slot.start}〜{slot.end}</span>
       </div>
-      <p className="font-semibold text-gray-700 leading-none">
-        {h>0&&<><span className="text-xl">{h}</span><span className="text-xs ml-0.5">時間</span></>}
-        {m>0&&<><span className="text-xl ml-1">{m}</span><span className="text-xs ml-0.5">分</span></>}
+      <p className="font-medium text-gray-400 leading-none">
+        {h>0&&<><span className="text-lg">{h}</span><span className="text-xs ml-0.5">時間</span></>}
+        {m>0&&<><span className="text-lg ml-1">{m}</span><span className="text-xs ml-0.5">分</span></>}
       </p>
       {fits.length>0&&(
         <div className="flex flex-wrap gap-1.5 mt-2">
@@ -1653,7 +1653,7 @@ function FreeTimeCard({slot,fits,height,onSchedule,onDragStart}:{
               onTouchStart={e=>startLP(t,e)}
               onTouchEnd={cancelLP}
               onTouchMove={cancelLP}
-              className={`inline-flex items-center bg-white rounded-full px-2.5 py-1 text-xs font-medium text-gray-700 shadow-sm select-none transition-transform${pressingId===t.id?' scale-95 shadow-md ring-2 ring-blue-300':''}`}>
+              className={`inline-flex items-center bg-gray-100 rounded-full px-2.5 py-1 text-xs font-medium text-gray-500 select-none transition-transform${pressingId===t.id?' scale-95':''}`}>
               <span>{t.name}</span>
             </button>
           ))}
