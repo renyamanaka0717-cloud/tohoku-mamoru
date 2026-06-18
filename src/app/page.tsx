@@ -1533,7 +1533,7 @@ function TaskCard({task,onToggle,onEdit,globalTags,onSubtaskToggle,onCameraClick
   const doneCount = subtasks.filter(s=>s.completed).length;
   const hasIcons = subtasks.length>0||!!task.memo||(task.photoCount??0)>0;
   return (
-    <div className={`bg-white rounded-2xl border border-gray-100 px-3 py-2.5 ${task.completed?'opacity-50':''}`} style={{boxShadow:'0 4px 12px rgba(0,0,0,0.10)'}}
+    <div className={`bg-white rounded-2xl border border-gray-100 px-3 py-2.5 ${task.completed?'opacity-50':''}`} style={{boxShadow:'0 4px 12px rgba(0,0,0,0.06)'}}
       onClick={onEdit}>
       <div className="flex items-center gap-2.5">
         <div className="flex-1 min-w-0">
@@ -2034,7 +2034,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
         onTouchStart={e=>startSettingLP('wake',e)}
         onTouchEnd={cancelSettingLP}
         onTouchMove={cancelSettingLP}>
-        <div className={`flex items-center gap-2.5 bg-white rounded-2xl border border-gray-100 px-3 py-2.5 select-none transition-transform${pressingWake?' scale-95':''}`} style={{boxShadow:'0 4px 12px rgba(0,0,0,0.10)'}}>
+        <div className={`flex items-center gap-2.5 bg-white rounded-2xl border border-gray-100 px-3 py-2.5 select-none transition-transform${pressingWake?' scale-95':''}`} style={{boxShadow:'0 4px 12px rgba(0,0,0,0.06)'}}>
           <div className="flex-1 min-w-0">
             <p className="text-[11px] text-gray-400 leading-none mb-0.5">{settings.wakeTime}</p>
             <p className="text-sm font-semibold text-gray-900">起床</p>
@@ -2047,7 +2047,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
         onTouchStart={e=>startSettingLP('sleep',e)}
         onTouchEnd={cancelSettingLP}
         onTouchMove={cancelSettingLP}>
-        <div className={`flex items-center gap-2.5 bg-white rounded-2xl border border-gray-100 px-3 py-2.5 select-none transition-transform${pressingSleep?' scale-95':''}`} style={{boxShadow:'0 4px 12px rgba(0,0,0,0.10)'}}>
+        <div className={`flex items-center gap-2.5 bg-white rounded-2xl border border-gray-100 px-3 py-2.5 select-none transition-transform${pressingSleep?' scale-95':''}`} style={{boxShadow:'0 4px 12px rgba(0,0,0,0.06)'}}>
           <div className="flex-1 min-w-0">
             <p className="text-[11px] text-gray-400 leading-none mb-0.5">{settings.sleepTime}</p>
             <p className="text-sm font-semibold text-gray-900">就寝</p>
