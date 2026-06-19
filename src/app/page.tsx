@@ -2818,13 +2818,14 @@ function SettingsRow({icon,iconBg,title,desc,onClick,isLast=false}:{
   );
 }
 
-function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,customTabs,onCustomTabs,shopNotifSettings,onShopNotifSettings,calEventsCount,onSyncCalendar,syncingCal,authUser,isPremium}:{
+function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,customTabs,onCustomTabs,shopNotifSettings,onShopNotifSettings,calEventsCount,onSyncCalendar,syncingCal,authUser,isPremium,onBulkAdd}:{
   settings:Settings; onSettings:(s:Settings)=>void; onClose:()=>void;
   globalTags:TagDef[]; onGlobalTags:(tags:TagDef[])=>void;
   customTabs:CustomTab[]; onCustomTabs:(tabs:CustomTab[])=>void;
   shopNotifSettings:ShopNotifSetting[]; onShopNotifSettings:(s:ShopNotifSetting[])=>void;
   calEventsCount:number; onSyncCalendar:(source:'google'|'iphone',url:string)=>Promise<void>; syncingCal:'google'|'iphone'|null;
   authUser:AuthUser|null; isPremium:boolean;
+  onBulkAdd:(tasks:Omit<Task,'id'>[])=>void;
 }) {
   const [sub,setSub]           = useState<string|null>(null);
   const [tagInput,setTagInput] = useState('');
@@ -2835,6 +2836,14 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   const [tabInput,setTabInput]     = useState('');
   const [editTabId,setEditTabId]   = useState<string|null>(null);
   const [editTabVal,setEditTabVal] = useState('');
+  const _today0 = todayStr();
+  const _todayD = new Date(_today0+'T12:00:00');
+  const [bulkName,setBulkName] = useState('');
+  const [bulkStart,setBulkStart] = useState('09:00');
+  const [bulkEnd,setBulkEnd] = useState('17:00');
+  const [bulkDates,setBulkDates] = useState<Set<string>>(new Set());
+  const [bulkVm,setBulkVm] = useState({year:_todayD.getFullYear(),month:_todayD.getMonth()});
+  const [bulkDone,setBulkDone] = useState(false);
 
   const back = () => setSub(null);
 
@@ -2873,6 +2882,96 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
     }
     setEditIdx(null);
   };
+
+  if(sub==='bulkInput'){
+    const bDays=(()=>{
+      const {year,month}=bulkVm;
+      const first=new Date(year,month,1).getDay();
+      const total=new Date(year,month+1,0).getDate();
+      const arr:(string|null)[]=Array(first).fill(null);
+      for(let d=1;d<=total;d++) arr.push(dateToStr(new Date(year,month,d)));
+      return arr;
+    })();
+    const t2m=(t:string)=>{const [h,m]=t.split(':').map(Number);return h*60+m;};
+    const bDur=Math.max(0,t2m(bulkEnd)-t2m(bulkStart));
+    const toggleDate=(d:string)=>setBulkDates(prev=>{const s=new Set(prev);if(s.has(d))s.delete(d);else s.add(d);return s;});
+    const register=()=>{
+      if(!bulkName.trim()||bulkDates.size===0) return;
+      onBulkAdd([...bulkDates].map(date=>({
+        name:bulkName.trim(),startTime:bulkStart,duration:bDur,
+        date,completed:false,isLater:false,memo:'',
+        icon:defaultIconKey(bulkName.trim()),
+      } as Omit<Task,'id'>)));
+      setBulkName('');setBulkDates(new Set());setBulkDone(true);
+      setTimeout(()=>setBulkDone(false),2000);
+    };
+    return (
+      <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
+        {subHeader('シフト一括入力')}
+        <div className="flex-1 overflow-y-auto px-4 pb-10">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">タスク情報</p>
+          <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
+            <div className="flex items-center gap-3 px-4 py-3.5 border-b border-gray-100">
+              <AppIcons.task size={18} className="text-gray-400 shrink-0"/>
+              <span className="text-sm font-medium text-gray-500 shrink-0 w-16">タスク名</span>
+              <input value={bulkName} onChange={e=>setBulkName(e.target.value)}
+                placeholder="例：バイト、授業"
+                className="flex-1 text-sm text-gray-800 bg-transparent outline-none placeholder-gray-300"/>
+            </div>
+            <div className="flex items-center gap-3 px-4 py-3.5 border-b border-gray-100">
+              <AppIcons.clock size={18} className="text-gray-400 shrink-0"/>
+              <span className="text-sm font-medium text-gray-500 shrink-0 w-16">開始時刻</span>
+              <input type="time" value={bulkStart} onChange={e=>setBulkStart(e.target.value)}
+                className="flex-1 text-sm text-gray-800 bg-transparent outline-none"/>
+            </div>
+            <div className="flex items-center gap-3 px-4 py-3.5">
+              <AppIcons.clock size={18} className="text-gray-400 shrink-0"/>
+              <span className="text-sm font-medium text-gray-500 shrink-0 w-16">終了時刻</span>
+              <input type="time" value={bulkEnd} onChange={e=>setBulkEnd(e.target.value)}
+                className="flex-1 text-sm text-gray-800 bg-transparent outline-none"/>
+            </div>
+          </div>
+          <div className="flex items-center justify-between px-1 mb-2 mt-6">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">日付を選択</p>
+            {bulkDates.size>0&&<span className="text-xs text-[#D9A3B2] font-semibold">{bulkDates.size}日選択中</span>}
+          </div>
+          <div className="bg-white rounded-2xl overflow-hidden shadow-sm px-3 py-3">
+            <div className="flex items-center justify-between mb-3">
+              <button onClick={()=>setBulkVm(m=>shiftMonth(m.year,m.month,-1))} className="w-9 h-9 flex items-center justify-center text-gray-600"><AppIcons.caretLeft/></button>
+              <span className="font-bold text-gray-900 text-base">{bulkVm.year}年{bulkVm.month+1}月</span>
+              <button onClick={()=>setBulkVm(m=>shiftMonth(m.year,m.month,1))} className="w-9 h-9 flex items-center justify-center text-gray-600"><AppIcons.caretRight/></button>
+            </div>
+            <div className="grid grid-cols-7 mb-1">
+              {DAY_NAMES.map((n,i)=>(
+                <div key={i} className={`text-center text-xs font-semibold py-1 ${i===0?'text-[#D97A7A]':i===6?'text-blue-400':'text-gray-400'}`}>{n}</div>
+              ))}
+            </div>
+            <div className="grid grid-cols-7 gap-y-1">
+              {bDays.map((d,i)=>{
+                const isSel=d?bulkDates.has(d):false;
+                const isToday=d===_today0;
+                return (
+                  <button key={i} disabled={!d} onClick={()=>d&&toggleDate(d)}
+                    className="flex items-center justify-center h-9 rounded-xl active:bg-gray-50">
+                    <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                      !d?'':isSel?'bg-[#D9A3B2] text-white':isToday?'bg-gray-100 font-bold text-gray-900':'text-gray-600'
+                    }`}>
+                      {d?new Date(d+'T12:00:00').getDate():''}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <button onClick={register}
+            disabled={!bulkName.trim()||bulkDates.size===0}
+            className={`w-full mt-6 py-4 rounded-2xl text-sm font-bold transition-colors ${!bulkName.trim()||bulkDates.size===0?'bg-gray-100 text-gray-400':'bg-[#D9A3B2] text-white'}`}>
+            {bulkDone?'登録しました':'選択した日に登録'}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if(sub==='stats') return (
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
@@ -3299,6 +3398,11 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           <SettingsRow icon={<AppIcons.bell/>} iconBg="bg-gray-100" title="通知" desc="通知設定" onClick={()=>setSub('notifications')}/>
           <SettingsRow icon={<AppIcons.palette/>} iconBg="bg-gray-100" title="表示設定" desc="外観、言語など" onClick={()=>setSub('display')}/>
           <SettingsRow icon={<AppIcons.wake size={18}/>} iconBg="bg-gray-100" title="起床・就寝" desc="起床時間、就寝時間を設定" onClick={()=>setSub('wakeSleep')} isLast/>
+        </div>
+
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">タスク一括入力</p>
+        <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
+          <SettingsRow icon={<AppIcons.repeat size={18}/>} iconBg="bg-gray-100" title="シフト一括入力" desc="複数日にまとめて登録" onClick={()=>setSub('bulkInput')} isLast/>
         </div>
 
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">アカウント</p>
@@ -3803,6 +3907,10 @@ export default function App() {
   };
   const closeModal = () => setModal({open:false,task:null});
 
+  const bulkAddTasks = (newTasks:Omit<Task,'id'>[]) => {
+    setTasks(prev=>[...prev,...newTasks.map(t=>({...t,id:uid()}))]);
+  };
+
   const saveTasks = (data:Omit<Task,'id'>[], pendingPhotos?:string[]) => {
     if(editScope==='all'&&modal.task){
       const orig=modal.task, d=data[0];
@@ -4148,7 +4256,7 @@ export default function App() {
 
       {/* ── Settings Screen ── */}
       {settingsOpen&&(
-        <SettingsScreen settings={settings} onSettings={setSettings} onClose={()=>setSOp(false)} globalTags={globalTags} onGlobalTags={setGlobalTags} customTabs={customTabs} onCustomTabs={setCustomTabs} shopNotifSettings={shopNotifSettings} onShopNotifSettings={setShopNotifSettings} calEventsCount={calEvents.length} onSyncCalendar={syncCalendar} syncingCal={syncingCal} authUser={authUser} isPremium={isPremium}/>
+        <SettingsScreen settings={settings} onSettings={setSettings} onClose={()=>setSOp(false)} globalTags={globalTags} onGlobalTags={setGlobalTags} customTabs={customTabs} onCustomTabs={setCustomTabs} shopNotifSettings={shopNotifSettings} onShopNotifSettings={setShopNotifSettings} calEventsCount={calEvents.length} onSyncCalendar={syncCalendar} syncingCal={syncingCal} authUser={authUser} isPremium={isPremium} onBulkAdd={bulkAddTasks}/>
       )}
 
       {/* ── Recurrence edit confirm ── */}
