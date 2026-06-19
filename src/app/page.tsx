@@ -1272,9 +1272,32 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                 <div className="border-t border-gray-100 px-4 pt-3 pb-4">
                   {mode!=='later'&&(
                     <>
-                      <p className="text-xs text-gray-500 mb-1.5">開始時刻</p>
-                      <input type="time" value={startTime} onChange={e=>setST(e.target.value)}
-                        className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-gray-50 outline-none focus:border-gray-400 mb-3 block"/>
+                      <p className="text-xs text-gray-500 mb-2">開始時刻</p>
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="flex items-center bg-gray-100 rounded-2xl overflow-hidden">
+                          <button onClick={()=>setST(prev=>{const[h,m]=prev.split(':').map(Number);return `${String((h+23)%24).padStart(2,'0')}:${String(m).padStart(2,'0')}`;} )}
+                            className="w-10 h-11 flex items-center justify-center text-gray-500 active:bg-gray-200">
+                            <AppIcons.caretLeft size={15}/>
+                          </button>
+                          <span className="w-8 text-center text-xl font-bold text-gray-800 tabular-nums">{startTime.split(':')[0]}</span>
+                          <button onClick={()=>setST(prev=>{const[h,m]=prev.split(':').map(Number);return `${String((h+1)%24).padStart(2,'0')}:${String(m).padStart(2,'0')}`;} )}
+                            className="w-10 h-11 flex items-center justify-center text-gray-500 active:bg-gray-200">
+                            <AppIcons.caretRight size={15}/>
+                          </button>
+                        </div>
+                        <span className="text-gray-400 font-bold text-lg">:</span>
+                        <div className="flex items-center bg-gray-100 rounded-2xl overflow-hidden">
+                          <button onClick={()=>setST(prev=>{const[h,m]=prev.split(':').map(Number);return `${String(h).padStart(2,'0')}:${String((m+55)%60).padStart(2,'0')}`;} )}
+                            className="w-10 h-11 flex items-center justify-center text-gray-500 active:bg-gray-200">
+                            <AppIcons.caretLeft size={15}/>
+                          </button>
+                          <span className="w-8 text-center text-xl font-bold text-gray-800 tabular-nums">{startTime.split(':')[1]}</span>
+                          <button onClick={()=>setST(prev=>{const[h,m]=prev.split(':').map(Number);return `${String(h).padStart(2,'0')}:${String((m+5)%60).padStart(2,'0')}`;} )}
+                            className="w-10 h-11 flex items-center justify-center text-gray-500 active:bg-gray-200">
+                            <AppIcons.caretRight size={15}/>
+                          </button>
+                        </div>
+                      </div>
                     </>
                   )}
                   <p className="text-xs text-gray-500 mb-1.5">所要時間</p>
