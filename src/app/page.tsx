@@ -42,10 +42,12 @@ interface Task {
   color?: string;
   subtasks?: {id:string;name:string;completed:boolean}[];
   photoCount?: number;
+  userId?: string;  // future: cloud sync owner
 }
 
 interface Settings { wakeTime: string; sleepTime: string; keepIncomplete?: boolean; showFreeCard?: boolean; freeCardMinMin?: number; googleCalEnabled?: boolean; iphoneCalEnabled?: boolean; googleCalUrl?: string; iphoneCalUrl?: string; }
 type CalendarEvent = {id:string;title:string;date:string;startTime:string;endTime:string|null;allDay?:boolean;source:'google'|'iphone'};
+type AuthUser = {uid:string;email?:string;displayName?:string;isPremium?:boolean};
 interface FreeSlot  { start: string; end: string; min: number; }
 interface ShopItem  { id: string; name: string; checked: boolean; purchasedAt?: string; }
 interface ShopNotifSetting { id: string; days: number[]; time: string; enabled: boolean; }
@@ -70,6 +72,7 @@ const MORNING_NOTIF_KEY = 'tl-morning-notif-v1';
 const MORNING_SNOOZE_KEY = 'tl-morning-snooze-v1'; // stores snooze timestamp (ms)
 const SHOP_NOTIF_KEY    = 'tl-shop-notif-v1';
 const CAL_EVENTS_KEY    = 'tl-cal-events-v1';
+const AUTH_KEY          = 'tl-auth-v1';
 
 // テーマカラー — 将来的にここを差し替えるだけで全体の色が変わる
 const THEME = {
@@ -2708,12 +2711,13 @@ function SettingsRow({icon,iconBg,title,desc,onClick,isLast=false}:{
   );
 }
 
-function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,customTabs,onCustomTabs,shopNotifSettings,onShopNotifSettings,calEventsCount,onSyncCalendar,syncingCal}:{
+function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,customTabs,onCustomTabs,shopNotifSettings,onShopNotifSettings,calEventsCount,onSyncCalendar,syncingCal,authUser,isPremium}:{
   settings:Settings; onSettings:(s:Settings)=>void; onClose:()=>void;
   globalTags:TagDef[]; onGlobalTags:(tags:TagDef[])=>void;
   customTabs:CustomTab[]; onCustomTabs:(tabs:CustomTab[])=>void;
   shopNotifSettings:ShopNotifSetting[]; onShopNotifSettings:(s:ShopNotifSetting[])=>void;
   calEventsCount:number; onSyncCalendar:(source:'google'|'iphone',url:string)=>Promise<void>; syncingCal:'google'|'iphone'|null;
+  authUser:AuthUser|null; isPremium:boolean;
 }) {
   const [sub,setSub]           = useState<string|null>(null);
   const [tagInput,setTagInput] = useState('');
@@ -3015,8 +3019,41 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
 
   if(sub==='account') return (
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
-      {subHeader('アカウント連携')}
-      <div className="flex-1 overflow-y-auto px-4 pb-8">{comingSoon(<AppIcons.link size={48}/>,'アカウント連携機能は近日公開予定です')}</div>
+      {subHeader('アカウント')}
+      <div className="flex-1 overflow-y-auto px-4 pb-8">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">現在の状態</p>
+        <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
+          <div className="px-4 py-4 flex items-center gap-3">
+            <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
+              <AppIcons.question size={24} className="text-gray-400"/>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[15px] font-semibold text-gray-900">{authUser?.displayName??'ゲスト'}</p>
+              <p className="text-xs text-gray-400">{authUser?.email??'ログインなしで利用中'}</p>
+            </div>
+            {isPremium&&<span className="text-xs font-bold px-2 py-0.5 rounded-full bg-[#D9A3B2] text-white">Premium</span>}
+          </div>
+        </div>
+
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">アカウント連携でできること</p>
+        <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
+          {[
+            {icon:<AppIcons.repeat size={18}/>, text:'複数端末でデータを同期'},
+            {icon:<AppIcons.star size={18}/>,   text:'クラウドバックアップ'},
+            {icon:<AppIcons.calendar size={18}/>,text:'Googleカレンダー連携（プレミアム）'},
+            {icon:<AppIcons.sparkle size={18}/>, text:'AI タスク提案（プレミアム）'},
+          ].map(({icon,text},i,arr)=>(
+            <div key={i} className={`px-4 py-3 flex items-center gap-3${i<arr.length-1?' border-b border-gray-100':''}`}>
+              <span className="text-gray-300 shrink-0">{icon}</span>
+              <span className="text-sm text-gray-500">{text}</span>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-4 px-1">
+          <p className="text-xs text-gray-400 leading-relaxed">ログイン機能は近日公開予定です。現在はログインなしで全ての基本機能をご利用いただけます。</p>
+        </div>
+      </div>
     </div>
   );
 
@@ -3093,7 +3130,39 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   if(sub==='premium') return (
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
       {subHeader('プレミアム')}
-      <div className="flex-1 overflow-y-auto px-4 pb-8">{comingSoon(<AppIcons.star size={48}/>,'プレミアムプランは近日公開予定です')}</div>
+      <div className="flex-1 overflow-y-auto px-4 pb-8">
+        <div className="mt-6 mb-4 text-center">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[#D9A3B2]/10 mb-3">
+            <AppIcons.star size={32} className="text-[#D9A3B2]"/>
+          </div>
+          <p className="text-lg font-bold text-gray-900">Premium</p>
+          <p className="text-sm text-gray-500 mt-1">より便利な機能で、毎日をもっとスムーズに</p>
+        </div>
+
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2">プレミアム機能（予定）</p>
+        <div className="bg-white rounded-2xl overflow-hidden shadow-sm mb-4">
+          {[
+            {icon:<AppIcons.repeat size={18}/>,   label:'クラウド保存・複数端末同期',  desc:'どの端末からでもアクセス'},
+            {icon:<AppIcons.calendar size={18}/>,  label:'Googleカレンダー連携',        desc:'予定を自動で取り込み'},
+            {icon:<AppIcons.stats size={18}/>,     label:'高度な統計',                  desc:'週・月単位で振り返り'},
+            {icon:<AppIcons.sparkle size={18}/>,   label:'AI タスク提案',               desc:'習慣から最適スケジュールを提案'},
+            {icon:<AppIcons.link size={18}/>,      label:'バックアップ',                desc:'大切なデータを安全に保管'},
+            {icon:<AppIcons.star size={18}/>,      label:'今後追加予定の機能',          desc:'継続的にアップデート'},
+          ].map(({icon,label,desc},i,arr)=>(
+            <div key={i} className={`px-4 py-3 flex items-center gap-3${i<arr.length-1?' border-b border-gray-100':''}`}>
+              <span className="text-[#D9A3B2] shrink-0">{icon}</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-800">{label}</p>
+                <p className="text-xs text-gray-400">{desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="bg-gray-100 rounded-2xl px-4 py-3 text-center">
+          <p className="text-xs text-gray-500">プレミアムプランは近日公開予定です</p>
+        </div>
+      </div>
     </div>
   );
 
@@ -3127,13 +3196,13 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
 
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">アカウント</p>
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
-          <SettingsRow icon={<AppIcons.link/>} iconBg="bg-gray-100" title="アカウント連携" desc="連携サービスを管理" onClick={()=>setSub('account')}/>
+          <SettingsRow icon={<AppIcons.link/>} iconBg="bg-gray-100" title="アカウント" desc={authUser?.email??'ゲスト'} onClick={()=>setSub('account')}/>
           <SettingsRow icon={<AppIcons.calendar size={18}/>} iconBg="bg-gray-100" title="カレンダー連携" desc="カレンダーと同期" onClick={()=>setSub('calendar')} isLast/>
         </div>
 
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">サブスクリプション</p>
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
-          <SettingsRow icon={<AppIcons.star/>} iconBg="bg-gray-100" title="プレミアム" desc="プランを管理" onClick={()=>setSub('premium')} isLast/>
+          <SettingsRow icon={<AppIcons.star/>} iconBg="bg-gray-100" title="プレミアム" desc={isPremium?'利用中':'近日公開'} onClick={()=>setSub('premium')} isLast/>
         </div>
 
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">その他</p>
@@ -3338,6 +3407,8 @@ export default function App() {
   const [shopNotifSettings,setShopNotifSettings] = useState<ShopNotifSetting[]>([]);
   const [calEvents,setCalEvents] = useState<CalendarEvent[]>([]);
   const [syncingCal,setSyncingCal] = useState<'google'|'iphone'|null>(null);
+  const [authUser,setAuthUser] = useState<AuthUser|null>(null);
+  const isPremium = authUser?.isPremium ?? false;
 
   useEffect(()=>{
     try{
@@ -3371,6 +3442,8 @@ export default function App() {
       if(sn) setShopNotifSettings(JSON.parse(sn) as ShopNotifSetting[]);
       const ce=localStorage.getItem(CAL_EVENTS_KEY);
       if(ce) setCalEvents(JSON.parse(ce) as CalendarEvent[]);
+      const au=localStorage.getItem(AUTH_KEY);
+      if(au) setAuthUser(JSON.parse(au) as AuthUser);
     }catch{}
     setLoaded(true);
     if(typeof Notification!=='undefined'&&Notification.permission==='default'){
@@ -3938,7 +4011,7 @@ export default function App() {
 
       {/* ── Settings Screen ── */}
       {settingsOpen&&(
-        <SettingsScreen settings={settings} onSettings={setSettings} onClose={()=>setSOp(false)} globalTags={globalTags} onGlobalTags={setGlobalTags} customTabs={customTabs} onCustomTabs={setCustomTabs} shopNotifSettings={shopNotifSettings} onShopNotifSettings={setShopNotifSettings} calEventsCount={calEvents.length} onSyncCalendar={syncCalendar} syncingCal={syncingCal}/>
+        <SettingsScreen settings={settings} onSettings={setSettings} onClose={()=>setSOp(false)} globalTags={globalTags} onGlobalTags={setGlobalTags} customTabs={customTabs} onCustomTabs={setCustomTabs} shopNotifSettings={shopNotifSettings} onShopNotifSettings={setShopNotifSettings} calEventsCount={calEvents.length} onSyncCalendar={syncCalendar} syncingCal={syncingCal} authUser={authUser} isPremium={isPremium}/>
       )}
 
       {/* ── Recurrence edit confirm ── */}
