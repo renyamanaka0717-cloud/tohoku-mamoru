@@ -2849,6 +2849,8 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   const [bulkDates,setBulkDates] = useState<Set<string>>(new Set());
   const [bulkVm,setBulkVm] = useState({year:_todayD.getFullYear(),month:_todayD.getMonth()});
   const [bulkDone,setBulkDone] = useState(false);
+  const [bulkIconOverride,setBulkIconOverride] = useState<string|null>(null);
+  const [bulkIconSheet,setBulkIconSheet] = useState(false);
   const [histExp,setHistExp]   = useState<string|null>(null);
   const [histEditName,setHEN]  = useState('');
   const [histEditStart,setHES] = useState('');
@@ -2904,14 +2906,15 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
     const t2m=(t:string)=>{const [h,m]=t.split(':').map(Number);return h*60+m;};
     const bDur=Math.max(0,t2m(bulkEnd)-t2m(bulkStart));
     const toggleDate=(d:string)=>setBulkDates(prev=>{const s=new Set(prev);if(s.has(d))s.delete(d);else s.add(d);return s;});
+    const bulkIcon = bulkIconOverride ?? defaultIconKey(bulkName);
     const register=()=>{
       if(!bulkName.trim()||bulkDates.size===0) return;
       onBulkAdd([...bulkDates].map(date=>({
         name:bulkName.trim(),startTime:bulkStart,duration:bDur,
         date,completed:false,isLater:false,memo:'',
-        icon:defaultIconKey(bulkName.trim()),
+        icon:bulkIconOverride ?? defaultIconKey(bulkName.trim()),
       } as Omit<Task,'id'>)), bulkEnd);
-      setBulkName('');setBulkDates(new Set());setBulkDone(true);
+      setBulkName('');setBulkDates(new Set());setBulkDone(true);setBulkIconOverride(null);
       setTimeout(()=>setBulkDone(false),2000);
     };
     return (
@@ -2926,6 +2929,16 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
               <input value={bulkName} onChange={e=>setBulkName(e.target.value)}
                 placeholder="例：バイト、授業"
                 className="flex-1 text-sm text-gray-800 bg-transparent outline-none placeholder-gray-300"/>
+            </div>
+            <div className="flex items-center gap-3 px-4 py-3.5 border-b border-gray-100">
+              {(()=>{const Ic=getTaskIcon(bulkIcon);return <Ic size={18} className="text-gray-400 shrink-0"/>;})()}
+              <span className="text-sm font-medium text-gray-500 shrink-0 w-16">アイコン</span>
+              <button className="flex-1 flex items-center justify-between" onClick={()=>setBulkIconSheet(true)}>
+                <div className="flex items-center gap-2">
+                  {(()=>{const Ic=getTaskIcon(bulkIcon);const opt=ICON_OPTIONS.find(o=>o.key===bulkIcon);return (<><Ic size={20} className="text-gray-700"/><span className="text-sm text-gray-600">{opt?.label??'タスク'}</span></>);})()}
+                </div>
+                <AppIcons.caretRight size={14} className="text-gray-300"/>
+              </button>
             </div>
             <div className="flex items-center gap-3 px-4 py-3.5 border-b border-gray-100">
               <AppIcons.clock size={18} className="text-gray-400 shrink-0"/>
@@ -2984,6 +2997,38 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             </button>
           </div>
         </div>
+        {bulkIconSheet&&(
+          <div className="fixed inset-0 z-[90] bg-black/40 flex flex-col justify-end" onClick={()=>setBulkIconSheet(false)}>
+            <div className="bg-white rounded-t-3xl max-h-[78vh] flex flex-col w-full max-w-md mx-auto" onClick={e=>e.stopPropagation()}>
+              <div className="flex justify-center pt-3 shrink-0"><div className="w-10 h-1 bg-gray-200 rounded-full"/></div>
+              <div className="flex items-center justify-between px-5 pt-3 pb-2 shrink-0">
+                <span className="text-base font-bold text-gray-900">アイコン</span>
+                <button onClick={()=>setBulkIconSheet(false)} className="px-4 py-1.5 bg-gray-700 text-white text-sm font-semibold rounded-full">完了</button>
+              </div>
+              <div className="overflow-y-auto px-5 pb-10 flex-1">
+                {ICON_CATEGORIES.map(cat=>(
+                  <div key={cat.label} className="mb-5">
+                    <p className="text-xs font-bold text-gray-400 mb-2">{cat.label}</p>
+                    <div className="grid grid-cols-5 gap-2">
+                      {cat.icons.map(opt=>{
+                        const Ic=getTaskIcon(opt.key);
+                        const sel=bulkIcon===opt.key;
+                        return (
+                          <button key={opt.key} onClick={()=>setBulkIconOverride(opt.key)}
+                            className={`flex flex-col items-center gap-1.5 py-3 rounded-2xl ${sel?'':'bg-gray-50'}`}
+                            style={sel?{background:'#D9A3B2'}:undefined}>
+                            <Ic size={22} className={sel?'text-white':'text-gray-700'}/>
+                            <span className={`text-[10px] leading-none ${sel?'text-gray-100':'text-gray-500'}`}>{opt.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
