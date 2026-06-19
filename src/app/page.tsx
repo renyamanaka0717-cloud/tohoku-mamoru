@@ -785,6 +785,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
   const [taskDate,setTaskDate]= useState(task?.date??currentDate);
   const [dateOpen,setDateOpen]= useState(false);
   const [timeOpen,setTimeOpen]= useState(false);
+  const [timePickerOpen,setTPOpen]= useState(false);
   const [alertOpen,setAlertOpen]= useState(false);
   const [tagOpen,setTagOpen]   = useState(false);
   const [subtasksOpen,setSubtasksOpen] = useState(false);
@@ -1313,44 +1314,30 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
               </>
             )}
 
-            {/* 時間 — not shown for allday */}
+            {/* 開始時刻 — scheduled/recurring (popup picker) */}
+            {(mode==='scheduled'||mode==='recurring')&&(<>
+              <div className="h-px bg-gray-100 mx-4"/>
+              <button className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50" onClick={()=>setTPOpen(true)}>
+                <AppIcons.clock size={18} className="text-gray-400 shrink-0"/>
+                <span className="flex-1 text-left text-sm font-medium text-gray-800">開始時刻</span>
+                <span className="text-sm text-gray-500 mr-1">{startTime}{computedEnd?`〜${computedEnd}`:''}</span>
+                <AppIcons.caretRight size={14} className="text-gray-300"/>
+              </button>
+            </>)}
+
+            {/* 所要時間 — not shown for allday */}
             {mode!=='allday'&&(<>
+              <div className="h-px bg-gray-100 mx-4"/>
               <button className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50" onClick={()=>setTimeOpen(o=>!o)}>
                 <AppIcons.clock size={18} className="text-gray-400 shrink-0"/>
-                <span className="flex-1 text-left text-sm font-medium text-gray-800">
-                  {mode==='later'
-                    ? (duration>0?(DUR_OPTS.find(o=>o.v===duration)?.l??`${duration}分`):'所要時間なし')
-                    : startTime?(computedEnd?`${startTime}〜${computedEnd}`:startTime):'時間未設定'
-                  }
+                <span className="flex-1 text-left text-sm font-medium text-gray-800">所要時間</span>
+                <span className="text-sm text-gray-500 mr-1">
+                  {duration>0?(DUR_OPTS.find(o=>o.v===duration)?.l??`${duration}分`):'なし'}
                 </span>
-                {mode!=='later'&&duration>0&&<span className="text-xs text-gray-400 shrink-0">{DUR_OPTS.find(o=>o.v===duration)?.l??`${duration}分`}</span>}
                 <AppIcons.caretRight size={14} className="text-gray-300"/>
               </button>
               {timeOpen&&(
                 <div className="border-t border-gray-100 px-4 pt-3 pb-4">
-                  {mode!=='later'&&(
-                    <>
-                      <p className="text-xs text-gray-500 mb-2">開始時刻</p>
-                      {(()=>{
-                        const [hStr,mStr]=startTime.split(':');
-                        const normM=String(Math.min(55,Math.round((parseInt(mStr)||0)/5)*5)).padStart(2,'0');
-                        return(
-                          <div className="flex items-center gap-2 mb-3">
-                            <div className="flex flex-col items-center">
-                              <PickerCol items={HOURS} value={hStr} onChange={v=>setST(`${v}:${normM}`)}/>
-                              <span className="text-[10px] text-gray-400 mt-1">時</span>
-                            </div>
-                            <span className="text-xl font-bold text-gray-300 pb-5">:</span>
-                            <div className="flex flex-col items-center">
-                              <PickerCol items={MINS} value={normM} onChange={v=>setST(`${hStr}:${v}`)}/>
-                              <span className="text-[10px] text-gray-400 mt-1">分</span>
-                            </div>
-                          </div>
-                        );
-                      })()}
-                    </>
-                  )}
-                  <p className="text-xs text-gray-500 mb-1.5">所要時間</p>
                   <div className="flex gap-2 overflow-x-auto pb-0.5" style={{scrollbarWidth:'none',WebkitOverflowScrolling:'touch'} as React.CSSProperties}>
                     {DUR_OPTS.map(({v,l})=>(
                       <button key={v} onClick={()=>{setDur(v);setCDurOpen(false);}}
@@ -1631,6 +1618,30 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+      )}
+      {timePickerOpen&&(
+        <div className="absolute inset-0 z-[105] flex items-center justify-center bg-black/50 rounded-t-3xl"
+          onClick={()=>setTPOpen(false)}>
+          <div className="bg-white rounded-3xl mx-6 w-full max-w-xs shadow-2xl" onClick={e=>e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 pt-5 pb-3">
+              <span className="text-base font-bold text-gray-800">開始時刻</span>
+              <button onClick={()=>setTPOpen(false)}
+                className="px-4 py-1.5 bg-gray-900 text-white text-sm font-bold rounded-full">完了</button>
+            </div>
+            {(()=>{
+              const [hStr,mStr]=startTime.split(':');
+              const normM=String(Math.min(55,Math.round((parseInt(mStr)||0)/5)*5)).padStart(2,'0');
+              return(
+                <div className="flex items-center justify-center gap-2 px-5 pb-6 pt-2">
+                  <PickerCol items={HOURS} value={hStr} onChange={v=>setST(`${v}:${normM}`)}/>
+                  <span className="text-base font-medium text-gray-500 w-5 text-center">時</span>
+                  <PickerCol items={MINS} value={normM} onChange={v=>setST(`${hStr}:${v}`)}/>
+                  <span className="text-base font-medium text-gray-500 w-5 text-center">分</span>
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}
