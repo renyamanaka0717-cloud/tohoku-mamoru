@@ -44,7 +44,8 @@ interface Task {
   photoCount?: number;
 }
 
-interface Settings { wakeTime: string; sleepTime: string; keepIncomplete?: boolean; showFreeCard?: boolean; freeCardMinMin?: number; }
+interface Settings { wakeTime: string; sleepTime: string; keepIncomplete?: boolean; showFreeCard?: boolean; freeCardMinMin?: number; googleCalEnabled?: boolean; iphoneCalEnabled?: boolean; googleCalUrl?: string; iphoneCalUrl?: string; }
+type CalendarEvent = {id:string;title:string;date:string;startTime:string;endTime:string|null;allDay?:boolean;source:'google'|'iphone'};
 interface FreeSlot  { start: string; end: string; min: number; }
 interface ShopItem  { id: string; name: string; checked: boolean; purchasedAt?: string; }
 interface ShopNotifSetting { id: string; days: number[]; time: string; enabled: boolean; }
@@ -68,6 +69,7 @@ const DAY_SETTINGS_KEY = 'tl-day-settings-v1';
 const MORNING_NOTIF_KEY = 'tl-morning-notif-v1';
 const MORNING_SNOOZE_KEY = 'tl-morning-snooze-v1'; // stores snooze timestamp (ms)
 const SHOP_NOTIF_KEY    = 'tl-shop-notif-v1';
+const CAL_EVENTS_KEY    = 'tl-cal-events-v1';
 
 // テーマカラー — 将来的にここを差し替えるだけで全体の色が変わる
 const THEME = {
@@ -215,11 +217,19 @@ const generateCustomDates=(base:string,r:CustomRec):string[]=>{
 
 // ── Free slots ────────────────────────────────────────────────────────────────
 
-function calcFreeSlots(tasks: Task[], date: string, s: Settings): FreeSlot[] {
-  const scheduled = tasks
+function calcFreeSlots(tasks: Task[], date: string, s: Settings, calEvents: CalendarEvent[] = []): FreeSlot[] {
+  const taskSlots = tasks
     .filter(t=>t.date===date&&!t.isLater&&t.startTime)
-    .map(t=>[toMin(t.startTime!),toMin(t.startTime!)+(t.duration??0)] as [number,number])
-    .sort((a,b)=>a[0]-b[0]);
+    .map(t=>[toMin(t.startTime!),toMin(t.startTime!)+(t.duration??0)] as [number,number]);
+  const calSlots = calEvents
+    .filter(e=>e.date===date&&!e.allDay&&e.endTime)
+    .map(e=>[toMin(e.startTime),toMin(e.endTime!)] as [number,number]);
+  const raw = [...taskSlots,...calSlots].sort((a,b)=>a[0]-b[0]);
+  const scheduled:[number,number][]=[];
+  for(const s of raw){
+    if(scheduled.length===0||s[0]>scheduled[scheduled.length-1][1]) scheduled.push([...s]);
+    else scheduled[scheduled.length-1][1]=Math.max(scheduled[scheduled.length-1][1],s[1]);
+  }
   const slots:FreeSlot[]=[];
   let cur=toMin(s.wakeTime);
   const end=toMin(s.sleepTime);
@@ -600,6 +610,39 @@ function defaultIconKey(name:string):string {
   if(/プレゼント|ギフト|贈り物/.test(name)) return 'gift';
   if(/ゲーム/.test(name)) return 'game';
   return 'task';
+}
+
+function parseICS(text:string, source:'google'|'iphone'): CalendarEvent[] {
+  const events:CalendarEvent[]=[];
+  const blocks=text.split('BEGIN:VEVENT');
+  for(let i=1;i<blocks.length;i++){
+    const endIdx=blocks[i].indexOf('END:VEVENT');
+    if(endIdx===-1) continue;
+    const b=blocks[i].slice(0,endIdx).replace(/\r\n[ \t]/g,'').replace(/\n[ \t]/g,'');
+    const get=(key:string)=>b.match(new RegExp(`(?:^|\\n)${key}[^:\\r\\n]*:([^\\r\\n]+)`))?.[1]?.trim()??'';
+    const summary=get('SUMMARY').replace(/\\,/g,',').replace(/\\n/g,' ');
+    const uid=get('UID')||Math.random().toString(36).slice(2);
+    const dtstart=get('DTSTART');
+    const dtend=get('DTEND');
+    if(!dtstart||!summary) continue;
+    const parseDT=(s:string):{date:string;time:string|null}|null=>{
+      if(!s) return null;
+      if(/^\d{8}$/.test(s)) return {date:`${s.slice(0,4)}-${s.slice(4,6)}-${s.slice(6,8)}`,time:null};
+      const m=s.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})/);
+      if(!m) return null;
+      if(s.endsWith('Z')){
+        const d=new Date(`${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:00Z`);
+        const loc=d.toLocaleString('sv',{timeZone:Intl.DateTimeFormat().resolvedOptions().timeZone});
+        return {date:loc.slice(0,10),time:loc.slice(11,16)};
+      }
+      return {date:`${m[1]}-${m[2]}-${m[3]}`,time:`${m[4]}:${m[5]}`};
+    };
+    const start=parseDT(dtstart);
+    const end=parseDT(dtend);
+    if(!start) continue;
+    events.push({id:`${source}-${uid}`,title:summary,date:start.date,startTime:start.time??'00:00',endTime:end?.time??null,allDay:!start.time,source});
+  }
+  return events;
 }
 
 // ── TaskModal ─────────────────────────────────────────────────────────────────
@@ -1694,9 +1737,20 @@ function CompactTaskCard({task,onToggle,onEdit}:{task:Task;onToggle:()=>void;onE
   );
 }
 
+function CalendarEventCard({event}:{event:CalendarEvent}) {
+  const borderColor=event.source==='google'?'#4285F4':'#6B7280';
+  return (
+    <div className="h-full bg-blue-50/70 border border-blue-100 rounded-xl px-3 py-1.5 flex items-center gap-2 overflow-hidden pointer-events-none select-none" style={{borderLeftWidth:'3px',borderLeftColor:borderColor}}>
+      <AppIcons.calendar size={11} className="text-blue-400 shrink-0"/>
+      <span className="text-xs font-medium text-gray-600 truncate flex-1">{event.title}</span>
+      <span className="text-[10px] text-gray-400 shrink-0">{event.startTime}{event.endTime?`〜${event.endTime}`:''}</span>
+    </div>
+  );
+}
+
 // ── Timeline ──────────────────────────────────────────────────────────────────
 
-function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet,onSchedule,onAddAtTime,onDragStart,dragTaskId,yToTimeRef,layoutYRef,globalTags,todayHistory,onSubtaskToggle,onDragWake,onDragSleep,onCameraClick}:{
+function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet,onSchedule,onAddAtTime,onDragStart,dragTaskId,yToTimeRef,layoutYRef,globalTags,todayHistory,onSubtaskToggle,onDragWake,onDragSleep,onCameraClick,calEvents=[]}:{
   date:string;tasks:Task[];later:Task[];settings:Settings;now:string;
   onToggle:(id:string)=>void;onEdit:(t:Task)=>void;onEditIconSheet:(t:Task)=>void;
   onSchedule:(t:Task,time:string)=>void;onAddAtTime:(time:string)=>void;
@@ -1709,6 +1763,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
   onDragWake:(x:number,y:number)=>void;
   onDragSleep:(x:number,y:number)=>void;
   onCameraClick:(taskId:string)=>void;
+  calEvents?:CalendarEvent[];
 }) {
   const [pressingId,setPressingId] = useState<string|null>(null);
   const [pressingWake,setPressingWake] = useState(false);
@@ -1764,7 +1819,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
 
   const dayTasks=tasks.filter(t=>t.date===date&&!t.isLater&&t.startTime).sort((a,b)=>toMin(a.startTime!)-toMin(b.startTime!));
   const freeCardMinMin=settings.freeCardMinMin??120;
-  const freeSlots=(settings.showFreeCard===false)?[]:calcFreeSlots(tasks,date,settings).filter(sl=>sl.min>=freeCardMinMin);
+  const freeSlots=(settings.showFreeCard===false)?[]:calcFreeSlots(tasks,date,settings,calEvents).filter(sl=>sl.min>=freeCardMinMin);
   const laterPool=later.filter(t=>!t.completed);
 
   const MIN_CARD_H = 60;
@@ -2229,8 +2284,20 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
         );
       })}
 
+      {/* calendar events */}
+      {calEvents.filter(e=>e.date===date&&!e.allDay).map(e=>{
+        const y=layoutCalcY(toMin(e.startTime));
+        const dMin=e.endTime?Math.max(0,toMin(e.endTime)-toMin(e.startTime)):60;
+        const h=Math.max(32,dMin*PX_PER_MIN);
+        return (
+          <div key={e.id} className="absolute z-[5]" style={{top:`${y}px`,left:`${CARD_LEFT}px`,right:'0px',height:`${h}px`}}>
+            <CalendarEventCard event={e}/>
+          </div>
+        );
+      })}
+
       {/* empty state */}
-      {dayTasks.length===0&&freeSlots.length===0&&(
+      {dayTasks.length===0&&freeSlots.length===0&&calEvents.filter(e=>e.date===date).length===0&&(
         <div className="absolute inset-0 flex flex-col items-center justify-center" style={{left:`${CARD_LEFT}px`}}>
           <AppIcons.task size={40} className="mb-2 text-gray-300"/>
           <p className="text-sm text-gray-400">タスクがありません</p>
@@ -2641,11 +2708,12 @@ function SettingsRow({icon,iconBg,title,desc,onClick,isLast=false}:{
   );
 }
 
-function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,customTabs,onCustomTabs,shopNotifSettings,onShopNotifSettings}:{
+function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,customTabs,onCustomTabs,shopNotifSettings,onShopNotifSettings,calEventsCount,onSyncCalendar,syncingCal}:{
   settings:Settings; onSettings:(s:Settings)=>void; onClose:()=>void;
   globalTags:TagDef[]; onGlobalTags:(tags:TagDef[])=>void;
   customTabs:CustomTab[]; onCustomTabs:(tabs:CustomTab[])=>void;
   shopNotifSettings:ShopNotifSetting[]; onShopNotifSettings:(s:ShopNotifSetting[])=>void;
+  calEventsCount:number; onSyncCalendar:(source:'google'|'iphone',url:string)=>Promise<void>; syncingCal:'google'|'iphone'|null;
 }) {
   const [sub,setSub]           = useState<string|null>(null);
   const [tagInput,setTagInput] = useState('');
@@ -2955,7 +3023,70 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   if(sub==='calendar') return (
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
       {subHeader('カレンダー連携')}
-      <div className="flex-1 overflow-y-auto px-4 pb-8">{comingSoon(<AppIcons.calendar size={48}/>,'カレンダー連携機能は近日公開予定です')}</div>
+      <div className="flex-1 overflow-y-auto px-4 pb-8">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">カレンダー</p>
+
+        {/* iPhone Calendar */}
+        <div className="bg-white rounded-2xl overflow-hidden shadow-sm mb-3">
+          <div className="px-4 py-3.5 flex items-center gap-3 border-b border-gray-100">
+            <AppIcons.calendar size={18} className="text-gray-400 shrink-0"/>
+            <span className="flex-1 text-[15px] font-medium text-gray-900">iPhoneカレンダー</span>
+            <button onClick={()=>onSettings({...settings,iphoneCalEnabled:!(settings.iphoneCalEnabled??false)})}
+              className={`relative w-10 h-6 rounded-full transition-colors shrink-0 ${(settings.iphoneCalEnabled??false)?'bg-[#D9A3B2]':'bg-gray-200'}`}>
+              <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${(settings.iphoneCalEnabled??false)?'left-[18px]':'left-0.5'}`}/>
+            </button>
+          </div>
+          {(settings.iphoneCalEnabled??false)&&(
+            <div className="px-4 py-3">
+              <p className="text-xs text-gray-400 mb-2 leading-relaxed">iPhoneの「カレンダー」アプリ → 対象カレンダーを長押し →「カレンダーを共有」→「リンクをコピー」で取得したURLを貼り付けてください。</p>
+              <input value={settings.iphoneCalUrl??''} onChange={e=>onSettings({...settings,iphoneCalUrl:e.target.value})}
+                placeholder="webcal://p17-caldav.icloud.com/..."
+                className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 outline-none focus:border-[#D9A3B2] bg-gray-50"/>
+              <button disabled={!settings.iphoneCalUrl||syncingCal==='iphone'}
+                onClick={()=>settings.iphoneCalUrl&&onSyncCalendar('iphone',settings.iphoneCalUrl)}
+                className={`mt-2 w-full py-2 rounded-xl text-sm font-semibold transition-colors ${!settings.iphoneCalUrl||syncingCal==='iphone'?'bg-gray-100 text-gray-400':'bg-[#D9A3B2] text-white'}`}>
+                {syncingCal==='iphone'?'同期中…':'今すぐ同期'}
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Google Calendar */}
+        <div className="bg-white rounded-2xl overflow-hidden shadow-sm mb-3">
+          <div className="px-4 py-3.5 flex items-center gap-3 border-b border-gray-100">
+            <AppIcons.calendar size={18} className="text-gray-400 shrink-0"/>
+            <span className="flex-1 text-[15px] font-medium text-gray-900">Googleカレンダー</span>
+            <button onClick={()=>onSettings({...settings,googleCalEnabled:!(settings.googleCalEnabled??false)})}
+              className={`relative w-10 h-6 rounded-full transition-colors shrink-0 ${(settings.googleCalEnabled??false)?'bg-[#D9A3B2]':'bg-gray-200'}`}>
+              <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${(settings.googleCalEnabled??false)?'left-[18px]':'left-0.5'}`}/>
+            </button>
+          </div>
+          {(settings.googleCalEnabled??false)&&(
+            <div className="px-4 py-3">
+              <p className="text-xs text-gray-400 mb-2 leading-relaxed">Googleカレンダー → 設定 → 対象カレンダー → 「カレンダーの統合」→「非公開のアドレス(ICS)」をコピーして貼り付けてください。</p>
+              <input value={settings.googleCalUrl??''} onChange={e=>onSettings({...settings,googleCalUrl:e.target.value})}
+                placeholder="https://calendar.google.com/calendar/ical/..."
+                className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 outline-none focus:border-[#D9A3B2] bg-gray-50"/>
+              <button disabled={!settings.googleCalUrl||syncingCal==='google'}
+                onClick={()=>settings.googleCalUrl&&onSyncCalendar('google',settings.googleCalUrl)}
+                className={`mt-2 w-full py-2 rounded-xl text-sm font-semibold transition-colors ${!settings.googleCalUrl||syncingCal==='google'?'bg-gray-100 text-gray-400':'bg-[#D9A3B2] text-white'}`}>
+                {syncingCal==='google'?'同期中…':'今すぐ同期'}
+              </button>
+            </div>
+          )}
+        </div>
+
+        {calEventsCount>0&&(
+          <p className="text-xs text-gray-400 text-center mt-2">{calEventsCount}件の予定を読み込み済み</p>
+        )}
+
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">注意事項</p>
+        <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
+          <div className="px-4 py-3.5">
+            <p className="text-xs text-gray-500 leading-relaxed">カレンダーの予定はタイムラインに表示されますが、編集はできません。空き時間の計算にも反映されます。URLはこのデバイスのみに保存されます。</p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 
@@ -3205,6 +3336,8 @@ export default function App() {
   const [morningSelected,setMorningSel] = useState<Set<string>>(new Set());
   const morningShownRef = useRef(false);
   const [shopNotifSettings,setShopNotifSettings] = useState<ShopNotifSetting[]>([]);
+  const [calEvents,setCalEvents] = useState<CalendarEvent[]>([]);
+  const [syncingCal,setSyncingCal] = useState<'google'|'iphone'|null>(null);
 
   useEffect(()=>{
     try{
@@ -3236,6 +3369,8 @@ export default function App() {
       if(ds) setDayOverrides(JSON.parse(ds) as Record<string,{wakeTime?:string;sleepTime?:string}>);
       const sn=localStorage.getItem(SHOP_NOTIF_KEY);
       if(sn) setShopNotifSettings(JSON.parse(sn) as ShopNotifSetting[]);
+      const ce=localStorage.getItem(CAL_EVENTS_KEY);
+      if(ce) setCalEvents(JSON.parse(ce) as CalendarEvent[]);
     }catch{}
     setLoaded(true);
     if(typeof Notification!=='undefined'&&Notification.permission==='default'){
@@ -3251,7 +3386,20 @@ export default function App() {
   useEffect(()=>{ if(loaded) localStorage.setItem(CUSTOM_TABS_KEY,JSON.stringify(customTabs)); },[customTabs,loaded]);
   useEffect(()=>{ if(loaded) localStorage.setItem(SHOP_NOTIF_KEY,JSON.stringify(shopNotifSettings)); },[shopNotifSettings,loaded]);
   useEffect(()=>{ if(loaded) localStorage.setItem(DAY_SETTINGS_KEY,JSON.stringify(dayOverrides)); },[dayOverrides,loaded]);
+  useEffect(()=>{ if(loaded) localStorage.setItem(CAL_EVENTS_KEY,JSON.stringify(calEvents)); },[calEvents,loaded]);
   useEffect(()=>{ const iv=setInterval(()=>setNow(nowStr()),60000); return ()=>clearInterval(iv); },[]);
+
+  const syncCalendar=async(source:'google'|'iphone',url:string):Promise<void>=>{
+    setSyncingCal(source);
+    try{
+      const res=await fetch(`/api/calendar?url=${encodeURIComponent(url)}`);
+      if(!res.ok) throw new Error('fetch failed');
+      const text=await res.text();
+      const events=parseICS(text,source);
+      setCalEvents(prev=>[...prev.filter(e=>e.source!==source),...events]);
+    }catch(e){console.error('Calendar sync failed:',e);}
+    setSyncingCal(null);
+  };
 
   // 起床時間後、初回起動時に過去の未完了タスクをポップアップで確認（スヌーズ対応）
   useEffect(()=>{
@@ -3641,7 +3789,8 @@ export default function App() {
           todayHistory={moveHistory.find(h=>h.date===date)} onSubtaskToggle={subtaskToggle}
           onDragWake={(x,y)=>startDragSetting('wake',x,y)}
           onDragSleep={(x,y)=>startDragSetting('sleep',x,y)}
-          onCameraClick={openEditAtPhotos}/>
+          onCameraClick={openEditAtPhotos}
+          calEvents={calEvents.filter(e=>(e.source==='google'&&(settings.googleCalEnabled??false))||(e.source==='iphone'&&(settings.iphoneCalEnabled??false)))}/>
       </main>
 
       {/* ── Bottom bar ── */}
@@ -3789,7 +3938,7 @@ export default function App() {
 
       {/* ── Settings Screen ── */}
       {settingsOpen&&(
-        <SettingsScreen settings={settings} onSettings={setSettings} onClose={()=>setSOp(false)} globalTags={globalTags} onGlobalTags={setGlobalTags} customTabs={customTabs} onCustomTabs={setCustomTabs} shopNotifSettings={shopNotifSettings} onShopNotifSettings={setShopNotifSettings}/>
+        <SettingsScreen settings={settings} onSettings={setSettings} onClose={()=>setSOp(false)} globalTags={globalTags} onGlobalTags={setGlobalTags} customTabs={customTabs} onCustomTabs={setCustomTabs} shopNotifSettings={shopNotifSettings} onShopNotifSettings={setShopNotifSettings} calEventsCount={calEvents.length} onSyncCalendar={syncCalendar} syncingCal={syncingCal}/>
       )}
 
       {/* ── Recurrence edit confirm ── */}
