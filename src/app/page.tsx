@@ -55,6 +55,7 @@ interface ShopNotifSetting { id: string; days: number[]; time: string; enabled: 
 interface TagDef    { name: string; color: string; }
 interface MoveHistory { id: string; date: string; taskNames: string[]; }
 interface CustomTab  { id: string; name: string; }
+interface BulkHistoryEntry { id:string; name:string; startTime:string; endTime:string; dates:string[]; taskIds:string[]; registeredAt:string; }
 
 type TaskMode = 'later' | 'scheduled' | 'recurring' | 'allday';
 
@@ -68,6 +69,7 @@ const TAGS_KEY     = 'tl-tags-v1';
 const HISTORY_KEY      = 'tl-history-v1';
 const CUSTOM_TABS_KEY  = 'tl-custom-tabs-v1';
 const PHOTOS_KEY       = 'tl-photos-v1';
+const BULK_HIST_KEY    = 'tl-bulk-hist-v1';
 const DAY_SETTINGS_KEY = 'tl-day-settings-v1';
 const MORNING_NOTIF_KEY = 'tl-morning-notif-v1';
 const MORNING_SNOOZE_KEY = 'tl-morning-snooze-v1'; // stores snooze timestamp (ms)
@@ -2818,14 +2820,17 @@ function SettingsRow({icon,iconBg,title,desc,onClick,isLast=false}:{
   );
 }
 
-function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,customTabs,onCustomTabs,shopNotifSettings,onShopNotifSettings,calEventsCount,onSyncCalendar,syncingCal,authUser,isPremium,onBulkAdd}:{
+function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,customTabs,onCustomTabs,shopNotifSettings,onShopNotifSettings,calEventsCount,onSyncCalendar,syncingCal,authUser,isPremium,onBulkAdd,bulkHistory,onBulkHistoryDelete,onBulkHistoryEdit}:{
   settings:Settings; onSettings:(s:Settings)=>void; onClose:()=>void;
   globalTags:TagDef[]; onGlobalTags:(tags:TagDef[])=>void;
   customTabs:CustomTab[]; onCustomTabs:(tabs:CustomTab[])=>void;
   shopNotifSettings:ShopNotifSetting[]; onShopNotifSettings:(s:ShopNotifSetting[])=>void;
   calEventsCount:number; onSyncCalendar:(source:'google'|'iphone',url:string)=>Promise<void>; syncingCal:'google'|'iphone'|null;
   authUser:AuthUser|null; isPremium:boolean;
-  onBulkAdd:(tasks:Omit<Task,'id'>[])=>void;
+  onBulkAdd:(tasks:Omit<Task,'id'>[],endTime:string)=>void;
+  bulkHistory:BulkHistoryEntry[];
+  onBulkHistoryDelete:(entryId:string)=>void;
+  onBulkHistoryEdit:(entryId:string,name:string,startTime:string,endTime:string)=>void;
 }) {
   const [sub,setSub]           = useState<string|null>(null);
   const [tagInput,setTagInput] = useState('');
@@ -2844,6 +2849,10 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   const [bulkDates,setBulkDates] = useState<Set<string>>(new Set());
   const [bulkVm,setBulkVm] = useState({year:_todayD.getFullYear(),month:_todayD.getMonth()});
   const [bulkDone,setBulkDone] = useState(false);
+  const [histExp,setHistExp]   = useState<string|null>(null);
+  const [histEditName,setHEN]  = useState('');
+  const [histEditStart,setHES] = useState('');
+  const [histEditEnd,setHEE]   = useState('');
 
   const back = () => setSub(null);
 
@@ -2901,7 +2910,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
         name:bulkName.trim(),startTime:bulkStart,duration:bDur,
         date,completed:false,isLater:false,memo:'',
         icon:defaultIconKey(bulkName.trim()),
-      } as Omit<Task,'id'>)));
+      } as Omit<Task,'id'>)), bulkEnd);
       setBulkName('');setBulkDates(new Set());setBulkDone(true);
       setTimeout(()=>setBulkDone(false),2000);
     };
@@ -2963,11 +2972,82 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
               })}
             </div>
           </div>
-          <button onClick={register}
-            disabled={!bulkName.trim()||bulkDates.size===0}
-            className={`w-full mt-6 py-4 rounded-2xl text-sm font-bold transition-colors ${!bulkName.trim()||bulkDates.size===0?'bg-gray-100 text-gray-400':'bg-[#D9A3B2] text-white'}`}>
-            {bulkDone?'登録しました':'選択した日に登録'}
-          </button>
+          <div className="flex gap-3 mt-6">
+            <button onClick={()=>setSub('bulkHistory')}
+              className="px-5 py-4 rounded-2xl text-sm font-semibold bg-white text-gray-600 shadow-sm whitespace-nowrap">
+              履歴を見る
+            </button>
+            <button onClick={register}
+              disabled={!bulkName.trim()||bulkDates.size===0}
+              className={`flex-1 py-4 rounded-2xl text-sm font-bold transition-colors ${!bulkName.trim()||bulkDates.size===0?'bg-gray-100 text-gray-400':'bg-[#D9A3B2] text-white'}`}>
+              {bulkDone?'登録しました':'選択した日に登録'}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if(sub==='bulkHistory'){
+    const disp=bulkHistory.slice(0,10);
+    return (
+      <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
+        {subHeader('登録履歴')}
+        <div className="flex-1 overflow-y-auto px-4 pb-10">
+          {disp.length===0&&(
+            <div className="flex flex-col items-center justify-center pt-20 gap-3">
+              <AppIcons.task size={40} className="text-gray-300"/>
+              <p className="text-sm text-gray-400">まだ登録履歴がありません</p>
+            </div>
+          )}
+          <div className="mt-6 flex flex-col gap-3">
+            {disp.map(entry=>{
+              const isExp=histExp===entry.id;
+              const dt=new Date(entry.registeredAt);
+              const dateLabel=`${dt.getMonth()+1}/${dt.getDate()}`;
+              return (
+                <div key={entry.id} className="bg-white rounded-2xl overflow-hidden shadow-sm">
+                  <button className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50" onClick={()=>{
+                    if(isExp){setHistExp(null);}
+                    else{setHistExp(entry.id);setHEN(entry.name);setHES(entry.startTime);setHEE(entry.endTime);}
+                  }}>
+                    <div className="flex-1 min-w-0 text-left">
+                      <p className="text-sm font-semibold text-gray-800">{entry.name}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">{entry.startTime}〜{entry.endTime} · {entry.dates.length}日 · {dateLabel}登録</p>
+                    </div>
+                    <AppIcons.caretDown size={14} className={`text-gray-400 shrink-0 transition-transform ${isExp?'rotate-180':''}`}/>
+                  </button>
+                  {isExp&&(
+                    <div className="border-t border-gray-100 px-4 py-3 flex flex-col gap-3">
+                      <div className="bg-gray-50 rounded-xl px-3 py-2.5 flex flex-col gap-2.5">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-gray-500 w-14 shrink-0">タスク名</span>
+                          <input value={histEditName} onChange={e=>setHEN(e.target.value)}
+                            className="flex-1 text-sm text-gray-800 bg-transparent outline-none border-b border-gray-200 pb-0.5"/>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-gray-500 w-14 shrink-0">開始時刻</span>
+                          <input type="time" value={histEditStart} onChange={e=>setHES(e.target.value)}
+                            className="flex-1 text-sm text-gray-800 bg-transparent outline-none"/>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-gray-500 w-14 shrink-0">終了時刻</span>
+                          <input type="time" value={histEditEnd} onChange={e=>setHEE(e.target.value)}
+                            className="flex-1 text-sm text-gray-800 bg-transparent outline-none"/>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <button onClick={()=>{onBulkHistoryEdit(entry.id,histEditName.trim()||entry.name,histEditStart,histEditEnd);setHistExp(null);}}
+                          className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-[#D9A3B2] text-white">一括編集</button>
+                        <button onClick={()=>{onBulkHistoryDelete(entry.id);setHistExp(null);}}
+                          className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-[#D97A7A] text-white">一括削除</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
     );
@@ -3616,6 +3696,7 @@ export default function App() {
   const [morningSelected,setMorningSel] = useState<Set<string>>(new Set());
   const morningShownRef = useRef(false);
   const [shopNotifSettings,setShopNotifSettings] = useState<ShopNotifSetting[]>([]);
+  const [bulkHistory,setBulkHistory] = useState<BulkHistoryEntry[]>([]);
   const [calEvents,setCalEvents] = useState<CalendarEvent[]>([]);
   const [syncingCal,setSyncingCal] = useState<'google'|'iphone'|null>(null);
   const [authUser,setAuthUser] = useState<AuthUser|null>(null);
@@ -3655,6 +3736,8 @@ export default function App() {
       if(ce) setCalEvents(JSON.parse(ce) as CalendarEvent[]);
       const au=localStorage.getItem(AUTH_KEY);
       if(au) setAuthUser(JSON.parse(au) as AuthUser);
+      const bh=localStorage.getItem(BULK_HIST_KEY);
+      if(bh) setBulkHistory(JSON.parse(bh) as BulkHistoryEntry[]);
     }catch{}
     setLoaded(true);
     if(typeof Notification!=='undefined'&&Notification.permission==='default'){
@@ -3671,6 +3754,7 @@ export default function App() {
   useEffect(()=>{ if(loaded) localStorage.setItem(SHOP_NOTIF_KEY,JSON.stringify(shopNotifSettings)); },[shopNotifSettings,loaded]);
   useEffect(()=>{ if(loaded) localStorage.setItem(DAY_SETTINGS_KEY,JSON.stringify(dayOverrides)); },[dayOverrides,loaded]);
   useEffect(()=>{ if(loaded) localStorage.setItem(CAL_EVENTS_KEY,JSON.stringify(calEvents)); },[calEvents,loaded]);
+  useEffect(()=>{ if(loaded) localStorage.setItem(BULK_HIST_KEY,JSON.stringify(bulkHistory)); },[bulkHistory,loaded]);
   useEffect(()=>{ const iv=setInterval(()=>setNow(nowStr()),60000); return ()=>clearInterval(iv); },[]);
 
   const syncCalendar=async(source:'google'|'iphone',url:string):Promise<void>=>{
@@ -3907,8 +3991,26 @@ export default function App() {
   };
   const closeModal = () => setModal({open:false,task:null});
 
-  const bulkAddTasks = (newTasks:Omit<Task,'id'>[]) => {
-    setTasks(prev=>[...prev,...newTasks.map(t=>({...t,id:uid()}))]);
+  const bulkAddTasks = (newTasks:Omit<Task,'id'>[], endTime:string) => {
+    const withIds=newTasks.map(t=>({...t,id:uid()}));
+    setTasks(prev=>[...prev,...withIds]);
+    if(withIds.length>0){
+      const entry:BulkHistoryEntry={id:uid(),name:withIds[0].name||'',startTime:withIds[0].startTime||'',endTime,dates:withIds.map(t=>t.date||'').sort(),taskIds:withIds.map(t=>t.id),registeredAt:new Date().toISOString()};
+      setBulkHistory(prev=>[entry,...prev].slice(0,20));
+    }
+  };
+  const bulkHistoryDelete = (entryId:string) => {
+    const entry=bulkHistory.find(e=>e.id===entryId);
+    if(entry) setTasks(prev=>prev.filter(t=>!entry.taskIds.includes(t.id)));
+    setBulkHistory(prev=>prev.filter(e=>e.id!==entryId));
+  };
+  const bulkHistoryEdit = (entryId:string, name:string, startTime:string, endTime:string) => {
+    const entry=bulkHistory.find(e=>e.id===entryId);
+    if(!entry) return;
+    const t2m=(t:string)=>{const [h,m]=t.split(':').map(Number);return h*60+m;};
+    const duration=Math.max(0,t2m(endTime)-t2m(startTime));
+    setTasks(prev=>prev.map(t=>entry.taskIds.includes(t.id)?{...t,name,startTime,duration,icon:defaultIconKey(name)}:t));
+    setBulkHistory(prev=>prev.map(e=>e.id===entryId?{...e,name,startTime,endTime}:e));
   };
 
   const saveTasks = (data:Omit<Task,'id'>[], pendingPhotos?:string[]) => {
@@ -4256,7 +4358,7 @@ export default function App() {
 
       {/* ── Settings Screen ── */}
       {settingsOpen&&(
-        <SettingsScreen settings={settings} onSettings={setSettings} onClose={()=>setSOp(false)} globalTags={globalTags} onGlobalTags={setGlobalTags} customTabs={customTabs} onCustomTabs={setCustomTabs} shopNotifSettings={shopNotifSettings} onShopNotifSettings={setShopNotifSettings} calEventsCount={calEvents.length} onSyncCalendar={syncCalendar} syncingCal={syncingCal} authUser={authUser} isPremium={isPremium} onBulkAdd={bulkAddTasks}/>
+        <SettingsScreen settings={settings} onSettings={setSettings} onClose={()=>setSOp(false)} globalTags={globalTags} onGlobalTags={setGlobalTags} customTabs={customTabs} onCustomTabs={setCustomTabs} shopNotifSettings={shopNotifSettings} onShopNotifSettings={setShopNotifSettings} calEventsCount={calEvents.length} onSyncCalendar={syncCalendar} syncingCal={syncingCal} authUser={authUser} isPremium={isPremium} onBulkAdd={bulkAddTasks} bulkHistory={bulkHistory} onBulkHistoryDelete={bulkHistoryDelete} onBulkHistoryEdit={bulkHistoryEdit}/>
       )}
 
       {/* ── Recurrence edit confirm ── */}
