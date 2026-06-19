@@ -3905,29 +3905,6 @@ export default function App() {
           </div>
         </div>
 
-        {/* All-day strip */}
-        {(()=>{
-          const allDayTasks=tasks.filter(t=>t.allDay&&t.date===date&&!t.isLater&&(activeCategory===null||t.category===activeCategory));
-          if(allDayTasks.length===0) return null;
-          return (
-            <div className="flex items-center px-3 py-1.5 gap-2 border-t border-gray-100">
-              <span className="text-[11px] text-gray-400 font-medium shrink-0 w-10 text-right">終日</span>
-              <div className="flex gap-1.5 overflow-x-auto" style={{scrollbarWidth:'none',WebkitOverflowScrolling:'touch'}}>
-                {allDayTasks.map(t=>(
-                  <button key={t.id} onClick={()=>openEdit(t)}
-                    className={`inline-flex items-center gap-1.5 shrink-0 px-2.5 py-1 rounded-full text-xs font-medium ${t.completed?'bg-gray-100 text-gray-400 line-through':'bg-gray-200 text-gray-700'}`}>
-                    <span className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center shrink-0 ${t.completed?'border-gray-300 bg-gray-300':'border-gray-500'}`}
-                      onClick={e=>{e.stopPropagation();toggle(t.id);}}>
-                      {t.completed&&<span className="w-1.5 h-1.5 rounded-full bg-white"/>}
-                    </span>
-                    {t.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-          );
-        })()}
-
         {/* Category filter tabs */}
         <div className="bg-gray-50">
           <div className="tabs-scroll flex items-end pl-3 pt-2" style={{overflowX:'auto',WebkitOverflowScrolling:'touch',overflowY:'hidden',touchAction:'pan-x'}}>
@@ -3974,6 +3951,30 @@ export default function App() {
             <button onClick={()=>deleteCustomTab(editTabId)} className="p-1.5 text-[#D97A7A]"><AppIcons.trash size={16}/></button>
           </div>
         )}
+
+        {/* All-day strip — sticky, aligned with timeline CARD_LEFT */}
+        {(()=>{
+          const allDayTasks=tasks.filter(t=>t.allDay&&t.date===date&&!t.isLater&&(activeCategory===null||t.category===activeCategory));
+          if(allDayTasks.length===0) return null;
+          return (
+            <div className="flex items-center bg-white border-b border-gray-100 py-1.5" style={{paddingLeft:'12px'}}>
+              <span className="text-[11px] text-gray-400 font-medium shrink-0 w-10 text-right pr-1">終日</span>
+              <div className="shrink-0" style={{width:'76px'}}/>
+              <div className="flex gap-1.5 overflow-x-auto flex-1 pr-3" style={{scrollbarWidth:'none',WebkitOverflowScrolling:'touch'}}>
+                {allDayTasks.map(t=>(
+                  <button key={t.id} onClick={()=>openEdit(t)}
+                    className={`inline-flex items-center gap-1.5 shrink-0 px-2.5 py-1 rounded-full text-xs font-medium ${t.completed?'bg-gray-100 text-gray-400 line-through':'bg-gray-200 text-gray-700'}`}>
+                    <span className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center shrink-0 ${t.completed?'border-gray-300 bg-gray-300':'border-gray-500'}`}
+                      onClick={e=>{e.stopPropagation();toggle(t.id);}}>
+                      {t.completed&&<span className="w-1.5 h-1.5 rounded-full bg-white"/>}
+                    </span>
+                    {t.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
       </header>
 
       {/* ── Timeline ── */}
