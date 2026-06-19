@@ -2972,9 +2972,9 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
               })}
             </div>
           </div>
-          <div className="flex gap-3 mt-6">
+          <div className="flex justify-center gap-3 mt-6">
             <button onClick={()=>setSub('bulkHistory')}
-              className="px-5 py-4 rounded-2xl text-sm font-semibold bg-white text-gray-600 shadow-sm whitespace-nowrap">
+              className="flex-1 py-4 rounded-2xl text-sm font-semibold bg-white text-gray-600 shadow-sm">
               履歴を見る
             </button>
             <button onClick={register}
