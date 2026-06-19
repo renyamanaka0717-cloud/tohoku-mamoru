@@ -43,6 +43,7 @@ interface Task {
   subtasks?: {id:string;name:string;completed:boolean}[];
   photoCount?: number;
   userId?: string;  // future: cloud sync owner
+  allDay?: boolean;
 }
 
 interface Settings { wakeTime: string; sleepTime: string; keepIncomplete?: boolean; showFreeCard?: boolean; freeCardMinMin?: number; googleCalEnabled?: boolean; iphoneCalEnabled?: boolean; googleCalUrl?: string; iphoneCalUrl?: string; }
@@ -55,7 +56,7 @@ interface TagDef    { name: string; color: string; }
 interface MoveHistory { id: string; date: string; taskNames: string[]; }
 interface CustomTab  { id: string; name: string; }
 
-type TaskMode = 'later' | 'scheduled' | 'recurring';
+type TaskMode = 'later' | 'scheduled' | 'recurring' | 'allday';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -657,6 +658,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
 }) {
   const initMode=():TaskMode=>{
     if(!task) return prefillTime?'scheduled':'later';
+    if(task.allDay) return 'allday';
     if(task.recurrence) return 'recurring';
     if(task.isLater) return 'later';
     return 'scheduled';
@@ -707,13 +709,13 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
   const [custDurMin,setCDurMin]  = useState(duration>0&&!DUR_OPTS.find(o=>o.v===duration)?duration:90);
   const [notifications,setNotifs]  = useState<number[]>(task?.notifications??(!task?[0]:[]));
   const modalSwX=useRef(0), modalSwY=useRef(0);
-  const modeOrder:TaskMode[]=['later','scheduled','recurring'];
+  const modeOrder:TaskMode[]=['later','scheduled','recurring','allday'];
   const onModalSwipe=(e:React.TouchEvent)=>{
     const dx=e.changedTouches[0].clientX-modalSwX.current;
     const dy=Math.abs(e.changedTouches[0].clientY-modalSwY.current);
     if(Math.abs(dx)>60&&Math.abs(dx)>dy){
       const idx=modeOrder.indexOf(mode);
-      if(dx<0&&idx<2) setMode(modeOrder[idx+1]);
+      if(dx<0&&idx<modeOrder.length-1) setMode(modeOrder[idx+1]);
       else if(dx>0&&idx>0) setMode(modeOrder[idx-1]);
     }
   };
@@ -801,13 +803,14 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
   const [saveFading, setSaveFading] = useState(false);
 
   const buildData = (): Omit<Task,'id'> => ({
-    name:name.trim(), startTime:mode==='later'?null:(startTime||null), duration, memo, icon,
+    name:name.trim(), startTime:(mode==='later'||mode==='allday')?null:(startTime||null), duration:mode==='allday'?0:duration, memo, icon,
     color:color||undefined, completed:task?.completed??false,
-    date:mode==='scheduled'?taskDate:(task?.date??currentDate),
-    isLater:mode==='later', recurrence:mode==='recurring'?recur:null,
+    date:(mode==='scheduled'||mode==='allday')?taskDate:(task?.date??currentDate),
+    isLater:mode==='later', allDay:mode==='allday'||undefined,
+    recurrence:mode==='recurring'?recur:null,
     customRec:mode==='recurring'&&recur==='custom'?customRec:undefined,
-    notifications:mode!=='later'?notifications:undefined,
-    incompleteReminder:mode!=='later'?incompleteRem:false,
+    notifications:(mode!=='later'&&mode!=='allday')?notifications:undefined,
+    incompleteReminder:(mode!=='later'&&mode!=='allday')?incompleteRem:false,
     category:category??undefined, pinned, tags,
     subtasks:subtasks.length>0?subtasks:undefined,
     photoCount:photos.length>0?photos.length:undefined,
@@ -885,18 +888,19 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
     const dur=duration;
     const base:Omit<Task,'id'>={
       name:name.trim(),
-      startTime:mode==='later'?null:(startTime||null),
-      duration:dur,
+      startTime:(mode==='later'||mode==='allday')?null:(startTime||null),
+      duration:mode==='allday'?0:dur,
       memo,
       icon:icon,
       color:color||undefined,
       completed:task?.completed??false,
-      date:mode==='scheduled'?taskDate:(task?.date??currentDate),
+      date:(mode==='scheduled'||mode==='allday')?taskDate:(task?.date??currentDate),
       isLater:mode==='later',
+      allDay:mode==='allday'||undefined,
       recurrence:mode==='recurring'?recur:null,
       customRec:mode==='recurring'&&recur==='custom'?customRec:undefined,
-      notifications:mode!=='later'?notifications:undefined,
-      incompleteReminder:mode!=='later'?incompleteRem:false,
+      notifications:(mode!=='later'&&mode!=='allday')?notifications:undefined,
+      incompleteReminder:(mode!=='later'&&mode!=='allday')?incompleteRem:false,
       category:category??undefined,
       pinned,
       tags,
@@ -996,6 +1000,9 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
               {(mode==='scheduled'||mode==='recurring')&&startTime&&(
                 <p className="text-xs text-white/60 mb-0.5">{startTime}{computedEnd?`〜${computedEnd}`:''}{mode==='recurring'&&' · 繰り返し'}</p>
               )}
+              {mode==='allday'&&(
+                <p className="text-xs text-white/60 mb-0.5">終日</p>
+              )}
               <input type="text" value={name} onChange={e=>{const v=e.target.value;setName(v);if(autoIcon)setIcon(defaultIconKey(v));}}
                 placeholder="タスク名を入力..."
                 className="w-full bg-transparent text-white text-lg font-medium placeholder-white/40 outline-none border-b border-white/30 pb-1"
@@ -1005,9 +1012,9 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
 
           {/* Tabs */}
           <div className="flex bg-white/20 rounded-xl p-1 mb-3">
-            {([['later','あとで'],['scheduled','時間指定'],['recurring','繰り返し']] as [TaskMode,string][]).map(([m,l])=>(
+            {([['later','あとで'],['scheduled','時間指定'],['recurring','繰り返し'],['allday','終日']] as [TaskMode,string][]).map(([m,l])=>(
               <button key={m} onClick={()=>setMode(m)}
-                className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-colors ${mode===m?'bg-white/90 text-gray-800':'text-white/70'}`}>
+                className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-colors ${mode===m?'bg-white/90 text-gray-800':'text-white/70'}`}>
                 {l}
               </button>
             ))}
@@ -1208,8 +1215,8 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
           {/* Settings card */}
           <div className="bg-white mx-3 mt-3 rounded-2xl overflow-hidden">
 
-            {/* 日付 — scheduled only */}
-            {mode==='scheduled'&&(
+            {/* 日付 — scheduled/allday */}
+            {(mode==='scheduled'||mode==='allday')&&(
               <>
                 <button className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50" onClick={()=>setDateOpen(o=>!o)}>
                   <AppIcons.calendar size={18} className="text-gray-400 shrink-0"/>
@@ -1248,52 +1255,54 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
               </>
             )}
 
-            {/* 時間 */}
-            <button className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50" onClick={()=>setTimeOpen(o=>!o)}>
-              <AppIcons.clock size={18} className="text-gray-400 shrink-0"/>
-              <span className="flex-1 text-left text-sm font-medium text-gray-800">
-                {mode==='later'
-                  ? (duration>0?(DUR_OPTS.find(o=>o.v===duration)?.l??`${duration}分`):'所要時間なし')
-                  : startTime?(computedEnd?`${startTime}〜${computedEnd}`:startTime):'時間未設定'
-                }
-              </span>
-              {mode!=='later'&&duration>0&&<span className="text-xs text-gray-400 shrink-0">{DUR_OPTS.find(o=>o.v===duration)?.l??`${duration}分`}</span>}
-              <AppIcons.caretRight size={14} className="text-gray-300"/>
-            </button>
-            {timeOpen&&(
-              <div className="border-t border-gray-100 px-4 pt-3 pb-4">
-                {mode!=='later'&&(
-                  <>
-                    <p className="text-xs text-gray-500 mb-1.5">開始時刻</p>
-                    <input type="time" value={startTime} onChange={e=>setST(e.target.value)}
-                      className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-gray-50 outline-none focus:border-gray-400 mb-3 block"/>
-                  </>
-                )}
-                <p className="text-xs text-gray-500 mb-1.5">所要時間</p>
-                <div className="flex gap-2 overflow-x-auto pb-0.5" style={{scrollbarWidth:'none',WebkitOverflowScrolling:'touch'} as React.CSSProperties}>
-                  {DUR_OPTS.map(({v,l})=>(
-                    <button key={v} onClick={()=>{setDur(v);setCDurOpen(false);}}
-                      className={`shrink-0 px-4 py-2 rounded-full text-sm font-semibold ${duration===v&&!custDurOpen?'bg-[#D9A3B2] text-white':'bg-gray-100 text-gray-600'}`}>
-                      {l}
+            {/* 時間 — not shown for allday */}
+            {mode!=='allday'&&(<>
+              <button className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50" onClick={()=>setTimeOpen(o=>!o)}>
+                <AppIcons.clock size={18} className="text-gray-400 shrink-0"/>
+                <span className="flex-1 text-left text-sm font-medium text-gray-800">
+                  {mode==='later'
+                    ? (duration>0?(DUR_OPTS.find(o=>o.v===duration)?.l??`${duration}分`):'所要時間なし')
+                    : startTime?(computedEnd?`${startTime}〜${computedEnd}`:startTime):'時間未設定'
+                  }
+                </span>
+                {mode!=='later'&&duration>0&&<span className="text-xs text-gray-400 shrink-0">{DUR_OPTS.find(o=>o.v===duration)?.l??`${duration}分`}</span>}
+                <AppIcons.caretRight size={14} className="text-gray-300"/>
+              </button>
+              {timeOpen&&(
+                <div className="border-t border-gray-100 px-4 pt-3 pb-4">
+                  {mode!=='later'&&(
+                    <>
+                      <p className="text-xs text-gray-500 mb-1.5">開始時刻</p>
+                      <input type="time" value={startTime} onChange={e=>setST(e.target.value)}
+                        className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-gray-50 outline-none focus:border-gray-400 mb-3 block"/>
+                    </>
+                  )}
+                  <p className="text-xs text-gray-500 mb-1.5">所要時間</p>
+                  <div className="flex gap-2 overflow-x-auto pb-0.5" style={{scrollbarWidth:'none',WebkitOverflowScrolling:'touch'} as React.CSSProperties}>
+                    {DUR_OPTS.map(({v,l})=>(
+                      <button key={v} onClick={()=>{setDur(v);setCDurOpen(false);}}
+                        className={`shrink-0 px-4 py-2 rounded-full text-sm font-semibold ${duration===v&&!custDurOpen?'bg-[#D9A3B2] text-white':'bg-gray-100 text-gray-600'}`}>
+                        {l}
+                      </button>
+                    ))}
+                    <button onClick={()=>setCDurOpen(o=>!o)}
+                      className={`shrink-0 px-4 py-2 rounded-full text-sm font-semibold ${custDurOpen?'bg-[#D9A3B2] text-white':'bg-gray-100 text-gray-600'}`}>
+                      カスタム
                     </button>
-                  ))}
-                  <button onClick={()=>setCDurOpen(o=>!o)}
-                    className={`shrink-0 px-4 py-2 rounded-full text-sm font-semibold ${custDurOpen?'bg-[#D9A3B2] text-white':'bg-gray-100 text-gray-600'}`}>
-                    カスタム
-                  </button>
-                </div>
-                {custDurOpen&&(
-                  <div className="flex items-center gap-2 mt-3">
-                    <input type="number" value={custDurMin} min={1}
-                      onChange={e=>setCDurMin(Math.max(1,Number(e.target.value)))}
-                      className="w-20 border border-gray-200 rounded-xl px-3 py-2 text-sm text-center outline-none"/>
-                    <span className="text-sm text-gray-600">分</span>
-                    <button onClick={()=>{setDur(custDurMin);setCDurOpen(false);}}
-                      className="px-4 py-2 bg-[#D9A3B2] text-white rounded-xl text-sm font-semibold">設定</button>
                   </div>
-                )}
-              </div>
-            )}
+                  {custDurOpen&&(
+                    <div className="flex items-center gap-2 mt-3">
+                      <input type="number" value={custDurMin} min={1}
+                        onChange={e=>setCDurMin(Math.max(1,Number(e.target.value)))}
+                        className="w-20 border border-gray-200 rounded-xl px-3 py-2 text-sm text-center outline-none"/>
+                      <span className="text-sm text-gray-600">分</span>
+                      <button onClick={()=>{setDur(custDurMin);setCDurOpen(false);}}
+                        className="px-4 py-2 bg-[#D9A3B2] text-white rounded-xl text-sm font-semibold">設定</button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </>)}
 
             {/* アラート — scheduled/recurring only */}
             {(mode==='scheduled'||mode==='recurring')&&(
@@ -3536,7 +3545,10 @@ export default function App() {
     });
   },[loaded,now,shopNotifSettings,shopItems]);
 
-  const filteredTasks = useMemo(()=>activeCategory?tasks.filter(t=>t.category===activeCategory):tasks,[tasks,activeCategory]);
+  const filteredTasks = useMemo(()=>{
+    const base=activeCategory?tasks.filter(t=>t.category===activeCategory):tasks;
+    return base.filter(t=>!t.allDay);
+  },[tasks,activeCategory]);
   const laterTasks    = useMemo(()=>filteredTasks.filter(t=>t.isLater),[filteredTasks]);
   const pendingCount  = useMemo(()=>laterTasks.filter(t=>!t.completed).length,[laterTasks]);
   const shopPending   = useMemo(()=>shopItems.filter(i=>!i.checked).length,[shopItems]);
@@ -3799,6 +3811,30 @@ export default function App() {
             })}
           </div>
         </div>
+
+        {/* All-day strip */}
+        {(()=>{
+          const allDayTasks=tasks.filter(t=>t.allDay&&t.date===date&&!t.isLater&&(activeCategory===null||t.category===activeCategory));
+          if(allDayTasks.length===0) return null;
+          return (
+            <div className="flex items-center px-3 py-1.5 gap-2 border-t border-gray-100">
+              <span className="text-[11px] text-gray-400 font-medium shrink-0 w-10 text-right">終日</span>
+              <div className="flex gap-1.5 overflow-x-auto" style={{scrollbarWidth:'none',WebkitOverflowScrolling:'touch'}}>
+                {allDayTasks.map(t=>(
+                  <button key={t.id} onClick={()=>openEdit(t)}
+                    className={`inline-flex items-center gap-1.5 shrink-0 px-2.5 py-1 rounded-full text-xs font-medium ${t.completed?'bg-gray-100 text-gray-400 line-through':'bg-gray-200 text-gray-700'}`}>
+                    <span className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center shrink-0 ${t.completed?'border-gray-300 bg-gray-300':'border-gray-500'}`}
+                      onClick={e=>{e.stopPropagation();toggle(t.id);}}>
+                      {t.completed&&<span className="w-1.5 h-1.5 rounded-full bg-white"/>}
+                    </span>
+                    {t.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Category filter tabs */}
         <div className="bg-gray-50">
           <div className="tabs-scroll flex items-end pl-3 pt-2" style={{overflowX:'auto',WebkitOverflowScrolling:'touch',overflowY:'hidden',touchAction:'pan-x'}}>
