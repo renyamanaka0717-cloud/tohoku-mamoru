@@ -1273,31 +1273,45 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                   {mode!=='later'&&(
                     <>
                       <p className="text-xs text-gray-500 mb-2">開始時刻</p>
-                      <div className="flex items-center gap-2 mb-3">
-                        <div className="flex items-center bg-gray-100 rounded-2xl overflow-hidden">
-                          <button onClick={()=>setST(prev=>{const[h,m]=prev.split(':').map(Number);return `${String((h+23)%24).padStart(2,'0')}:${String(m).padStart(2,'0')}`;} )}
-                            className="w-10 h-11 flex items-center justify-center text-gray-500 active:bg-gray-200">
-                            <AppIcons.caretLeft size={15}/>
-                          </button>
-                          <span className="w-8 text-center text-xl font-bold text-gray-800 tabular-nums">{startTime.split(':')[0]}</span>
-                          <button onClick={()=>setST(prev=>{const[h,m]=prev.split(':').map(Number);return `${String((h+1)%24).padStart(2,'0')}:${String(m).padStart(2,'0')}`;} )}
-                            className="w-10 h-11 flex items-center justify-center text-gray-500 active:bg-gray-200">
-                            <AppIcons.caretRight size={15}/>
-                          </button>
-                        </div>
-                        <span className="text-gray-400 font-bold text-lg">:</span>
-                        <div className="flex items-center bg-gray-100 rounded-2xl overflow-hidden">
-                          <button onClick={()=>setST(prev=>{const[h,m]=prev.split(':').map(Number);return `${String(h).padStart(2,'0')}:${String((m+55)%60).padStart(2,'0')}`;} )}
-                            className="w-10 h-11 flex items-center justify-center text-gray-500 active:bg-gray-200">
-                            <AppIcons.caretLeft size={15}/>
-                          </button>
-                          <span className="w-8 text-center text-xl font-bold text-gray-800 tabular-nums">{startTime.split(':')[1]}</span>
-                          <button onClick={()=>setST(prev=>{const[h,m]=prev.split(':').map(Number);return `${String(h).padStart(2,'0')}:${String((m+5)%60).padStart(2,'0')}`;} )}
-                            className="w-10 h-11 flex items-center justify-center text-gray-500 active:bg-gray-200">
-                            <AppIcons.caretRight size={15}/>
-                          </button>
-                        </div>
-                      </div>
+                      {(()=>{
+                        const [hh,mm]=startTime.split(':').map(Number);
+                        const fh=(n:number)=>String(((n%24)+24)%24).padStart(2,'0');
+                        const fm=(n:number)=>String(((n%60)+60)%60).padStart(2,'0');
+                        const stepM=(n:number,d:number)=>{const s=Math.round(n/5)*5;return ((s+d*5)+60)%60;};
+                        return (
+                          <div className="flex items-center gap-4 mb-3">
+                            <div className="flex flex-col items-center">
+                              <button onClick={()=>setST(`${fh(hh-1)}:${fm(mm)}`)} className="w-10 h-8 flex items-center justify-center text-gray-400 active:text-gray-600">
+                                <span style={{display:'block',transform:'rotate(180deg)'}}><AppIcons.caretDown size={14}/></span>
+                              </button>
+                              <div className="w-14 h-[88px] flex flex-col items-center justify-center overflow-hidden select-none">
+                                <span className="text-base text-gray-300 tabular-nums h-7 flex items-center">{fh(hh-1)}</span>
+                                <span className="text-2xl font-bold text-gray-800 tabular-nums h-9 flex items-center">{fh(hh)}</span>
+                                <span className="text-base text-gray-300 tabular-nums h-7 flex items-center">{fh(hh+1)}</span>
+                              </div>
+                              <button onClick={()=>setST(`${fh(hh+1)}:${fm(mm)}`)} className="w-10 h-8 flex items-center justify-center text-gray-400 active:text-gray-600">
+                                <AppIcons.caretDown size={14}/>
+                              </button>
+                              <span className="text-[10px] text-gray-400 mt-0.5">時</span>
+                            </div>
+                            <span className="text-gray-300 font-bold text-2xl mb-6">:</span>
+                            <div className="flex flex-col items-center">
+                              <button onClick={()=>setST(`${fh(hh)}:${fm(stepM(mm,-1))}`)} className="w-10 h-8 flex items-center justify-center text-gray-400 active:text-gray-600">
+                                <span style={{display:'block',transform:'rotate(180deg)'}}><AppIcons.caretDown size={14}/></span>
+                              </button>
+                              <div className="w-14 h-[88px] flex flex-col items-center justify-center overflow-hidden select-none">
+                                <span className="text-base text-gray-300 tabular-nums h-7 flex items-center">{fm(stepM(mm,-1))}</span>
+                                <span className="text-2xl font-bold text-gray-800 tabular-nums h-9 flex items-center">{fm(mm)}</span>
+                                <span className="text-base text-gray-300 tabular-nums h-7 flex items-center">{fm(stepM(mm,1))}</span>
+                              </div>
+                              <button onClick={()=>setST(`${fh(hh)}:${fm(stepM(mm,1))}`)} className="w-10 h-8 flex items-center justify-center text-gray-400 active:text-gray-600">
+                                <AppIcons.caretDown size={14}/>
+                              </button>
+                              <span className="text-[10px] text-gray-400 mt-0.5">分</span>
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </>
                   )}
                   <p className="text-xs text-gray-500 mb-1.5">所要時間</p>
