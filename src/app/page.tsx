@@ -3958,17 +3958,20 @@ export default function App() {
           if(allDayTasks.length===0) return null;
           return (
             <div className="flex items-center bg-white border-b border-gray-100 py-2" style={{paddingLeft:'12px'}}>
-              <span className="text-[11px] text-gray-400 font-medium shrink-0 w-10 text-right pr-1">終日</span>
+              <div className="flex items-center gap-1 shrink-0 w-10 justify-end pr-1">
+                <AppIcons.wake size={13} className="text-gray-400"/>
+                <span className="text-xs text-gray-400 font-medium">終日</span>
+              </div>
               <div className="shrink-0" style={{width:'76px'}}/>
               <div className="flex gap-4 overflow-x-auto flex-1 pr-3" style={{scrollbarWidth:'none',WebkitOverflowScrolling:'touch'}}>
                 {allDayTasks.map(t=>(
                   <button key={t.id} onClick={()=>openEdit(t)}
                     className="inline-flex items-center gap-1.5 shrink-0">
+                    <span className={`text-sm font-medium ${t.completed?'text-gray-400 line-through':'text-gray-700'}`}>{t.name}</span>
                     <span className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${t.completed?'border-[#D9A3B2] bg-[#D9A3B2]':'border-gray-400'}`}
                       onClick={e=>{e.stopPropagation();toggle(t.id);}}>
                       {t.completed&&<span className="w-1.5 h-1.5 rounded-full bg-white"/>}
                     </span>
-                    <span className={`text-sm font-medium ${t.completed?'text-gray-400 line-through':'text-gray-700'}`}>{t.name}</span>
                   </button>
                 ))}
               </div>
