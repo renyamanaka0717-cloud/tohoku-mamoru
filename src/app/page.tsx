@@ -1392,62 +1392,38 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
             {(mode==='scheduled'||mode==='recurring')&&(
               <>
                 <div className="h-px bg-gray-100 mx-4"/>
-                <button className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50" onClick={()=>setAlertOpen(o=>!o)}>
+                <div className="w-full flex items-center gap-3 px-4 py-2.5">
                   <AppIcons.bell size={18} className="text-gray-400 shrink-0"/>
-                  <span className="flex-1 text-left text-sm font-medium text-gray-800">
-                    {notifications.length>0?`${notifications.length}件のアラート`:'アラートなし'}
-                  </span>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    {notifications.length>0&&(
-                      <span className="text-xs text-gray-400 max-w-[80px] truncate">
-                        {notifications.slice(0,2).map(v=>NOTIF_OPTS.find(o=>o.v===v)?.l??`${v}分前`).join('・')}{notifications.length>2?'…':''}
-                      </span>
-                    )}
-                    <AppIcons.caretRight size={14} className="text-gray-300"/>
+                  <span className="text-sm font-medium text-gray-800 shrink-0">アラート</span>
+                  <div className="flex gap-1.5 overflow-x-auto" style={{scrollbarWidth:'none',WebkitOverflowScrolling:'touch'} as React.CSSProperties}>
+                    {NOTIF_OPTS.map(({v,l})=>(
+                      <button key={v} onClick={()=>toggleNotif(v)}
+                        className={`shrink-0 px-3 py-1 rounded-full text-xs font-semibold ${notifications.includes(v)?'bg-[#D9A3B2] text-white':'bg-gray-100 text-gray-600'}`}>
+                        {l}
+                      </button>
+                    ))}
+                    <button onClick={()=>setCNOpen(o=>!o)}
+                      className={`shrink-0 px-3 py-1 rounded-full text-xs font-semibold ${custNotifOpen?'bg-[#D9A3B2] text-white':'bg-gray-100 text-gray-600'}`}>
+                      カスタム
+                    </button>
                   </div>
-                </button>
-                {alertOpen&&(
-                  <div className="border-t border-gray-100 px-4 pt-3 pb-4">
-                    <div className="flex gap-2 overflow-x-auto pb-0.5 mb-2" style={{scrollbarWidth:'none',WebkitOverflowScrolling:'touch'} as React.CSSProperties}>
-                      {NOTIF_OPTS.map(({v,l})=>(
-                        <button key={v} onClick={()=>toggleNotif(v)}
-                          className={`shrink-0 px-3 py-1.5 rounded-full text-sm font-semibold ${notifications.includes(v)?'bg-[#D9A3B2] text-white':'bg-gray-100 text-gray-600'}`}>
-                          {l}
-                        </button>
-                      ))}
-                      <button onClick={()=>setCNOpen(o=>!o)}
-                        className={`shrink-0 px-3 py-1.5 rounded-full text-sm font-semibold ${custNotifOpen?'bg-[#D9A3B2] text-white':'bg-gray-100 text-gray-600'}`}>
-                        カスタム
-                      </button>
-                    </div>
-                    {custNotifOpen&&(
-                      <div className="flex items-center gap-2 mb-2">
-                        <input type="number" value={custNotifMin} min={1}
-                          onChange={e=>setCNMin(Math.max(1,Number(e.target.value)))}
-                          className="w-20 border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none text-center"/>
-                        <span className="text-sm text-gray-600">分前</span>
-                        <button onClick={addCustNotif} className="px-3 py-2 bg-[#D9A3B2] text-white rounded-xl text-sm font-semibold">追加</button>
-                      </div>
-                    )}
-                    {notifications.filter(v=>!NOTIF_OPTS.find(o=>o.v===v)).length>0&&(
-                      <div className="flex flex-wrap gap-2 mb-2">
-                        {notifications.filter(v=>!NOTIF_OPTS.find(o=>o.v===v)).map(v=>(
-                          <span key={v} className="inline-flex items-center gap-1 bg-[#D9A3B2] text-white text-xs font-semibold px-2.5 py-1.5 rounded-full">
-                            {v}分前<button onClick={()=>setNotifs(prev=>prev.filter(x=>x!==v))} className="opacity-70 leading-none ml-0.5">×</button>
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                    <div className="flex items-center justify-between pt-2 border-t border-gray-50 mt-1">
-                      <div>
-                        <p className="text-sm font-semibold text-gray-800">未完了リマインダー</p>
-                        <p className="text-xs text-gray-400">タスクが未完了の場合に通知</p>
-                      </div>
-                      <button onClick={()=>setIncRem(r=>!r)}
-                        className={`w-12 h-6 rounded-full transition-colors relative shrink-0 ${incompleteRem?'bg-[#D9A3B2]':'bg-gray-200'}`}>
-                        <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${incompleteRem?'left-[22px]':'left-0.5'}`}/>
-                      </button>
-                    </div>
+                </div>
+                {custNotifOpen&&(
+                  <div className="flex items-center gap-2 px-4 pb-3">
+                    <input type="number" value={custNotifMin} min={1}
+                      onChange={e=>setCNMin(Math.max(1,Number(e.target.value)))}
+                      className="w-20 border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none text-center"/>
+                    <span className="text-sm text-gray-600">分前</span>
+                    <button onClick={addCustNotif} className="px-3 py-2 bg-[#D9A3B2] text-white rounded-xl text-sm font-semibold">追加</button>
+                  </div>
+                )}
+                {notifications.filter(v=>!NOTIF_OPTS.find(o=>o.v===v)).length>0&&(
+                  <div className="flex flex-wrap gap-2 px-4 pb-3">
+                    {notifications.filter(v=>!NOTIF_OPTS.find(o=>o.v===v)).map(v=>(
+                      <span key={v} className="inline-flex items-center gap-1 bg-[#D9A3B2] text-white text-xs font-semibold px-2.5 py-1.5 rounded-full">
+                        {v}分前<button onClick={()=>setNotifs(prev=>prev.filter(x=>x!==v))} className="opacity-70 leading-none ml-0.5">×</button>
+                      </span>
+                    ))}
                   </div>
                 )}
               </>
