@@ -1958,7 +1958,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
     .map(([startTime,tasks])=>{
       const rows=Math.ceil(tasks.length/COLS);
       const h=tasks.length===1
-        ?Math.max(measuredH[startTime]??MIN_CARD_H,(tasks[0].duration??0)*PX_PER_MIN)
+        ?(measuredH[startTime]??MIN_CARD_H)
         :tasks.reduce((sum,t)=>sum+Math.max(measuredH[t.id]??MIN_CARD_H,56),0)+(tasks.length-1)*16+DUP_LABEL_H;
       return {startTime,tasks,rows,h};
     });
