@@ -606,7 +606,7 @@ function defaultIconKey(name:string):string {
   if(/支払|振込|請求|引落|家賃|税金|保険|年金|水道|電気|ガス|公共料金/.test(name)) return 'payment';
   if(/お金|給料|貯金|節約|予算|銀行|ATM|家計|投資|株|収入|出費/.test(name)) return 'money';
   if(/読書|マンガ|漫画|雑誌|電子書籍|Kindle/.test(name)) return 'book';
-  if(/勉強|学習|テスト|試験|宿題|課題|授業|講義|英語|英会話|資格|TOEIC|検定|塾/.test(name)) return 'study';
+  if(/勉強|学習|テスト|試験|宿題|課題|授業|講義|英語|英会話|資格|TOEIC|検定|塾|学校|登校|下校|学院/.test(name)) return 'study';
   if(/電話|通話|電話する|問い合わせ|コール/.test(name)) return 'phone';
   if(/音楽|歌|ピアノ|ギター|ライブ|コンサート|バンド|作曲|楽器|演奏/.test(name)) return 'music';
   if(/電車|バス|地下鉄|新幹線|乗り換え/.test(name)) return 'train';
