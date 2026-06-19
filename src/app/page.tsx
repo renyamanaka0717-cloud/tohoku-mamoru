@@ -1346,27 +1346,23 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
               </>
             )}
 
-            {/* 開始時刻 — scheduled/recurring (popup picker) */}
-            {(mode==='scheduled'||mode==='recurring')&&(<>
-              <div className="h-px bg-gray-100 mx-4"/>
-              <button className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50" onClick={()=>setTPOpen(true)}>
-                <AppIcons.clock size={18} className="text-gray-400 shrink-0"/>
-                <span className="flex-1 text-left text-sm font-medium text-gray-800">開始時刻</span>
-                <span className="text-sm text-gray-500 mr-1">{startTime}{computedEnd?`〜${computedEnd}`:''}</span>
-                <AppIcons.caretRight size={14} className="text-gray-300"/>
-              </button>
-            </>)}
-
-            {/* 終日トグル — scheduled/recurring/allday */}
+            {/* 開始時刻 + 終日トグル — scheduled/recurring/allday */}
             {(mode==='scheduled'||mode==='recurring'||mode==='allday')&&(<>
               <div className="h-px bg-gray-100 mx-4"/>
               <div className="w-full flex items-center gap-3 px-4 py-3.5">
-                <AppIcons.calendar size={18} className="text-gray-400 shrink-0"/>
-                <span className="flex-1 text-left text-sm font-medium text-gray-800">終日</span>
+                <AppIcons.clock size={18} className="text-gray-400 shrink-0"/>
+                <span className="text-sm font-medium text-gray-800 shrink-0">開始時刻</span>
                 <button onClick={()=>setMode(m=>m==='allday'?'scheduled':'allday')}
-                  className={`w-12 h-6 rounded-full transition-colors relative shrink-0 ${mode==='allday'?'bg-[#D9A3B2]':'bg-gray-200'}`}>
-                  <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${mode==='allday'?'left-[22px]':'left-0.5'}`}/>
+                  className={`w-10 h-5 rounded-full transition-colors relative shrink-0 ${mode==='allday'?'bg-[#D9A3B2]':'bg-gray-200'}`}>
+                  <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${mode==='allday'?'left-[22px]':'left-0.5'}`}/>
                 </button>
+                <span className="text-xs text-gray-400 shrink-0">終日</span>
+                {mode!=='allday'&&(
+                  <button className="flex-1 flex items-center justify-end gap-1" onClick={()=>setTPOpen(true)}>
+                    <span className="text-sm text-gray-500">{startTime}{computedEnd?`〜${computedEnd}`:''}</span>
+                    <AppIcons.caretRight size={14} className="text-gray-300"/>
+                  </button>
+                )}
               </div>
             </>)}
 
