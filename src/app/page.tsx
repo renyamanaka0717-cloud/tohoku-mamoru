@@ -1357,6 +1357,19 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
               </button>
             </>)}
 
+            {/* 終日トグル — scheduled/recurring/allday */}
+            {(mode==='scheduled'||mode==='recurring'||mode==='allday')&&(<>
+              <div className="h-px bg-gray-100 mx-4"/>
+              <div className="w-full flex items-center gap-3 px-4 py-3.5">
+                <AppIcons.calendar size={18} className="text-gray-400 shrink-0"/>
+                <span className="flex-1 text-left text-sm font-medium text-gray-800">終日</span>
+                <button onClick={()=>setMode(m=>m==='allday'?'scheduled':'allday')}
+                  className={`w-12 h-6 rounded-full transition-colors relative shrink-0 ${mode==='allday'?'bg-[#D9A3B2]':'bg-gray-200'}`}>
+                  <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${mode==='allday'?'left-[22px]':'left-0.5'}`}/>
+                </button>
+              </div>
+            </>)}
+
             {/* 所要時間 — not shown for allday */}
             {mode!=='allday'&&(<>
               <div className="h-px bg-gray-100 mx-4"/>
