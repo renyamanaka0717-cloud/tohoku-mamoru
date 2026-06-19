@@ -587,6 +587,7 @@ function getTaskIcon(key:string){
   return m[key]??AppIcons.task;
 }
 function defaultIconKey(name:string):string {
+  if(/昼寝|仮眠/.test(name)) return 'rest';
   if(/料理|炊事|下ごしらえ|献立|仕込み|クッキング/.test(name)) return 'cooking';
   if(/食|飯|昼|夕|朝|ご飯|食事|弁当|外食|レストラン|カフェ|ランチ|ディナー|おやつ|間食|軽食|夜食|スナック|焼肉|寿司|ラーメン|うどん|そば|パン|コーヒー|飲み物|ドリンク|居酒屋|コンビニ飯/.test(name)) return 'food';
   if(/洗濯|乾燥機|乾かす|たたむ|洗い物/.test(name)) return 'washing';
