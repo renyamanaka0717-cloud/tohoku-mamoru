@@ -3957,18 +3957,18 @@ export default function App() {
           const allDayTasks=tasks.filter(t=>t.allDay&&t.date===date&&!t.isLater&&(activeCategory===null||t.category===activeCategory));
           if(allDayTasks.length===0) return null;
           return (
-            <div className="flex items-center bg-white border-b border-gray-100 py-1.5" style={{paddingLeft:'12px'}}>
+            <div className="flex items-center bg-white border-b border-gray-100 py-2" style={{paddingLeft:'12px'}}>
               <span className="text-[11px] text-gray-400 font-medium shrink-0 w-10 text-right pr-1">終日</span>
               <div className="shrink-0" style={{width:'76px'}}/>
-              <div className="flex gap-1.5 overflow-x-auto flex-1 pr-3" style={{scrollbarWidth:'none',WebkitOverflowScrolling:'touch'}}>
+              <div className="flex gap-4 overflow-x-auto flex-1 pr-3" style={{scrollbarWidth:'none',WebkitOverflowScrolling:'touch'}}>
                 {allDayTasks.map(t=>(
                   <button key={t.id} onClick={()=>openEdit(t)}
-                    className={`inline-flex items-center gap-1.5 shrink-0 px-2.5 py-1 rounded-full text-xs font-medium ${t.completed?'bg-gray-100 text-gray-400 line-through':'bg-gray-200 text-gray-700'}`}>
-                    <span className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center shrink-0 ${t.completed?'border-gray-300 bg-gray-300':'border-gray-500'}`}
+                    className="inline-flex items-center gap-1.5 shrink-0">
+                    <span className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${t.completed?'border-[#D9A3B2] bg-[#D9A3B2]':'border-gray-400'}`}
                       onClick={e=>{e.stopPropagation();toggle(t.id);}}>
                       {t.completed&&<span className="w-1.5 h-1.5 rounded-full bg-white"/>}
                     </span>
-                    {t.name}
+                    <span className={`text-sm font-medium ${t.completed?'text-gray-400 line-through':'text-gray-700'}`}>{t.name}</span>
                   </button>
                 ))}
               </div>
