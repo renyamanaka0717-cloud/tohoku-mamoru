@@ -658,34 +658,48 @@ function PickerCol({items,value,onChange}:{items:string[];value:string;onChange:
   const H=44,SHOW=5,HALF=2;
   const listRef=useRef<HTMLDivElement>(null);
   const touchY=useRef(0),baseTy=useRef(0),curTy=useRef(0);
+  const lastY=useRef(0),lastT=useRef(0),vel=useRef(0);
   const clamp=(n:number)=>Math.max(0,Math.min(items.length-1,n));
-  const moveTo=(ty:number,animate:boolean)=>{
+  const moveTo=(ty:number,dur:number)=>{
     if(!listRef.current) return;
-    listRef.current.style.transition=animate?'transform 0.22s cubic-bezier(0.25,0.46,0.45,0.94)':'none';
+    listRef.current.style.transition=dur>0?`transform ${dur}s cubic-bezier(0.33,1,0.68,1)`:'none';
     listRef.current.style.transform=`translateY(${ty}px)`;
     curTy.current=ty;
   };
   useEffect(()=>{
     const i=items.indexOf(value);
-    if(i>=0){const ty=HALF*H-i*H;moveTo(ty,true);curTy.current=ty;}
+    if(i>=0) moveTo(HALF*H-i*H,0.22);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[value]);
   useEffect(()=>{
     const i=items.indexOf(value);
     const ty=i>=0?HALF*H-i*H:HALF*H;
     curTy.current=ty;
-    if(listRef.current){listRef.current.style.transform=`translateY(${ty}px)`;}
+    if(listRef.current) listRef.current.style.transform=`translateY(${ty}px)`;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[]);
   const snap=(ty:number)=>{
-    const i=clamp(Math.round((HALF*H-ty)/H));
-    moveTo(HALF*H-i*H,true);
+    const projected=ty+vel.current*200;
+    const i=clamp(Math.round((HALF*H-projected)/H));
+    const snappedTy=HALF*H-i*H;
+    const dist=Math.abs(snappedTy-ty);
+    moveTo(snappedTy,Math.max(0.18,Math.min(0.55,dist/180)));
     if(items[i]!==value) onChange(items[i]);
   };
   return(
     <div style={{height:SHOW*H,overflow:'hidden',position:'relative',width:52,touchAction:'none',userSelect:'none'}}
-      onTouchStart={e=>{touchY.current=e.touches[0].clientY;baseTy.current=curTy.current;}}
-      onTouchMove={e=>{e.preventDefault();const dy=e.touches[0].clientY-touchY.current;moveTo(baseTy.current+dy,false);}}
+      onTouchStart={e=>{
+        const y=e.touches[0].clientY;
+        touchY.current=y;baseTy.current=curTy.current;
+        lastY.current=y;lastT.current=Date.now();vel.current=0;
+      }}
+      onTouchMove={e=>{
+        e.preventDefault();
+        const y=e.touches[0].clientY,now=Date.now(),dt=now-lastT.current;
+        if(dt>0) vel.current=(y-lastY.current)/dt;
+        lastY.current=y;lastT.current=now;
+        moveTo(baseTy.current+(y-touchY.current),0);
+      }}
       onTouchEnd={()=>snap(curTy.current)}>
       <div style={{position:'absolute',top:HALF*H,height:H,left:0,right:0,
         borderTop:'1.5px solid #E5E7EB',borderBottom:'1.5px solid #E5E7EB',
@@ -697,7 +711,7 @@ function PickerCol({items,value,onChange}:{items:string[];value:string;onChange:
           <div key={i} style={{height:H,display:'flex',alignItems:'center',justifyContent:'center'}}>
             <span style={{fontSize:v===value?22:16,fontWeight:v===value?700:400,
               color:v===value?'#1F2937':'#9CA3AF',fontVariantNumeric:'tabular-nums',
-              transition:'font-size 0.1s,color 0.1s'}}>
+              transition:'font-size 0.15s,color 0.15s'}}>
               {v}
             </span>
           </div>
