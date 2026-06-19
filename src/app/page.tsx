@@ -659,48 +659,66 @@ function PickerCol({items,value,onChange}:{items:string[];value:string;onChange:
   const listRef=useRef<HTMLDivElement>(null);
   const touchY=useRef(0),baseTy=useRef(0),curTy=useRef(0);
   const lastY=useRef(0),lastT=useRef(0),vel=useRef(0);
+  const rafId=useRef(0);
+  const minTy=HALF*H-(items.length-1)*H, maxTy=HALF*H;
   const clamp=(n:number)=>Math.max(0,Math.min(items.length-1,n));
-  const moveTo=(ty:number,dur:number)=>{
+  const raw=(ty:number)=>{
     if(!listRef.current) return;
-    listRef.current.style.transition=dur>0?`transform ${dur}s cubic-bezier(0.33,1,0.68,1)`:'none';
+    listRef.current.style.transition='none';
     listRef.current.style.transform=`translateY(${ty}px)`;
     curTy.current=ty;
   };
+  const snapTo=(ty:number)=>{
+    cancelAnimationFrame(rafId.current);
+    const i=clamp(Math.round((HALF*H-ty)/H));
+    const dest=HALF*H-i*H;
+    if(!listRef.current) return;
+    listRef.current.style.transition='transform 0.18s cubic-bezier(0.33,1,0.68,1)';
+    listRef.current.style.transform=`translateY(${dest}px)`;
+    curTy.current=dest;
+    if(items[i]!==value) onChange(items[i]);
+  };
+  const startMomentum=(v0:number)=>{
+    cancelAnimationFrame(rafId.current);
+    let v=v0,prev=performance.now();
+    const tick=(now:number)=>{
+      const dt=Math.min(now-prev,32);prev=now;
+      v*=Math.exp(-dt/220);
+      const next=curTy.current+v*dt;
+      if(Math.abs(v)<0.04||next<minTy-H||next>maxTy+H){snapTo(curTy.current);return;}
+      raw(next);
+      rafId.current=requestAnimationFrame(tick);
+    };
+    rafId.current=requestAnimationFrame(tick);
+  };
   useEffect(()=>{
     const i=items.indexOf(value);
-    if(i>=0) moveTo(HALF*H-i*H,0.22);
+    if(i>=0){cancelAnimationFrame(rafId.current);const ty=HALF*H-i*H;
+      if(listRef.current){listRef.current.style.transition='transform 0.22s cubic-bezier(0.33,1,0.68,1)';listRef.current.style.transform=`translateY(${ty}px)`;curTy.current=ty;}}
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[value]);
   useEffect(()=>{
-    const i=items.indexOf(value);
-    const ty=i>=0?HALF*H-i*H:HALF*H;
-    curTy.current=ty;
-    if(listRef.current) listRef.current.style.transform=`translateY(${ty}px)`;
+    const i=items.indexOf(value);const ty=i>=0?HALF*H-i*H:HALF*H;
+    curTy.current=ty;if(listRef.current) listRef.current.style.transform=`translateY(${ty}px)`;
+    return ()=>cancelAnimationFrame(rafId.current);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[]);
-  const snap=(ty:number)=>{
-    const projected=ty+vel.current*200;
-    const i=clamp(Math.round((HALF*H-projected)/H));
-    const snappedTy=HALF*H-i*H;
-    const dist=Math.abs(snappedTy-ty);
-    moveTo(snappedTy,Math.max(0.18,Math.min(0.55,dist/180)));
-    if(items[i]!==value) onChange(items[i]);
-  };
   return(
     <div style={{height:SHOW*H,overflow:'hidden',position:'relative',width:52,touchAction:'none',userSelect:'none'}}
       onTouchStart={e=>{
+        cancelAnimationFrame(rafId.current);
         const y=e.touches[0].clientY;
         touchY.current=y;baseTy.current=curTy.current;
-        lastY.current=y;lastT.current=Date.now();vel.current=0;
+        lastY.current=y;lastT.current=performance.now();vel.current=0;
       }}
       onTouchMove={e=>{
         e.preventDefault();
-        const y=e.touches[0].clientY,now=Date.now(),dt=now-lastT.current;
+        const y=e.touches[0].clientY,now=performance.now(),dt=now-lastT.current;
         if(dt>0) vel.current=(y-lastY.current)/dt;
         lastY.current=y;lastT.current=now;
-        moveTo(baseTy.current+(y-touchY.current),0);
+        raw(baseTy.current+(y-touchY.current));
       }}
-      onTouchEnd={()=>snap(curTy.current)}>
+      onTouchEnd={()=>{Math.abs(vel.current)>0.2?startMomentum(vel.current):snapTo(curTy.current);}}>
       <div style={{position:'absolute',top:HALF*H,height:H,left:0,right:0,
         borderTop:'1.5px solid #E5E7EB',borderBottom:'1.5px solid #E5E7EB',
         background:'rgba(0,0,0,0.02)',borderRadius:8,pointerEvents:'none',zIndex:1}}/>
@@ -1642,7 +1660,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
             <div className="flex items-center justify-between px-5 pt-5 pb-3">
               <span className="text-base font-bold text-gray-800">開始時刻</span>
               <button onClick={()=>setTPOpen(false)}
-                className="px-4 py-1.5 bg-gray-900 text-white text-sm font-bold rounded-full">完了</button>
+                className="px-4 py-1.5 bg-[#D9A3B2] text-white text-sm font-bold rounded-full">完了</button>
             </div>
             {(()=>{
               const [hStr,mStr]=startTime.split(':');
