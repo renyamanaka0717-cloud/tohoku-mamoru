@@ -2851,6 +2851,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   const [bulkDone,setBulkDone] = useState(false);
   const [bulkIconOverride,setBulkIconOverride] = useState<string|null>(null);
   const [bulkIconSheet,setBulkIconSheet] = useState(false);
+  const [bulkColor,setBulkColor] = useState('');
   const [histExp,setHistExp]   = useState<string|null>(null);
   const [histEditName,setHEN]  = useState('');
   const [histEditStart,setHES] = useState('');
@@ -2913,8 +2914,9 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
         name:bulkName.trim(),startTime:bulkStart,duration:bDur,
         date,completed:false,isLater:false,memo:'',
         icon:bulkIconOverride ?? defaultIconKey(bulkName.trim()),
+        color:bulkColor,
       } as Omit<Task,'id'>)), bulkEnd);
-      setBulkName('');setBulkDates(new Set());setBulkDone(true);setBulkIconOverride(null);
+      setBulkName('');setBulkDates(new Set());setBulkDone(true);setBulkIconOverride(null);setBulkColor('');
       setTimeout(()=>setBulkDone(false),2000);
     };
     return (
@@ -2924,21 +2926,14 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">タスク情報</p>
           <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
             <div className="flex items-center gap-3 px-4 py-3.5 border-b border-gray-100">
-              <AppIcons.task size={18} className="text-gray-400 shrink-0"/>
-              <span className="text-sm font-medium text-gray-500 shrink-0 w-16">タスク名</span>
-              <input value={bulkName} onChange={e=>setBulkName(e.target.value)}
-                placeholder="例：バイト、授業"
-                className="flex-1 text-sm text-gray-800 bg-transparent outline-none placeholder-gray-300"/>
-            </div>
-            <div className="flex items-center gap-3 px-4 py-3.5 border-b border-gray-100">
-              {(()=>{const Ic=getTaskIcon(bulkIcon);return <Ic size={18} className="text-gray-400 shrink-0"/>;})()}
-              <span className="text-sm font-medium text-gray-500 shrink-0 w-16">アイコン</span>
-              <button className="flex-1 flex items-center justify-between" onClick={()=>setBulkIconSheet(true)}>
-                <div className="flex items-center gap-2">
-                  {(()=>{const Ic=getTaskIcon(bulkIcon);const opt=ICON_OPTIONS.find(o=>o.key===bulkIcon);return (<><Ic size={20} className="text-gray-700"/><span className="text-sm text-gray-600">{opt?.label??'タスク'}</span></>);})()}
-                </div>
-                <AppIcons.caretRight size={14} className="text-gray-300"/>
+              <button onClick={()=>setBulkIconSheet(true)}
+                className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 active:opacity-80"
+                style={{background:bulkColor||'#D9A3B2'}}>
+                {(()=>{const Ic=getTaskIcon(bulkIcon);return <Ic size={22} className="text-white"/>;})()}
               </button>
+              <input value={bulkName} onChange={e=>setBulkName(e.target.value)}
+                placeholder="タスク名を入力"
+                className="flex-1 text-base font-medium text-gray-800 bg-transparent outline-none placeholder-gray-300"/>
             </div>
             <div className="flex items-center gap-3 px-4 py-3.5 border-b border-gray-100">
               <AppIcons.clock size={18} className="text-gray-400 shrink-0"/>
@@ -3002,10 +2997,18 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             <div className="bg-white rounded-t-3xl max-h-[78vh] flex flex-col w-full max-w-md mx-auto" onClick={e=>e.stopPropagation()}>
               <div className="flex justify-center pt-3 shrink-0"><div className="w-10 h-1 bg-gray-200 rounded-full"/></div>
               <div className="flex items-center justify-between px-5 pt-3 pb-2 shrink-0">
-                <span className="text-base font-bold text-gray-900">アイコン</span>
+                <span className="text-base font-bold text-gray-900">アイコンとカラー</span>
                 <button onClick={()=>setBulkIconSheet(false)} className="px-4 py-1.5 bg-gray-700 text-white text-sm font-semibold rounded-full">完了</button>
               </div>
               <div className="overflow-y-auto px-5 pb-10 flex-1">
+                <p className="text-xs font-bold text-gray-400 mb-2 mt-1">カラー</p>
+                <div className="flex gap-2 mb-5" style={{overflowX:'auto',WebkitOverflowScrolling:'touch',paddingTop:'4px',paddingBottom:'4px'}}>
+                  {TASK_COLORS.map((c,i)=>(
+                    <button key={i} onClick={()=>setBulkColor(c)}
+                      className={`shrink-0 w-8 h-8 rounded-full border-2 transition-all ${bulkColor===c?'border-gray-800 scale-110':'border-gray-100'}`}
+                      style={{background:c||'#E5E7EB'}}/>
+                  ))}
+                </div>
                 {ICON_CATEGORIES.map(cat=>(
                   <div key={cat.label} className="mb-5">
                     <p className="text-xs font-bold text-gray-400 mb-2">{cat.label}</p>
@@ -3013,10 +3016,11 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                       {cat.icons.map(opt=>{
                         const Ic=getTaskIcon(opt.key);
                         const sel=bulkIcon===opt.key;
+                        const bg=bulkColor||'#D9A3B2';
                         return (
                           <button key={opt.key} onClick={()=>setBulkIconOverride(opt.key)}
                             className={`flex flex-col items-center gap-1.5 py-3 rounded-2xl ${sel?'':'bg-gray-50'}`}
-                            style={sel?{background:'#D9A3B2'}:undefined}>
+                            style={sel?{background:bg}:undefined}>
                             <Ic size={22} className={sel?'text-white':'text-gray-700'}/>
                             <span className={`text-[10px] leading-none ${sel?'text-gray-100':'text-gray-500'}`}>{opt.label}</span>
                           </button>
