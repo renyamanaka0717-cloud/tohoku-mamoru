@@ -56,6 +56,7 @@ interface TagDef    { name: string; color: string; }
 interface MoveHistory { id: string; date: string; taskNames: string[]; }
 interface CustomTab  { id: string; name: string; }
 interface BulkHistoryEntry { id:string; name:string; startTime:string; endTime:string; dates:string[]; taskIds:string[]; registeredAt:string; icon?:string; }
+interface LifePattern { id:string; name:string; wakeTime:string; sleepTime:string; color:string; }
 
 type TaskMode = 'later' | 'scheduled' | 'recurring' | 'allday';
 
@@ -69,8 +70,10 @@ const TAGS_KEY     = 'tl-tags-v1';
 const HISTORY_KEY      = 'tl-history-v1';
 const CUSTOM_TABS_KEY  = 'tl-custom-tabs-v1';
 const PHOTOS_KEY       = 'tl-photos-v1';
-const BULK_HIST_KEY    = 'tl-bulk-hist-v1';
-const DAY_SETTINGS_KEY = 'tl-day-settings-v1';
+const BULK_HIST_KEY        = 'tl-bulk-hist-v1';
+const DAY_SETTINGS_KEY     = 'tl-day-settings-v1';
+const LIFE_PATTERNS_KEY    = 'tl-life-patterns-v1';
+const PATTERN_OVERRIDES_KEY= 'tl-pattern-overrides-v1';
 const MORNING_NOTIF_KEY = 'tl-morning-notif-v1';
 const MORNING_SNOOZE_KEY = 'tl-morning-snooze-v1'; // stores snooze timestamp (ms)
 const SHOP_NOTIF_KEY    = 'tl-shop-notif-v1';
@@ -2820,7 +2823,7 @@ function SettingsRow({icon,iconBg,title,desc,onClick,isLast=false}:{
   );
 }
 
-function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,customTabs,onCustomTabs,shopNotifSettings,onShopNotifSettings,calEventsCount,onSyncCalendar,syncingCal,authUser,isPremium,onBulkAdd,bulkHistory,onBulkHistoryDelete,onBulkHistoryEdit}:{
+function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,customTabs,onCustomTabs,shopNotifSettings,onShopNotifSettings,calEventsCount,onSyncCalendar,syncingCal,authUser,isPremium,onBulkAdd,bulkHistory,onBulkHistoryDelete,onBulkHistoryEdit,lifePatterns,onLifePatterns,patternOverrides,onApplyPattern}:{
   settings:Settings; onSettings:(s:Settings)=>void; onClose:()=>void;
   globalTags:TagDef[]; onGlobalTags:(tags:TagDef[])=>void;
   customTabs:CustomTab[]; onCustomTabs:(tabs:CustomTab[])=>void;
@@ -2831,6 +2834,8 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   bulkHistory:BulkHistoryEntry[];
   onBulkHistoryDelete:(entryId:string)=>void;
   onBulkHistoryEdit:(entryId:string,name:string,startTime:string,endTime:string,icon:string)=>void;
+  lifePatterns:LifePattern[]; onLifePatterns:(p:LifePattern[])=>void;
+  patternOverrides:Record<string,string>; onApplyPattern:(dates:string[],patternId:string|null)=>void;
 }) {
   const [sub,setSub]           = useState<string|null>(null);
   const [tagInput,setTagInput] = useState('');
@@ -2858,6 +2863,17 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   const [histEditEnd,setHEE]       = useState('');
   const [histEditIcon,setHEIcon]   = useState('task');
   const [histIconSheet,setHIconSh] = useState(false);
+  const _lpToday = todayStr();
+  const _lpTodayD= new Date(_lpToday+'T12:00:00');
+  const [lpVm,setLpVm]             = useState({year:_lpTodayD.getFullYear(),month:_lpTodayD.getMonth()});
+  const [lpSelectedDates,setLpSel] = useState<Set<string>>(new Set());
+  const [lpActivePat,setLpActivePat] = useState<string|null>(null);
+  const [lpAddMode,setLpAddMode]   = useState(false);
+  const [lpNewName,setLpNewName]   = useState('');
+  const [lpNewWake,setLpNewWake]   = useState('07:00');
+  const [lpNewSleep,setLpNewSleep] = useState('23:00');
+  const [lpNewColor,setLpNewColor] = useState('#D9A3B2');
+  const [lpEditId,setLpEditId]     = useState<string|null>(null);
 
   const back = () => setSub(null);
 
@@ -3378,16 +3394,190 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
               onChange={e=>onSettings({...settings,wakeTime:e.target.value})}
               className="border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50"/>
           </div>
-          <div className="px-4 py-4 flex items-center justify-between">
+          <div className="px-4 py-4 border-b border-gray-100 flex items-center justify-between">
             <p className="text-[15px] font-medium text-gray-900">就寝時間</p>
             <input type="time" value={settings.sleepTime}
               onChange={e=>onSettings({...settings,sleepTime:e.target.value})}
               className="border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50"/>
           </div>
+          <button onClick={()=>setSub('lifePatterns')}
+            className="w-full px-4 py-4 flex items-center justify-between active:bg-gray-50">
+            <p className="text-[15px] font-medium text-gray-900">生活パターン</p>
+            <AppIcons.caretRight size={14} className="text-gray-300"/>
+          </button>
         </div>
       </div>
     </div>
   );
+
+  if(sub==='lifePatterns') {
+    const PATTERN_COLORS=['#D9A3B2','#C4888E','#6A8FAF','#7A9E8A','#C4A44A','#8F82B8','#C47A5E','#A67899'];
+    const daysInMonth=(y:number,m:number)=>new Date(y,m+1,0).getDate();
+    const firstDow=(y:number,m:number)=>new Date(y,m,1).getDay();
+    const totalDays=daysInMonth(lpVm.year,lpVm.month);
+    const startDow=firstDow(lpVm.year,lpVm.month);
+    const calNulls:Array<number|null>=Array(startDow).fill(null);
+    const calDays:Array<number|null>=Array.from({length:totalDays},(_,i)=>i+1);
+    const calCells:Array<number|null>=[...calNulls,...calDays];
+    while(calCells.length%7!==0) calCells.push(null);
+    const cellDate=(day:number)=>`${lpVm.year}-${String(lpVm.month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    const activePat=lifePatterns.find(p=>p.id===lpActivePat)??null;
+    return (
+      <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
+        {subHeader('生活パターン')}
+        <div className="flex-1 overflow-y-auto px-4 pb-10">
+          <p className="text-xs text-gray-400 px-1 mt-5 mb-4 leading-relaxed">生活に合わせて起床時間・就寝時間を日ごとに変更できます</p>
+
+          {/* Pattern list */}
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2">パターン</p>
+          <div className="bg-white rounded-2xl overflow-hidden shadow-sm mb-1">
+            {lifePatterns.length===0&&!lpAddMode&&(
+              <p className="text-sm text-gray-400 text-center py-6">パターンがまだありません</p>
+            )}
+            {lifePatterns.map((pat,i)=>(
+              <div key={pat.id} className={`px-4 py-3 flex items-center gap-3${i<lifePatterns.length-1||lpAddMode?' border-b border-gray-100':''}`}>
+                {lpEditId===pat.id ? (
+                  <div className="flex-1 flex flex-col gap-2">
+                    <input autoFocus value={pat.name}
+                      onChange={e=>onLifePatterns(lifePatterns.map(p=>p.id===pat.id?{...p,name:e.target.value}:p))}
+                      className="text-[15px] border-b border-gray-200 outline-none bg-transparent text-gray-900 py-0.5"/>
+                    <div className="flex gap-3 items-center">
+                      <input type="time" value={pat.wakeTime}
+                        onChange={e=>onLifePatterns(lifePatterns.map(p=>p.id===pat.id?{...p,wakeTime:e.target.value}:p))}
+                        className="border border-gray-200 rounded-xl px-2 py-1 text-xs bg-gray-50"/>
+                      <span className="text-xs text-gray-400">〜</span>
+                      <input type="time" value={pat.sleepTime}
+                        onChange={e=>onLifePatterns(lifePatterns.map(p=>p.id===pat.id?{...p,sleepTime:e.target.value}:p))}
+                        className="border border-gray-200 rounded-xl px-2 py-1 text-xs bg-gray-50"/>
+                    </div>
+                    <div className="flex gap-1.5 flex-wrap">
+                      {PATTERN_COLORS.map(c=>(
+                        <button key={c} onClick={()=>onLifePatterns(lifePatterns.map(p=>p.id===pat.id?{...p,color:c}:p))}
+                          style={{background:c}}
+                          className={`w-6 h-6 rounded-full border-2 ${pat.color===c?'border-gray-700':'border-transparent'}`}/>
+                      ))}
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={()=>setLpEditId(null)}
+                        className="flex-1 py-2 rounded-xl text-xs font-semibold bg-[#D9A3B2] text-white">確定</button>
+                      <button onClick={()=>{onLifePatterns(lifePatterns.filter(p=>p.id!==pat.id));setLpEditId(null);if(lpActivePat===pat.id)setLpActivePat(null);}}
+                        className="flex-1 py-2 rounded-xl text-xs font-semibold bg-gray-100 text-[#D97A7A]">削除</button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <button onClick={()=>setLpActivePat(lpActivePat===pat.id?null:pat.id)}
+                      className="flex items-center gap-3 flex-1 min-w-0">
+                      <div className="w-4 h-4 rounded-full shrink-0" style={{background:pat.color}}/>
+                      <div className="flex-1 min-w-0 text-left">
+                        <p className={`text-[15px] font-medium ${lpActivePat===pat.id?'text-[#D9A3B2]':'text-gray-900'}`}>{pat.name}</p>
+                        <p className="text-xs text-gray-400">{pat.wakeTime} 起床 / {pat.sleepTime} 就寝</p>
+                      </div>
+                    </button>
+                    <button onClick={()=>setLpEditId(pat.id)} className="text-xs text-blue-500 font-medium px-2 py-1 shrink-0">編集</button>
+                  </>
+                )}
+              </div>
+            ))}
+            {lpAddMode&&(
+              <div className="px-4 py-3 flex flex-col gap-2">
+                <input autoFocus value={lpNewName} onChange={e=>setLpNewName(e.target.value)}
+                  placeholder="パターン名（例：平日、休日）"
+                  className="text-[15px] border-b border-gray-200 outline-none bg-transparent text-gray-900 placeholder-gray-300 py-0.5"/>
+                <div className="flex gap-3 items-center">
+                  <input type="time" value={lpNewWake} onChange={e=>setLpNewWake(e.target.value)}
+                    className="border border-gray-200 rounded-xl px-2 py-1 text-xs bg-gray-50"/>
+                  <span className="text-xs text-gray-400">〜</span>
+                  <input type="time" value={lpNewSleep} onChange={e=>setLpNewSleep(e.target.value)}
+                    className="border border-gray-200 rounded-xl px-2 py-1 text-xs bg-gray-50"/>
+                </div>
+                <div className="flex gap-1.5 flex-wrap">
+                  {PATTERN_COLORS.map(c=>(
+                    <button key={c} onClick={()=>setLpNewColor(c)}
+                      style={{background:c}}
+                      className={`w-6 h-6 rounded-full border-2 ${lpNewColor===c?'border-gray-700':'border-transparent'}`}/>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={()=>{
+                    if(!lpNewName.trim()) return;
+                    const np:LifePattern={id:uid(),name:lpNewName.trim(),wakeTime:lpNewWake,sleepTime:lpNewSleep,color:lpNewColor};
+                    onLifePatterns([...lifePatterns,np]);
+                    setLpNewName('');setLpAddMode(false);
+                  }} className="flex-1 py-2 rounded-xl text-xs font-semibold bg-[#D9A3B2] text-white">追加</button>
+                  <button onClick={()=>setLpAddMode(false)}
+                    className="flex-1 py-2 rounded-xl text-xs font-semibold bg-gray-100 text-gray-500">キャンセル</button>
+                </div>
+              </div>
+            )}
+          </div>
+          {!lpAddMode&&(
+            <button onClick={()=>{setLpAddMode(true);setLpNewName('');setLpNewWake('07:00');setLpNewSleep('23:00');setLpNewColor('#D9A3B2');}}
+              className="w-full py-3 rounded-2xl text-sm font-semibold text-[#D9A3B2] bg-white shadow-sm mb-5">＋ パターンを追加</button>
+          )}
+
+          {/* Calendar */}
+          {lifePatterns.length>0&&(
+            <>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2">日付に適用</p>
+              {activePat&&(
+                <p className="text-xs text-gray-500 px-1 mb-3">
+                  <span className="inline-block w-3 h-3 rounded-full mr-1 align-middle" style={{background:activePat.color}}/>
+                  「{activePat.name}」を選択してカレンダーの日付をタップ
+                </p>
+              )}
+              {!activePat&&(
+                <p className="text-xs text-gray-400 px-1 mb-3">上のパターンを選択してから日付をタップしてください</p>
+              )}
+              <div className="bg-white rounded-2xl overflow-hidden shadow-sm mb-3">
+                {/* month nav */}
+                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+                  <button onClick={()=>setLpVm(prev=>shiftMonth(prev.year,prev.month,-1))}
+                    className="w-8 h-8 flex items-center justify-center rounded-full active:bg-gray-100">
+                    <AppIcons.caretLeft size={16} className="text-gray-600"/>
+                  </button>
+                  <p className="text-[15px] font-semibold text-gray-900">{lpVm.year}年{lpVm.month+1}月</p>
+                  <button onClick={()=>setLpVm(prev=>shiftMonth(prev.year,prev.month,1))}
+                    className="w-8 h-8 flex items-center justify-center rounded-full active:bg-gray-100">
+                    <AppIcons.caretRight size={16} className="text-gray-600"/>
+                  </button>
+                </div>
+                {/* day headers */}
+                <div className="grid grid-cols-7 px-2 pt-2">
+                  {['日','月','火','水','木','金','土'].map(d=>(
+                    <div key={d} className="text-center text-xs text-gray-400 pb-1">{d}</div>
+                  ))}
+                </div>
+                {/* cells */}
+                <div className="grid grid-cols-7 px-2 pb-3">
+                  {calCells.map((day,idx)=>{
+                    if(!day) return <div key={idx}/>;
+                    const ds=cellDate(day);
+                    const patId=patternOverrides[ds]??null;
+                    const cellPat=patId?lifePatterns.find(p=>p.id===patId)??null:null;
+                    const isToday=ds===_lpToday;
+                    return (
+                      <button key={idx}
+                        onClick={()=>{ if(!lpActivePat) return; onApplyPattern([ds],lpActivePat===patId?null:lpActivePat); }}
+                        className="flex flex-col items-center py-1 rounded-xl active:bg-gray-50">
+                        <span className={`text-sm w-8 h-8 flex items-center justify-center rounded-full font-medium
+                          ${isToday&&!cellPat?'bg-gray-100 text-gray-900':''}
+                          ${cellPat?'text-white':'text-gray-700'}
+                        `} style={cellPat?{background:cellPat.color}:undefined}>{day}</span>
+                        {cellPat&&(
+                          <span className="text-[9px] leading-tight text-center mt-0.5 max-w-[40px] truncate" style={{color:cellPat.color}}>{cellPat.name}</span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   if(sub==='account') return (
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
@@ -3783,6 +3973,8 @@ export default function App() {
   const morningShownRef = useRef(false);
   const [shopNotifSettings,setShopNotifSettings] = useState<ShopNotifSetting[]>([]);
   const [bulkHistory,setBulkHistory] = useState<BulkHistoryEntry[]>([]);
+  const [lifePatterns,setLifePatterns] = useState<LifePattern[]>([]);
+  const [patternOverrides,setPatternOverrides] = useState<Record<string,string>>({});
   const [calEvents,setCalEvents] = useState<CalendarEvent[]>([]);
   const [syncingCal,setSyncingCal] = useState<'google'|'iphone'|null>(null);
   const [authUser,setAuthUser] = useState<AuthUser|null>(null);
@@ -3824,6 +4016,10 @@ export default function App() {
       if(au) setAuthUser(JSON.parse(au) as AuthUser);
       const bh=localStorage.getItem(BULK_HIST_KEY);
       if(bh) setBulkHistory(JSON.parse(bh) as BulkHistoryEntry[]);
+      const lp=localStorage.getItem(LIFE_PATTERNS_KEY);
+      if(lp) setLifePatterns(JSON.parse(lp) as LifePattern[]);
+      const po=localStorage.getItem(PATTERN_OVERRIDES_KEY);
+      if(po) setPatternOverrides(JSON.parse(po) as Record<string,string>);
     }catch{}
     setLoaded(true);
     if(typeof Notification!=='undefined'&&Notification.permission==='default'){
@@ -3841,6 +4037,8 @@ export default function App() {
   useEffect(()=>{ if(loaded) localStorage.setItem(DAY_SETTINGS_KEY,JSON.stringify(dayOverrides)); },[dayOverrides,loaded]);
   useEffect(()=>{ if(loaded) localStorage.setItem(CAL_EVENTS_KEY,JSON.stringify(calEvents)); },[calEvents,loaded]);
   useEffect(()=>{ if(loaded) localStorage.setItem(BULK_HIST_KEY,JSON.stringify(bulkHistory)); },[bulkHistory,loaded]);
+  useEffect(()=>{ if(loaded) localStorage.setItem(LIFE_PATTERNS_KEY,JSON.stringify(lifePatterns)); },[lifePatterns,loaded]);
+  useEffect(()=>{ if(loaded) localStorage.setItem(PATTERN_OVERRIDES_KEY,JSON.stringify(patternOverrides)); },[patternOverrides,loaded]);
   useEffect(()=>{ const iv=setInterval(()=>setNow(nowStr()),60000); return ()=>clearInterval(iv); },[]);
 
   const syncCalendar=async(source:'google'|'iphone',url:string):Promise<void>=>{
@@ -4097,6 +4295,27 @@ export default function App() {
     const duration=Math.max(0,t2m(endTime)-t2m(startTime));
     setTasks(prev=>prev.map(t=>entry.taskIds.includes(t.id)?{...t,name,startTime,duration,icon}:t));
     setBulkHistory(prev=>prev.map(e=>e.id===entryId?{...e,name,startTime,endTime,icon}:e));
+  };
+
+  const applyPattern = (dates:string[], patternId:string|null) => {
+    setPatternOverrides(prev=>{
+      const next={...prev};
+      dates.forEach(d=>{ if(patternId===null){delete next[d];}else{next[d]=patternId;} });
+      return next;
+    });
+    setDayOverrides(prev=>{
+      const next={...prev};
+      dates.forEach(d=>{
+        if(patternId===null){
+          const {wakeTime:_w,sleepTime:_s,...rest}=next[d]??{};
+          if(Object.keys(rest).length===0){delete next[d];}else{next[d]=rest;}
+        } else {
+          const pat=lifePatterns.find(p=>p.id===patternId);
+          if(pat) next[d]={...(next[d]??{}),wakeTime:pat.wakeTime,sleepTime:pat.sleepTime};
+        }
+      });
+      return next;
+    });
   };
 
   const saveTasks = (data:Omit<Task,'id'>[], pendingPhotos?:string[]) => {
@@ -4444,7 +4663,7 @@ export default function App() {
 
       {/* ── Settings Screen ── */}
       {settingsOpen&&(
-        <SettingsScreen settings={settings} onSettings={setSettings} onClose={()=>setSOp(false)} globalTags={globalTags} onGlobalTags={setGlobalTags} customTabs={customTabs} onCustomTabs={setCustomTabs} shopNotifSettings={shopNotifSettings} onShopNotifSettings={setShopNotifSettings} calEventsCount={calEvents.length} onSyncCalendar={syncCalendar} syncingCal={syncingCal} authUser={authUser} isPremium={isPremium} onBulkAdd={bulkAddTasks} bulkHistory={bulkHistory} onBulkHistoryDelete={bulkHistoryDelete} onBulkHistoryEdit={bulkHistoryEdit}/>
+        <SettingsScreen settings={settings} onSettings={setSettings} onClose={()=>setSOp(false)} globalTags={globalTags} onGlobalTags={setGlobalTags} customTabs={customTabs} onCustomTabs={setCustomTabs} shopNotifSettings={shopNotifSettings} onShopNotifSettings={setShopNotifSettings} calEventsCount={calEvents.length} onSyncCalendar={syncCalendar} syncingCal={syncingCal} authUser={authUser} isPremium={isPremium} onBulkAdd={bulkAddTasks} bulkHistory={bulkHistory} onBulkHistoryDelete={bulkHistoryDelete} onBulkHistoryEdit={bulkHistoryEdit} lifePatterns={lifePatterns} onLifePatterns={setLifePatterns} patternOverrides={patternOverrides} onApplyPattern={applyPattern}/>
       )}
 
       {/* ── Recurrence edit confirm ── */}
