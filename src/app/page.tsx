@@ -649,6 +649,64 @@ function parseICS(text:string, source:'google'|'iphone'): CalendarEvent[] {
   return events;
 }
 
+// ── PickerCol (drum-roll time picker column) ──────────────────────────────────
+
+const HOURS = Array.from({length:24},(_,i)=>String(i).padStart(2,'0'));
+const MINS  = ['00','05','10','15','20','25','30','35','40','45','50','55'];
+
+function PickerCol({items,value,onChange}:{items:string[];value:string;onChange:(v:string)=>void}){
+  const H=44,SHOW=5,HALF=2;
+  const listRef=useRef<HTMLDivElement>(null);
+  const touchY=useRef(0),baseTy=useRef(0),curTy=useRef(0);
+  const clamp=(n:number)=>Math.max(0,Math.min(items.length-1,n));
+  const moveTo=(ty:number,animate:boolean)=>{
+    if(!listRef.current) return;
+    listRef.current.style.transition=animate?'transform 0.22s cubic-bezier(0.25,0.46,0.45,0.94)':'none';
+    listRef.current.style.transform=`translateY(${ty}px)`;
+    curTy.current=ty;
+  };
+  useEffect(()=>{
+    const i=items.indexOf(value);
+    if(i>=0){const ty=HALF*H-i*H;moveTo(ty,true);curTy.current=ty;}
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[value]);
+  useEffect(()=>{
+    const i=items.indexOf(value);
+    const ty=i>=0?HALF*H-i*H:HALF*H;
+    curTy.current=ty;
+    if(listRef.current){listRef.current.style.transform=`translateY(${ty}px)`;}
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[]);
+  const snap=(ty:number)=>{
+    const i=clamp(Math.round((HALF*H-ty)/H));
+    moveTo(HALF*H-i*H,true);
+    if(items[i]!==value) onChange(items[i]);
+  };
+  return(
+    <div style={{height:SHOW*H,overflow:'hidden',position:'relative',width:52,touchAction:'none',userSelect:'none'}}
+      onTouchStart={e=>{touchY.current=e.touches[0].clientY;baseTy.current=curTy.current;}}
+      onTouchMove={e=>{e.preventDefault();const dy=e.touches[0].clientY-touchY.current;moveTo(baseTy.current+dy,false);}}
+      onTouchEnd={()=>snap(curTy.current)}>
+      <div style={{position:'absolute',top:HALF*H,height:H,left:0,right:0,
+        borderTop:'1.5px solid #E5E7EB',borderBottom:'1.5px solid #E5E7EB',
+        background:'rgba(0,0,0,0.02)',borderRadius:8,pointerEvents:'none',zIndex:1}}/>
+      <div style={{position:'absolute',inset:0,pointerEvents:'none',zIndex:2,
+        background:`linear-gradient(to bottom,#fff 0%,transparent ${HALF*H}px,transparent ${(SHOW-HALF)*H}px,#fff 100%)`}}/>
+      <div ref={listRef} style={{willChange:'transform'}}>
+        {items.map((v,i)=>(
+          <div key={i} style={{height:H,display:'flex',alignItems:'center',justifyContent:'center'}}>
+            <span style={{fontSize:v===value?22:16,fontWeight:v===value?700:400,
+              color:v===value?'#1F2937':'#9CA3AF',fontVariantNumeric:'tabular-nums',
+              transition:'font-size 0.1s,color 0.1s'}}>
+              {v}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ── TaskModal ─────────────────────────────────────────────────────────────────
 
 function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:initIconSheet,scrollToPhotos,onSave,onUpdate,onDelete,onClose,globalTags,customTabs}:{
@@ -1274,40 +1332,18 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                     <>
                       <p className="text-xs text-gray-500 mb-2">開始時刻</p>
                       {(()=>{
-                        const [hh,mm]=startTime.split(':').map(Number);
-                        const fh=(n:number)=>String(((n%24)+24)%24).padStart(2,'0');
-                        const fm=(n:number)=>String(((n%60)+60)%60).padStart(2,'0');
-                        const stepM=(n:number,d:number)=>{const s=Math.round(n/5)*5;return ((s+d*5)+60)%60;};
-                        return (
-                          <div className="flex items-center gap-4 mb-3">
+                        const [hStr,mStr]=startTime.split(':');
+                        const normM=String(Math.min(55,Math.round((parseInt(mStr)||0)/5)*5)).padStart(2,'0');
+                        return(
+                          <div className="flex items-center gap-2 mb-3">
                             <div className="flex flex-col items-center">
-                              <button onClick={()=>setST(`${fh(hh-1)}:${fm(mm)}`)} className="w-10 h-8 flex items-center justify-center text-gray-400 active:text-gray-600">
-                                <span style={{display:'block',transform:'rotate(180deg)'}}><AppIcons.caretDown size={14}/></span>
-                              </button>
-                              <div className="w-14 h-[88px] flex flex-col items-center justify-center overflow-hidden select-none">
-                                <span className="text-base text-gray-300 tabular-nums h-7 flex items-center">{fh(hh-1)}</span>
-                                <span className="text-2xl font-bold text-gray-800 tabular-nums h-9 flex items-center">{fh(hh)}</span>
-                                <span className="text-base text-gray-300 tabular-nums h-7 flex items-center">{fh(hh+1)}</span>
-                              </div>
-                              <button onClick={()=>setST(`${fh(hh+1)}:${fm(mm)}`)} className="w-10 h-8 flex items-center justify-center text-gray-400 active:text-gray-600">
-                                <AppIcons.caretDown size={14}/>
-                              </button>
-                              <span className="text-[10px] text-gray-400 mt-0.5">時</span>
+                              <PickerCol items={HOURS} value={hStr} onChange={v=>setST(`${v}:${normM}`)}/>
+                              <span className="text-[10px] text-gray-400 mt-1">時</span>
                             </div>
-                            <span className="text-gray-300 font-bold text-2xl mb-6">:</span>
+                            <span className="text-xl font-bold text-gray-300 pb-5">:</span>
                             <div className="flex flex-col items-center">
-                              <button onClick={()=>setST(`${fh(hh)}:${fm(stepM(mm,-1))}`)} className="w-10 h-8 flex items-center justify-center text-gray-400 active:text-gray-600">
-                                <span style={{display:'block',transform:'rotate(180deg)'}}><AppIcons.caretDown size={14}/></span>
-                              </button>
-                              <div className="w-14 h-[88px] flex flex-col items-center justify-center overflow-hidden select-none">
-                                <span className="text-base text-gray-300 tabular-nums h-7 flex items-center">{fm(stepM(mm,-1))}</span>
-                                <span className="text-2xl font-bold text-gray-800 tabular-nums h-9 flex items-center">{fm(mm)}</span>
-                                <span className="text-base text-gray-300 tabular-nums h-7 flex items-center">{fm(stepM(mm,1))}</span>
-                              </div>
-                              <button onClick={()=>setST(`${fh(hh)}:${fm(stepM(mm,1))}`)} className="w-10 h-8 flex items-center justify-center text-gray-400 active:text-gray-600">
-                                <AppIcons.caretDown size={14}/>
-                              </button>
-                              <span className="text-[10px] text-gray-400 mt-0.5">分</span>
+                              <PickerCol items={MINS} value={normM} onChange={v=>setST(`${hStr}:${v}`)}/>
+                              <span className="text-[10px] text-gray-400 mt-1">分</span>
                             </div>
                           </div>
                         );
