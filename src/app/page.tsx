@@ -55,7 +55,7 @@ interface ShopNotifSetting { id: string; days: number[]; time: string; enabled: 
 interface TagDef    { name: string; color: string; }
 interface MoveHistory { id: string; date: string; taskNames: string[]; }
 interface CustomTab  { id: string; name: string; }
-interface BulkHistoryEntry { id:string; name:string; startTime:string; endTime:string; dates:string[]; taskIds:string[]; registeredAt:string; }
+interface BulkHistoryEntry { id:string; name:string; startTime:string; endTime:string; dates:string[]; taskIds:string[]; registeredAt:string; icon?:string; }
 
 type TaskMode = 'later' | 'scheduled' | 'recurring' | 'allday';
 
@@ -2830,7 +2830,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   onBulkAdd:(tasks:Omit<Task,'id'>[],endTime:string)=>void;
   bulkHistory:BulkHistoryEntry[];
   onBulkHistoryDelete:(entryId:string)=>void;
-  onBulkHistoryEdit:(entryId:string,name:string,startTime:string,endTime:string)=>void;
+  onBulkHistoryEdit:(entryId:string,name:string,startTime:string,endTime:string,icon:string)=>void;
 }) {
   const [sub,setSub]           = useState<string|null>(null);
   const [tagInput,setTagInput] = useState('');
@@ -2852,10 +2852,12 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   const [bulkIconOverride,setBulkIconOverride] = useState<string|null>(null);
   const [bulkIconSheet,setBulkIconSheet] = useState(false);
   const [bulkColor,setBulkColor] = useState('');
-  const [histExp,setHistExp]   = useState<string|null>(null);
-  const [histEditName,setHEN]  = useState('');
-  const [histEditStart,setHES] = useState('');
-  const [histEditEnd,setHEE]   = useState('');
+  const [histExp,setHistExp]       = useState<string|null>(null);
+  const [histEditName,setHEN]      = useState('');
+  const [histEditStart,setHES]     = useState('');
+  const [histEditEnd,setHEE]       = useState('');
+  const [histEditIcon,setHEIcon]   = useState('task');
+  const [histIconSheet,setHIconSh] = useState(false);
 
   const back = () => setSub(null);
 
@@ -3058,7 +3060,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                 <div key={entry.id} className="bg-white rounded-2xl overflow-hidden shadow-sm">
                   <button className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50" onClick={()=>{
                     if(isExp){setHistExp(null);}
-                    else{setHistExp(entry.id);setHEN(entry.name);setHES(entry.startTime);setHEE(entry.endTime);}
+                    else{setHistExp(entry.id);setHEN(entry.name);setHES(entry.startTime);setHEE(entry.endTime);setHEIcon(entry.icon??defaultIconKey(entry.name));}
                   }}>
                     <div className="flex-1 min-w-0 text-left">
                       <p className="text-sm font-semibold text-gray-800">{entry.name}</p>
@@ -3070,7 +3072,10 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                     <div className="border-t border-gray-100 px-4 py-3 flex flex-col gap-3">
                       <div className="bg-gray-50 rounded-xl px-3 py-2.5 flex flex-col gap-2.5">
                         <div className="flex items-center gap-2">
-                          <span className="text-xs text-gray-500 w-14 shrink-0">タスク名</span>
+                          <button onClick={()=>setHIconSh(true)}
+                            className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 bg-[#D9A3B2] active:opacity-80">
+                            {(()=>{const Ic=getTaskIcon(histEditIcon);return <Ic size={16} className="text-white"/>;})()}
+                          </button>
                           <input value={histEditName} onChange={e=>setHEN(e.target.value)}
                             className="flex-1 text-sm text-gray-800 bg-transparent outline-none border-b border-gray-200 pb-0.5"/>
                         </div>
@@ -3086,7 +3091,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                         </div>
                       </div>
                       <div className="flex gap-2">
-                        <button onClick={()=>{onBulkHistoryEdit(entry.id,histEditName.trim()||entry.name,histEditStart,histEditEnd);setHistExp(null);}}
+                        <button onClick={()=>{onBulkHistoryEdit(entry.id,histEditName.trim()||entry.name,histEditStart,histEditEnd,histEditIcon);setHistExp(null);}}
                           className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-[#D9A3B2] text-white">一括編集</button>
                         <button onClick={()=>{onBulkHistoryDelete(entry.id);setHistExp(null);}}
                           className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-[#D97A7A] text-white">一括削除</button>
@@ -3098,6 +3103,38 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             })}
           </div>
         </div>
+        {histIconSheet&&(
+          <div className="fixed inset-0 z-[90] bg-black/40 flex flex-col justify-end" onClick={()=>setHIconSh(false)}>
+            <div className="bg-white rounded-t-3xl max-h-[78vh] flex flex-col w-full max-w-md mx-auto" onClick={e=>e.stopPropagation()}>
+              <div className="flex justify-center pt-3 shrink-0"><div className="w-10 h-1 bg-gray-200 rounded-full"/></div>
+              <div className="flex items-center justify-between px-5 pt-3 pb-2 shrink-0">
+                <span className="text-base font-bold text-gray-900">アイコン</span>
+                <button onClick={()=>setHIconSh(false)} className="px-4 py-1.5 bg-gray-700 text-white text-sm font-semibold rounded-full">完了</button>
+              </div>
+              <div className="overflow-y-auto px-5 pb-10 flex-1">
+                {ICON_CATEGORIES.map(cat=>(
+                  <div key={cat.label} className="mb-5">
+                    <p className="text-xs font-bold text-gray-400 mb-2">{cat.label}</p>
+                    <div className="grid grid-cols-5 gap-2">
+                      {cat.icons.map(opt=>{
+                        const Ic=getTaskIcon(opt.key);
+                        const sel=histEditIcon===opt.key;
+                        return (
+                          <button key={opt.key} onClick={()=>setHEIcon(opt.key)}
+                            className={`flex flex-col items-center gap-1.5 py-3 rounded-2xl ${sel?'':'bg-gray-50'}`}
+                            style={sel?{background:'#D9A3B2'}:undefined}>
+                            <Ic size={22} className={sel?'text-white':'text-gray-700'}/>
+                            <span className={`text-[10px] leading-none ${sel?'text-gray-100':'text-gray-500'}`}>{opt.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -4044,7 +4081,7 @@ export default function App() {
     const withIds=newTasks.map(t=>({...t,id:uid()}));
     setTasks(prev=>[...prev,...withIds]);
     if(withIds.length>0){
-      const entry:BulkHistoryEntry={id:uid(),name:withIds[0].name||'',startTime:withIds[0].startTime||'',endTime,dates:withIds.map(t=>t.date||'').sort(),taskIds:withIds.map(t=>t.id),registeredAt:new Date().toISOString()};
+      const entry:BulkHistoryEntry={id:uid(),name:withIds[0].name||'',startTime:withIds[0].startTime||'',endTime,dates:withIds.map(t=>t.date||'').sort(),taskIds:withIds.map(t=>t.id),registeredAt:new Date().toISOString(),icon:withIds[0].icon||'task'};
       setBulkHistory(prev=>[entry,...prev].slice(0,20));
     }
   };
@@ -4053,13 +4090,13 @@ export default function App() {
     if(entry) setTasks(prev=>prev.filter(t=>!entry.taskIds.includes(t.id)));
     setBulkHistory(prev=>prev.filter(e=>e.id!==entryId));
   };
-  const bulkHistoryEdit = (entryId:string, name:string, startTime:string, endTime:string) => {
+  const bulkHistoryEdit = (entryId:string, name:string, startTime:string, endTime:string, icon:string) => {
     const entry=bulkHistory.find(e=>e.id===entryId);
     if(!entry) return;
     const t2m=(t:string)=>{const [h,m]=t.split(':').map(Number);return h*60+m;};
     const duration=Math.max(0,t2m(endTime)-t2m(startTime));
-    setTasks(prev=>prev.map(t=>entry.taskIds.includes(t.id)?{...t,name,startTime,duration,icon:defaultIconKey(name)}:t));
-    setBulkHistory(prev=>prev.map(e=>e.id===entryId?{...e,name,startTime,endTime}:e));
+    setTasks(prev=>prev.map(t=>entry.taskIds.includes(t.id)?{...t,name,startTime,duration,icon}:t));
+    setBulkHistory(prev=>prev.map(e=>e.id===entryId?{...e,name,startTime,endTime,icon}:e));
   };
 
   const saveTasks = (data:Omit<Task,'id'>[], pendingPhotos?:string[]) => {
