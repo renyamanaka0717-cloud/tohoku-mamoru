@@ -3724,13 +3724,12 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
 
   return (
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
-      <div className="bg-[#F2F2F7] px-4 pt-14 pb-2 flex items-center justify-between shrink-0">
-        <button onClick={onClose} className="flex items-center gap-0.5 text-gray-900">
+      <div className="bg-[#F2F2F7] px-4 pt-10 pb-2 shrink-0">
+        <button onClick={onClose} className="flex items-center gap-0.5 text-gray-900 mb-1">
           <AppIcons.caretLeft size={20}/>
           <span className="text-[15px]">タイムライン</span>
         </button>
-        <h1 className="text-[34px] font-bold text-gray-900">設定</h1>
-        <div className="w-14"/>
+        <h1 className="text-[34px] font-bold text-gray-900 text-center">設定</h1>
       </div>
       <div className="flex-1 overflow-y-auto px-4 pb-10">
 
