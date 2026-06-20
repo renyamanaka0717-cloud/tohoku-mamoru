@@ -3724,7 +3724,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
 
   return (
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
-      <div className="bg-[#F2F2F7] px-4 pt-10 pb-2 shrink-0 relative flex items-center justify-center">
+      <div className="bg-[#F2F2F7] px-4 pt-4 pb-2 shrink-0 relative flex items-center justify-center">
         <button onClick={onClose} className="absolute left-4 flex items-center text-gray-900">
           <AppIcons.caretLeft size={20}/>
         </button>
