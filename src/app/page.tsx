@@ -4136,9 +4136,14 @@ export default function App() {
   const today = todayStr();
 
   const effectiveSettings = useMemo(()=>{
+    const patId=patternOverrides[date];
+    const pat=patId?lifePatterns.find(p=>p.id===patId):null;
     const ov=dayOverrides[date]??{};
-    return {...settings, wakeTime:ov.wakeTime??settings.wakeTime, sleepTime:ov.sleepTime??settings.sleepTime};
-  },[settings,dayOverrides,date]);
+    return {...settings,
+      wakeTime:  pat?.wakeTime  ?? ov.wakeTime  ?? settings.wakeTime,
+      sleepTime: pat?.sleepTime ?? ov.sleepTime ?? settings.sleepTime,
+    };
+  },[settings,dayOverrides,date,patternOverrides,lifePatterns]);
 
   // Drag task from あとでやる to timeline
   const startDrag=(task:Task,x:number,y:number)=>{
@@ -4309,19 +4314,6 @@ export default function App() {
     setPatternOverrides(prev=>{
       const next={...prev};
       dates.forEach(d=>{ if(patternId===null){delete next[d];}else{next[d]=patternId;} });
-      return next;
-    });
-    setDayOverrides(prev=>{
-      const next={...prev};
-      dates.forEach(d=>{
-        if(patternId===null){
-          const {wakeTime:_w,sleepTime:_s,...rest}=next[d]??{};
-          if(Object.keys(rest).length===0){delete next[d];}else{next[d]=rest;}
-        } else {
-          const pat=lifePatterns.find(p=>p.id===patternId);
-          if(pat) next[d]={...(next[d]??{}),wakeTime:pat.wakeTime,sleepTime:pat.sleepTime};
-        }
-      });
       return next;
     });
   };
