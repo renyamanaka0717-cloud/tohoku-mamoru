@@ -292,7 +292,7 @@ function MonthCalendar({selected,onSelect,onClose,tasks}:{selected:string;onSele
           </div>
           <div className="grid grid-cols-7 mb-1">
             {DAY_NAMES.map((n,i)=>(
-              <div key={i} className={`text-center text-xs font-semibold py-1 ${i===0?'text-[#D97A7A]':i===6?'text-blue-400':'text-gray-400'}`}>{n}</div>
+              <div key={i} className={`text-center text-xs font-semibold py-1 text-gray-400`}>{n}</div>
             ))}
           </div>
         </div>
@@ -399,7 +399,7 @@ function CalendarPage({date,tasks,customTabs,onSelect,onClose}:{date:string;task
       {/* Day headers */}
       <div className="grid grid-cols-7 px-2 pt-3 pb-1">
         {DAY_NAMES.map((n,i)=>(
-          <div key={i} className={`text-center text-xs font-semibold ${i===0?'text-[#D97A7A]':i===6?'text-blue-400':'text-gray-400'}`}>{n}</div>
+          <div key={i} className={`text-center text-xs font-semibold text-gray-400`}>{n}</div>
         ))}
       </div>
 
@@ -1339,7 +1339,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                     </div>
                     <div className="grid grid-cols-7 mb-1">
                       {DAY_NAMES.map((n,i)=>(
-                        <div key={i} className={`text-center text-[11px] font-semibold py-1 ${i===0?'text-[#D97A7A]':i===6?'text-blue-400':'text-gray-400'}`}>{n}</div>
+                        <div key={i} className={`text-center text-[11px] font-semibold py-1 text-gray-400`}>{n}</div>
                       ))}
                     </div>
                     <div className="grid grid-cols-7">
@@ -2990,7 +2990,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             </div>
             <div className="grid grid-cols-7 mb-1">
               {DAY_NAMES.map((n,i)=>(
-                <div key={i} className={`text-center text-xs font-semibold py-1 ${i===0?'text-[#D97A7A]':i===6?'text-blue-400':'text-gray-400'}`}>{n}</div>
+                <div key={i} className={`text-center text-xs font-semibold py-1 text-gray-400`}>{n}</div>
               ))}
             </div>
             <div className="grid grid-cols-7 gap-y-1">
@@ -3212,7 +3212,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                   )}
                   <div className="flex gap-1 shrink-0">
                     <button onClick={()=>{if(editTabId===tab.id){const v=editTabVal.trim();if(v)onCustomTabs(customTabs.map(t=>t.id===tab.id?{...t,name:v}:t));setEditTabId(null);}else{setEditTabId(tab.id);setEditTabVal(tab.name);}}}
-                      className="text-xs text-blue-500 font-medium px-2 py-1">
+                      className="text-xs text-gray-400 font-medium px-2 py-1">
                       {editTabId===tab.id?'確定':'編集'}
                     </button>
                     {editTabId===tab.id
@@ -4695,12 +4695,12 @@ export default function App() {
                 {dragTask?(
                   <>
                     <p className="text-sm font-bold text-gray-900 truncate">{dragTask.name}</p>
-                    <p className="text-xs text-blue-500 mt-0.5 font-semibold">{dropTime??'ドラッグして配置'}</p>
+                    <p className="text-xs text-[#D9A3B2] mt-0.5 font-semibold">{dropTime??'ドラッグして配置'}</p>
                   </>
                 ):(
                   <>
                     <p className="text-sm font-bold text-gray-900">{dragSetting==='wake'?'起床':'就寝'}</p>
-                    <p className="text-xs text-blue-500 mt-0.5 font-semibold">{dropTime??'ドラッグして配置'}</p>
+                    <p className="text-xs text-[#D9A3B2] mt-0.5 font-semibold">{dropTime??'ドラッグして配置'}</p>
                   </>
                 )}
               </div>
@@ -4712,9 +4712,9 @@ export default function App() {
               <AppIcons.trash size={28} className={dragSetting?'text-gray-300':overTrash?'text-white':'text-[#D97A7A]'}/>
               <span className={`text-xs font-bold ${dragSetting?'text-gray-300':overTrash?'text-white':'text-[#D97A7A]'}`}>削除する</span>
             </div>
-            <div className={`flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors ${dragSetting?'bg-gray-50 opacity-30':overLater?'bg-blue-400':'bg-blue-50'}`}>
-              <AppIcons.postponed size={28} className={dragSetting?'text-gray-300':overLater?'text-white':'text-blue-400'}/>
-              <span className={`text-xs font-bold ${dragSetting?'text-gray-300':overLater?'text-white':'text-blue-400'}`}>あとでやるに戻す</span>
+            <div className={`flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors ${dragSetting?'bg-gray-50 opacity-30':overLater?'bg-[#D9A3B2]':'bg-pink-50'}`}>
+              <AppIcons.postponed size={28} className={dragSetting?'text-gray-300':overLater?'text-white':'text-[#D9A3B2]'}/>
+              <span className={`text-xs font-bold ${dragSetting?'text-gray-300':overLater?'text-white':'text-[#D9A3B2]'}`}>あとでやるに戻す</span>
             </div>
           </div>
         </div>
