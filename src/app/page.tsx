@@ -1863,7 +1863,7 @@ function CalendarEventCard({event}:{event:CalendarEvent}) {
 
 // ── Timeline ──────────────────────────────────────────────────────────────────
 
-function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet,onSchedule,onAddAtTime,onDragStart,dragTaskId,yToTimeRef,layoutYRef,globalTags,todayHistory,onSubtaskToggle,onDragWake,onDragSleep,onCameraClick,calEvents=[]}:{
+function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet,onSchedule,onAddAtTime,onDragStart,dragTaskId,yToTimeRef,layoutYRef,globalTags,todayHistory,onSubtaskToggle,onDragWake,onDragSleep,onCameraClick,calEvents=[],lifePatterns=[],patternOverrides={}}:{
   date:string;tasks:Task[];later:Task[];settings:Settings;now:string;
   onToggle:(id:string)=>void;onEdit:(t:Task)=>void;onEditIconSheet:(t:Task)=>void;
   onSchedule:(t:Task,time:string)=>void;onAddAtTime:(time:string)=>void;
@@ -1877,6 +1877,8 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
   onDragSleep:(x:number,y:number)=>void;
   onCameraClick:(taskId:string)=>void;
   calEvents?:CalendarEvent[];
+  lifePatterns?:LifePattern[];
+  patternOverrides?:Record<string,string>;
 }) {
   const [pressingId,setPressingId] = useState<string|null>(null);
   const [pressingWake,setPressingWake] = useState(false);
@@ -2207,6 +2209,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
       )}
 
       {/* wake card */}
+      {(()=>{const patId=patternOverrides[date];const pat=patId?lifePatterns.find(p=>p.id===patId):null;return(
       <div className="absolute z-10" style={{top:`${wakeCardTop}px`,left:`${CARD_LEFT}px`,right:'0px'}}
         onTouchStart={e=>startSettingLP('wake',e)}
         onTouchEnd={cancelSettingLP}
@@ -2216,10 +2219,13 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
             <p className="text-[11px] text-gray-400 leading-none mb-0.5">{settings.wakeTime}</p>
             <p className="text-sm font-semibold text-gray-900">起床</p>
           </div>
+          {pat&&<span className="text-[11px] font-medium px-2 py-0.5 rounded-full" style={{background:pat.color+'22',color:pat.color}}>{pat.name}</span>}
         </div>
       </div>
+      );})()}
 
       {/* sleep card */}
+      {(()=>{const patId=patternOverrides[date];const pat=patId?lifePatterns.find(p=>p.id===patId):null;return(
       <div className="absolute z-10" style={{top:`${sleepCardTop}px`,left:`${CARD_LEFT}px`,right:'0px'}}
         onTouchStart={e=>startSettingLP('sleep',e)}
         onTouchEnd={cancelSettingLP}
@@ -2229,8 +2235,10 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
             <p className="text-[11px] text-gray-400 leading-none mb-0.5">{settings.sleepTime}</p>
             <p className="text-sm font-semibold text-gray-900">就寝</p>
           </div>
+          {pat&&<span className="text-[11px] font-medium px-2 py-0.5 rounded-full" style={{background:pat.color+'22',color:pat.color}}>{pat.name}</span>}
         </div>
       </div>
+      );})()}
 
       {/* move history card */}
       {hasHistoryCard&&todayHistory&&(
@@ -4515,7 +4523,8 @@ export default function App() {
           onDragWake={(x,y)=>startDragSetting('wake',x,y)}
           onDragSleep={(x,y)=>startDragSetting('sleep',x,y)}
           onCameraClick={openEditAtPhotos}
-          calEvents={calEvents.filter(e=>(e.source==='google'&&(settings.googleCalEnabled??false))||(e.source==='iphone'&&(settings.iphoneCalEnabled??false)))}/>
+          calEvents={calEvents.filter(e=>(e.source==='google'&&(settings.googleCalEnabled??false))||(e.source==='iphone'&&(settings.iphoneCalEnabled??false)))}
+          lifePatterns={lifePatterns} patternOverrides={patternOverrides}/>
       </main>
 
       {/* ── Bottom bar ── */}
