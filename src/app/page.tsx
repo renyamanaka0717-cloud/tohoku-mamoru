@@ -3459,7 +3459,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                         <p className="text-xs text-gray-400">{pat.wakeTime} 起床 / {pat.sleepTime} 就寝</p>
                       </div>
                     </button>
-                    <button onClick={()=>setLpEditId(pat.id)} className="text-xs text-blue-500 font-medium px-2 py-1 shrink-0">編集</button>
+                    <button onClick={()=>setLpEditId(pat.id)} className="text-xs text-gray-400 font-medium px-2 py-1 shrink-0">編集</button>
                   </>
                 )}
               </div>
@@ -3467,7 +3467,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             {lpAddMode&&(
               <div className="px-4 py-3 flex flex-col gap-2">
                 <input autoFocus value={lpNewName} onChange={e=>setLpNewName(e.target.value)}
-                  placeholder="パターン名（例：平日、休日）"
+                  placeholder="パターン名（例：平日、休日、早番、遅番）"
                   className="text-[15px] border-b border-gray-200 outline-none bg-transparent text-gray-900 placeholder-gray-300 py-0.5"/>
                 <div className="flex gap-3 items-center">
                   <input type="time" value={lpNewWake} onChange={e=>setLpNewWake(e.target.value)}
