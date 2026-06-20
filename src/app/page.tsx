@@ -2947,7 +2947,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
     };
     return (
       <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
-        {subHeader('シフト一括入力')}
+        {subHeader('タスク一括入力')}
         <div className="flex-1 overflow-y-auto px-4 pb-10">
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">タスク情報</p>
           <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
@@ -3734,19 +3734,19 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
       <div className="flex-1 overflow-y-auto px-4 pb-10">
 
 
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">時間指定</p>
+        <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
+          <SettingsRow icon={<AppIcons.repeat size={18}/>} iconBg="bg-gray-100" title="繰り返しタスク" desc="繰り返しタスクを管理" onClick={()=>setSub('recurring')}/>
+          <SettingsRow icon={<AppIcons.wake size={18}/>} iconBg="bg-gray-100" title="起床・就寝" desc="起床時間、就寝時間を設定" onClick={()=>setSub('wakeSleep')}/>
+          <SettingsRow icon={<AppIcons.repeat size={18}/>} iconBg="bg-gray-100" title="タスク一括入力" desc="複数日にまとめて登録" onClick={()=>setSub('bulkInput')} isLast/>
+        </div>
+
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">一般</p>
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
           <SettingsRow icon={<AppIcons.tag/>} iconBg="bg-gray-100" title="タグ" desc="タグを管理" onClick={()=>setSub('tags')}/>
           <SettingsRow icon={<AppIcons.caretRight/>} iconBg="bg-gray-100" title="ファイルタブ" desc="タブを管理" onClick={()=>setSub('tabs')}/>
-          <SettingsRow icon={<AppIcons.repeat size={18}/>} iconBg="bg-gray-100" title="繰り返しタスク" desc="繰り返しタスクを管理" onClick={()=>setSub('recurring')}/>
           <SettingsRow icon={<AppIcons.bell/>} iconBg="bg-gray-100" title="通知" desc="通知設定" onClick={()=>setSub('notifications')}/>
-          <SettingsRow icon={<AppIcons.palette/>} iconBg="bg-gray-100" title="表示設定" desc="外観、言語など" onClick={()=>setSub('display')}/>
-          <SettingsRow icon={<AppIcons.wake size={18}/>} iconBg="bg-gray-100" title="起床・就寝" desc="起床時間、就寝時間を設定" onClick={()=>setSub('wakeSleep')} isLast/>
-        </div>
-
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">タスク一括入力</p>
-        <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
-          <SettingsRow icon={<AppIcons.repeat size={18}/>} iconBg="bg-gray-100" title="シフト一括入力" desc="複数日にまとめて登録" onClick={()=>setSub('bulkInput')} isLast/>
+          <SettingsRow icon={<AppIcons.palette/>} iconBg="bg-gray-100" title="表示設定" desc="外観、言語など" onClick={()=>setSub('display')} isLast/>
         </div>
 
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">アカウント</p>
