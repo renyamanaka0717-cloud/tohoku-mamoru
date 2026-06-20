@@ -55,7 +55,7 @@ interface ShopNotifSetting { id: string; days: number[]; time: string; enabled: 
 interface TagDef    { name: string; color: string; }
 interface MoveHistory { id: string; date: string; taskNames: string[]; }
 interface CustomTab  { id: string; name: string; }
-interface BulkHistoryEntry { id:string; name:string; startTime:string; endTime:string; dates:string[]; taskIds:string[]; registeredAt:string; icon?:string; }
+interface BulkHistoryEntry { id:string; name:string; startTime:string; endTime:string; dates:string[]; taskIds:string[]; registeredAt:string; icon?:string; color?:string; }
 interface LifePattern { id:string; name:string; wakeTime:string; sleepTime:string; color:string; }
 
 type TaskMode = 'later' | 'scheduled' | 'recurring' | 'allday';
@@ -2833,7 +2833,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   onBulkAdd:(tasks:Omit<Task,'id'>[],endTime:string)=>void;
   bulkHistory:BulkHistoryEntry[];
   onBulkHistoryDelete:(entryId:string)=>void;
-  onBulkHistoryEdit:(entryId:string,name:string,startTime:string,endTime:string,icon:string)=>void;
+  onBulkHistoryEdit:(entryId:string,name:string,startTime:string,endTime:string,icon:string,color:string)=>void;
   lifePatterns:LifePattern[]; onLifePatterns:(p:LifePattern[])=>void;
   patternOverrides:Record<string,string>; onApplyPattern:(dates:string[],patternId:string|null)=>void;
 }) {
@@ -2862,6 +2862,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   const [histEditStart,setHES]     = useState('');
   const [histEditEnd,setHEE]       = useState('');
   const [histEditIcon,setHEIcon]   = useState('task');
+  const [histEditColor,setHEColor] = useState('');
   const [histIconSheet,setHIconSh] = useState(false);
   const _lpToday = todayStr();
   const _lpTodayD= new Date(_lpToday+'T12:00:00');
@@ -3076,7 +3077,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                 <div key={entry.id} className="bg-white rounded-2xl overflow-hidden shadow-sm">
                   <button className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50" onClick={()=>{
                     if(isExp){setHistExp(null);}
-                    else{setHistExp(entry.id);setHEN(entry.name);setHES(entry.startTime);setHEE(entry.endTime);setHEIcon(entry.icon??defaultIconKey(entry.name));}
+                    else{setHistExp(entry.id);setHEN(entry.name);setHES(entry.startTime);setHEE(entry.endTime);setHEIcon(entry.icon??defaultIconKey(entry.name));setHEColor(entry.color??'');}
                   }}>
                     <div className="flex-1 min-w-0 text-left">
                       <p className="text-sm font-semibold text-gray-800">{entry.name}</p>
@@ -3089,7 +3090,8 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                       <div className="bg-gray-50 rounded-xl px-3 py-2.5 flex flex-col gap-2.5">
                         <div className="flex items-center gap-2">
                           <button onClick={()=>setHIconSh(true)}
-                            className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 bg-[#D9A3B2] active:opacity-80">
+                            className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 active:opacity-80"
+                            style={{background:histEditColor||'#D9A3B2'}}>
                             {(()=>{const Ic=getTaskIcon(histEditIcon);return <Ic size={16} className="text-white"/>;})()}
                           </button>
                           <input value={histEditName} onChange={e=>setHEN(e.target.value)}
@@ -3107,7 +3109,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                         </div>
                       </div>
                       <div className="flex gap-2">
-                        <button onClick={()=>{onBulkHistoryEdit(entry.id,histEditName.trim()||entry.name,histEditStart,histEditEnd,histEditIcon);setHistExp(null);}}
+                        <button onClick={()=>{onBulkHistoryEdit(entry.id,histEditName.trim()||entry.name,histEditStart,histEditEnd,histEditIcon,histEditColor);setHistExp(null);}}
                           className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-[#D9A3B2] text-white">一括編集</button>
                         <button onClick={()=>{onBulkHistoryDelete(entry.id);setHistExp(null);}}
                           className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-[#D97A7A] text-white">一括削除</button>
@@ -3128,6 +3130,14 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                 <button onClick={()=>setHIconSh(false)} className="px-4 py-1.5 bg-gray-700 text-white text-sm font-semibold rounded-full">完了</button>
               </div>
               <div className="overflow-y-auto px-5 pb-10 flex-1">
+                <p className="text-xs font-bold text-gray-400 mb-2 mt-1">カラー</p>
+                <div className="flex gap-2 mb-5 flex-wrap">
+                  {TASK_COLORS.map((c,i)=>(
+                    <button key={i} onClick={()=>setHEColor(c)}
+                      className={`w-8 h-8 rounded-full border-2 transition-all ${histEditColor===c?'border-gray-700 scale-110':'border-transparent'}`}
+                      style={{background:c||'#E5E7EB'}}/>
+                  ))}
+                </div>
                 {ICON_CATEGORIES.map(cat=>(
                   <div key={cat.label} className="mb-5">
                     <p className="text-xs font-bold text-gray-400 mb-2">{cat.label}</p>
@@ -3135,10 +3145,11 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                       {cat.icons.map(opt=>{
                         const Ic=getTaskIcon(opt.key);
                         const sel=histEditIcon===opt.key;
+                        const bg=histEditColor||'#D9A3B2';
                         return (
                           <button key={opt.key} onClick={()=>setHEIcon(opt.key)}
                             className={`flex flex-col items-center gap-1.5 py-3 rounded-2xl ${sel?'':'bg-gray-50'}`}
-                            style={sel?{background:'#D9A3B2'}:undefined}>
+                            style={sel?{background:bg}:undefined}>
                             <Ic size={22} className={sel?'text-white':'text-gray-700'}/>
                             <span className={`text-[10px] leading-none ${sel?'text-gray-100':'text-gray-500'}`}>{opt.label}</span>
                           </button>
@@ -4289,13 +4300,13 @@ export default function App() {
     if(entry) setTasks(prev=>prev.filter(t=>!entry.taskIds.includes(t.id)));
     setBulkHistory(prev=>prev.filter(e=>e.id!==entryId));
   };
-  const bulkHistoryEdit = (entryId:string, name:string, startTime:string, endTime:string, icon:string) => {
+  const bulkHistoryEdit = (entryId:string, name:string, startTime:string, endTime:string, icon:string, color:string) => {
     const entry=bulkHistory.find(e=>e.id===entryId);
     if(!entry) return;
     const t2m=(t:string)=>{const [h,m]=t.split(':').map(Number);return h*60+m;};
     const duration=Math.max(0,t2m(endTime)-t2m(startTime));
-    setTasks(prev=>prev.map(t=>entry.taskIds.includes(t.id)?{...t,name,startTime,duration,icon}:t));
-    setBulkHistory(prev=>prev.map(e=>e.id===entryId?{...e,name,startTime,endTime,icon}:e));
+    setTasks(prev=>prev.map(t=>entry.taskIds.includes(t.id)?{...t,name,startTime,duration,icon,color}:t));
+    setBulkHistory(prev=>prev.map(e=>e.id===entryId?{...e,name,startTime,endTime,icon,color}:e));
   };
 
   const applyPattern = (dates:string[], patternId:string|null) => {
