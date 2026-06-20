@@ -3398,7 +3398,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
     </div>
   );
 
-  if(sub==='wakeSleep') {
+  if(sub==='lifePatterns') {
     const PATTERN_COLORS=['#D9A3B2','#C4888E','#6A8FAF','#7A9E8A','#C4A44A','#8F82B8','#C47A5E','#A67899'];
     const daysInMonth=(y:number,m:number)=>new Date(y,m+1,0).getDate();
     const firstDow=(y:number,m:number)=>new Date(y,m,1).getDay();
@@ -3409,30 +3409,11 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
     const calCells:Array<number|null>=[...calNulls,...calDays];
     while(calCells.length%7!==0) calCells.push(null);
     const cellDate=(day:number)=>`${lpVm.year}-${String(lpVm.month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-    const activePat=lifePatterns.find(p=>p.id===lpActivePat)??null;
     return (
       <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
-        {subHeader('起床・就寝')}
+        {subHeader('生活パターン')}
         <div className="flex-1 overflow-y-auto px-4 pb-10">
-          {/* 時間設定 — 1行 */}
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">時間設定</p>
-          <div className="bg-white rounded-2xl overflow-hidden shadow-sm mb-5">
-            <div className="px-4 py-4 flex items-center gap-3">
-              <AppIcons.wake size={16} className="text-gray-400 shrink-0"/>
-              <input type="time" value={settings.wakeTime}
-                onChange={e=>onSettings({...settings,wakeTime:e.target.value})}
-                className="border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50"/>
-              <span className="text-gray-300 text-sm">〜</span>
-              <AppIcons.sleep size={16} className="text-gray-400 shrink-0"/>
-              <input type="time" value={settings.sleepTime}
-                onChange={e=>onSettings({...settings,sleepTime:e.target.value})}
-                className="border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50"/>
-            </div>
-          </div>
-
-          {/* 生活パターン */}
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-1">生活パターン</p>
-          <p className="text-xs text-gray-400 px-1 mb-1">シフトや予定に合わせて、日ごとの起床・就寝時間を変更できます</p>
+          <p className="text-xs text-gray-400 px-1 mb-1 mt-6">シフトや予定に合わせて、日ごとの起床・就寝時間を変更できます</p>
           <p className="text-xs text-gray-400 px-1 mb-2">パターンを追加・選択して日付をタップ</p>
           <div className="bg-white rounded-2xl overflow-hidden shadow-sm mb-1">
             {lifePatterns.length===0&&!lpAddMode&&(
@@ -3528,7 +3509,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                 <AppIcons.caretLeft size={16} className="text-gray-600"/>
               </button>
               <p className="text-[15px] font-semibold text-gray-900">{lpVm.year}年{lpVm.month+1}月</p>
-              <button onClick={()=>setLpVm(prev=>shiftMonth(prev.year,prev.month,1))}
+              <button onClick={()=>setLpVm(prev=>shiftMonth(lpVm.year,lpVm.month,1))}
                 className="w-8 h-8 flex items-center justify-center rounded-full active:bg-gray-100">
                 <AppIcons.caretRight size={16} className="text-gray-600"/>
               </button>
@@ -3565,6 +3546,28 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
       </div>
     );
   }
+
+  if(sub==='wakeSleep') return (
+    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
+      {subHeader('起床・就寝')}
+      <div className="flex-1 overflow-y-auto px-4 pb-10">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">時間設定</p>
+        <div className="bg-white rounded-2xl overflow-hidden shadow-sm mb-5">
+          <div className="px-4 py-4 flex items-center gap-3">
+            <AppIcons.wake size={16} className="text-gray-400 shrink-0"/>
+            <input type="time" value={settings.wakeTime}
+              onChange={e=>onSettings({...settings,wakeTime:e.target.value})}
+              className="border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50"/>
+            <span className="text-gray-300 text-sm">〜</span>
+            <AppIcons.sleep size={16} className="text-gray-400 shrink-0"/>
+            <input type="time" value={settings.sleepTime}
+              onChange={e=>onSettings({...settings,sleepTime:e.target.value})}
+              className="border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50"/>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 
   if(sub==='account') return (
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
@@ -3733,19 +3736,19 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
       <div className="flex-1 overflow-y-auto px-4 pb-10">
 
 
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">時間指定</p>
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">一般</p>
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
-          <SettingsRow icon={<AppIcons.repeat size={18}/>} iconBg="bg-gray-100" title="繰り返しタスク" desc="繰り返しタスクを管理" onClick={()=>setSub('recurring')}/>
-          <SettingsRow icon={<AppIcons.wake size={18}/>} iconBg="bg-gray-100" title="起床・就寝" desc="起床時間、就寝時間を設定" onClick={()=>setSub('wakeSleep')}/>
-          <SettingsRow icon={<AppIcons.repeat size={18}/>} iconBg="bg-gray-100" title="タスク一括入力" desc="複数日にまとめて登録" onClick={()=>setSub('bulkInput')} isLast/>
+          <SettingsRow icon={<AppIcons.bell/>} iconBg="bg-gray-100" title="通知" desc="通知設定" onClick={()=>setSub('notifications')}/>
+          <SettingsRow icon={<AppIcons.palette/>} iconBg="bg-gray-100" title="表示設定" desc="外観、言語など" onClick={()=>setSub('display')} isLast/>
         </div>
 
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">一般</p>
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">機能</p>
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
           <SettingsRow icon={<AppIcons.tag/>} iconBg="bg-gray-100" title="タグ" desc="タグを管理" onClick={()=>setSub('tags')}/>
           <SettingsRow icon={<AppIcons.caretRight/>} iconBg="bg-gray-100" title="ファイルタブ" desc="タブを管理" onClick={()=>setSub('tabs')}/>
-          <SettingsRow icon={<AppIcons.bell/>} iconBg="bg-gray-100" title="通知" desc="通知設定" onClick={()=>setSub('notifications')}/>
-          <SettingsRow icon={<AppIcons.palette/>} iconBg="bg-gray-100" title="表示設定" desc="外観、言語など" onClick={()=>setSub('display')} isLast/>
+          <SettingsRow icon={<AppIcons.repeat size={18}/>} iconBg="bg-gray-100" title="タスク一括入力" desc="複数日にまとめて登録" onClick={()=>setSub('bulkInput')}/>
+          <SettingsRow icon={<AppIcons.calendar size={18}/>} iconBg="bg-gray-100" title="生活パターン" desc="シフトや予定に合わせた時間設定" onClick={()=>setSub('lifePatterns')}/>
+          <SettingsRow icon={<AppIcons.wake size={18}/>} iconBg="bg-gray-100" title="起床・就寝" desc="起床時間、就寝時間を設定" onClick={()=>setSub('wakeSleep')} isLast/>
         </div>
 
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">連携</p>
