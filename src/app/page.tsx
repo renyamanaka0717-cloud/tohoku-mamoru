@@ -2,6 +2,7 @@
 // v2026-06-12
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { AppIcons } from './components/Icons';
+import { usePremium } from './components/Premium';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -3966,7 +3967,7 @@ export default function App() {
   const [calEvents,setCalEvents] = useState<CalendarEvent[]>([]);
   const [syncingCal,setSyncingCal] = useState<'google'|'iphone'|null>(null);
   const [authUser,setAuthUser] = useState<AuthUser|null>(null);
-  const isPremium = authUser?.isPremium ?? false;
+  const { isPremium } = usePremium();
 
   useEffect(()=>{
     try{

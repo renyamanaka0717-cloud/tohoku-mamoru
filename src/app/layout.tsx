@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
+import { PremiumProvider } from './components/Premium'
 
 export const metadata: Metadata = {
   title: '1日タイムライン | 今日のやることを見える化',
@@ -18,7 +19,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="ja">
       <body className="bg-gray-50 text-gray-900 antialiased overscroll-none">
-        {children}
+        <PremiumProvider>
+          {children}
+        </PremiumProvider>
       </body>
     </html>
   )
