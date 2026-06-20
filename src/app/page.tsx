@@ -3431,7 +3431,8 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
 
           {/* 生活パターン */}
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-1">生活パターン</p>
-          <p className="text-xs text-gray-400 px-1 mb-2">シフトや予定に合わせて、日ごとの起床・就寝時間を変更できます</p>
+          <p className="text-xs text-gray-400 px-1 mb-1">シフトや予定に合わせて、日ごとの起床・就寝時間を変更できます</p>
+          <p className="text-xs text-gray-400 px-1 mb-2">パターンを追加・選択してから日付をタップ</p>
           <div className="bg-white rounded-2xl overflow-hidden shadow-sm mb-1">
             {lifePatterns.length===0&&!lpAddMode&&(
               <p className="text-sm text-gray-400 text-center py-6">パターンがまだありません</p>
@@ -3519,15 +3520,6 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           )}
 
           {/* Calendar — always visible */}
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2">日付に適用</p>
-          {activePat?(
-            <p className="text-xs text-gray-500 px-1 mb-3">
-              <span className="inline-block w-3 h-3 rounded-full mr-1 align-middle" style={{background:activePat.color}}/>
-              「{activePat.name}」を選択中 — 日付をタップして適用
-            </p>
-          ):(
-            <p className="text-xs text-gray-400 px-1 mb-3">上のパターンを選択してから日付をタップ</p>
-          )}
           <div className="bg-white rounded-2xl overflow-hidden shadow-sm mb-3">
             <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
               <button onClick={()=>setLpVm(prev=>shiftMonth(prev.year,prev.month,-1))}
