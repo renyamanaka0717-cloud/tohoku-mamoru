@@ -752,9 +752,9 @@ function PickerCol({items,value,onChange}:{items:string[];value:string;onChange:
 
 // ── TaskModal ─────────────────────────────────────────────────────────────────
 
-function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:initIconSheet,scrollToPhotos,onSave,onUpdate,onDelete,onClose,globalTags,customTabs}:{
+function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:initIconSheet,scrollToPhotos,onSave,onUpdate,onDelete,onClose,onBulkInput,globalTags,customTabs}:{
   task:Task|null; currentDate:string; prefillTime?:string; prefillCategory?:string; openIconSheet?:boolean; scrollToPhotos?:boolean;
-  onSave:(tasks:Omit<Task,'id'>[], pendingPhotos?:string[])=>void; onUpdate?:(data:Omit<Task,'id'>)=>void; onDelete?:()=>void; onClose:()=>void;
+  onSave:(tasks:Omit<Task,'id'>[], pendingPhotos?:string[])=>void; onUpdate?:(data:Omit<Task,'id'>)=>void; onDelete?:()=>void; onClose:()=>void; onBulkInput?:()=>void;
   globalTags:TagDef[]; customTabs:CustomTab[];
 }) {
   const initMode=():TaskMode=>{
@@ -1082,8 +1082,11 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                     className="px-4 py-1.5 text-sm font-semibold rounded-full bg-white/90 text-gray-800">完了</button>
                 </>
               ) : (
-                <button onClick={save} disabled={!name.trim()}
-                  className={`px-4 py-1.5 text-sm font-semibold rounded-full transition-colors ${name.trim()?'bg-white/90 text-gray-800':'bg-white/20 text-white/40 cursor-not-allowed'}`}>保存</button>
+                <>
+                  {onBulkInput&&<button onClick={onBulkInput} className="px-3 py-1.5 text-sm font-semibold rounded-full bg-white/20 text-white">一括入力</button>}
+                  <button onClick={save} disabled={!name.trim()}
+                    className={`px-4 py-1.5 text-sm font-semibold rounded-full transition-colors ${name.trim()?'bg-white/90 text-gray-800':'bg-white/20 text-white/40 cursor-not-allowed'}`}>保存</button>
+                </>
               )}
             </div>
           </div>
@@ -2830,7 +2833,7 @@ function SettingsRow({icon,iconBg,title,desc,onClick,isLast=false}:{
   );
 }
 
-function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,customTabs,onCustomTabs,shopNotifSettings,onShopNotifSettings,calEventsCount,onSyncCalendar,syncingCal,authUser,isPremium,onBulkAdd,bulkHistory,onBulkHistoryDelete,onBulkHistoryEdit,lifePatterns,onLifePatterns,patternOverrides,onApplyPattern}:{
+function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,customTabs,onCustomTabs,shopNotifSettings,onShopNotifSettings,calEventsCount,onSyncCalendar,syncingCal,authUser,isPremium,onBulkAdd,bulkHistory,onBulkHistoryDelete,onBulkHistoryEdit,lifePatterns,onLifePatterns,patternOverrides,onApplyPattern,initialSub}:{
   settings:Settings; onSettings:(s:Settings)=>void; onClose:()=>void;
   globalTags:TagDef[]; onGlobalTags:(tags:TagDef[])=>void;
   customTabs:CustomTab[]; onCustomTabs:(tabs:CustomTab[])=>void;
@@ -2843,8 +2846,9 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   onBulkHistoryEdit:(entryId:string,name:string,startTime:string,endTime:string,icon:string,color:string)=>void;
   lifePatterns:LifePattern[]; onLifePatterns:(p:LifePattern[])=>void;
   patternOverrides:Record<string,string>; onApplyPattern:(dates:string[],patternId:string|null)=>void;
+  initialSub?:string;
 }) {
-  const [sub,setSub]           = useState<string|null>(null);
+  const [sub,setSub]           = useState<string|null>(initialSub??null);
   const [tagInput,setTagInput] = useState('');
   const [newTagColor,setNewTagColor] = useState(TAG_COLORS[0].bg);
   const [editIdx,setEditIdx]   = useState<number|null>(null);
@@ -4055,6 +4059,7 @@ export default function App() {
   const [editTabId,setEditTabId]     = useState<string|null>(null);
   const [editTabName,setEditTabName] = useState('');
   const [settingsOpen,setSOp]    = useState(false);
+  const [settingsInitSub,setSettingsInitSub] = useState<string|undefined>(undefined);
   const [calendarOpen,setCalOp]  = useState(false);
   const [searchOpen,setSearchOpen] = useState(false);
   const [activeTab,setActiveTab] = useState<'later'|'shop'|null>(null);
@@ -4501,7 +4506,7 @@ export default function App() {
               </button>
               <button onClick={()=>setCalOp(true)} className="w-8 h-8 flex items-center justify-center text-gray-400"><AppIcons.calendar size={24}/></button>
               <button onClick={()=>setSearchOpen(true)} className="w-8 h-8 flex items-center justify-center text-gray-400"><AppIcons.search size={24}/></button>
-              <button onClick={()=>setSOp(true)} className="w-8 h-8 flex items-center justify-center text-gray-400"><AppIcons.settings size={24}/></button>
+              <button onClick={()=>{setSettingsInitSub(undefined);setSOp(true);}} className="w-8 h-8 flex items-center justify-center text-gray-400"><AppIcons.settings size={24}/></button>
             </div>
           </div>
 
@@ -4762,12 +4767,12 @@ export default function App() {
           scrollToPhotos={!!modal.scrollToPhotos}
           onSave={saveTasks} onUpdate={modal.task?updateTask:undefined}
           onDelete={modal.task?()=>delTask(modal.task!.id):undefined}
-          onClose={closeModal} globalTags={globalTags} customTabs={customTabs}/>
+          onClose={closeModal} onBulkInput={()=>{closeModal();setSettingsInitSub('bulkInput');setSOp(true);}} globalTags={globalTags} customTabs={customTabs}/>
       )}
 
       {/* ── Settings Screen ── */}
       {settingsOpen&&(
-        <SettingsScreen settings={settings} onSettings={setSettings} onClose={()=>setSOp(false)} globalTags={globalTags} onGlobalTags={setGlobalTags} customTabs={customTabs} onCustomTabs={setCustomTabs} shopNotifSettings={shopNotifSettings} onShopNotifSettings={setShopNotifSettings} calEventsCount={calEvents.length} onSyncCalendar={syncCalendar} syncingCal={syncingCal} authUser={authUser} isPremium={isPremium} onBulkAdd={bulkAddTasks} bulkHistory={bulkHistory} onBulkHistoryDelete={bulkHistoryDelete} onBulkHistoryEdit={bulkHistoryEdit} lifePatterns={lifePatterns} onLifePatterns={setLifePatterns} patternOverrides={patternOverrides} onApplyPattern={applyPattern}/>
+        <SettingsScreen settings={settings} onSettings={setSettings} onClose={()=>setSOp(false)} globalTags={globalTags} onGlobalTags={setGlobalTags} customTabs={customTabs} onCustomTabs={setCustomTabs} shopNotifSettings={shopNotifSettings} onShopNotifSettings={setShopNotifSettings} calEventsCount={calEvents.length} onSyncCalendar={syncCalendar} syncingCal={syncingCal} authUser={authUser} isPremium={isPremium} onBulkAdd={bulkAddTasks} bulkHistory={bulkHistory} onBulkHistoryDelete={bulkHistoryDelete} onBulkHistoryEdit={bulkHistoryEdit} lifePatterns={lifePatterns} onLifePatterns={setLifePatterns} patternOverrides={patternOverrides} onApplyPattern={applyPattern} initialSub={settingsInitSub}/>
       )}
 
       {/* ── Recurrence edit confirm ── */}
