@@ -3733,6 +3733,21 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
       <div className="flex-1 overflow-y-auto px-4 pb-10">
 
 
+        {/* Account card — top of settings, standalone */}
+        <div className="bg-white rounded-2xl overflow-hidden shadow-sm mt-4">
+          <button onClick={()=>setSub('account')}
+            className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50">
+            <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
+              <AppIcons.question size={20} className="text-gray-400"/>
+            </div>
+            <div className="flex-1 min-w-0 text-left">
+              <p className="text-[15px] font-semibold text-gray-900">{authUser?.displayName??authUser?.email??'アカウント'}</p>
+              <p className="text-xs text-gray-400">{authUser?'アカウント設定・同期・Proプラン':'ログインしてデータを同期'}</p>
+            </div>
+            <AppIcons.caretRight size={14} className="text-gray-300"/>
+          </button>
+        </div>
+
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">時間指定</p>
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
           <SettingsRow icon={<AppIcons.repeat size={18}/>} iconBg="bg-gray-100" title="繰り返しタスク" desc="繰り返しタスクを管理" onClick={()=>setSub('recurring')}/>
@@ -3748,9 +3763,8 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           <SettingsRow icon={<AppIcons.palette/>} iconBg="bg-gray-100" title="表示設定" desc="外観、言語など" onClick={()=>setSub('display')} isLast/>
         </div>
 
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">アカウント</p>
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">連携</p>
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
-          <SettingsRow icon={<AppIcons.link/>} iconBg="bg-gray-100" title="アカウント" desc={authUser?.email??'ゲスト'} onClick={()=>setSub('account')}/>
           <SettingsRow icon={<AppIcons.calendar size={18}/>} iconBg="bg-gray-100" title="カレンダー連携" desc="カレンダーと同期" onClick={()=>setSub('calendar')} isLast/>
         </div>
 
