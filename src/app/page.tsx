@@ -1609,7 +1609,6 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                           className={`flex flex-col items-center gap-1.5 py-3 rounded-2xl ${sel?'':'bg-gray-50'}`}
                           style={sel?{background:color||'#D9A3B2'}:undefined}>
                           <Ic size={22} className={sel?'text-white':'text-gray-700'}/>
-                          <span className={`text-[10px] leading-none ${sel?'text-gray-100':'text-gray-500'}`}>{opt.label}</span>
                         </button>
                       );
                     })}
@@ -1629,7 +1628,6 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                           className={`flex flex-col items-center gap-1.5 py-3 rounded-2xl ${sel?'':'bg-gray-50'}`}
                           style={sel?{background:color||'#D9A3B2'}:undefined}>
                           <Ic size={22} className={sel?'text-white':'text-gray-700'}/>
-                          <span className={`text-[10px] leading-none ${sel?'text-gray-100':'text-gray-500'}`}>{opt.label}</span>
                         </button>
                       );
                     })}
@@ -3041,8 +3039,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                             className={`flex flex-col items-center gap-1.5 py-3 rounded-2xl ${sel?'':'bg-gray-50'}`}
                             style={sel?{background:bg}:undefined}>
                             <Ic size={22} className={sel?'text-white':'text-gray-700'}/>
-                            <span className={`text-[10px] leading-none ${sel?'text-gray-100':'text-gray-500'}`}>{opt.label}</span>
-                          </button>
+                            </button>
                         );
                       })}
                     </div>
@@ -3151,8 +3148,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                             className={`flex flex-col items-center gap-1.5 py-3 rounded-2xl ${sel?'':'bg-gray-50'}`}
                             style={sel?{background:bg}:undefined}>
                             <Ic size={22} className={sel?'text-white':'text-gray-700'}/>
-                            <span className={`text-[10px] leading-none ${sel?'text-gray-100':'text-gray-500'}`}>{opt.label}</span>
-                          </button>
+                            </button>
                         );
                       })}
                     </div>
