@@ -3021,7 +3021,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
               </div>
               <div className="overflow-y-auto px-5 pb-10 flex-1">
                 <p className="text-xs font-bold text-gray-400 mb-2 mt-1">カラー</p>
-                <div className="flex gap-2 mb-5" style={{overflowX:'auto',WebkitOverflowScrolling:'touch',paddingTop:'4px',paddingBottom:'4px'}}>
+                <div className="flex gap-2 mb-5" style={{overflowX:'auto',WebkitOverflowScrolling:'touch',paddingTop:'4px',paddingBottom:'4px',paddingLeft:'4px'}}>
                   {TASK_COLORS.map((c,i)=>(
                     <button key={i} onClick={()=>setBulkColor(c)}
                       className={`shrink-0 w-8 h-8 rounded-full border-2 transition-all ${bulkColor===c?'border-gray-800 scale-110':'border-gray-100'}`}
@@ -3131,7 +3131,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
               </div>
               <div className="overflow-y-auto px-5 pb-10 flex-1">
                 <p className="text-xs font-bold text-gray-400 mb-2 mt-1">カラー</p>
-                <div className="flex gap-2 mb-5 flex-wrap">
+                <div className="flex gap-2 mb-5 flex-wrap" style={{paddingLeft:'4px',paddingTop:'4px',paddingBottom:'4px'}}>
                   {TASK_COLORS.map((c,i)=>(
                     <button key={i} onClick={()=>setHEColor(c)}
                       className={`w-8 h-8 rounded-full border-2 transition-all ${histEditColor===c?'border-gray-700 scale-110':'border-transparent'}`}
