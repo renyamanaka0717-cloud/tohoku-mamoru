@@ -3397,35 +3397,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
     </div>
   );
 
-  if(sub==='wakeSleep') return (
-    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
-      {subHeader('起床・就寝')}
-      <div className="flex-1 overflow-y-auto px-4 pb-8">
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">時間設定</p>
-        <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
-          <div className="px-4 py-4 border-b border-gray-100 flex items-center justify-between">
-            <p className="text-[15px] font-medium text-gray-900">起床時間</p>
-            <input type="time" value={settings.wakeTime}
-              onChange={e=>onSettings({...settings,wakeTime:e.target.value})}
-              className="border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50"/>
-          </div>
-          <div className="px-4 py-4 border-b border-gray-100 flex items-center justify-between">
-            <p className="text-[15px] font-medium text-gray-900">就寝時間</p>
-            <input type="time" value={settings.sleepTime}
-              onChange={e=>onSettings({...settings,sleepTime:e.target.value})}
-              className="border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50"/>
-          </div>
-          <button onClick={()=>setSub('lifePatterns')}
-            className="w-full px-4 py-4 flex items-center justify-between active:bg-gray-50">
-            <p className="text-[15px] font-medium text-gray-900">生活パターン</p>
-            <AppIcons.caretRight size={14} className="text-gray-300"/>
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-
-  if(sub==='lifePatterns') {
+  if(sub==='wakeSleep') {
     const PATTERN_COLORS=['#D9A3B2','#C4888E','#6A8FAF','#7A9E8A','#C4A44A','#8F82B8','#C47A5E','#A67899'];
     const daysInMonth=(y:number,m:number)=>new Date(y,m+1,0).getDate();
     const firstDow=(y:number,m:number)=>new Date(y,m,1).getDay();
@@ -3439,12 +3411,26 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
     const activePat=lifePatterns.find(p=>p.id===lpActivePat)??null;
     return (
       <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
-        {subHeader('生活パターン')}
+        {subHeader('起床・就寝')}
         <div className="flex-1 overflow-y-auto px-4 pb-10">
-          <p className="text-xs text-gray-400 px-1 mt-5 mb-4 leading-relaxed">生活に合わせて起床時間・就寝時間を日ごとに変更できます</p>
+          {/* 時間設定 — 1行 */}
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">時間設定</p>
+          <div className="bg-white rounded-2xl overflow-hidden shadow-sm mb-5">
+            <div className="px-4 py-4 flex items-center gap-3">
+              <AppIcons.wake size={16} className="text-gray-400 shrink-0"/>
+              <input type="time" value={settings.wakeTime}
+                onChange={e=>onSettings({...settings,wakeTime:e.target.value})}
+                className="border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50"/>
+              <span className="text-gray-300 text-sm">〜</span>
+              <AppIcons.sleep size={16} className="text-gray-400 shrink-0"/>
+              <input type="time" value={settings.sleepTime}
+                onChange={e=>onSettings({...settings,sleepTime:e.target.value})}
+                className="border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50"/>
+            </div>
+          </div>
 
-          {/* Pattern list */}
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2">パターン</p>
+          {/* 生活パターン */}
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2">生活パターン</p>
           <div className="bg-white rounded-2xl overflow-hidden shadow-sm mb-1">
             {lifePatterns.length===0&&!lpAddMode&&(
               <p className="text-sm text-gray-400 text-center py-6">パターンがまだありません</p>
@@ -3531,64 +3517,56 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
               className="w-full py-3 rounded-2xl text-sm font-semibold text-[#D9A3B2] bg-white shadow-sm mb-5">＋ パターンを追加</button>
           )}
 
-          {/* Calendar */}
-          {lifePatterns.length>0&&(
-            <>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2">日付に適用</p>
-              {activePat&&(
-                <p className="text-xs text-gray-500 px-1 mb-3">
-                  <span className="inline-block w-3 h-3 rounded-full mr-1 align-middle" style={{background:activePat.color}}/>
-                  「{activePat.name}」を選択してカレンダーの日付をタップ
-                </p>
-              )}
-              {!activePat&&(
-                <p className="text-xs text-gray-400 px-1 mb-3">上のパターンを選択してから日付をタップしてください</p>
-              )}
-              <div className="bg-white rounded-2xl overflow-hidden shadow-sm mb-3">
-                {/* month nav */}
-                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-                  <button onClick={()=>setLpVm(prev=>shiftMonth(prev.year,prev.month,-1))}
-                    className="w-8 h-8 flex items-center justify-center rounded-full active:bg-gray-100">
-                    <AppIcons.caretLeft size={16} className="text-gray-600"/>
-                  </button>
-                  <p className="text-[15px] font-semibold text-gray-900">{lpVm.year}年{lpVm.month+1}月</p>
-                  <button onClick={()=>setLpVm(prev=>shiftMonth(prev.year,prev.month,1))}
-                    className="w-8 h-8 flex items-center justify-center rounded-full active:bg-gray-100">
-                    <AppIcons.caretRight size={16} className="text-gray-600"/>
-                  </button>
-                </div>
-                {/* day headers */}
-                <div className="grid grid-cols-7 px-2 pt-2">
-                  {['日','月','火','水','木','金','土'].map(d=>(
-                    <div key={d} className="text-center text-xs text-gray-400 pb-1">{d}</div>
-                  ))}
-                </div>
-                {/* cells */}
-                <div className="grid grid-cols-7 px-2 pb-3">
-                  {calCells.map((day,idx)=>{
-                    if(!day) return <div key={idx}/>;
-                    const ds=cellDate(day);
-                    const patId=patternOverrides[ds]??null;
-                    const cellPat=patId?lifePatterns.find(p=>p.id===patId)??null:null;
-                    const isToday=ds===_lpToday;
-                    return (
-                      <button key={idx}
-                        onClick={()=>{ if(!lpActivePat) return; onApplyPattern([ds],lpActivePat===patId?null:lpActivePat); }}
-                        className="flex flex-col items-center py-1 rounded-xl active:bg-gray-50">
-                        <span className={`text-sm w-8 h-8 flex items-center justify-center rounded-full font-medium
-                          ${isToday&&!cellPat?'bg-gray-100 text-gray-900':''}
-                          ${cellPat?'text-white':'text-gray-700'}
-                        `} style={cellPat?{background:cellPat.color}:undefined}>{day}</span>
-                        {cellPat&&(
-                          <span className="text-[9px] leading-tight text-center mt-0.5 max-w-[40px] truncate" style={{color:cellPat.color}}>{cellPat.name}</span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </>
+          {/* Calendar — always visible */}
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2">日付に適用</p>
+          {activePat?(
+            <p className="text-xs text-gray-500 px-1 mb-3">
+              <span className="inline-block w-3 h-3 rounded-full mr-1 align-middle" style={{background:activePat.color}}/>
+              「{activePat.name}」を選択中 — 日付をタップして適用
+            </p>
+          ):(
+            <p className="text-xs text-gray-400 px-1 mb-3">上のパターンを選択してから日付をタップ</p>
           )}
+          <div className="bg-white rounded-2xl overflow-hidden shadow-sm mb-3">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+              <button onClick={()=>setLpVm(prev=>shiftMonth(prev.year,prev.month,-1))}
+                className="w-8 h-8 flex items-center justify-center rounded-full active:bg-gray-100">
+                <AppIcons.caretLeft size={16} className="text-gray-600"/>
+              </button>
+              <p className="text-[15px] font-semibold text-gray-900">{lpVm.year}年{lpVm.month+1}月</p>
+              <button onClick={()=>setLpVm(prev=>shiftMonth(prev.year,prev.month,1))}
+                className="w-8 h-8 flex items-center justify-center rounded-full active:bg-gray-100">
+                <AppIcons.caretRight size={16} className="text-gray-600"/>
+              </button>
+            </div>
+            <div className="grid grid-cols-7 px-2 pt-2">
+              {['日','月','火','水','木','金','土'].map(d=>(
+                <div key={d} className="text-center text-xs text-gray-400 pb-1">{d}</div>
+              ))}
+            </div>
+            <div className="grid grid-cols-7 px-2 pb-3">
+              {calCells.map((day,idx)=>{
+                if(!day) return <div key={idx}/>;
+                const ds=cellDate(day);
+                const patId=patternOverrides[ds]??null;
+                const cellPat=patId?lifePatterns.find(p=>p.id===patId)??null:null;
+                const isToday=ds===_lpToday;
+                return (
+                  <button key={idx}
+                    onClick={()=>{ if(!lpActivePat) return; onApplyPattern([ds],lpActivePat===patId?null:lpActivePat); }}
+                    className="flex flex-col items-center py-1 rounded-xl active:bg-gray-50">
+                    <span className={`text-sm w-8 h-8 flex items-center justify-center rounded-full font-medium
+                      ${isToday&&!cellPat?'bg-gray-100 text-gray-900':''}
+                      ${cellPat?'text-white':'text-gray-700'}
+                    `} style={cellPat?{background:cellPat.color}:undefined}>{day}</span>
+                    {cellPat&&(
+                      <span className="text-[9px] leading-tight text-center mt-0.5 max-w-[40px] truncate" style={{color:cellPat.color}}>{cellPat.name}</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
       </div>
     );
