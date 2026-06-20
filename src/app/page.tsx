@@ -3572,66 +3572,23 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
     </div>
   );
 
-  if(sub==='icloudAccount') return (
-    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
-      {subHeader('Appleアカウント')}
-      <div className="flex-1 overflow-y-auto px-4 pb-8">{comingSoon(<AppIcons.link size={48}/>,'Appleアカウント連携は近日公開予定です')}</div>
-    </div>
-  );
-
-  if(sub==='icloudBackup') return (
-    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
-      {subHeader('iCloudバックアップ')}
-      <div className="flex-1 overflow-y-auto px-4 pb-8">{comingSoon(<AppIcons.sparkle size={48}/>,'iCloudバックアップは近日公開予定です')}</div>
-    </div>
-  );
-
-  if(sub==='icloudStatus') return (
-    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
-      {subHeader('同期状態')}
-      <div className="flex-1 overflow-y-auto px-4 pb-8">{comingSoon(<AppIcons.clock size={48}/>,'同期状態の表示は近日公開予定です')}</div>
-    </div>
-  );
-
   if(sub==='account') return (
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
       {subHeader('アカウント')}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">現在の状態</p>
-        <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
-          <div className="px-4 py-4 flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
-              <AppIcons.question size={24} className="text-gray-400"/>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-[15px] font-semibold text-gray-900">{authUser?.displayName??'ゲスト'}</p>
-              <p className="text-xs text-gray-400">{authUser?.email??'ログインなしで利用中'}</p>
-            </div>
-            {isPremium&&<span className="text-xs font-bold px-2 py-0.5 rounded-full bg-[#D9A3B2] text-white">Premium</span>}
-          </div>
+        <div className="bg-white rounded-2xl overflow-hidden shadow-sm mt-6">
+          <SettingsRow icon={<AppIcons.link size={18}/>} iconBg="bg-gray-100" title="Appleアカウント" desc="iCloudバックアップに利用" onClick={()=>{}} />
+          <SettingsRow icon={<AppIcons.sparkle size={18}/>} iconBg="bg-gray-100" title="iCloudバックアップ" desc="データを自動で保存・復元" onClick={()=>{}} />
+          <SettingsRow icon={<AppIcons.clock size={18}/>} iconBg="bg-gray-100" title="同期状態" desc="最終同期日時を表示" onClick={()=>{}} isLast/>
         </div>
-
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">アカウント連携でできること</p>
-        <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
-          {[
-            {icon:<AppIcons.repeat size={18}/>, text:'複数端末でデータを同期'},
-            {icon:<AppIcons.star size={18}/>,   text:'クラウドバックアップ'},
-            {icon:<AppIcons.calendar size={18}/>,text:'Googleカレンダー連携（プレミアム）'},
-            {icon:<AppIcons.sparkle size={18}/>, text:'AI タスク提案（プレミアム）'},
-          ].map(({icon,text},i,arr)=>(
-            <div key={i} className={`px-4 py-3 flex items-center gap-3${i<arr.length-1?' border-b border-gray-100':''}`}>
-              <span className="text-gray-300 shrink-0">{icon}</span>
-              <span className="text-sm text-gray-500">{text}</span>
-            </div>
-          ))}
+        <div className="bg-white rounded-2xl overflow-hidden shadow-sm mt-4">
+          <button className="w-full px-4 py-3.5 text-left text-[15px] font-medium text-[#D97A7A]">サインアウト</button>
         </div>
-
-        <div className="mt-4 px-1">
-          <p className="text-xs text-gray-400 leading-relaxed">ログイン機能は近日公開予定です。現在はログインなしで全ての基本機能をご利用いただけます。</p>
-        </div>
+        <p className="text-xs text-gray-400 px-1 mt-3">これらの機能は近日公開予定です。</p>
       </div>
     </div>
   );
+
 
   if(sub==='calendar') return (
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
@@ -3778,14 +3735,8 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
 
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">連携</p>
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
+          <SettingsRow icon={<AppIcons.link size={18}/>} iconBg="bg-gray-100" title="アカウント" desc="Appleアカウント・iCloudバックアップ" onClick={()=>setSub('account')}/>
           <SettingsRow icon={<AppIcons.calendar size={18}/>} iconBg="bg-gray-100" title="カレンダー連携" desc="カレンダーと同期" onClick={()=>setSub('calendar')} isLast/>
-        </div>
-
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">iCloud</p>
-        <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
-          <SettingsRow icon={<AppIcons.link size={18}/>} iconBg="bg-gray-100" title="Appleアカウント" desc="iCloudバックアップに利用" onClick={()=>setSub('icloudAccount')}/>
-          <SettingsRow icon={<AppIcons.sparkle size={18}/>} iconBg="bg-gray-100" title="iCloudバックアップ" desc="データを自動で保存・復元" onClick={()=>setSub('icloudBackup')}/>
-          <SettingsRow icon={<AppIcons.clock size={18}/>} iconBg="bg-gray-100" title="同期状態" desc="最終同期日時を表示" onClick={()=>setSub('icloudStatus')} isLast/>
         </div>
 
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">サブスクリプション</p>
