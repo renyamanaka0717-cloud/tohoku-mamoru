@@ -3430,7 +3430,8 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           </div>
 
           {/* 生活パターン */}
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2">生活パターン</p>
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-1">生活パターン</p>
+          <p className="text-xs text-gray-400 px-1 mb-2">シフトや予定に合わせて、日ごとの起床・就寝時間を変更できます</p>
           <div className="bg-white rounded-2xl overflow-hidden shadow-sm mb-1">
             {lifePatterns.length===0&&!lpAddMode&&(
               <p className="text-sm text-gray-400 text-center py-6">パターンがまだありません</p>
