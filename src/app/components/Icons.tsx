@@ -70,7 +70,7 @@ type P = { size?: number; className?: string };
 
 const make = (Ic: PhosphorComp, defaultSize = 20) => {
   function PhosphorIcon({ size = defaultSize, className }: P) {
-    return <Ic weight="fill" size={size} className={className} />;
+    return <Ic weight="bold" size={size} className={className} />;
   }
   return PhosphorIcon;
 };
