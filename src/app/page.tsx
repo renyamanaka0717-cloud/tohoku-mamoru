@@ -1083,7 +1083,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                 </>
               ) : (
                 <>
-                  {onBulkInput&&<button onClick={onBulkInput} className="px-3 py-1.5 text-sm font-semibold rounded-full bg-white/90 text-gray-800">一括入力</button>}
+                  {onBulkInput&&<button onClick={onBulkInput} className="px-3 py-1.5 text-sm font-semibold rounded-full bg-white/90 text-gray-800 flex items-center gap-1">一括入力<AppIcons.caretRight size={12}/></button>}
                   <button onClick={save} disabled={!name.trim()}
                     className={`px-4 py-1.5 text-sm font-semibold rounded-full transition-colors ${name.trim()?'bg-white/90 text-gray-800':'bg-white/20 text-white/40 cursor-not-allowed'}`}>保存</button>
                 </>
