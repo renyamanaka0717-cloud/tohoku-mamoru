@@ -4067,12 +4067,13 @@ export default function App() {
       localStorage.removeItem(MORNING_SNOOZE_KEY);
       morningShownRef.current=false;
       if(typeof Notification!=='undefined'&&Notification.permission==='granted'){
-        const past2=tasks.filter(t=>!t.completed&&!t.isLater&&!!t.startTime&&!t.recurrence&&t.date<today);
+        const past2=tasks.filter(t=>!t.completed&&!t.isLater&&!!t.startTime&&!t.recurrence&&t.date===shiftDate(today,-1));
         if(past2.length>0) new Notification('昨日のタスクが残っています',{body:`昨日のタスクが${past2.length}件残っています`});
       }
     }
     if(morningShownRef.current) return;
-    const past=tasks.filter(t=>!t.completed&&!t.isLater&&!!t.startTime&&!t.recurrence&&t.date<today);
+    const yesterday=shiftDate(today,-1);
+    const past=tasks.filter(t=>!t.completed&&!t.isLater&&!!t.startTime&&!t.recurrence&&t.date===yesterday);
     if(past.length===0) return;
     morningShownRef.current=true;
     setMorningTasks(past);
@@ -4088,7 +4089,7 @@ export default function App() {
     if(nowM!==wakeM) return;
     const lastDate=localStorage.getItem(MORNING_NOTIF_KEY);
     if(lastDate===today) return;
-    const past=tasks.filter(t=>!t.completed&&!t.isLater&&!!t.startTime&&!t.recurrence&&t.date<today);
+    const past=tasks.filter(t=>!t.completed&&!t.isLater&&!!t.startTime&&!t.recurrence&&t.date===shiftDate(today,-1));
     if(past.length===0) return;
     localStorage.setItem(MORNING_NOTIF_KEY,today);
     if(typeof Notification!=='undefined'&&Notification.permission==='granted'){
