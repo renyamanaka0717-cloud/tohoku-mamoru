@@ -4145,9 +4145,7 @@ export default function App() {
   const [moveHistory,setMoveHistory] = useState<MoveHistory[]>([]);
   const [date,setDate]           = useState(todayStr());
   const [modal,setModal]         = useState<{open:boolean;task:Task|null;prefillTime?:string;prefillCategory?:string;iconSheet?:boolean;scrollToPhotos?:boolean}>({open:false,task:null});
-  const [checkedCategories,setCheckedCats] = useState<Set<string>>(new Set());
-  const [hiddenCategories,setHiddenCats] = useState<Set<string>>(new Set());
-  const [tabDropdownOpen,setTabDropdownOpen] = useState(false);
+  const [activeCategory,setActiveCat] = useState<string|null>(null);
   const [customTabs,setCustomTabs]   = useState<CustomTab[]>([]);
   const [editTabId,setEditTabId]     = useState<string|null>(null);
   const [editTabName,setEditTabName] = useState('');
@@ -4356,11 +4354,9 @@ export default function App() {
   },[loaded,now,shopNotifSettings,shopItems]);
 
   const filteredTasks = useMemo(()=>{
-    const base=checkedCategories.size>0
-      ?tasks.filter(t=>checkedCategories.has(t.category??''))
-      :hiddenCategories.size===0?tasks:tasks.filter(t=>t.category==null||!hiddenCategories.has(t.category));
+    const base=activeCategory?tasks.filter(t=>t.category===activeCategory):tasks;
     return base.filter(t=>!t.allDay);
-  },[tasks,checkedCategories,hiddenCategories]);
+  },[tasks,activeCategory]);
   const laterTasks    = useMemo(()=>filteredTasks.filter(t=>t.isLater),[filteredTasks]);
   const pendingCount  = useMemo(()=>laterTasks.filter(t=>!t.completed).length,[laterTasks]);
   const shopPending   = useMemo(()=>shopItems.filter(i=>!i.checked).length,[shopItems]);
@@ -4487,7 +4483,7 @@ export default function App() {
   const addCustomTab=()=>{
     const newTab:CustomTab={id:uid(),name:`タブ${customTabs.length+1}`};
     setCustomTabs(prev=>[...prev,newTab]);
-    setCheckedCats(new Set([newTab.id]));
+    setActiveCat(newTab.id);
     setEditTabId(newTab.id);
     setEditTabName(newTab.name);
   };
@@ -4499,8 +4495,7 @@ export default function App() {
   };
   const deleteCustomTab=(id:string)=>{
     setCustomTabs(prev=>prev.filter(t=>t.id!==id));
-    setCheckedCats(prev=>{const s=new Set(prev);s.delete(id);return s;});
-    setHiddenCats(prev=>{const s=new Set(prev);s.delete(id);return s;});
+    if(activeCategory===id) setActiveCat(null);
     setEditTabId(null);
   };
 
@@ -4510,7 +4505,7 @@ export default function App() {
     setTasks(prev=>prev.map(t=>t.id===id?{...t,...data,id}:t));
   };
 
-  const openAdd  = (prefillTime?:string) => setModal({open:true,task:null,prefillTime,prefillCategory:checkedCategories.size===1?[...checkedCategories][0]:undefined});
+  const openAdd  = (prefillTime?:string) => setModal({open:true,task:null,prefillTime,prefillCategory:activeCategory??undefined});
   const openEdit = (task:Task) => {
     if(task.recurrence) { setRecConfirm(task); } else { setModal({open:true,task}); }
   };
@@ -4663,26 +4658,22 @@ export default function App() {
         {/* Category filter tabs */}
         <div className="bg-gray-50">
           <div className="tabs-scroll flex items-end pl-3 pt-2" style={{overflowX:'auto',WebkitOverflowScrolling:'touch',overflowY:'hidden',touchAction:'pan-x'}}>
-          <button onClick={()=>{setTabDropdownOpen(o=>!o);setEditTabId(null);}} className="shrink-0 relative"
-            style={checkedCategories.size===0?{
-              padding:'7px 14px 9px',background:'var(--c-primary)',color:'white',fontWeight:700,fontSize:'0.875rem',
+          <button onClick={()=>{setActiveCat(null);setEditTabId(null);}} className="shrink-0 relative"
+            style={activeCategory===null?{
+              width:'80px',padding:'7px 12px 9px',background:'var(--c-primary)',color:'white',fontWeight:700,fontSize:'0.875rem',
               border:'none',borderRadius:'14px 14px 0 0',marginBottom:'-2px',zIndex:10,
-              boxShadow:'0 4px 12px rgba(0,0,0,0.10)',display:'flex',alignItems:'center',gap:'4px',whiteSpace:'nowrap',
+              boxShadow:'0 4px 12px rgba(0,0,0,0.10)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',
             }:{
-              padding:'5px 14px',background:'#FFFFFF',color:'#6B7280',fontWeight:600,fontSize:'0.875rem',
+              width:'80px',padding:'5px 12px',background:'#FFFFFF',color:'#6B7280',fontWeight:600,fontSize:'0.875rem',
               border:'none',borderRadius:'14px 14px 0 0',marginBottom:'2px',
-              boxShadow:'0 4px 10px rgba(0,0,0,0.08)',display:'flex',alignItems:'center',gap:'4px',whiteSpace:'nowrap',
-            }}>
-            すべて
-            {hiddenCategories.size>0&&checkedCategories.size===0&&<span style={{fontSize:'10px',background:'rgba(255,255,255,0.3)',borderRadius:'10px',padding:'0 5px',lineHeight:'16px'}}>{customTabs.length-hiddenCategories.size}/{customTabs.length}</span>}
-            <AppIcons.caretDown size={11}/>
-          </button>
+              boxShadow:'0 4px 10px rgba(0,0,0,0.08)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',
+            }}>すべて</button>
           {customTabs.map(tab=>{
-            const active=checkedCategories.has(tab.id);
+            const active=activeCategory===tab.id;
             return (
               <button key={tab.id} onClick={()=>{
                 if(active){setEditTabId(tab.id);setEditTabName(tab.name);}
-                else{setCheckedCats(prev=>{const s=new Set(prev);s.add(tab.id);return s;});setEditTabId(null);}
+                else{setActiveCat(tab.id);setEditTabId(null);}
               }} className="shrink-0 relative"
                 style={active?{
                   width:'80px',padding:'7px 12px 9px',background:'var(--c-primary)',color:'white',fontWeight:700,fontSize:'0.875rem',
@@ -4699,25 +4690,6 @@ export default function App() {
             className="shrink-0 w-8 h-7 flex items-center justify-center text-gray-400 text-xl font-light ml-1 mb-0.5">+</button>
           <div className="shrink-0" style={{width:'12px'}}/>
           </div>
-          {tabDropdownOpen&&customTabs.length>0&&(
-            <div className="border-t border-gray-100 bg-white px-4 py-1">
-              {customTabs.map(tab=>{
-                const visible=!hiddenCategories.has(tab.id);
-                return (
-                  <button key={tab.id} onClick={()=>{
-                    setHiddenCats(prev=>{const s=new Set(prev);if(s.has(tab.id))s.delete(tab.id);else s.add(tab.id);return s;});
-                  }}
-                    className="w-full flex items-center gap-3 py-2.5 active:bg-gray-50">
-                    <div className="w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors"
-                      style={visible?{background:'var(--c-primary)',borderColor:'var(--c-primary)'}:{background:'white',borderColor:'#D1D5DB'}}>
-                      {visible&&<svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-                    </div>
-                    <span className="text-sm text-gray-800 font-medium">{tab.name}</span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
         </div>
         {editTabId&&(
           <div className="flex gap-2 px-4 py-2 bg-gray-50 border-b border-gray-100">
@@ -4732,7 +4704,7 @@ export default function App() {
 
         {/* All-day strip — sticky, aligned with timeline CARD_LEFT */}
         {(()=>{
-          const allDayTasks=tasks.filter(t=>t.allDay&&t.date===date&&!t.isLater&&(checkedCategories.size===0?(hiddenCategories.size===0||t.category==null||!hiddenCategories.has(t.category)):checkedCategories.has(t.category??'')));
+          const allDayTasks=tasks.filter(t=>t.allDay&&t.date===date&&!t.isLater&&(activeCategory===null||t.category===activeCategory));
           if(allDayTasks.length===0) return null;
           return (
             <div className="flex items-center bg-white border-b border-gray-100 py-2 gap-3" style={{paddingLeft:'12px'}}>
