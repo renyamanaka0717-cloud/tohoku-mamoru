@@ -55,7 +55,7 @@ interface ShopItem  { id: string; name: string; checked: boolean; purchasedAt?: 
 interface ShopNotifSetting { id: string; days: number[]; time: string; enabled: boolean; }
 interface TagDef    { name: string; color: string; }
 interface MoveHistory { id: string; date: string; taskNames: string[]; }
-interface CustomTab  { id: string; name: string; }
+interface CustomTab  { id: string; name: string; showInAll?: boolean; }
 interface BulkHistoryEntry { id:string; name:string; startTime:string; endTime:string; dates:string[]; taskIds:string[]; registeredAt:string; icon?:string; color?:string; }
 interface LifePattern { id:string; name:string; wakeTime:string; sleepTime:string; color:string; }
 
@@ -2880,6 +2880,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   const [tabInput,setTabInput]     = useState('');
   const [editTabId,setEditTabId]   = useState<string|null>(null);
   const [editTabVal,setEditTabVal] = useState('');
+  const [deleteTabId,setDeleteTabId] = useState<string|null>(null);
   const _today0 = todayStr();
   const _todayD = new Date(_today0+'T12:00:00');
   const [bulkName,setBulkName] = useState('');
@@ -3226,29 +3227,54 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">タブ一覧</p>
             <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
               {customTabs.map((tab,i)=>(
-                <div key={tab.id} className={`px-4 py-3 flex items-center gap-3${i<customTabs.length-1?' border-b border-gray-100':''}`}>
-                  {editTabId===tab.id ? (
-                    <input autoFocus value={editTabVal} onChange={e=>setEditTabVal(e.target.value)}
-                      onKeyDown={e=>{if(e.key==='Enter'){const v=editTabVal.trim();if(v)onCustomTabs(customTabs.map(t=>t.id===tab.id?{...t,name:v}:t));setEditTabId(null);}}}
-                      className="flex-1 text-[15px] border-b border-gray-300 outline-none bg-transparent text-gray-900 py-0.5"/>
-                  ) : (
-                    <span className="flex-1 text-[15px] text-gray-900">{tab.name}</span>
-                  )}
-                  <div className="flex gap-1 shrink-0">
-                    <button onClick={()=>{if(editTabId===tab.id){const v=editTabVal.trim();if(v)onCustomTabs(customTabs.map(t=>t.id===tab.id?{...t,name:v}:t));setEditTabId(null);}else{setEditTabId(tab.id);setEditTabVal(tab.name);}}}
-                      className="text-xs text-gray-400 font-medium px-2 py-1">
-                      {editTabId===tab.id?'確定':'編集'}
-                    </button>
-                    {editTabId===tab.id
-                      ? <button onClick={()=>setEditTabId(null)} className="text-xs text-gray-400 font-medium px-2 py-1">キャンセル</button>
-                      : <button onClick={()=>onCustomTabs(customTabs.filter(t=>t.id!==tab.id))} className="text-xs text-[#D97A7A] font-medium px-2 py-1">削除</button>
-                    }
+                <div key={tab.id}>
+                  <div className={`px-4 py-3 flex items-center gap-3${i<customTabs.length-1?' border-b border-gray-100':''}`}>
+                    {editTabId===tab.id ? (
+                      <input autoFocus value={editTabVal} onChange={e=>setEditTabVal(e.target.value)}
+                        onKeyDown={e=>{if(e.key==='Enter'){const v=editTabVal.trim();if(v)onCustomTabs(customTabs.map(t=>t.id===tab.id?{...t,name:v}:t));setEditTabId(null);}}}
+                        className="flex-1 text-[15px] border-b border-gray-300 outline-none bg-transparent text-gray-900 py-0.5"/>
+                    ) : (
+                      <div className="flex-1 min-w-0">
+                        <span className="text-[15px] text-gray-900">{tab.name}</span>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-[12px] text-gray-400">（すべて）に表示</span>
+                          <button
+                            onClick={()=>onCustomTabs(customTabs.map(t=>t.id===tab.id?{...t,showInAll:t.showInAll===false?undefined:false}:t))}
+                            className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors ${tab.showInAll===false?'bg-gray-200':'bg-[var(--c-primary)]'}`}>
+                            <span className={`inline-block h-4 w-4 mt-0.5 rounded-full bg-white shadow transition-transform ${tab.showInAll===false?'translate-x-0.5':'translate-x-4'}`}/>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    <div className="flex gap-1 shrink-0">
+                      <button onClick={()=>{if(editTabId===tab.id){const v=editTabVal.trim();if(v)onCustomTabs(customTabs.map(t=>t.id===tab.id?{...t,name:v}:t));setEditTabId(null);}else{setEditTabId(tab.id);setEditTabVal(tab.name);}}}
+                        className="text-xs text-gray-400 font-medium px-2 py-1">
+                        {editTabId===tab.id?'確定':'編集'}
+                      </button>
+                      {editTabId===tab.id
+                        ? <button onClick={()=>setEditTabId(null)} className="text-xs text-gray-400 font-medium px-2 py-1">キャンセル</button>
+                        : <button onClick={()=>setDeleteTabId(tab.id)} className="text-xs text-[#D97A7A] font-medium px-2 py-1">削除</button>
+                      }
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
           </>
         )}
+        {deleteTabId&&(()=>{const dt=customTabs.find(t=>t.id===deleteTabId);return(
+          <div className="fixed inset-0 z-[100] flex items-end justify-center" onClick={()=>setDeleteTabId(null)}>
+            <div className="absolute inset-0 bg-black/40"/>
+            <div className="relative bg-white rounded-t-2xl w-full max-w-md px-6 pt-6 pb-10" onClick={e=>e.stopPropagation()}>
+              <p className="text-center text-[17px] font-semibold text-gray-900 mb-1">「{dt?.name}」を削除しますか？</p>
+              <p className="text-center text-[13px] text-gray-400 mb-6">このタブのタスクは「すべて」に移動されます</p>
+              <div className="flex flex-col gap-3">
+                <button onClick={()=>{onCustomTabs(customTabs.filter(t=>t.id!==deleteTabId));setDeleteTabId(null);}} className="w-full py-3.5 rounded-2xl bg-[#D97A7A] text-white text-[15px] font-semibold">削除する</button>
+                <button onClick={()=>setDeleteTabId(null)} className="w-full py-3.5 rounded-2xl bg-gray-100 text-gray-700 text-[15px] font-semibold">キャンセル</button>
+              </div>
+            </div>
+          </div>
+        );})()}
         {customTabs.length===0&&(
           <p className="text-sm text-gray-400 text-center mt-10">タブがまだありません</p>
         )}
@@ -4349,9 +4375,11 @@ export default function App() {
   },[loaded,now,shopNotifSettings,shopItems]);
 
   const filteredTasks = useMemo(()=>{
-    const base=activeCategory?tasks.filter(t=>t.category===activeCategory):tasks;
+    const base=activeCategory
+      ?tasks.filter(t=>t.category===activeCategory)
+      :tasks.filter(t=>!t.category||customTabs.find(ct=>ct.id===t.category)?.showInAll!==false);
     return base.filter(t=>!t.allDay);
-  },[tasks,activeCategory]);
+  },[tasks,activeCategory,customTabs]);
   const laterTasks    = useMemo(()=>filteredTasks.filter(t=>t.isLater),[filteredTasks]);
   const pendingCount  = useMemo(()=>laterTasks.filter(t=>!t.completed).length,[laterTasks]);
   const shopPending   = useMemo(()=>shopItems.filter(i=>!i.checked).length,[shopItems]);
@@ -4688,7 +4716,7 @@ export default function App() {
 
         {/* All-day strip — sticky, aligned with timeline CARD_LEFT */}
         {(()=>{
-          const allDayTasks=tasks.filter(t=>t.allDay&&t.date===date&&!t.isLater&&(activeCategory===null||t.category===activeCategory));
+          const allDayTasks=tasks.filter(t=>t.allDay&&t.date===date&&!t.isLater&&(activeCategory===null?(customTabs.find(ct=>ct.id===t.category)?.showInAll!==false):t.category===activeCategory));
           if(allDayTasks.length===0) return null;
           return (
             <div className="flex items-center bg-white border-b border-gray-100 py-2 gap-3" style={{paddingLeft:'12px'}}>
