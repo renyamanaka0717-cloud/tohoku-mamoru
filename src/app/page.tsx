@@ -584,6 +584,14 @@ const THEMES=[
   {id:'slate',   name:'スレートグレー',     color:'#8896A5'},
   {id:'forest',  name:'フォレストグリーン', color:'#5A8A6A'},
   {id:'mono',    name:'モノクロ',           color:'#666666'},
+  {id:'sunset',  name:'サンセットオレンジ',   color:'#E8906A'},
+  {id:'mocha',   name:'モカブラウン',       color:'#9E7B65'},
+  {id:'rose',    name:'ローズピンク',       color:'#D4788A'},
+  {id:'lilac',   name:'ライラック',         color:'#B8A0D4'},
+  {id:'powder',  name:'パウダーブルー',     color:'#A0C8E8'},
+  {id:'cream',   name:'クリームベージュ',   color:'#C0A882'},
+  {id:'dusty',   name:'ダスティブルー',     color:'#7090A8'},
+  {id:'coral',   name:'コーラルピンク',     color:'#E88878'},
 ];
 
 function getTaskIcon(key:string){
