@@ -47,7 +47,7 @@ interface Task {
   allDay?: boolean;
 }
 
-interface Settings { wakeTime: string; sleepTime: string; keepIncomplete?: boolean; showFreeCard?: boolean; freeCardMinMin?: number; googleCalEnabled?: boolean; iphoneCalEnabled?: boolean; googleCalUrl?: string; iphoneCalUrl?: string; }
+interface Settings { wakeTime: string; sleepTime: string; keepIncomplete?: boolean; showFreeCard?: boolean; freeCardMinMin?: number; googleCalEnabled?: boolean; iphoneCalEnabled?: boolean; googleCalUrl?: string; iphoneCalUrl?: string; wakeColor?:string; sleepColor?:string; }
 type CalendarEvent = {id:string;title:string;date:string;startTime:string;endTime:string|null;allDay?:boolean;source:'google'|'iphone'};
 type AuthUser = {uid:string;email?:string;displayName?:string;isPremium?:boolean};
 interface FreeSlot  { start: string; end: string; min: number; }
@@ -1867,7 +1867,7 @@ function CalendarEventCard({event}:{event:CalendarEvent}) {
 
 // ── Timeline ──────────────────────────────────────────────────────────────────
 
-function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet,onSchedule,onAddAtTime,onDragStart,dragTaskId,yToTimeRef,layoutYRef,globalTags,todayHistory,onSubtaskToggle,onDragWake,onDragSleep,onCameraClick,calEvents=[],lifePatterns=[],patternOverrides={}}:{
+function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet,onSchedule,onAddAtTime,onDragStart,dragTaskId,yToTimeRef,layoutYRef,globalTags,todayHistory,onSubtaskToggle,onDragWake,onDragSleep,onCameraClick,calEvents=[],lifePatterns=[],patternOverrides={},onOpenWakeSleep}:{
   date:string;tasks:Task[];later:Task[];settings:Settings;now:string;
   onToggle:(id:string)=>void;onEdit:(t:Task)=>void;onEditIconSheet:(t:Task)=>void;
   onSchedule:(t:Task,time:string)=>void;onAddAtTime:(time:string)=>void;
@@ -1882,6 +1882,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
   onCameraClick:(taskId:string)=>void;
   calEvents?:CalendarEvent[];
   lifePatterns?:LifePattern[];
+  onOpenWakeSleep?:()=>void;
   patternOverrides?:Record<string,string>;
 }) {
   const [pressingId,setPressingId] = useState<string|null>(null);
@@ -2170,16 +2171,18 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
       <div className="absolute flex items-center" style={{top:`${wakeCardTop+WAKE_CARD_H/2}px`,transform:'translateY(-50%)',left:0}}>
         <span className="text-xs w-10 text-right pr-1 leading-none text-gray-300">{settings.wakeTime}</span>
       </div>
-      <div className="absolute z-10 pointer-events-none" style={{top:`${wakeCardTop}px`,left:`${AXIS_X-28}px`,width:'56px',height:'56px'}}>
-        <div className="w-full h-full bg-[#94CFC8] flex items-center justify-center" style={{borderRadius:'28px'}}>
+      <div className="absolute z-10 cursor-pointer active:opacity-70" style={{top:`${wakeCardTop}px`,left:`${AXIS_X-28}px`,width:'56px',height:'56px'}}
+        onClick={()=>onOpenWakeSleep?.()}>
+        <div className="w-full h-full flex items-center justify-center" style={{borderRadius:'28px',background:settings.wakeColor||'#94CFC8'}}>
           <AppIcons.wake size={24} className="text-white"/>
         </div>
       </div>
       <div className="absolute flex items-center" style={{top:`${sleepCardTop+SLEEP_CARD_H/2}px`,transform:'translateY(-50%)',left:0}}>
         <span className="text-xs w-10 text-right pr-1 leading-none text-gray-300">{settings.sleepTime}</span>
       </div>
-      <div className="absolute z-10 pointer-events-none" style={{top:`${sleepCardTop}px`,left:`${AXIS_X-28}px`,width:'56px',height:'56px'}}>
-        <div className="w-full h-full bg-[#94CFC8] flex items-center justify-center" style={{borderRadius:'28px'}}>
+      <div className="absolute z-10 cursor-pointer active:opacity-70" style={{top:`${sleepCardTop}px`,left:`${AXIS_X-28}px`,width:'56px',height:'56px'}}
+        onClick={()=>onOpenWakeSleep?.()}>
+        <div className="w-full h-full flex items-center justify-center" style={{borderRadius:'28px',background:settings.sleepColor||'#94CFC8'}}>
           <AppIcons.sleep size={24} className="text-white"/>
         </div>
       </div>
@@ -2886,6 +2889,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   const [lpNewSleep,setLpNewSleep] = useState('23:00');
   const [lpNewColor,setLpNewColor] = useState('#94CFC8');
   const [lpEditId,setLpEditId]     = useState<string|null>(null);
+  const [colorPicking,setColorPicking] = useState<'wake'|'sleep'|null>(null);
 
   const back = () => setSub(null);
 
@@ -3569,16 +3573,43 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">時間設定</p>
           <div className="bg-white rounded-2xl overflow-hidden shadow-sm mb-5">
             <div className="px-4 py-4 flex items-center gap-3">
-              <AppIcons.wake size={16} className="text-gray-400 shrink-0"/>
+              <button onClick={()=>setColorPicking(colorPicking==='wake'?null:'wake')} className="relative shrink-0">
+                <div className="w-9 h-9 rounded-full flex items-center justify-center" style={{background:settings.wakeColor||'#94CFC8'}}>
+                  <AppIcons.wake size={16} className="text-white"/>
+                </div>
+                <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-white rounded-full flex items-center justify-center shadow border border-gray-100">
+                  <AppIcons.pencil size={9} className="text-gray-500"/>
+                </div>
+              </button>
               <input type="time" value={settings.wakeTime}
                 onChange={e=>onSettings({...settings,wakeTime:e.target.value})}
                 className="border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50"/>
               <span className="text-gray-300 text-sm">〜</span>
-              <AppIcons.sleep size={16} className="text-gray-400 shrink-0"/>
+              <button onClick={()=>setColorPicking(colorPicking==='sleep'?null:'sleep')} className="relative shrink-0">
+                <div className="w-9 h-9 rounded-full flex items-center justify-center" style={{background:settings.sleepColor||'#94CFC8'}}>
+                  <AppIcons.sleep size={16} className="text-white"/>
+                </div>
+                <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-white rounded-full flex items-center justify-center shadow border border-gray-100">
+                  <AppIcons.pencil size={9} className="text-gray-500"/>
+                </div>
+              </button>
               <input type="time" value={settings.sleepTime}
                 onChange={e=>onSettings({...settings,sleepTime:e.target.value})}
                 className="border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50"/>
             </div>
+            {colorPicking&&(
+              <div className="px-4 pb-4 border-t border-gray-100 pt-3">
+                <p className="text-xs text-gray-400 mb-2">{colorPicking==='wake'?'起床':'就寝'}アイコンの色</p>
+                <div className="flex flex-wrap gap-2">
+                  {['#94CFC8',...TASK_COLORS.filter(Boolean)].map((c,i)=>{
+                    const cur=colorPicking==='wake'?(settings.wakeColor||'#94CFC8'):(settings.sleepColor||'#94CFC8');
+                    return <button key={i} onClick={()=>{onSettings({...settings,[colorPicking==='wake'?'wakeColor':'sleepColor']:c});setColorPicking(null);}}
+                      className={`w-8 h-8 rounded-full border-2 transition-all ${cur===c?'border-gray-700 scale-110':'border-transparent'}`}
+                      style={{background:c}}/>;
+                  })}
+                </div>
+              </div>
+            )}
           </div>
 
           <p className="text-xs text-gray-400 px-1 mb-1">シフトや予定に合わせて、日ごとの起床・就寝時間を変更できます</p>
@@ -4624,7 +4655,8 @@ export default function App() {
           onDragSleep={(x,y)=>startDragSetting('sleep',x,y)}
           onCameraClick={openEditAtPhotos}
           calEvents={calEvents.filter(e=>(e.source==='google'&&(settings.googleCalEnabled??false))||(e.source==='iphone'&&(settings.iphoneCalEnabled??false)))}
-          lifePatterns={lifePatterns} patternOverrides={patternOverrides}/>
+          lifePatterns={lifePatterns} patternOverrides={patternOverrides}
+          onOpenWakeSleep={()=>{setSettingsInitSub('wakeSleep');setSOp(true);}}/>
       </main>
 
       {/* ── Bottom bar ── */}
