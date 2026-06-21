@@ -4146,6 +4146,7 @@ export default function App() {
   const [date,setDate]           = useState(todayStr());
   const [modal,setModal]         = useState<{open:boolean;task:Task|null;prefillTime?:string;prefillCategory?:string;iconSheet?:boolean;scrollToPhotos?:boolean}>({open:false,task:null});
   const [checkedCategories,setCheckedCats] = useState<Set<string>>(new Set());
+  const [hiddenCategories,setHiddenCats] = useState<Set<string>>(new Set());
   const [tabDropdownOpen,setTabDropdownOpen] = useState(false);
   const [customTabs,setCustomTabs]   = useState<CustomTab[]>([]);
   const [editTabId,setEditTabId]     = useState<string|null>(null);
@@ -4355,9 +4356,11 @@ export default function App() {
   },[loaded,now,shopNotifSettings,shopItems]);
 
   const filteredTasks = useMemo(()=>{
-    const base=checkedCategories.size>0?tasks.filter(t=>checkedCategories.has(t.category??'')):tasks;
+    const base=checkedCategories.size>0
+      ?tasks.filter(t=>checkedCategories.has(t.category??''))
+      :hiddenCategories.size===0?tasks:tasks.filter(t=>t.category==null||!hiddenCategories.has(t.category));
     return base.filter(t=>!t.allDay);
-  },[tasks,checkedCategories]);
+  },[tasks,checkedCategories,hiddenCategories]);
   const laterTasks    = useMemo(()=>filteredTasks.filter(t=>t.isLater),[filteredTasks]);
   const pendingCount  = useMemo(()=>laterTasks.filter(t=>!t.completed).length,[laterTasks]);
   const shopPending   = useMemo(()=>shopItems.filter(i=>!i.checked).length,[shopItems]);
@@ -4497,6 +4500,7 @@ export default function App() {
   const deleteCustomTab=(id:string)=>{
     setCustomTabs(prev=>prev.filter(t=>t.id!==id));
     setCheckedCats(prev=>{const s=new Set(prev);s.delete(id);return s;});
+    setHiddenCats(prev=>{const s=new Set(prev);s.delete(id);return s;});
     setEditTabId(null);
   };
 
@@ -4669,7 +4673,9 @@ export default function App() {
               border:'none',borderRadius:'14px 14px 0 0',marginBottom:'2px',
               boxShadow:'0 4px 10px rgba(0,0,0,0.08)',display:'flex',alignItems:'center',gap:'4px',whiteSpace:'nowrap',
             }}>
-            すべて<AppIcons.caretDown size={11}/>
+            すべて
+            {hiddenCategories.size>0&&checkedCategories.size===0&&<span style={{fontSize:'10px',background:'rgba(255,255,255,0.3)',borderRadius:'10px',padding:'0 5px',lineHeight:'16px'}}>{customTabs.length-hiddenCategories.size}/{customTabs.length}</span>}
+            <AppIcons.caretDown size={11}/>
           </button>
           {customTabs.map(tab=>{
             const active=checkedCategories.has(tab.id);
@@ -4694,26 +4700,22 @@ export default function App() {
           <div className="shrink-0" style={{width:'12px'}}/>
           </div>
           {tabDropdownOpen&&customTabs.length>0&&(
-            <div className="px-3 py-2.5 border-t border-gray-200 flex flex-wrap gap-2">
+            <div className="border-t border-gray-100 bg-white px-4 py-1">
               {customTabs.map(tab=>{
-                const checked=checkedCategories.has(tab.id);
+                const visible=!hiddenCategories.has(tab.id);
                 return (
                   <button key={tab.id} onClick={()=>{
-                    setCheckedCats(prev=>{const s=new Set(prev);if(s.has(tab.id))s.delete(tab.id);else s.add(tab.id);return s;});
+                    setHiddenCats(prev=>{const s=new Set(prev);if(s.has(tab.id))s.delete(tab.id);else s.add(tab.id);return s;});
                   }}
-                    className="flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium border transition-colors"
-                    style={checked?{background:'var(--c-primary)',color:'white',borderColor:'transparent'}:{background:'white',color:'#6B7280',borderColor:'#E5E7EB'}}>
-                    {checked&&<AppIcons.checkSquare size={12}/>}
-                    {tab.name}
+                    className="w-full flex items-center gap-3 py-2.5 active:bg-gray-50">
+                    <div className="w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors"
+                      style={visible?{background:'var(--c-primary)',borderColor:'var(--c-primary)'}:{background:'white',borderColor:'#D1D5DB'}}>
+                      {visible&&<svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                    </div>
+                    <span className="text-sm text-gray-800 font-medium">{tab.name}</span>
                   </button>
                 );
               })}
-              {checkedCategories.size>0&&(
-                <button onClick={()=>setCheckedCats(new Set())}
-                  className="px-3 py-1 rounded-full text-sm font-medium border text-gray-400 bg-white" style={{borderColor:'#E5E7EB'}}>
-                  クリア
-                </button>
-              )}
             </div>
           )}
         </div>
@@ -4730,7 +4732,7 @@ export default function App() {
 
         {/* All-day strip — sticky, aligned with timeline CARD_LEFT */}
         {(()=>{
-          const allDayTasks=tasks.filter(t=>t.allDay&&t.date===date&&!t.isLater&&(checkedCategories.size===0||checkedCategories.has(t.category??'')));
+          const allDayTasks=tasks.filter(t=>t.allDay&&t.date===date&&!t.isLater&&(checkedCategories.size===0?(hiddenCategories.size===0||t.category==null||!hiddenCategories.has(t.category)):checkedCategories.has(t.category??'')));
           if(allDayTasks.length===0) return null;
           return (
             <div className="flex items-center bg-white border-b border-gray-100 py-2 gap-3" style={{paddingLeft:'12px'}}>
