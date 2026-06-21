@@ -47,7 +47,7 @@ interface Task {
   allDay?: boolean;
 }
 
-interface Settings { wakeTime: string; sleepTime: string; keepIncomplete?: boolean; showFreeCard?: boolean; freeCardMinMin?: number; googleCalEnabled?: boolean; iphoneCalEnabled?: boolean; googleCalUrl?: string; iphoneCalUrl?: string; wakeColor?:string; sleepColor?:string; }
+interface Settings { wakeTime: string; sleepTime: string; keepIncomplete?: boolean; showFreeCard?: boolean; freeCardMinMin?: number; googleCalEnabled?: boolean; iphoneCalEnabled?: boolean; googleCalUrl?: string; iphoneCalUrl?: string; wakeColor?:string; sleepColor?:string; theme?:string; }
 type CalendarEvent = {id:string;title:string;date:string;startTime:string;endTime:string|null;allDay?:boolean;source:'google'|'iphone'};
 type AuthUser = {uid:string;email?:string;displayName?:string;isPremium?:boolean};
 interface FreeSlot  { start: string; end: string; min: number; }
@@ -307,7 +307,7 @@ function MonthCalendar({selected,onSelect,onClose,tasks}:{selected:string;onSele
                   onClick={()=>{if(d){onSelect(d);onClose();}}}
                   className="flex flex-col items-center px-0.5 py-0.5 rounded-xl active:bg-gray-50">
                   <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                    !d?'':isSel?'bg-[#94CFC8] text-white':isToday?'bg-gray-100 font-bold text-gray-900':'text-gray-600'
+                    !d?'':isSel?'bg-[var(--c-primary)] text-white':isToday?'bg-gray-100 font-bold text-gray-900':'text-gray-600'
                   }`}>
                     {d?new Date(d+'T12:00:00').getDate():''}
                   </span>
@@ -371,11 +371,11 @@ function CalendarPage({date,tasks,customTabs,onSelect,onClose}:{date:string;task
             className="w-9 h-9 flex items-center justify-center text-gray-500 bg-gray-100 rounded-xl"><AppIcons.caretRight/></button>
         </div>
         <button onClick={()=>{const d=new Date();setVm({year:d.getFullYear(),month:d.getMonth()});onSelect(today);}}
-          className="text-xs font-bold px-3 py-1.5 bg-[#94CFC8] text-white rounded-full">今日</button>
+          className="text-xs font-bold px-3 py-1.5 bg-[var(--c-primary)] text-white rounded-full">今日</button>
       </div>
 
       {/* Category filter - file tabs */}
-      <div className="bg-[#94CFC8]">
+      <div className="bg-[var(--c-primary)]">
         <div className="flex items-end px-3 pt-2" style={{overflowX:'auto',WebkitOverflowScrolling:'touch'}}>
           {([{key:null as string|null,label:'すべて'},...customTabs.map(t=>({key:t.id,label:t.name}))]).map(({key,label})=>{
             const active=catFilter===key;
@@ -413,7 +413,7 @@ function CalendarPage({date,tasks,customTabs,onSelect,onClose}:{date:string;task
               <button key={i} disabled={!d} onClick={()=>{if(d){onSelect(d);}}}
                 className="flex flex-col items-start py-1 px-0.5 rounded-2xl active:bg-gray-50" style={{minHeight:'100px'}}>
                 <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold mx-auto ${
-                  !d?'':isSel?'bg-[#94CFC8] text-white':isToday?'bg-gray-100 text-gray-900':'text-gray-700'
+                  !d?'':isSel?'bg-[var(--c-primary)] text-white':isToday?'bg-gray-100 text-gray-900':'text-gray-700'
                 }`}>
                   {d?new Date(d+'T12:00:00').getDate():''}
                 </span>
@@ -574,6 +574,16 @@ const TASK_COLORS=[
   '#C4888E','#C47A5E','#C4A44A','#7A9E8A','#6A8FAF','#8F82B8','#A67899','#8F8880',
   // 明るめ（柔らかい雰囲気）
   '#F4A7B0','#F4AA80','#F4D47A','#A8D8B0','#90C4E0','#B8AADC','#DDB0CC','#D4C8B8',
+];
+const THEMES=[
+  {id:'mint',    name:'ミント',             color:'#94CFC8'},
+  {id:'sky',     name:'スカイブルー',       color:'#7CB9E8'},
+  {id:'lavender',name:'ラベンダー',         color:'#9B8EC4'},
+  {id:'peach',   name:'ピーチ',             color:'#E8A0B0'},
+  {id:'navy',    name:'ネイビー',           color:'#5F7EA8'},
+  {id:'slate',   name:'スレートグレー',     color:'#8896A5'},
+  {id:'forest',  name:'フォレストグリーン', color:'#5A8A6A'},
+  {id:'mono',    name:'モノクロ',           color:'#666666'},
 ];
 
 function getTaskIcon(key:string){
@@ -1055,11 +1065,11 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
     else{onClose();}
   };
 
-  const headerBg=(()=>{
-    const hex=color||'#94CFC8';
+  const headerBg=color?(()=>{
+    const hex=color;
     const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
     return `rgb(${Math.round(r*0.82)},${Math.round(g*0.82)},${Math.round(b*0.82)})`;
-  })();
+  })():'var(--c-primary-dark)';
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60" onClick={handleClose}>
@@ -1159,7 +1169,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                 <div className="flex gap-2 overflow-x-auto pb-0.5" style={{scrollbarWidth:'none',WebkitOverflowScrolling:'touch'} as React.CSSProperties}>
                   {(['daily','weekly','monthly','yearly','custom'] as const).map((r,i)=>(
                     <button key={r} onClick={()=>setRecur(r)}
-                      className={`shrink-0 px-4 py-2 rounded-full text-sm font-semibold ${recur===r?'bg-[#94CFC8] text-white':'bg-gray-100 text-gray-600'}`}>
+                      className={`shrink-0 px-4 py-2 rounded-full text-sm font-semibold ${recur===r?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
                       {['毎日','毎週','毎月','毎年','カスタム'][i]}
                     </button>
                   ))}
@@ -1170,7 +1180,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
               {recur==='custom'&&(
                 <>
                   {/* Summary */}
-                  <div className="mx-3 mt-3 bg-[#94CFC8] rounded-2xl px-4 py-3">
+                  <div className="mx-3 mt-3 bg-[var(--c-primary)] rounded-2xl px-4 py-3">
                     <p className="text-white text-sm font-bold">{summarizeCustomRec(customRec)}</p>
                   </div>
 
@@ -1187,7 +1197,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                     <div className="flex gap-2">
                       {(['hour','day','week','month','year'] as const).map((u,i)=>(
                         <button key={u} onClick={()=>setCR('frequency',u)}
-                          className={`flex-1 py-2.5 rounded-full text-sm font-semibold ${customRec.frequency===u?'bg-[#94CFC8] text-white':'bg-gray-100 text-gray-600'}`}>
+                          className={`flex-1 py-2.5 rounded-full text-sm font-semibold ${customRec.frequency===u?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
                           {['時','日','週','月','年'][i]}
                         </button>
                       ))}
@@ -1206,7 +1216,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                               const wds=customRec.weekdays??[];
                               setCR('weekdays',wds.includes(i)?wds.filter(x=>x!==i):[...wds,i]);
                             }}
-                              className={`flex-1 h-10 rounded-full text-sm font-semibold ${(customRec.weekdays??[]).includes(i)?'bg-[#94CFC8] text-white':'bg-gray-100 text-gray-600'}`}>
+                              className={`flex-1 h-10 rounded-full text-sm font-semibold ${(customRec.weekdays??[]).includes(i)?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
                               {n}
                             </button>
                           ))}
@@ -1217,11 +1227,11 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                         <>
                           <div className="flex gap-2 mb-4">
                             <button onClick={()=>setCR('monthlyType','date')}
-                              className={`flex-1 py-2 rounded-full text-sm font-semibold ${customRec.monthlyType!=='weekday'?'bg-[#94CFC8] text-white':'bg-gray-100 text-gray-600'}`}>
+                              className={`flex-1 py-2 rounded-full text-sm font-semibold ${customRec.monthlyType!=='weekday'?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
                               日付で指定
                             </button>
                             <button onClick={()=>setCR('monthlyType','weekday')}
-                              className={`flex-1 py-2 rounded-full text-sm font-semibold ${customRec.monthlyType==='weekday'?'bg-[#94CFC8] text-white':'bg-gray-100 text-gray-600'}`}>
+                              className={`flex-1 py-2 rounded-full text-sm font-semibold ${customRec.monthlyType==='weekday'?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
                               曜日で指定
                             </button>
                           </div>
@@ -1229,7 +1239,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                             <div className="flex gap-2 overflow-x-auto pb-0.5" style={{scrollbarWidth:'none'} as React.CSSProperties}>
                               {([1,5,10,15,20,25,'last' as const]).map(d=>(
                                 <button key={String(d)} onClick={()=>setCR('dayOfMonth',d)}
-                                  className={`shrink-0 px-3 py-2 rounded-full text-sm font-semibold ${customRec.dayOfMonth===d?'bg-[#94CFC8] text-white':'bg-gray-100 text-gray-600'}`}>
+                                  className={`shrink-0 px-3 py-2 rounded-full text-sm font-semibold ${customRec.dayOfMonth===d?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
                                   {d==='last'?'月末':`${d}日`}
                                 </button>
                               ))}
@@ -1239,7 +1249,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                               <div className="flex gap-1.5 overflow-x-auto pb-0.5" style={{scrollbarWidth:'none'} as React.CSSProperties}>
                                 {([1,2,3,4,'last' as const]).map(wn=>(
                                   <button key={String(wn)} onClick={()=>setCR('weekNumber',wn)}
-                                    className={`shrink-0 flex-1 py-2 rounded-full text-sm font-semibold min-w-[3rem] ${customRec.weekNumber===wn?'bg-[#94CFC8] text-white':'bg-gray-100 text-gray-600'}`}>
+                                    className={`shrink-0 flex-1 py-2 rounded-full text-sm font-semibold min-w-[3rem] ${customRec.weekNumber===wn?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
                                     {wn==='last'?'最終':`第${wn}`}
                                   </button>
                                 ))}
@@ -1247,7 +1257,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                               <div className="flex gap-1.5">
                                 {DAY_NAMES.map((n,i)=>(
                                   <button key={i} onClick={()=>setCR('weekday',i)}
-                                    className={`flex-1 h-9 rounded-full text-sm font-semibold ${customRec.weekday===i?'bg-[#94CFC8] text-white':'bg-gray-100 text-gray-600'}`}>
+                                    className={`flex-1 h-9 rounded-full text-sm font-semibold ${customRec.weekday===i?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
                                     {n}
                                   </button>
                                 ))}
@@ -1264,7 +1274,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                             <div className="flex gap-1.5 overflow-x-auto pb-0.5" style={{scrollbarWidth:'none'} as React.CSSProperties}>
                               {Array.from({length:12},(_,i)=>(
                                 <button key={i} onClick={()=>setCR('yearMonth',i+1)}
-                                  className={`shrink-0 w-12 h-10 rounded-full text-sm font-semibold ${customRec.yearMonth===i+1?'bg-[#94CFC8] text-white':'bg-gray-100 text-gray-600'}`}>
+                                  className={`shrink-0 w-12 h-10 rounded-full text-sm font-semibold ${customRec.yearMonth===i+1?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
                                   {i+1}月
                                 </button>
                               ))}
@@ -1275,7 +1285,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                             <div className="flex gap-1.5 overflow-x-auto pb-0.5" style={{scrollbarWidth:'none'} as React.CSSProperties}>
                               {[1,5,10,15,20,25,0].map(d=>(
                                 <button key={d} onClick={()=>setCR('yearDay',d)}
-                                  className={`shrink-0 px-3 py-2 rounded-full text-sm font-semibold ${customRec.yearDay===d?'bg-[#94CFC8] text-white':'bg-gray-100 text-gray-600'}`}>
+                                  className={`shrink-0 px-3 py-2 rounded-full text-sm font-semibold ${customRec.yearDay===d?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
                                   {d===0?'末':`${d}日`}
                                 </button>
                               ))}
@@ -1292,7 +1302,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                     <div className="flex gap-2 mb-4">
                       {([['never','終了なし'],['date','指定日まで'],['count','回数で終了']] as const).map(([t,l])=>(
                         <button key={t} onClick={()=>setCR('endType',t)}
-                          className={`flex-1 py-2 rounded-full text-xs font-semibold ${customRec.endType===t?'bg-[#94CFC8] text-white':'bg-gray-100 text-gray-600'}`}>
+                          className={`flex-1 py-2 rounded-full text-xs font-semibold ${customRec.endType===t?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
                           {l}
                         </button>
                       ))}
@@ -1347,7 +1357,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                         const isSel=d===taskDate, isToday=d===todayStr();
                         return (
                           <button key={i} disabled={!d} onClick={()=>{if(d){setTaskDate(d);setDateOpen(false);}}} className="flex items-center justify-center py-1">
-                            <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${!d?'':isSel?'bg-[#94CFC8] text-white':isToday?'bg-gray-100 font-bold text-gray-900':'text-gray-600'}`}>
+                            <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${!d?'':isSel?'bg-[var(--c-primary)] text-white':isToday?'bg-gray-100 font-bold text-gray-900':'text-gray-600'}`}>
                               {d?new Date(d+'T12:00:00').getDate():''}
                             </span>
                           </button>
@@ -1367,7 +1377,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                 <AppIcons.clock size={18} className="text-gray-400 shrink-0"/>
                 <span className="text-sm font-medium text-gray-800 shrink-0">開始時刻</span>
                 <button onClick={()=>setMode(m=>m==='allday'?'scheduled':'allday')}
-                  className={`w-10 h-5 rounded-full transition-colors relative shrink-0 ${mode==='allday'?'bg-[#94CFC8]':'bg-gray-200'}`}>
+                  className={`w-10 h-5 rounded-full transition-colors relative shrink-0 ${mode==='allday'?'bg-[var(--c-primary)]':'bg-gray-200'}`}>
                   <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${mode==='allday'?'left-[22px]':'left-0.5'}`}/>
                 </button>
                 <span className="text-xs text-gray-400 shrink-0">終日</span>
@@ -1389,12 +1399,12 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                 <div className="flex gap-1.5 overflow-x-auto" style={{scrollbarWidth:'none',WebkitOverflowScrolling:'touch'} as React.CSSProperties}>
                   {DUR_OPTS.map(({v,l})=>(
                     <button key={v} onClick={()=>{setDur(v);setCDurOpen(false);}}
-                      className={`shrink-0 px-3 py-1 rounded-full text-xs font-semibold ${duration===v&&!custDurOpen?'bg-[#94CFC8] text-white':'bg-gray-100 text-gray-600'}`}>
+                      className={`shrink-0 px-3 py-1 rounded-full text-xs font-semibold ${duration===v&&!custDurOpen?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
                       {l}
                     </button>
                   ))}
                   <button onClick={()=>setCDurOpen(o=>!o)}
-                    className={`shrink-0 px-3 py-1 rounded-full text-xs font-semibold ${custDurOpen?'bg-[#94CFC8] text-white':'bg-gray-100 text-gray-600'}`}>
+                    className={`shrink-0 px-3 py-1 rounded-full text-xs font-semibold ${custDurOpen?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
                     カスタム
                   </button>
                 </div>
@@ -1406,7 +1416,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                     className="w-20 border border-gray-200 rounded-xl px-3 py-2 text-sm text-center outline-none"/>
                   <span className="text-sm text-gray-600">分</span>
                   <button onClick={()=>{setDur(custDurMin);setCDurOpen(false);}}
-                    className="px-4 py-2 bg-[#94CFC8] text-white rounded-xl text-sm font-semibold">設定</button>
+                    className="px-4 py-2 bg-[var(--c-primary)] text-white rounded-xl text-sm font-semibold">設定</button>
                 </div>
               )}
             </>)}
@@ -1421,12 +1431,12 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                   <div className="flex gap-1.5 overflow-x-auto" style={{scrollbarWidth:'none',WebkitOverflowScrolling:'touch'} as React.CSSProperties}>
                     {NOTIF_OPTS.map(({v,l})=>(
                       <button key={v} onClick={()=>toggleNotif(v)}
-                        className={`shrink-0 px-3 py-1 rounded-full text-xs font-semibold ${notifications.includes(v)?'bg-[#94CFC8] text-white':'bg-gray-100 text-gray-600'}`}>
+                        className={`shrink-0 px-3 py-1 rounded-full text-xs font-semibold ${notifications.includes(v)?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
                         {l}
                       </button>
                     ))}
                     <button onClick={()=>setCNOpen(o=>!o)}
-                      className={`shrink-0 px-3 py-1 rounded-full text-xs font-semibold ${custNotifOpen?'bg-[#94CFC8] text-white':'bg-gray-100 text-gray-600'}`}>
+                      className={`shrink-0 px-3 py-1 rounded-full text-xs font-semibold ${custNotifOpen?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
                       カスタム
                     </button>
                   </div>
@@ -1437,13 +1447,13 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                       onChange={e=>setCNMin(Math.max(1,Number(e.target.value)))}
                       className="w-20 border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none text-center"/>
                     <span className="text-sm text-gray-600">分前</span>
-                    <button onClick={addCustNotif} className="px-3 py-2 bg-[#94CFC8] text-white rounded-xl text-sm font-semibold">追加</button>
+                    <button onClick={addCustNotif} className="px-3 py-2 bg-[var(--c-primary)] text-white rounded-xl text-sm font-semibold">追加</button>
                   </div>
                 )}
                 {notifications.filter(v=>!NOTIF_OPTS.find(o=>o.v===v)).length>0&&(
                   <div className="flex flex-wrap gap-2 px-4 pb-3">
                     {notifications.filter(v=>!NOTIF_OPTS.find(o=>o.v===v)).map(v=>(
-                      <span key={v} className="inline-flex items-center gap-1 bg-[#94CFC8] text-white text-xs font-semibold px-2.5 py-1.5 rounded-full">
+                      <span key={v} className="inline-flex items-center gap-1 bg-[var(--c-primary)] text-white text-xs font-semibold px-2.5 py-1.5 rounded-full">
                         {v}分前<button onClick={()=>setNotifs(prev=>prev.filter(x=>x!==v))} className="opacity-70 leading-none ml-0.5">×</button>
                       </span>
                     ))}
@@ -1482,7 +1492,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                       return (
                         <button key={td.name} onClick={()=>toggleTag(td.name)}
                           style={{backgroundColor:td.color,color:getTagTextColor(td.color)}}
-                          className={`px-3 py-1 rounded-full text-sm font-medium transition-all ${active?'ring-2 ring-[#94CFC8] ring-offset-1':''}`}>
+                          className={`px-3 py-1 rounded-full text-sm font-medium transition-all ${active?'ring-2 ring-[var(--c-primary)] ring-offset-1':''}`}>
                           {td.name}
                         </button>
                       );
@@ -1513,7 +1523,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                   {subtasks.map((st,i)=>(
                     <div key={st.id} className="flex items-center gap-2 pl-7">
                       <button onClick={()=>setSubtasks(prev=>prev.map((s,j)=>j===i?{...s,completed:!s.completed}:s))}
-                        className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 ${st.completed?'bg-[#94CFC8] border-[#94CFC8]':'border-gray-300'}`}>
+                        className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 ${st.completed?'bg-[var(--c-primary)] border-[var(--c-primary)]':'border-gray-300'}`}>
                         {st.completed&&<AppIcons.checkSquare size={9} className="text-white"/>}
                       </button>
                       <span className={`flex-1 text-sm ${st.completed?'line-through text-gray-400':'text-gray-700'}`}>{st.name}</span>
@@ -1611,7 +1621,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                       return (
                         <button key={key} onClick={()=>pickIcon(key)}
                           className={`flex flex-col items-center gap-1.5 py-3 rounded-2xl ${sel?'':'bg-gray-50'}`}
-                          style={sel?{background:color||'#94CFC8'}:undefined}>
+                          style={sel?{background:color||'var(--c-primary)'}:undefined}>
                           <Ic size={22} className={sel?'text-white':'text-gray-700'}/>
                         </button>
                       );
@@ -1630,7 +1640,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                       return (
                         <button key={opt.key} onClick={()=>pickIcon(opt.key)}
                           className={`flex flex-col items-center gap-1.5 py-3 rounded-2xl ${sel?'':'bg-gray-50'}`}
-                          style={sel?{background:color||'#94CFC8'}:undefined}>
+                          style={sel?{background:color||'var(--c-primary)'}:undefined}>
                           <Ic size={22} className={sel?'text-white':'text-gray-700'}/>
                         </button>
                       );
@@ -1649,7 +1659,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
             <div className="flex items-center justify-between px-5 pt-5 pb-3">
               <span className="text-base font-bold text-gray-800">開始時刻</span>
               <button onClick={()=>setTPOpen(false)}
-                className="px-4 py-1.5 bg-[#94CFC8] text-white text-sm font-bold rounded-full">完了</button>
+                className="px-4 py-1.5 bg-[var(--c-primary)] text-white text-sm font-bold rounded-full">完了</button>
             </div>
             {(()=>{
               const [hStr,mStr]=startTime.split(':');
@@ -1753,7 +1763,7 @@ function TaskCard({task,onToggle,onEdit,globalTags,onSubtaskToggle,onCameraClick
           )}
         </div>
         <button onClick={e=>{e.stopPropagation();onToggle();}}
-          className={`w-6 h-6 rounded-full border-2 shrink-0 flex items-center justify-center transition-colors ${task.completed?'border-[#94CFC8] bg-[#94CFC8]':'border-gray-300'}`}>
+          className={`w-6 h-6 rounded-full border-2 shrink-0 flex items-center justify-center transition-colors ${task.completed?'border-[var(--c-primary)] bg-[var(--c-primary)]':'border-gray-300'}`}>
           {task.completed&&<span className="text-white text-[10px] font-bold leading-none">✓</span>}
         </button>
       </div>
@@ -1762,7 +1772,7 @@ function TaskCard({task,onToggle,onEdit,globalTags,onSubtaskToggle,onCameraClick
           {subtasks.map(st=>(
             <div key={st.id} className="flex items-center gap-2">
               <button onClick={e=>{e.stopPropagation();onSubtaskToggle?.(st.id);}}
-                className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 ${st.completed?'bg-[#94CFC8] border-[#94CFC8]':'border-gray-300'}`}>
+                className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 ${st.completed?'bg-[var(--c-primary)] border-[var(--c-primary)]':'border-gray-300'}`}>
                 {st.completed&&<span className="text-white text-[8px] font-bold leading-none">✓</span>}
               </button>
               <span className={`text-xs ${st.completed?'line-through text-gray-400':'text-gray-700'}`}>{st.name}</span>
@@ -1841,7 +1851,7 @@ function CompactTaskCard({task,onToggle,onEdit}:{task:Task;onToggle:()=>void;onE
       onClick={onEdit}>
       <div className="flex items-center justify-between gap-0.5">
         <button onClick={e=>{e.stopPropagation();onToggle();}}
-          className={`w-5 h-5 rounded-full border-2 shrink-0 flex items-center justify-center transition-colors${task.completed?' border-[#94CFC8] bg-[#94CFC8]':' border-gray-300'}`}>
+          className={`w-5 h-5 rounded-full border-2 shrink-0 flex items-center justify-center transition-colors${task.completed?' border-[var(--c-primary)] bg-[var(--c-primary)]':' border-gray-300'}`}>
           {task.completed&&<span className="text-white text-[8px] font-bold leading-none">✓</span>}
         </button>
       </div>
@@ -2123,12 +2133,12 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
       {/* vertical line — gradient between adjacent icon colors, dotted over free-time slots */}
       {(()=>{
         const nodes:{y:number;color:string}[]=[];
-        nodes.push({y:wakeCardTop+WAKE_CARD_H/2,color:'#94CFC8'});
+        nodes.push({y:wakeCardTop+WAKE_CARD_H/2,color:'var(--c-primary)'});
         for(const {g,top} of groupLayout){
           const mid=g.tasks[Math.floor(g.tasks.length/2)];
-          nodes.push({y:top+groupIconTop(g)+groupStackH(g)/2,color:mid?.color||'#94CFC8'});
+          nodes.push({y:top+groupIconTop(g)+groupStackH(g)/2,color:mid?.color||'var(--c-primary)'});
         }
-        nodes.push({y:sleepCardTop+SLEEP_CARD_H/2,color:'#94CFC8'});
+        nodes.push({y:sleepCardTop+SLEEP_CARD_H/2,color:'var(--c-primary)'});
         nodes.sort((a,b)=>a.y-b.y);
         if(nodes.length===0) return null;
 
@@ -2173,7 +2183,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
       </div>
       <div className="absolute z-10 cursor-pointer active:opacity-70" style={{top:`${wakeCardTop}px`,left:`${AXIS_X-28}px`,width:'56px',height:'56px'}}
         onClick={()=>onOpenWakeSleep?.()}>
-        <div className="w-full h-full flex items-center justify-center" style={{borderRadius:'28px',background:settings.wakeColor||'#94CFC8'}}>
+        <div className="w-full h-full flex items-center justify-center" style={{borderRadius:'28px',background:settings.wakeColor||'var(--c-primary)'}}>
           <AppIcons.wake size={24} className="text-white"/>
         </div>
       </div>
@@ -2182,7 +2192,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
       </div>
       <div className="absolute z-10 cursor-pointer active:opacity-70" style={{top:`${sleepCardTop}px`,left:`${AXIS_X-28}px`,width:'56px',height:'56px'}}
         onClick={()=>onOpenWakeSleep?.()}>
-        <div className="w-full h-full flex items-center justify-center" style={{borderRadius:'28px',background:settings.sleepColor||'#94CFC8'}}>
+        <div className="w-full h-full flex items-center justify-center" style={{borderRadius:'28px',background:settings.sleepColor||'var(--c-primary)'}}>
           <AppIcons.sleep size={24} className="text-white"/>
         </div>
       </div>
@@ -2211,7 +2221,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
       {/* current time */}
       {date===todayStr()&&nowMin>=wakeMin&&nowMin<=sleepMin&&(
         <div className="absolute flex items-center z-20 gap-1.5" style={{top:`${layoutCalcY(nowMin)-12}px`,left:'-4px',right:0}}>
-          <div className="bg-[#94CFC8] text-white text-xs font-bold px-2 py-1 rounded-full whitespace-nowrap">{now}</div>
+          <div className="bg-[var(--c-primary)] text-white text-xs font-bold px-2 py-1 rounded-full whitespace-nowrap">{now}</div>
         </div>
       )}
 
@@ -2287,10 +2297,10 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
           <div className="h-px bg-gray-200 mb-4"/>
           <div className="rounded-2xl bg-gray-50 border border-gray-100">
             <div className="flex items-center gap-2 px-4 pt-3 pb-2">
-              <AppIcons.sparkle size={16} className="text-[#94CFC8] shrink-0"/>
+              <AppIcons.sparkle size={16} className="text-[var(--c-primary)] shrink-0"/>
               <span className="text-sm font-semibold text-gray-500">今日完了したタスク</span>
               {completedToday.length>0&&(
-                <span className="ml-auto text-xs font-bold bg-[#94CFC8] text-white rounded-full px-2 py-0.5">{completedToday.length}</span>
+                <span className="ml-auto text-xs font-bold bg-[var(--c-primary)] text-white rounded-full px-2 py-0.5">{completedToday.length}</span>
               )}
             </div>
             <div className="px-3 pb-3">
@@ -2300,7 +2310,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
                 <div className="flex flex-col gap-1">
                   {completedToday.map(t=>(
                     <div key={t.id} className="flex items-center gap-2 bg-white rounded-xl px-3 py-2">
-                      <div className="w-4 h-4 rounded bg-[#94CFC8] flex items-center justify-center shrink-0">
+                      <div className="w-4 h-4 rounded bg-[var(--c-primary)] flex items-center justify-center shrink-0">
                         <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6L8 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
                       </div>
                       <span className="text-xs text-gray-400 flex-1 line-through">{t.name}</span>
@@ -2325,7 +2335,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
             <div key={`cap-${g.startTime}`} className="absolute z-10 cursor-pointer"
               style={{top:`${top}px`,left:`${AXIS_X-28}px`,width:'56px',height:`${Math.max(measuredH[g.startTime]??g.h,56)}px`}}
               onClick={e=>{e.stopPropagation();onEditIconSheet(task);}}>
-              <div className="w-full h-full flex items-center justify-center active:opacity-70 transition-opacity" style={{borderRadius:'28px',background:task.color||'#94CFC8'}}>
+              <div className="w-full h-full flex items-center justify-center active:opacity-70 transition-opacity" style={{borderRadius:'28px',background:task.color||'var(--c-primary)'}}>
                 <CapsuleIc size={24} className={task.color?'text-white':'text-white'}/>
               </div>
             </div>,
@@ -2353,7 +2363,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
         return [
           <div key={`dup-${g.startTime}`} className="absolute z-10 flex items-center gap-1"
             style={{top:`${top}px`,left:`${CARD_LEFT}px`,right:'0px',height:`${DUP_LABEL_H}px`}}>
-            <span className="text-[#94CFC8]" style={{fontSize:'10px'}}>●</span>
+            <span className="text-[var(--c-primary)]" style={{fontSize:'10px'}}>●</span>
             <span className="text-xs text-gray-400">タスクが重複しています</span>
           </div>,
           <div key={`cap-${g.startTime}`} className="absolute z-10 pointer-events-none"
@@ -2361,7 +2371,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
             {g.tasks.map((task,i)=>(
               <div key={`bg-${task.id}`} className="absolute" style={{
                 top:`${capTops[i]}px`,left:0,width:'56px',height:`${capBottoms[i]-capTops[i]}px`,
-                background:task.color||'#94CFC8',
+                background:task.color||'var(--c-primary)',
                 borderTopLeftRadius:i===0?28:0,borderTopRightRadius:i===0?28:0,
                 borderBottomLeftRadius:i===n-1?28:0,borderBottomRightRadius:i===n-1?28:0,
               }}/>
@@ -2467,7 +2477,7 @@ function ShopNotifPanel({settings,onChange}:{
       <div className="flex items-center justify-between mb-3 mt-1">
         <p className="text-sm font-semibold text-gray-700">買い物リストの通知</p>
         <button onClick={startAdd} disabled={!!editing}
-          className="flex items-center gap-1 px-3 py-1.5 bg-[#94CFC8] text-white rounded-xl text-sm font-semibold disabled:opacity-40">
+          className="flex items-center gap-1 px-3 py-1.5 bg-[var(--c-primary)] text-white rounded-xl text-sm font-semibold disabled:opacity-40">
           <AppIcons.plus size={14}/>追加
         </button>
       </div>
@@ -2477,13 +2487,13 @@ function ShopNotifPanel({settings,onChange}:{
       <div className="space-y-2">
         {settings.map(s=>(
           <div key={s.id} className="bg-white rounded-2xl shadow-sm px-4 py-3 flex items-center gap-3">
-            <AppIcons.bell size={16} className={s.enabled?'text-[#94CFC8]':'text-gray-300'}/>
+            <AppIcons.bell size={16} className={s.enabled?'text-[var(--c-primary)]':'text-gray-300'}/>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-800">{fmtDays(s.days)}</p>
               <p className="text-xs text-gray-400">{s.time}</p>
             </div>
             <button onClick={()=>toggleEnabled(s.id)}
-              className={`relative w-10 h-6 rounded-full transition-colors shrink-0 ${s.enabled?'bg-[#94CFC8]':'bg-gray-200'}`}>
+              className={`relative w-10 h-6 rounded-full transition-colors shrink-0 ${s.enabled?'bg-[var(--c-primary)]':'bg-gray-200'}`}>
               <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${s.enabled?'left-[18px]':'left-0.5'}`}/>
             </button>
             <button onClick={()=>del(s.id)} className="text-gray-300 active:text-[#D97A7A] shrink-0">
@@ -2501,7 +2511,7 @@ function ShopNotifPanel({settings,onChange}:{
                 const days=editing.days.includes(i)?editing.days.filter(x=>x!==i):[...editing.days,i];
                 setEditing({...editing,days});
               }}
-                className={`w-9 h-9 rounded-full text-sm font-semibold transition-colors ${editing.days.includes(i)?'bg-[#94CFC8] text-white':'bg-gray-100 text-gray-600'}`}>
+                className={`w-9 h-9 rounded-full text-sm font-semibold transition-colors ${editing.days.includes(i)?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
                 {d}
               </button>
             ))}
@@ -2515,7 +2525,7 @@ function ShopNotifPanel({settings,onChange}:{
               キャンセル
             </button>
             <button onClick={()=>save(editing)} disabled={editing.days.length===0}
-              className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-[#94CFC8] text-white active:opacity-80 disabled:opacity-40">
+              className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-[var(--c-primary)] text-white active:opacity-80 disabled:opacity-40">
               保存
             </button>
           </div>
@@ -2619,9 +2629,9 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
         <div className="flex border-b border-gray-100 shrink-0 mt-1">
           {([['later','あとでやる',pendingCount],['shop','買い物リスト',shopPending]] as const).map(([t,label,cnt])=>(
             <button key={t} onClick={()=>onSwitchTab(t)}
-              className={`flex-1 py-3 text-sm font-semibold flex items-center justify-center gap-1.5 border-b-2 transition-colors ${activeTab===t?'border-[#94CFC8] text-gray-900':'border-transparent text-gray-400'}`}>
+              className={`flex-1 py-3 text-sm font-semibold flex items-center justify-center gap-1.5 border-b-2 transition-colors ${activeTab===t?'border-[var(--c-primary)] text-gray-900':'border-transparent text-gray-400'}`}>
               {label}
-              {cnt>0&&<span className="text-[11px] bg-[#94CFC8] text-white min-w-[18px] h-[18px] rounded-full flex items-center justify-center font-bold px-1">{cnt}</span>}
+              {cnt>0&&<span className="text-[11px] bg-[var(--c-primary)] text-white min-w-[18px] h-[18px] rounded-full flex items-center justify-center font-bold px-1">{cnt}</span>}
             </button>
           ))}
         </div>
@@ -2635,7 +2645,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
                 {pendingCount>0&&<span className="ml-1.5 text-gray-400 font-normal">{pendingCount}</span>}
               </h3>
               <button onClick={()=>setSortDir(d=>d===null?'asc':d==='asc'?'desc':'asc')}
-                className="w-8 h-8 rounded-xl flex items-center justify-center text-sm bg-[#94CFC8] text-white transition-colors">
+                className="w-8 h-8 rounded-xl flex items-center justify-center text-sm bg-[var(--c-primary)] text-white transition-colors">
                 {sortDir===null?'↑↓':sortDir==='asc'?'↑':'↓'}
               </button>
             </div>
@@ -2740,7 +2750,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
                     <div key={t.id} className="flex items-center gap-2.5 bg-gray-50 border border-gray-100 rounded-2xl px-3 py-3 opacity-60">
                       <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center shrink-0"><AppIcons.task size={16} className="text-gray-400"/></div>
                       <div className="flex-1"><p className="text-sm font-semibold text-gray-400 line-through">{t.name}</p></div>
-                      <button onClick={()=>onToggle(t.id)} className="w-6 h-6 rounded-full border-2 border-[#94CFC8] bg-[#94CFC8] shrink-0 flex items-center justify-center">
+                      <button onClick={()=>onToggle(t.id)} className="w-6 h-6 rounded-full border-2 border-[var(--c-primary)] bg-[var(--c-primary)] shrink-0 flex items-center justify-center">
                         <span className="text-white text-[10px] font-bold">✓</span>
                       </button>
                     </div>
@@ -2757,14 +2767,14 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
                 <h3 className="text-sm font-bold text-gray-900">買い物リスト</h3>
                 <div className="flex items-center gap-2">
                   <button onClick={()=>setShowShopNotif(v=>!v)}
-                    className={`relative w-8 h-8 rounded-xl flex items-center justify-center transition-colors ${showShopNotif?'bg-[#94CFC8] text-white':'bg-gray-100 text-gray-500'}`}>
+                    className={`relative w-8 h-8 rounded-xl flex items-center justify-center transition-colors ${showShopNotif?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-500'}`}>
                     <AppIcons.bell size={15}/>
                     {shopNotifSettings.filter(s=>s.enabled).length>0&&!showShopNotif&&(
-                      <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-[#94CFC8] rounded-full border-2 border-white"/>
+                      <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-[var(--c-primary)] rounded-full border-2 border-white"/>
                     )}
                   </button>
                   <button onClick={()=>setShopSortDir(d=>d===null?'asc':d==='asc'?'desc':'asc')}
-                    className="w-8 h-8 rounded-xl flex items-center justify-center text-sm bg-[#94CFC8] text-white transition-colors">
+                    className="w-8 h-8 rounded-xl flex items-center justify-center text-sm bg-[var(--c-primary)] text-white transition-colors">
                     {shopSortDir===null?'↑↓':shopSortDir==='asc'?'↑':'↓'}
                   </button>
                 </div>
@@ -2775,7 +2785,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
                   placeholder="商品を追加..."
                   className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-gray-400 bg-gray-50"/>
                 <button onClick={addShop} disabled={!shopInput.trim()}
-                  className="px-4 py-2 bg-[#94CFC8] text-white rounded-xl text-sm font-semibold disabled:opacity-40">追加</button>
+                  className="px-4 py-2 bg-[var(--c-primary)] text-white rounded-xl text-sm font-semibold disabled:opacity-40">追加</button>
               </div>}
             </div>
             <div className="overflow-y-auto pb-10 flex-1">
@@ -2796,7 +2806,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
                     <p className="text-xs text-gray-300 pt-3 pb-1">購入済み（7日後に自動削除）</p>
                     {shopDoneItems.map(item=>(
                       <div key={item.id} className="flex items-center gap-3 bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3 opacity-60">
-                        <button onClick={()=>onToggleShop(item.id)} className="w-5 h-5 rounded border-2 border-[#94CFC8] bg-[#94CFC8] shrink-0 flex items-center justify-center">
+                        <button onClick={()=>onToggleShop(item.id)} className="w-5 h-5 rounded border-2 border-[var(--c-primary)] bg-[var(--c-primary)] shrink-0 flex items-center justify-center">
                           <span className="text-white text-[10px] font-bold">✓</span>
                         </button>
                         <p className="flex-1 text-sm font-medium text-gray-400 line-through">{item.name}</p>
@@ -2962,7 +2972,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             <div className="flex items-center gap-3 px-4 py-3.5 border-b border-gray-100">
               <button onClick={()=>setBulkIconSheet(true)}
                 className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 active:opacity-80"
-                style={{background:bulkColor||'#94CFC8'}}>
+                style={{background:bulkColor||'var(--c-primary)'}}>
                 {(()=>{const Ic=getTaskIcon(bulkIcon);return <Ic size={22} className="text-white"/>;})()}
               </button>
               <input value={bulkName} onChange={e=>setBulkName(e.target.value)}
@@ -2984,7 +2994,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           </div>
           <div className="flex items-center justify-between px-1 mb-2 mt-6">
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">日付を選択</p>
-            {bulkDates.size>0&&<span className="text-xs text-[#94CFC8] font-semibold">{bulkDates.size}日選択中</span>}
+            {bulkDates.size>0&&<span className="text-xs text-[var(--c-primary)] font-semibold">{bulkDates.size}日選択中</span>}
           </div>
           <div className="bg-white rounded-2xl overflow-hidden shadow-sm px-3 py-3">
             <div className="flex items-center justify-between mb-3">
@@ -3005,7 +3015,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                   <button key={i} disabled={!d} onClick={()=>d&&toggleDate(d)}
                     className="flex items-center justify-center h-9 rounded-xl active:bg-gray-50">
                     <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                      !d?'':isSel?'bg-[#94CFC8] text-white':isToday?'bg-gray-100 font-bold text-gray-900':'text-gray-600'
+                      !d?'':isSel?'bg-[var(--c-primary)] text-white':isToday?'bg-gray-100 font-bold text-gray-900':'text-gray-600'
                     }`}>
                       {d?new Date(d+'T12:00:00').getDate():''}
                     </span>
@@ -3021,7 +3031,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             </button>
             <button onClick={register}
               disabled={!bulkName.trim()||bulkDates.size===0}
-              className={`flex-1 py-4 rounded-2xl text-sm font-bold transition-colors ${!bulkName.trim()||bulkDates.size===0?'bg-gray-100 text-gray-400':'bg-[#94CFC8] text-white'}`}>
+              className={`flex-1 py-4 rounded-2xl text-sm font-bold transition-colors ${!bulkName.trim()||bulkDates.size===0?'bg-gray-100 text-gray-400':'bg-[var(--c-primary)] text-white'}`}>
               {bulkDone?'登録しました':'選択した日に登録'}
             </button>
           </div>
@@ -3050,7 +3060,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                       {cat.icons.map(opt=>{
                         const Ic=getTaskIcon(opt.key);
                         const sel=bulkIcon===opt.key;
-                        const bg=bulkColor||'#94CFC8';
+                        const bg=bulkColor||'var(--c-primary)';
                         return (
                           <button key={opt.key} onClick={()=>setBulkIconOverride(opt.key)}
                             className={`flex flex-col items-center gap-1.5 py-3 rounded-2xl ${sel?'':'bg-gray-50'}`}
@@ -3105,7 +3115,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                         <div className="flex items-center gap-2">
                           <button onClick={()=>setHIconSh(true)}
                             className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 active:opacity-80"
-                            style={{background:histEditColor||'#94CFC8'}}>
+                            style={{background:histEditColor||'var(--c-primary)'}}>
                             {(()=>{const Ic=getTaskIcon(histEditIcon);return <Ic size={16} className="text-white"/>;})()}
                           </button>
                           <input value={histEditName} onChange={e=>setHEN(e.target.value)}
@@ -3124,7 +3134,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                       </div>
                       <div className="flex gap-2">
                         <button onClick={()=>{onBulkHistoryEdit(entry.id,histEditName.trim()||entry.name,histEditStart,histEditEnd,histEditIcon,histEditColor);setHistExp(null);}}
-                          className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-[#94CFC8] text-white">一括編集</button>
+                          className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-[var(--c-primary)] text-white">一括編集</button>
                         <button onClick={()=>{onBulkHistoryDelete(entry.id);setHistExp(null);}}
                           className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-[#D97A7A] text-white">一括削除</button>
                       </div>
@@ -3159,7 +3169,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                       {cat.icons.map(opt=>{
                         const Ic=getTaskIcon(opt.key);
                         const sel=histEditIcon===opt.key;
-                        const bg=histEditColor||'#94CFC8';
+                        const bg=histEditColor||'var(--c-primary)';
                         return (
                           <button key={opt.key} onClick={()=>setHEIcon(opt.key)}
                             className={`flex flex-col items-center gap-1.5 py-3 rounded-2xl ${sel?'':'bg-gray-50'}`}
@@ -3198,7 +3208,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
               placeholder="タブ名を入力"
               className="flex-1 text-[15px] bg-transparent outline-none text-gray-900 placeholder-gray-300 border-b border-gray-200 pb-1"/>
             <button onClick={()=>{const v=tabInput.trim();if(v){onCustomTabs([...customTabs,{id:uid(),name:v}]);setTabInput('');}}}
-              className="px-4 py-1.5 bg-[#94CFC8] text-white text-sm font-semibold rounded-xl shrink-0">追加</button>
+              className="px-4 py-1.5 bg-[var(--c-primary)] text-white text-sm font-semibold rounded-xl shrink-0">追加</button>
           </div>
         </div>
         {customTabs.length>0&&(
@@ -3248,7 +3258,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             {TAG_COLORS.map(c=>(
               <button key={c.bg} onClick={()=>setNewTagColor(c.bg)}
                 style={{backgroundColor:c.bg}}
-                className={`w-7 h-7 rounded-full border border-gray-200 transition-all ${newTagColor===c.bg?'ring-2 ring-[#94CFC8] ring-offset-1 scale-110':''}`}/>
+                className={`w-7 h-7 rounded-full border border-gray-200 transition-all ${newTagColor===c.bg?'ring-2 ring-[var(--c-primary)] ring-offset-1 scale-110':''}`}/>
             ))}
           </div>
           <div className="flex gap-2 items-center">
@@ -3257,7 +3267,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
               placeholder="タグ名を入力"
               className="flex-1 text-[15px] bg-transparent outline-none text-gray-900 placeholder-gray-300 border-b border-gray-200 pb-1"/>
             <button onClick={addTag}
-              className="px-4 py-1.5 bg-[#94CFC8] text-white text-sm font-semibold rounded-xl shrink-0">追加</button>
+              className="px-4 py-1.5 bg-[var(--c-primary)] text-white text-sm font-semibold rounded-xl shrink-0">追加</button>
           </div>
           {tagInput.trim()&&(
             <div className="mt-3">
@@ -3282,7 +3292,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                         {TAG_COLORS.map(c=>(
                           <button key={c.bg} onClick={()=>setEditColor(c.bg)}
                             style={{backgroundColor:c.bg}}
-                            className={`w-6 h-6 rounded-full border border-gray-200 transition-all ${editColor===c.bg?'ring-2 ring-[#94CFC8] ring-offset-1 scale-110':''}`}/>
+                            className={`w-6 h-6 rounded-full border border-gray-200 transition-all ${editColor===c.bg?'ring-2 ring-[var(--c-primary)] ring-offset-1 scale-110':''}`}/>
                         ))}
                       </div>
                       <input autoFocus value={editVal}
@@ -3298,7 +3308,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                   )}
                   <div className="flex gap-1.5 shrink-0">
                     <button onClick={()=>editIdx===i?commitEdit():startEdit(i)}
-                      className={`text-xs font-medium px-2.5 py-1 rounded-lg ${editIdx===i?'bg-[#94CFC8] text-white':'bg-gray-100 text-gray-600'}`}>
+                      className={`text-xs font-medium px-2.5 py-1 rounded-lg ${editIdx===i?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
                       {editIdx===i?'確定':'編集'}
                     </button>
                     {editIdx===i
@@ -3366,7 +3376,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           <div className="px-4 py-3.5 flex items-center justify-between border-b border-gray-100">
             <p className="text-[15px] font-medium text-gray-900">空き時間カードを表示</p>
             <button onClick={()=>onSettings({...settings,showFreeCard:!(settings.showFreeCard??true)})}
-              className={`relative w-10 h-6 rounded-full transition-colors shrink-0 ${(settings.showFreeCard??true)?'bg-[#94CFC8]':'bg-gray-200'}`}>
+              className={`relative w-10 h-6 rounded-full transition-colors shrink-0 ${(settings.showFreeCard??true)?'bg-[var(--c-primary)]':'bg-gray-200'}`}>
               <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${(settings.showFreeCard??true)?'left-[18px]':'left-0.5'}`}/>
             </button>
           </div>
@@ -3379,7 +3389,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                   const active=(settings.freeCardMinMin??120)===m;
                   return (
                     <button key={m} onClick={()=>onSettings({...settings,freeCardMinMin:m})}
-                      className={`px-3 py-1.5 rounded-xl text-sm font-medium transition-colors ${active?'bg-[#94CFC8] text-white':'bg-gray-100 text-gray-600'}`}>
+                      className={`px-3 py-1.5 rounded-xl text-sm font-medium transition-colors ${active?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
                       {label}
                     </button>
                   );
@@ -3390,10 +3400,10 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
         </div>
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">外観</p>
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
-          <div className="px-4 py-3.5 flex items-center justify-between">
-            <p className="text-[15px] font-medium text-gray-900">テーマ</p>
-            <span className="text-[15px] text-gray-400">ライト</span>
-          </div>
+          <SettingsRow icon={<AppIcons.palette/>} iconBg="bg-gray-100"
+            title="テーマカラー"
+            desc={THEMES.find(t=>t.id===(settings.theme??'mint'))?.name??'ミント'}
+            onClick={()=>setSub('themeColor')} isLast/>
         </div>
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">言語</p>
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
@@ -3401,6 +3411,36 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             <p className="text-[15px] font-medium text-gray-900">言語</p>
             <span className="text-[15px] text-gray-400">日本語</span>
           </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  if(sub==='themeColor') return (
+    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
+      {subHeader('テーマカラー')}
+      <div className="flex-1 overflow-y-auto px-4 pb-8">
+        <p className="text-xs text-gray-400 px-1 mb-4 mt-6">テーマを選択するとアプリ全体の色が切り替わります</p>
+        <div className="grid grid-cols-4 gap-4">
+          {THEMES.map(t=>{
+            const selected=(settings.theme??'mint')===t.id;
+            return (
+              <button key={t.id} onClick={()=>onSettings({...settings,theme:t.id})}
+                className="flex flex-col items-center gap-2 py-3">
+                <div className="relative w-14 h-14 rounded-full flex items-center justify-center"
+                  style={{background:t.color}}>
+                  {selected&&(
+                    <div className="w-7 h-7 bg-white rounded-full flex items-center justify-center shadow">
+                      <svg width="12" height="9" viewBox="0 0 12 9" fill="none">
+                        <path d="M1 4L4.5 7.5L11 1" stroke={t.color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </div>
+                  )}
+                </div>
+                <span className={`text-xs text-center leading-tight ${selected?'font-bold text-gray-900':'text-gray-500'}`}>{t.name}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>
@@ -3452,7 +3492,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                     </div>
                     <div className="flex gap-2">
                       <button onClick={()=>setLpEditId(null)}
-                        className="flex-1 py-2 rounded-xl text-xs font-semibold bg-[#94CFC8] text-white">確定</button>
+                        className="flex-1 py-2 rounded-xl text-xs font-semibold bg-[var(--c-primary)] text-white">確定</button>
                       <button onClick={()=>{onLifePatterns(lifePatterns.filter(p=>p.id!==pat.id));setLpEditId(null);if(lpActivePat===pat.id)setLpActivePat(null);}}
                         className="flex-1 py-2 rounded-xl text-xs font-semibold bg-gray-100 text-[#D97A7A]">削除</button>
                     </div>
@@ -3463,7 +3503,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                       className="flex items-center gap-3 flex-1 min-w-0">
                       <div className="w-4 h-4 rounded-full shrink-0" style={{background:pat.color}}/>
                       <div className="flex-1 min-w-0 text-left">
-                        <p className={`text-[15px] font-medium ${lpActivePat===pat.id?'text-[#94CFC8]':'text-gray-900'}`}>{pat.name}</p>
+                        <p className={`text-[15px] font-medium ${lpActivePat===pat.id?'text-[var(--c-primary)]':'text-gray-900'}`}>{pat.name}</p>
                         <p className="text-xs text-gray-400">{pat.wakeTime} 起床 / {pat.sleepTime} 就寝</p>
                       </div>
                     </button>
@@ -3497,7 +3537,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                     const np:LifePattern={id:uid(),name:lpNewName.trim(),wakeTime:lpNewWake,sleepTime:lpNewSleep,color:lpNewColor};
                     onLifePatterns([...lifePatterns,np]);
                     setLpNewName('');setLpAddMode(false);
-                  }} className="flex-1 py-2 rounded-xl text-xs font-semibold bg-[#94CFC8] text-white">追加</button>
+                  }} className="flex-1 py-2 rounded-xl text-xs font-semibold bg-[var(--c-primary)] text-white">追加</button>
                   <button onClick={()=>setLpAddMode(false)}
                     className="flex-1 py-2 rounded-xl text-xs font-semibold bg-gray-100 text-gray-500">キャンセル</button>
                 </div>
@@ -3506,7 +3546,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           </div>
           {!lpAddMode&&(
             <button onClick={()=>{setLpAddMode(true);setLpNewName('');setLpNewWake('07:00');setLpNewSleep('23:00');setLpNewColor('#94CFC8');}}
-              className="w-full py-3 rounded-2xl text-sm font-semibold text-[#94CFC8] bg-white shadow-sm mb-5">＋ パターンを追加</button>
+              className="w-full py-3 rounded-2xl text-sm font-semibold text-[var(--c-primary)] bg-white shadow-sm mb-5">＋ パターンを追加</button>
           )}
 
           {/* Calendar — always visible */}
@@ -3574,7 +3614,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           <div className="bg-white rounded-2xl overflow-hidden shadow-sm mb-5">
             <div className="px-4 py-4 flex items-center gap-3">
               <button onClick={()=>setColorPicking(colorPicking==='wake'?null:'wake')} className="relative shrink-0">
-                <div className="w-9 h-9 rounded-full flex items-center justify-center" style={{background:settings.wakeColor||'#94CFC8'}}>
+                <div className="w-9 h-9 rounded-full flex items-center justify-center" style={{background:settings.wakeColor||'var(--c-primary)'}}>
                   <AppIcons.wake size={16} className="text-white"/>
                 </div>
                 <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-white rounded-full flex items-center justify-center shadow border border-gray-100">
@@ -3586,7 +3626,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                 className="border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50"/>
               <span className="text-gray-300 text-sm">〜</span>
               <button onClick={()=>setColorPicking(colorPicking==='sleep'?null:'sleep')} className="relative shrink-0">
-                <div className="w-9 h-9 rounded-full flex items-center justify-center" style={{background:settings.sleepColor||'#94CFC8'}}>
+                <div className="w-9 h-9 rounded-full flex items-center justify-center" style={{background:settings.sleepColor||'var(--c-primary)'}}>
                   <AppIcons.sleep size={16} className="text-white"/>
                 </div>
                 <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-white rounded-full flex items-center justify-center shadow border border-gray-100">
@@ -3643,7 +3683,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                     </div>
                     <div className="flex gap-2">
                       <button onClick={()=>setLpEditId(null)}
-                        className="flex-1 py-2 rounded-xl text-xs font-semibold bg-[#94CFC8] text-white">確定</button>
+                        className="flex-1 py-2 rounded-xl text-xs font-semibold bg-[var(--c-primary)] text-white">確定</button>
                       <button onClick={()=>{onLifePatterns(lifePatterns.filter(p=>p.id!==pat.id));setLpEditId(null);if(lpActivePat===pat.id)setLpActivePat(null);}}
                         className="flex-1 py-2 rounded-xl text-xs font-semibold bg-gray-100 text-[#D97A7A]">削除</button>
                     </div>
@@ -3654,7 +3694,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                       className="flex items-center gap-3 flex-1 min-w-0">
                       <div className="w-4 h-4 rounded-full shrink-0" style={{background:pat.color}}/>
                       <div className="flex-1 min-w-0 text-left">
-                        <p className={`text-[15px] font-medium ${lpActivePat===pat.id?'text-[#94CFC8]':'text-gray-900'}`}>{pat.name}</p>
+                        <p className={`text-[15px] font-medium ${lpActivePat===pat.id?'text-[var(--c-primary)]':'text-gray-900'}`}>{pat.name}</p>
                         <p className="text-xs text-gray-400">{pat.wakeTime} 起床 / {pat.sleepTime} 就寝</p>
                       </div>
                     </button>
@@ -3688,7 +3728,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                     const np:LifePattern={id:uid(),name:lpNewName.trim(),wakeTime:lpNewWake,sleepTime:lpNewSleep,color:lpNewColor};
                     onLifePatterns([...lifePatterns,np]);
                     setLpNewName('');setLpAddMode(false);
-                  }} className="flex-1 py-2 rounded-xl text-xs font-semibold bg-[#94CFC8] text-white">追加</button>
+                  }} className="flex-1 py-2 rounded-xl text-xs font-semibold bg-[var(--c-primary)] text-white">追加</button>
                   <button onClick={()=>setLpAddMode(false)}
                     className="flex-1 py-2 rounded-xl text-xs font-semibold bg-gray-100 text-gray-500">キャンセル</button>
                 </div>
@@ -3697,7 +3737,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           </div>
           {!lpAddMode&&(
             <button onClick={()=>{setLpAddMode(true);setLpNewName('');setLpNewWake('07:00');setLpNewSleep('23:00');setLpNewColor('#94CFC8');}}
-              className="w-full py-3 rounded-2xl text-sm font-semibold text-[#94CFC8] bg-white shadow-sm mb-5">＋ パターンを追加</button>
+              className="w-full py-3 rounded-2xl text-sm font-semibold text-[var(--c-primary)] bg-white shadow-sm mb-5">＋ パターンを追加</button>
           )}
 
           <div className="bg-white rounded-2xl overflow-hidden shadow-sm mb-3">
@@ -3775,7 +3815,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             <AppIcons.calendar size={18} className="text-gray-400 shrink-0"/>
             <span className="flex-1 text-[15px] font-medium text-gray-900">iPhoneカレンダー</span>
             <button onClick={()=>onSettings({...settings,iphoneCalEnabled:!(settings.iphoneCalEnabled??false)})}
-              className={`relative w-10 h-6 rounded-full transition-colors shrink-0 ${(settings.iphoneCalEnabled??false)?'bg-[#94CFC8]':'bg-gray-200'}`}>
+              className={`relative w-10 h-6 rounded-full transition-colors shrink-0 ${(settings.iphoneCalEnabled??false)?'bg-[var(--c-primary)]':'bg-gray-200'}`}>
               <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${(settings.iphoneCalEnabled??false)?'left-[18px]':'left-0.5'}`}/>
             </button>
           </div>
@@ -3784,10 +3824,10 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
               <p className="text-xs text-gray-400 mb-2 leading-relaxed">iPhoneの「カレンダー」アプリ → 対象カレンダーを長押し →「カレンダーを共有」→「リンクをコピー」で取得したURLを貼り付けてください。</p>
               <input value={settings.iphoneCalUrl??''} onChange={e=>onSettings({...settings,iphoneCalUrl:e.target.value})}
                 placeholder="webcal://p17-caldav.icloud.com/..."
-                className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 outline-none focus:border-[#94CFC8] bg-gray-50"/>
+                className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 outline-none focus:border-[var(--c-primary)] bg-gray-50"/>
               <button disabled={!settings.iphoneCalUrl||syncingCal==='iphone'}
                 onClick={()=>settings.iphoneCalUrl&&onSyncCalendar('iphone',settings.iphoneCalUrl)}
-                className={`mt-2 w-full py-2 rounded-xl text-sm font-semibold transition-colors ${!settings.iphoneCalUrl||syncingCal==='iphone'?'bg-gray-100 text-gray-400':'bg-[#94CFC8] text-white'}`}>
+                className={`mt-2 w-full py-2 rounded-xl text-sm font-semibold transition-colors ${!settings.iphoneCalUrl||syncingCal==='iphone'?'bg-gray-100 text-gray-400':'bg-[var(--c-primary)] text-white'}`}>
                 {syncingCal==='iphone'?'同期中…':'今すぐ同期'}
               </button>
             </div>
@@ -3800,7 +3840,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             <AppIcons.calendar size={18} className="text-gray-400 shrink-0"/>
             <span className="flex-1 text-[15px] font-medium text-gray-900">Googleカレンダー</span>
             <button onClick={()=>onSettings({...settings,googleCalEnabled:!(settings.googleCalEnabled??false)})}
-              className={`relative w-10 h-6 rounded-full transition-colors shrink-0 ${(settings.googleCalEnabled??false)?'bg-[#94CFC8]':'bg-gray-200'}`}>
+              className={`relative w-10 h-6 rounded-full transition-colors shrink-0 ${(settings.googleCalEnabled??false)?'bg-[var(--c-primary)]':'bg-gray-200'}`}>
               <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${(settings.googleCalEnabled??false)?'left-[18px]':'left-0.5'}`}/>
             </button>
           </div>
@@ -3809,10 +3849,10 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
               <p className="text-xs text-gray-400 mb-2 leading-relaxed">Googleカレンダー → 設定 → 対象カレンダー → 「カレンダーの統合」→「非公開のアドレス(ICS)」をコピーして貼り付けてください。</p>
               <input value={settings.googleCalUrl??''} onChange={e=>onSettings({...settings,googleCalUrl:e.target.value})}
                 placeholder="https://calendar.google.com/calendar/ical/..."
-                className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 outline-none focus:border-[#94CFC8] bg-gray-50"/>
+                className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 outline-none focus:border-[var(--c-primary)] bg-gray-50"/>
               <button disabled={!settings.googleCalUrl||syncingCal==='google'}
                 onClick={()=>settings.googleCalUrl&&onSyncCalendar('google',settings.googleCalUrl)}
-                className={`mt-2 w-full py-2 rounded-xl text-sm font-semibold transition-colors ${!settings.googleCalUrl||syncingCal==='google'?'bg-gray-100 text-gray-400':'bg-[#94CFC8] text-white'}`}>
+                className={`mt-2 w-full py-2 rounded-xl text-sm font-semibold transition-colors ${!settings.googleCalUrl||syncingCal==='google'?'bg-gray-100 text-gray-400':'bg-[var(--c-primary)] text-white'}`}>
                 {syncingCal==='google'?'同期中…':'今すぐ同期'}
               </button>
             </div>
@@ -3838,8 +3878,8 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
       {subHeader('プレミアム')}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
         <div className="mt-6 mb-4 text-center">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[#94CFC8]/10 mb-3">
-            <AppIcons.star size={32} className="text-[#94CFC8]"/>
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[var(--c-primary)]/10 mb-3">
+            <AppIcons.star size={32} className="text-[var(--c-primary)]"/>
           </div>
           <p className="text-lg font-bold text-gray-900">Premium</p>
           <p className="text-sm text-gray-500 mt-1">より便利な機能で、毎日をもっとスムーズに</p>
@@ -3856,7 +3896,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             {icon:<AppIcons.star size={18}/>,      label:'今後追加予定の機能',          desc:'継続的にアップデート'},
           ].map(({icon,label,desc},i,arr)=>(
             <div key={i} className={`px-4 py-3 flex items-center gap-3${i<arr.length-1?' border-b border-gray-100':''}`}>
-              <span className="text-[#94CFC8] shrink-0">{icon}</span>
+              <span className="text-[var(--c-primary)] shrink-0">{icon}</span>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-800">{label}</p>
                 <p className="text-xs text-gray-400">{desc}</p>
@@ -4187,6 +4227,13 @@ export default function App() {
   useEffect(()=>{ if(loaded) localStorage.setItem(LIFE_PATTERNS_KEY,JSON.stringify(lifePatterns)); },[lifePatterns,loaded]);
   useEffect(()=>{ if(loaded) localStorage.setItem(PATTERN_OVERRIDES_KEY,JSON.stringify(patternOverrides)); },[patternOverrides,loaded]);
   useEffect(()=>{ const iv=setInterval(()=>setNow(nowStr()),60000); return ()=>clearInterval(iv); },[]);
+  useEffect(()=>{
+    const t=THEMES.find(th=>th.id===(settings.theme??'mint'));
+    const hex=t?.color??'#94CFC8';
+    document.documentElement.style.setProperty('--c-primary',hex);
+    const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+    document.documentElement.style.setProperty('--c-primary-dark',`rgb(${Math.round(r*0.82)},${Math.round(g*0.82)},${Math.round(b*0.82)})`);
+  },[settings.theme]);
 
   const syncCalendar=async(source:'google'|'iphone',url:string):Promise<void>=>{
     setSyncingCal(source);
@@ -4531,7 +4578,7 @@ export default function App() {
             <span className="text-2xl font-bold text-gray-900">{year}年{month}月</span>
             <div className="flex items-center gap-1">
               <button onClick={()=>setSettings(s=>({...s,showFreeCard:!(s.showFreeCard??true)}))}
-                className={`relative h-7 rounded-full text-xs font-medium transition-colors duration-200 mr-1 overflow-hidden ${(settings.showFreeCard??true)?'bg-[#94CFC8] text-white':'bg-gray-200 text-gray-500'}`}
+                className={`relative h-7 rounded-full text-xs font-medium transition-colors duration-200 mr-1 overflow-hidden ${(settings.showFreeCard??true)?'bg-[var(--c-primary)] text-white':'bg-gray-200 text-gray-500'}`}
                 style={{width:'84px'}}>
                 <span className="absolute inset-0 flex items-center justify-center" style={{paddingLeft:(settings.showFreeCard??true)?'0':'10px',paddingRight:(settings.showFreeCard??true)?'10px':'0',transition:'padding 0.2s'}}>空き時間</span>
                 <span className="absolute top-1.5 w-4 h-4 bg-white rounded-full" style={{boxShadow:'0 1px 3px rgba(0,0,0,0.2)',transition:'left 0.2s',left:(settings.showFreeCard??true)?'calc(100% - 22px)':'6px'}}/>
@@ -4556,7 +4603,7 @@ export default function App() {
               return (
                 <button key={i} onClick={()=>setDate(d)} className="flex flex-col items-center py-1">
                   <span className="text-[13px] font-medium text-gray-400">{name}</span>
-                  <span className={`w-8 h-8 flex items-center justify-center rounded-full font-bold transition-colors ${isSel?'bg-[#94CFC8] text-white':isToday?'bg-gray-200 text-gray-900':'text-gray-600'}`} style={{fontSize:'17px'}}>
+                  <span className={`w-8 h-8 flex items-center justify-center rounded-full font-bold transition-colors ${isSel?'bg-[var(--c-primary)] text-white':isToday?'bg-gray-200 text-gray-900':'text-gray-600'}`} style={{fontSize:'17px'}}>
                     {new Date(d+'T12:00:00').getDate()}
                   </span>
                 </button>
@@ -4570,7 +4617,7 @@ export default function App() {
           <div className="tabs-scroll flex items-end pl-3 pt-2" style={{overflowX:'auto',WebkitOverflowScrolling:'touch',overflowY:'hidden',touchAction:'pan-x'}}>
           <button onClick={()=>{setTabDropdownOpen(o=>!o);setEditTabId(null);}} className="shrink-0 relative"
             style={checkedCategories.size===0?{
-              padding:'7px 14px 9px',background:'#94CFC8',color:'white',fontWeight:700,fontSize:'0.875rem',
+              padding:'7px 14px 9px',background:'var(--c-primary)',color:'white',fontWeight:700,fontSize:'0.875rem',
               border:'none',borderRadius:'14px 14px 0 0',marginBottom:'-2px',zIndex:10,
               boxShadow:'0 4px 12px rgba(0,0,0,0.10)',display:'flex',alignItems:'center',gap:'4px',whiteSpace:'nowrap',
             }:{
@@ -4588,7 +4635,7 @@ export default function App() {
                 else{setCheckedCats(prev=>{const s=new Set(prev);s.add(tab.id);return s;});setEditTabId(null);}
               }} className="shrink-0 relative"
                 style={active?{
-                  width:'80px',padding:'7px 12px 9px',background:'#94CFC8',color:'white',fontWeight:700,fontSize:'0.875rem',
+                  width:'80px',padding:'7px 12px 9px',background:'var(--c-primary)',color:'white',fontWeight:700,fontSize:'0.875rem',
                   border:'none',borderRadius:'14px 14px 0 0',marginBottom:'-2px',zIndex:10,
                   boxShadow:'0 4px 12px rgba(0,0,0,0.10)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',
                 }:{
@@ -4611,7 +4658,7 @@ export default function App() {
                     setCheckedCats(prev=>{const s=new Set(prev);if(s.has(tab.id))s.delete(tab.id);else s.add(tab.id);return s;});
                   }}
                     className="flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium border transition-colors"
-                    style={checked?{background:'#94CFC8',color:'white',borderColor:'transparent'}:{background:'white',color:'#6B7280',borderColor:'#E5E7EB'}}>
+                    style={checked?{background:'var(--c-primary)',color:'white',borderColor:'transparent'}:{background:'white',color:'#6B7280',borderColor:'#E5E7EB'}}>
                     {checked&&<AppIcons.checkSquare size={12}/>}
                     {tab.name}
                   </button>
@@ -4632,7 +4679,7 @@ export default function App() {
               onKeyDown={e=>{if(e.key==='Enter') saveEditTab();}}
               autoFocus
               className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm outline-none focus:border-gray-400 bg-gray-50"/>
-            <button onClick={saveEditTab} className="px-3 py-1.5 bg-[#94CFC8] text-white rounded-lg text-xs font-semibold">完了</button>
+            <button onClick={saveEditTab} className="px-3 py-1.5 bg-[var(--c-primary)] text-white rounded-lg text-xs font-semibold">完了</button>
             <button onClick={()=>deleteCustomTab(editTabId)} className="p-1.5 text-[#D97A7A]"><AppIcons.trash size={16}/></button>
           </div>
         )}
@@ -4652,7 +4699,7 @@ export default function App() {
                   <button key={t.id} onClick={()=>openEdit(t)}
                     className="inline-flex items-center gap-1.5 shrink-0">
                     <span className={`text-sm font-medium ${t.completed?'text-gray-400 line-through':'text-gray-700'}`}>{t.name}</span>
-                    <span className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${t.completed?'border-[#94CFC8] bg-[#94CFC8]':'border-gray-400'}`}
+                    <span className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${t.completed?'border-[var(--c-primary)] bg-[var(--c-primary)]':'border-gray-400'}`}
                       onClick={e=>{e.stopPropagation();toggle(t.id);}}>
                       {t.completed&&<span className="w-1.5 h-1.5 rounded-full bg-white"/>}
                     </span>
@@ -4697,7 +4744,7 @@ export default function App() {
             <button key={tab} onClick={()=>setActiveTab(t=>t===tab?null:tab)}
               className={`flex-1 flex items-center justify-center gap-2 py-8 transition-colors ${i===0?'border-r border-gray-300':''} ${activeTab===tab?'bg-gray-100':''}`}>
               <span className={`text-base font-semibold ${activeTab===tab?'text-gray-900':'text-gray-500'}`}>{label}</span>
-              {cnt>0&&<span className="text-[13px] bg-[#94CFC8] text-white min-w-[22px] h-[22px] rounded-full flex items-center justify-center font-bold px-1">{cnt}</span>}
+              {cnt>0&&<span className="text-[13px] bg-[var(--c-primary)] text-white min-w-[22px] h-[22px] rounded-full flex items-center justify-center font-bold px-1">{cnt}</span>}
             </button>
           ))}
         </div>
@@ -4706,7 +4753,7 @@ export default function App() {
       {/* ── FAB ── */}
       <div className="fixed bottom-24 right-4 z-50">
         <button onClick={()=>openAdd()}
-          className="w-14 h-14 bg-[#94CFC8] text-white rounded-full shadow-2xl active:bg-gray-700"
+          className="w-14 h-14 bg-[var(--c-primary)] text-white rounded-full shadow-2xl active:bg-gray-700"
           style={{display:'grid',placeItems:'center'}}>
           <AppIcons.plus size={28} className="block"/>
         </button>
@@ -4726,7 +4773,7 @@ export default function App() {
       {activeTab==='later'&&(
         <div className="fixed bottom-6 right-4 z-[60]">
           <button onClick={()=>{setActiveTab(null);openAdd();}}
-            className="w-14 h-14 bg-[#94CFC8] text-white rounded-full shadow-2xl active:bg-gray-700"
+            className="w-14 h-14 bg-[var(--c-primary)] text-white rounded-full shadow-2xl active:bg-gray-700"
             style={{display:'grid',placeItems:'center'}}><AppIcons.plus size={28} className="block"/></button>
         </div>
       )}
@@ -4753,12 +4800,12 @@ export default function App() {
                 {dragTask?(
                   <>
                     <p className="text-sm font-bold text-gray-900 truncate">{dragTask.name}</p>
-                    <p className="text-xs text-[#94CFC8] mt-0.5 font-semibold">{dropTime??'ドラッグして配置'}</p>
+                    <p className="text-xs text-[var(--c-primary)] mt-0.5 font-semibold">{dropTime??'ドラッグして配置'}</p>
                   </>
                 ):(
                   <>
                     <p className="text-sm font-bold text-gray-900">{dragSetting==='wake'?'起床':'就寝'}</p>
-                    <p className="text-xs text-[#94CFC8] mt-0.5 font-semibold">{dropTime??'ドラッグして配置'}</p>
+                    <p className="text-xs text-[var(--c-primary)] mt-0.5 font-semibold">{dropTime??'ドラッグして配置'}</p>
                   </>
                 )}
               </div>
@@ -4770,9 +4817,9 @@ export default function App() {
               <AppIcons.trash size={28} className={dragSetting?'text-gray-300':overTrash?'text-white':'text-[#D97A7A]'}/>
               <span className={`text-xs font-bold ${dragSetting?'text-gray-300':overTrash?'text-white':'text-[#D97A7A]'}`}>削除する</span>
             </div>
-            <div className={`flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors ${dragSetting?'bg-gray-50 opacity-30':overLater?'bg-[#94CFC8]':'bg-pink-50'}`}>
-              <AppIcons.postponed size={28} className={dragSetting?'text-gray-300':overLater?'text-white':'text-[#94CFC8]'}/>
-              <span className={`text-xs font-bold ${dragSetting?'text-gray-300':overLater?'text-white':'text-[#94CFC8]'}`}>あとでやるに戻す</span>
+            <div className={`flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors ${dragSetting?'bg-gray-50 opacity-30':overLater?'bg-[var(--c-primary)]':'bg-pink-50'}`}>
+              <AppIcons.postponed size={28} className={dragSetting?'text-gray-300':overLater?'text-white':'text-[var(--c-primary)]'}/>
+              <span className={`text-xs font-bold ${dragSetting?'text-gray-300':overLater?'text-white':'text-[var(--c-primary)]'}`}>あとでやるに戻す</span>
             </div>
           </div>
         </div>
@@ -4799,7 +4846,7 @@ export default function App() {
                   return n;
                 });
                 setSettingConfirm(null);
-              }} className="w-full py-3.5 bg-[#94CFC8] rounded-2xl text-sm font-semibold text-white">他の日も全部この時間に変更</button>
+              }} className="w-full py-3.5 bg-[var(--c-primary)] rounded-2xl text-sm font-semibold text-white">他の日も全部この時間に変更</button>
               <button onClick={()=>setSettingConfirm(null)} className="w-full py-2.5 text-sm text-gray-400 font-semibold">キャンセル</button>
             </div>
           </div>
@@ -4852,7 +4899,7 @@ export default function App() {
                     ?{...tk,startTime:time}:tk
                 ));
                 setPendingDragMove(null);
-              }} className="w-full py-3.5 bg-[#94CFC8] rounded-2xl text-sm font-semibold text-white">すべての予定を変更</button>
+              }} className="w-full py-3.5 bg-[var(--c-primary)] rounded-2xl text-sm font-semibold text-white">すべての予定を変更</button>
               <button onClick={()=>setPendingDragMove(null)}
                 className="w-full py-2.5 text-sm text-gray-400 font-semibold">キャンセル</button>
             </div>
@@ -4868,7 +4915,7 @@ export default function App() {
               <button onClick={()=>{setEditScope('one');setModal({open:true,task:recConfirm});setRecConfirm(null);}}
                 className="w-full py-3.5 bg-gray-100 rounded-2xl text-sm font-semibold text-gray-900">この予定のみ変更</button>
               <button onClick={()=>{setEditScope('all');setModal({open:true,task:recConfirm});setRecConfirm(null);}}
-                className="w-full py-3.5 bg-[#94CFC8] rounded-2xl text-sm font-semibold text-white">すべての予定を変更</button>
+                className="w-full py-3.5 bg-[var(--c-primary)] rounded-2xl text-sm font-semibold text-white">すべての予定を変更</button>
               <button onClick={()=>setRecConfirm(null)}
                 className="w-full py-2.5 text-sm text-gray-400 font-semibold">キャンセル</button>
             </div>
