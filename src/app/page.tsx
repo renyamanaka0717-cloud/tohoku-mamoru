@@ -2142,12 +2142,12 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
       {/* vertical line — gradient between adjacent icon colors, dotted over free-time slots */}
       {(()=>{
         const nodes:{y:number;color:string}[]=[];
-        nodes.push({y:wakeCardTop+WAKE_CARD_H/2,color:'var(--c-primary)'});
+        nodes.push({y:wakeCardTop+WAKE_CARD_H/2,color:settings.wakeColor||'var(--c-primary)'});
         for(const {g,top} of groupLayout){
           const mid=g.tasks[Math.floor(g.tasks.length/2)];
           nodes.push({y:top+groupIconTop(g)+groupStackH(g)/2,color:mid?.color||'var(--c-primary)'});
         }
-        nodes.push({y:sleepCardTop+SLEEP_CARD_H/2,color:'var(--c-primary)'});
+        nodes.push({y:sleepCardTop+SLEEP_CARD_H/2,color:settings.sleepColor||'var(--c-primary)'});
         nodes.sort((a,b)=>a.y-b.y);
         if(nodes.length===0) return null;
 
