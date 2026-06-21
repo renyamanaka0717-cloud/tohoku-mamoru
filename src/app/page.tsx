@@ -2854,13 +2854,14 @@ function SettingsRow({icon,iconBg,title,desc,onClick,isLast=false}:{
   );
 }
 
-function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,customTabs,onCustomTabs,shopNotifSettings,onShopNotifSettings,calEventsCount,onSyncCalendar,syncingCal,authUser,isPremium,onBulkAdd,bulkHistory,onBulkHistoryDelete,onBulkHistoryEdit,lifePatterns,onLifePatterns,patternOverrides,onApplyPattern,initialSub}:{
+function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,customTabs,onCustomTabs,shopNotifSettings,onShopNotifSettings,calEventsCount,onSyncCalendar,syncingCal,authUser,isPremium,onAppleSignIn,onSignOut,onBulkAdd,bulkHistory,onBulkHistoryDelete,onBulkHistoryEdit,lifePatterns,onLifePatterns,patternOverrides,onApplyPattern,initialSub}:{
   settings:Settings; onSettings:(s:Settings)=>void; onClose:()=>void;
   globalTags:TagDef[]; onGlobalTags:(tags:TagDef[])=>void;
   customTabs:CustomTab[]; onCustomTabs:(tabs:CustomTab[])=>void;
   shopNotifSettings:ShopNotifSetting[]; onShopNotifSettings:(s:ShopNotifSetting[])=>void;
   calEventsCount:number; onSyncCalendar:(source:'google'|'iphone',url:string)=>Promise<void>; syncingCal:'google'|'iphone'|null;
   authUser:AuthUser|null; isPremium:boolean;
+  onAppleSignIn:()=>Promise<void>; onSignOut:()=>void;
   onBulkAdd:(tasks:Omit<Task,'id'>[],endTime:string)=>void;
   bulkHistory:BulkHistoryEntry[];
   onBulkHistoryDelete:(entryId:string)=>void;
@@ -3798,14 +3799,25 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
       {subHeader('アカウント')}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm mt-6">
-          <SettingsRow icon={<AppIcons.link size={18}/>} iconBg="bg-gray-100" title="Appleアカウント" desc="iCloudバックアップに利用" onClick={()=>{}} />
-          <SettingsRow icon={<AppIcons.sparkle size={18}/>} iconBg="bg-gray-100" title="iCloudバックアップ" desc="データを自動で保存・復元" onClick={()=>{}} />
-          <SettingsRow icon={<AppIcons.clock size={18}/>} iconBg="bg-gray-100" title="同期状態" desc="最終同期日時を表示" onClick={()=>{}} isLast/>
+          <SettingsRow icon={<AppIcons.link size={18}/>} iconBg="bg-gray-100"
+            title="Appleアカウント"
+            desc={authUser ? '連携済み' : '未連携'}
+            onClick={authUser ? ()=>{} : onAppleSignIn} />
+          <SettingsRow icon={<AppIcons.sparkle size={18}/>} iconBg="bg-gray-100"
+            title="iCloudバックアップ"
+            desc={authUser ? 'データを自動で保存・復元' : '連携後に利用できます'}
+            onClick={()=>{}} />
+          <SettingsRow icon={<AppIcons.clock size={18}/>} iconBg="bg-gray-100"
+            title="同期状態"
+            desc={authUser ? '最終同期日時を表示' : '連携後に利用できます'}
+            onClick={()=>{}} isLast/>
         </div>
-        <div className="bg-white rounded-2xl overflow-hidden shadow-sm mt-4">
-          <button className="w-full px-4 py-3.5 text-left text-[15px] font-medium text-[#D97A7A]">サインアウト</button>
-        </div>
-        <p className="text-xs text-gray-400 px-1 mt-3">これらの機能は近日公開予定です。</p>
+        {authUser && (
+          <div className="bg-white rounded-2xl overflow-hidden shadow-sm mt-4">
+            <button className="w-full px-4 py-3.5 text-left text-[15px] font-medium text-[#D97A7A]" onClick={onSignOut}>サインアウト</button>
+          </div>
+        )}
+        <p className="text-xs text-gray-400 px-1 mt-3">iCloudバックアップ機能は近日公開予定です。</p>
       </div>
     </div>
   );
@@ -4253,6 +4265,30 @@ export default function App() {
       setCalEvents(prev=>[...prev.filter(e=>e.source!==source),...events]);
     }catch(e){console.error('Calendar sync failed:',e);}
     setSyncingCal(null);
+  };
+
+  const handleAppleSignIn=async():Promise<void>=>{
+    try{
+      const apple=(window as {AppleID?:{auth:{init:(c:object)=>void;signIn:()=>Promise<{authorization:{id_token:string;code:string};user?:{name?:{firstName?:string;lastName?:string};email?:string}}>}}}).AppleID;
+      if(!apple) return;
+      apple.auth.init({clientId:'com.tohoku-mamoru.app',scope:'name email',redirectURI:window.location.origin,usePopup:true});
+      const res=await apple.auth.signIn();
+      const token=res.authorization.id_token;
+      const payload=JSON.parse(atob(token.split('.')[1]));
+      const uid=payload.sub as string;
+      const email=res.user?.email||payload.email as string|undefined;
+      const firstName=res.user?.name?.firstName||'';
+      const lastName=res.user?.name?.lastName||'';
+      const displayName=[lastName,firstName].filter(Boolean).join(' ')||undefined;
+      const au:AuthUser={uid,email,displayName};
+      setAuthUser(au);
+      localStorage.setItem(AUTH_KEY,JSON.stringify(au));
+    }catch(e){console.error('Apple sign in failed:',e);}
+  };
+
+  const handleSignOut=():void=>{
+    setAuthUser(null);
+    localStorage.removeItem(AUTH_KEY);
   };
 
   // 起床時間後、初回起動時に過去の未完了タスクをポップアップで確認（スヌーズ対応）
@@ -4885,7 +4921,7 @@ export default function App() {
 
       {/* ── Settings Screen ── */}
       {settingsOpen&&(
-        <SettingsScreen settings={settings} onSettings={setSettings} onClose={()=>setSOp(false)} globalTags={globalTags} onGlobalTags={setGlobalTags} customTabs={customTabs} onCustomTabs={setCustomTabs} shopNotifSettings={shopNotifSettings} onShopNotifSettings={setShopNotifSettings} calEventsCount={calEvents.length} onSyncCalendar={syncCalendar} syncingCal={syncingCal} authUser={authUser} isPremium={isPremium} onBulkAdd={bulkAddTasks} bulkHistory={bulkHistory} onBulkHistoryDelete={bulkHistoryDelete} onBulkHistoryEdit={bulkHistoryEdit} lifePatterns={lifePatterns} onLifePatterns={setLifePatterns} patternOverrides={patternOverrides} onApplyPattern={applyPattern} initialSub={settingsInitSub}/>
+        <SettingsScreen settings={settings} onSettings={setSettings} onClose={()=>setSOp(false)} globalTags={globalTags} onGlobalTags={setGlobalTags} customTabs={customTabs} onCustomTabs={setCustomTabs} shopNotifSettings={shopNotifSettings} onShopNotifSettings={setShopNotifSettings} calEventsCount={calEvents.length} onSyncCalendar={syncCalendar} syncingCal={syncingCal} authUser={authUser} isPremium={isPremium} onAppleSignIn={handleAppleSignIn} onSignOut={handleSignOut} onBulkAdd={bulkAddTasks} bulkHistory={bulkHistory} onBulkHistoryDelete={bulkHistoryDelete} onBulkHistoryEdit={bulkHistoryEdit} lifePatterns={lifePatterns} onLifePatterns={setLifePatterns} patternOverrides={patternOverrides} onApplyPattern={applyPattern} initialSub={settingsInitSub}/>
       )}
 
       {/* ── Recurrence edit confirm ── */}
