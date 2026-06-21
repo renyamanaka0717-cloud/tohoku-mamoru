@@ -3801,23 +3801,17 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm mt-6">
           <SettingsRow icon={<AppIcons.link size={18}/>} iconBg="bg-gray-100"
             title="Appleアカウント"
-            desc={authUser ? '連携済み' : '未連携'}
-            onClick={authUser ? ()=>{} : onAppleSignIn} />
+            desc="近日リリース予定"
+            onClick={()=>{}} />
           <SettingsRow icon={<AppIcons.sparkle size={18}/>} iconBg="bg-gray-100"
             title="iCloudバックアップ"
-            desc={authUser ? 'データを自動で保存・復元' : '連携後に利用できます'}
+            desc="近日リリース予定"
             onClick={()=>{}} />
           <SettingsRow icon={<AppIcons.clock size={18}/>} iconBg="bg-gray-100"
             title="同期状態"
-            desc={authUser ? '最終同期日時を表示' : '連携後に利用できます'}
+            desc="近日リリース予定"
             onClick={()=>{}} isLast/>
         </div>
-        {authUser && (
-          <div className="bg-white rounded-2xl overflow-hidden shadow-sm mt-4">
-            <button className="w-full px-4 py-3.5 text-left text-[15px] font-medium text-[#D97A7A]" onClick={onSignOut}>サインアウト</button>
-          </div>
-        )}
-        <p className="text-xs text-gray-400 px-1 mt-3">iCloudバックアップ機能は近日公開予定です。</p>
       </div>
     </div>
   );
