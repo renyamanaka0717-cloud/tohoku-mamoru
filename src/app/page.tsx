@@ -2580,7 +2580,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
     return [...pinned,...ordered];
   })();
 
-  const scheduledRaw = tasks.filter(t=>!t.isLater&&t.startTime&&!t.completed&&!t.recurrence)
+  const scheduledRaw = tasks.filter(t=>!t.isLater&&t.startTime&&!t.completed&&!t.recurrence&&t.date===todayStr())
     .sort((a,b)=>{
       const cmp=a.date.localeCompare(b.date)||toMin(a.startTime!)-toMin(b.startTime!);
       return sortDir!=='desc'?cmp:-cmp;
