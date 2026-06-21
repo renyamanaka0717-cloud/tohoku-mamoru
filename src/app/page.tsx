@@ -4667,8 +4667,7 @@ export default function App() {
             const active=activeCategory===tab.id;
             return (
               <button key={tab.id} onClick={()=>{
-                if(active){setEditTabId(tab.id);setEditTabName(tab.name);}
-                else{setActiveCat(tab.id);setEditTabId(null);}
+                setActiveCat(active?null:tab.id);
               }} className="shrink-0 relative"
                 style={active?{
                   width:'80px',padding:'7px 12px 9px',background:'var(--c-primary)',color:'white',fontWeight:700,fontSize:'0.875rem',
@@ -4681,21 +4680,11 @@ export default function App() {
                 }}>{tab.name}</button>
             );
           })}
-          <button onClick={addCustomTab}
+          <button onClick={()=>{setSettingsInitSub('tabs');setSOp(true);}}
             className="shrink-0 w-8 h-7 flex items-center justify-center text-gray-400 text-xl font-light ml-1 mb-0.5">+</button>
           <div className="shrink-0" style={{width:'12px'}}/>
           </div>
         </div>
-        {editTabId&&(
-          <div className="flex gap-2 px-4 py-2 bg-gray-50 border-b border-gray-100">
-            <input value={editTabName} onChange={e=>setEditTabName(e.target.value)}
-              onKeyDown={e=>{if(e.key==='Enter') saveEditTab();}}
-              autoFocus
-              className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm outline-none focus:border-gray-400 bg-gray-50"/>
-            <button onClick={saveEditTab} className="px-3 py-1.5 bg-[var(--c-primary)] text-white rounded-lg text-xs font-semibold">完了</button>
-            <button onClick={()=>deleteCustomTab(editTabId)} className="p-1.5 text-[#D97A7A]"><AppIcons.trash size={16}/></button>
-          </div>
-        )}
 
         {/* All-day strip — sticky, aligned with timeline CARD_LEFT */}
         {(()=>{
