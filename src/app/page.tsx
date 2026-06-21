@@ -3940,7 +3940,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
           <SettingsRow icon={<AppIcons.tag/>} iconBg="bg-gray-100" title="タグ" desc="タグを管理" onClick={()=>setSub('tags')}/>
           <SettingsRow icon={<AppIcons.caretRight/>} iconBg="bg-gray-100" title="ファイルタブ" desc="タブを管理" onClick={()=>setSub('tabs')}/>
-          <SettingsRow icon={<AppIcons.repeat size={18}/>} iconBg="bg-gray-100" title="タスク一括入力" desc="複数日にまとめて登録" onClick={()=>setSub('bulkInput')}/>
+          <SettingsRow icon={<AppIcons.pencil size={18}/>} iconBg="bg-gray-100" title="タスク一括入力" desc="複数日にまとめて登録" onClick={()=>setSub('bulkInput')}/>
           <SettingsRow icon={<AppIcons.repeat size={18}/>} iconBg="bg-gray-100" title="繰り返しタスク" desc="繰り返しタスクを管理" onClick={()=>setSub('recurring')}/>
           <SettingsRow icon={<AppIcons.calendar size={18}/>} iconBg="bg-gray-100" title="生活パターン" desc="シフトや予定に合わせた時間設定" onClick={()=>setSub('lifePatterns')}/>
           <SettingsRow icon={<AppIcons.wake size={18}/>} iconBg="bg-gray-100" title="起床・就寝" desc="起床時間、就寝時間を設定" onClick={()=>setSub('wakeSleep')} isLast/>
