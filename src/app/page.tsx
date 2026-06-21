@@ -1711,7 +1711,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
 
 // ── TaskCard ──────────────────────────────────────────────────────────────────
 
-function TaskCard({task,onToggle,onEdit,globalTags,onSubtaskToggle,onCameraClick}:{task:Task;onToggle:()=>void;onEdit:()=>void;globalTags:TagDef[];onSubtaskToggle?:(subtaskId:string)=>void;onCameraClick?:()=>void;}) {
+function TaskCard({task,onToggle,onEdit,globalTags,onSubtaskToggle,onCameraClick,tabName}:{task:Task;onToggle:()=>void;onEdit:()=>void;globalTags:TagDef[];onSubtaskToggle?:(subtaskId:string)=>void;onCameraClick?:()=>void;tabName?:string;}) {
   const [openPanel,setOpenPanel] = useState<'subtask'|'memo'|null>(null);
   const endTime = (task.startTime&&(task.duration??0)>0) ? fromMin(toMin(task.startTime)+(task.duration??0)) : null;
   const subtasks = task.subtasks??[];
@@ -1725,9 +1725,9 @@ function TaskCard({task,onToggle,onEdit,globalTags,onSubtaskToggle,onCameraClick
       <div className="flex items-center gap-2.5">
         <div className="flex-1 min-w-0">
           {task.startTime&&(
-            <p className="text-[11px] text-gray-400 leading-none mb-0.5">
-              {task.startTime}{endTime?`〜${endTime}`:''}
-              {task.recurrence&&<AppIcons.repeat size={11} className="ml-1 inline-block align-middle"/>}
+            <p className="text-[11px] text-gray-400 leading-none mb-0.5 flex items-center gap-1.5">
+              <span>{task.startTime}{endTime?`〜${endTime}`:''}{task.recurrence&&<AppIcons.repeat size={11} className="ml-1 inline-block align-middle"/>}</span>
+              {tabName&&<span className="bg-gray-100 text-gray-500 rounded px-1 py-px text-[10px] font-medium leading-none">{tabName}</span>}
             </p>
           )}
           <p className={`text-[15px] font-semibold leading-snug ${task.completed?'line-through text-gray-400':'text-gray-900'}`}>{task.name}</p>
@@ -1885,7 +1885,7 @@ function CalendarEventCard({event}:{event:CalendarEvent}) {
 
 // ── Timeline ──────────────────────────────────────────────────────────────────
 
-function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet,onSchedule,onAddAtTime,onDragStart,dragTaskId,yToTimeRef,layoutYRef,globalTags,todayHistory,onSubtaskToggle,onDragWake,onDragSleep,onCameraClick,calEvents=[],lifePatterns=[],patternOverrides={},onOpenWakeSleep}:{
+function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet,onSchedule,onAddAtTime,onDragStart,dragTaskId,yToTimeRef,layoutYRef,globalTags,todayHistory,onSubtaskToggle,onDragWake,onDragSleep,onCameraClick,calEvents=[],lifePatterns=[],patternOverrides={},onOpenWakeSleep,customTabs=[]}:{
   date:string;tasks:Task[];later:Task[];settings:Settings;now:string;
   onToggle:(id:string)=>void;onEdit:(t:Task)=>void;onEditIconSheet:(t:Task)=>void;
   onSchedule:(t:Task,time:string)=>void;onAddAtTime:(time:string)=>void;
@@ -1902,6 +1902,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
   lifePatterns?:LifePattern[];
   onOpenWakeSleep?:()=>void;
   patternOverrides?:Record<string,string>;
+  customTabs?:CustomTab[];
 }) {
   const [pressingId,setPressingId] = useState<string|null>(null);
   const [pressingWake,setPressingWake] = useState(false);
@@ -2354,7 +2355,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
               onTouchStart={e=>startLP(task,e)}
               onTouchEnd={cancelLP}
               onTouchMove={cancelLP}>
-              <TaskCard task={task} onToggle={()=>onToggle(task.id)} onEdit={()=>onEdit(task)} globalTags={globalTags} onSubtaskToggle={(sid)=>onSubtaskToggle(task.id,sid)} onCameraClick={()=>onCameraClick(task.id)}/>
+              <TaskCard task={task} onToggle={()=>onToggle(task.id)} onEdit={()=>onEdit(task)} globalTags={globalTags} onSubtaskToggle={(sid)=>onSubtaskToggle(task.id,sid)} onCameraClick={()=>onCameraClick(task.id)} tabName={task.category?customTabs.find(t=>t.id===task.category)?.name:undefined}/>
             </div>,
           ];
         }
@@ -2410,7 +2411,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
                     onTouchStart={e=>startLP(task,e)}
                     onTouchEnd={cancelLP}
                     onTouchMove={cancelLP}>
-                    <TaskCard task={task} onToggle={()=>onToggle(task.id)} onEdit={()=>onEdit(task)} globalTags={globalTags} onSubtaskToggle={(sid)=>onSubtaskToggle(task.id,sid)} onCameraClick={()=>onCameraClick(task.id)}/>
+                    <TaskCard task={task} onToggle={()=>onToggle(task.id)} onEdit={()=>onEdit(task)} globalTags={globalTags} onSubtaskToggle={(sid)=>onSubtaskToggle(task.id,sid)} onCameraClick={()=>onCameraClick(task.id)} tabName={task.category?customTabs.find(t=>t.id===task.category)?.name:undefined}/>
                   </div>
                 );
               })}
@@ -4741,7 +4742,8 @@ export default function App() {
           onCameraClick={openEditAtPhotos}
           calEvents={calEvents.filter(e=>(e.source==='google'&&(settings.googleCalEnabled??false))||(e.source==='iphone'&&(settings.iphoneCalEnabled??false)))}
           lifePatterns={lifePatterns} patternOverrides={patternOverrides}
-          onOpenWakeSleep={()=>{setSettingsInitSub('wakeSleep');setSOp(true);}}/>
+          onOpenWakeSleep={()=>{setSettingsInitSub('wakeSleep');setSOp(true);}}
+          customTabs={activeCategory===null?customTabs:[]}/>
       </main>
 
       {/* ── Bottom bar ── */}
