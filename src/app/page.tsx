@@ -3709,7 +3709,6 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             {label:'タグ',                 free:'3個',       pro:'無制限'},
             {label:'ファイルタブ',         free:'1個',       pro:'無制限'},
             {label:'繰り返し間隔カスタム', free:'基本のみ',  pro:'完全対応'},
-            {label:'タスクの写真追加',     free:'×',         pro:'対応'},
             {label:'テーマカラー',         free:'ミントのみ', pro:'16色'},
             {label:'アプリアイコン変更',   free:'×',         pro:'対応'},
             {label:'起床アイコン色変更',   free:'×',         pro:'対応'},
