@@ -1,5 +1,6 @@
 # 依存関係（npm install でダウンロードされるファイル）
 /node_modules
+/mobile/node_modules
 /.pnp
 .pnp.js
 .yarn/install-state.gz
