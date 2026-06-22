@@ -2930,7 +2930,8 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
       <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
         {subHeader('タスク一括入力')}
         <div className="flex-1 overflow-y-auto px-4 pb-10">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">タスク情報</p>
+          <p className="text-xs text-gray-400 px-1 mt-4 mb-4">月1回まで無料・2回目からPro（現在：無料開放中）</p>
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2">タスク情報</p>
           <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
             <div className="flex items-center gap-3 px-4 py-3.5 border-b border-gray-100">
               <button onClick={()=>setBulkIconSheet(true)}
@@ -3163,7 +3164,8 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
       {subHeader('ファイルタブ')}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">新しいタブ</p>
+        <p className="text-xs text-gray-400 px-1 mt-4 mb-4">1個まで無料・2個目からPro（現在：無料開放中）</p>
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2">新しいタブ</p>
         <div className="bg-white rounded-2xl shadow-sm px-4 py-3">
           <div className="flex gap-2 items-center">
             <input value={tabInput} onChange={e=>setTabInput(e.target.value)}
@@ -3255,9 +3257,10 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
       {subHeader('タグ')}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
+        <p className="text-xs text-gray-400 px-1 mt-4">3個まで無料・4個目からPro（現在：無料開放中）</p>
 
         {/* New tag */}
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">新しいタグ</p>
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-4">新しいタグ</p>
         <div className="bg-white rounded-2xl shadow-sm px-4 pt-4 pb-3">
           <div className="flex gap-2 mb-3 flex-wrap">
             {TAG_COLORS.map(c=>(
@@ -3526,6 +3529,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
       <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
         {subHeader('生活パターン')}
         <div className="flex-1 overflow-y-auto px-4 pb-10">
+          <p className="text-xs text-gray-400 px-1 mt-4 mb-2">1個まで無料・2個目からPro（現在：無料開放中）</p>
           <p className="text-xs text-gray-400 px-1 mb-1 mt-6">シフトや予定に合わせて、日ごとの起床・就寝時間を変更できます</p>
           <p className="text-xs text-gray-400 px-1 mb-2">パターンを追加・選択して日付をタップ</p>
           <div className="bg-white rounded-2xl overflow-hidden shadow-sm mb-1">
@@ -3830,10 +3834,10 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
 
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">機能</p>
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
-          <SettingsRow icon={<AppIcons.tag/>} iconBg="bg-gray-100" title="タグ" desc="3個まで無料・4個目からPro" onClick={()=>setSub('tags')} pro/>
-          <SettingsRow icon={<AppIcons.caretRight/>} iconBg="bg-gray-100" title="ファイルタブ" desc="1個まで無料・2個目からPro" onClick={()=>setSub('tabs')} pro/>
-          <SettingsRow icon={<AppIcons.pencil size={18}/>} iconBg="bg-gray-100" title="タスク一括入力" desc="月1回まで無料・2回目からPro" onClick={()=>setSub('bulkInput')} pro/>
-          <SettingsRow icon={<AppIcons.calendar size={18}/>} iconBg="bg-gray-100" title="生活パターン" desc="1個まで無料・2個目からPro" onClick={()=>setSub('lifePatterns')} pro/>
+          <SettingsRow icon={<AppIcons.tag/>} iconBg="bg-gray-100" title="タグ" desc="タスクにラベルを付けて整理・検索" onClick={()=>setSub('tags')} pro/>
+          <SettingsRow icon={<AppIcons.caretRight/>} iconBg="bg-gray-100" title="ファイルタブ" desc="タスクをフォルダ別に管理" onClick={()=>setSub('tabs')} pro/>
+          <SettingsRow icon={<AppIcons.pencil size={18}/>} iconBg="bg-gray-100" title="タスク一括入力" desc="まとめてタスクを登録" onClick={()=>setSub('bulkInput')} pro/>
+          <SettingsRow icon={<AppIcons.calendar size={18}/>} iconBg="bg-gray-100" title="生活パターン" desc="シフトや休日で起床・就寝時間を切り替え" onClick={()=>setSub('lifePatterns')} pro/>
           <SettingsRow icon={<AppIcons.repeat size={18}/>} iconBg="bg-gray-100" title="繰り返しタスク" desc="繰り返しタスクを管理" onClick={()=>setSub('recurring')}/>
           <SettingsRow icon={<AppIcons.wake size={18}/>} iconBg="bg-gray-100" title="起床・就寝" desc="起床時間、就寝時間を設定" onClick={()=>setSub('wakeSleep')} isLast/>
         </div>
