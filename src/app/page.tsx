@@ -2855,10 +2855,10 @@ function SettingsRow({icon,iconBg,title,desc,onClick,isLast=false}:{
   );
 }
 
-function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,customTabs,onCustomTabs,shopNotifSettings,onShopNotifSettings,calEventsCount,onSyncCalendar,syncingCal,authUser,isPremium,onAppleSignIn,onSignOut,onBulkAdd,bulkHistory,onBulkHistoryDelete,onBulkHistoryEdit,lifePatterns,onLifePatterns,patternOverrides,onApplyPattern,initialSub}:{
+function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,customTabs,onCustomTabs,onDeleteTabTasks,shopNotifSettings,onShopNotifSettings,calEventsCount,onSyncCalendar,syncingCal,authUser,isPremium,onAppleSignIn,onSignOut,onBulkAdd,bulkHistory,onBulkHistoryDelete,onBulkHistoryEdit,lifePatterns,onLifePatterns,patternOverrides,onApplyPattern,initialSub}:{
   settings:Settings; onSettings:(s:Settings)=>void; onClose:()=>void;
   globalTags:TagDef[]; onGlobalTags:(tags:TagDef[])=>void;
-  customTabs:CustomTab[]; onCustomTabs:(tabs:CustomTab[])=>void;
+  customTabs:CustomTab[]; onCustomTabs:(tabs:CustomTab[])=>void; onDeleteTabTasks:(tabId:string)=>void;
   shopNotifSettings:ShopNotifSetting[]; onShopNotifSettings:(s:ShopNotifSetting[])=>void;
   calEventsCount:number; onSyncCalendar:(source:'google'|'iphone',url:string)=>Promise<void>; syncingCal:'google'|'iphone'|null;
   authUser:AuthUser|null; isPremium:boolean;
@@ -3237,7 +3237,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                       <div className="flex-1 min-w-0">
                         <span className="text-[15px] text-gray-900">{tab.name}</span>
                         <div className="flex items-center gap-2 mt-1">
-                          <span className="text-[12px] text-gray-400">（すべて）に表示</span>
+                          <span className="text-[12px] text-gray-400">【すべて】タブに表示</span>
                           <button
                             onClick={()=>onCustomTabs(customTabs.map(t=>t.id===tab.id?{...t,showInAll:t.showInAll===false?undefined:false}:t))}
                             className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors ${tab.showInAll===false?'bg-gray-200':'bg-[var(--c-primary)]'}`}>
@@ -3267,10 +3267,11 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             <div className="absolute inset-0 bg-black/40"/>
             <div className="relative bg-white rounded-t-2xl w-full max-w-md px-6 pt-6 pb-10" onClick={e=>e.stopPropagation()}>
               <p className="text-center text-[17px] font-semibold text-gray-900 mb-1">「{dt?.name}」を削除しますか？</p>
-              <p className="text-center text-[13px] text-gray-400 mb-6">このタブのタスクは「すべて」に移動されます</p>
+              <p className="text-center text-[13px] text-gray-400 mb-6">このタブのタスクをどうしますか？</p>
               <div className="flex flex-col gap-3">
-                <button onClick={()=>{onCustomTabs(customTabs.filter(t=>t.id!==deleteTabId));setDeleteTabId(null);}} className="w-full py-3.5 rounded-2xl bg-[#D97A7A] text-white text-[15px] font-semibold">削除する</button>
-                <button onClick={()=>setDeleteTabId(null)} className="w-full py-3.5 rounded-2xl bg-gray-100 text-gray-700 text-[15px] font-semibold">キャンセル</button>
+                <button onClick={()=>{onCustomTabs(customTabs.filter(t=>t.id!==deleteTabId));setDeleteTabId(null);}} className="w-full py-3.5 rounded-2xl bg-gray-100 text-gray-900 text-[15px] font-semibold">タスクを【すべて】に移動</button>
+                <button onClick={()=>{onDeleteTabTasks(deleteTabId);onCustomTabs(customTabs.filter(t=>t.id!==deleteTabId));setDeleteTabId(null);}} className="w-full py-3.5 rounded-2xl bg-[#D97A7A] text-white text-[15px] font-semibold">タスクも完全に削除</button>
+                <button onClick={()=>setDeleteTabId(null)} className="w-full py-3.5 rounded-2xl bg-gray-50 text-gray-500 text-[15px] font-semibold">キャンセル</button>
               </div>
             </div>
           </div>
@@ -4919,7 +4920,7 @@ export default function App() {
 
       {/* ── Settings Screen ── */}
       {settingsOpen&&(
-        <SettingsScreen settings={settings} onSettings={setSettings} onClose={()=>setSOp(false)} globalTags={globalTags} onGlobalTags={setGlobalTags} customTabs={customTabs} onCustomTabs={setCustomTabs} shopNotifSettings={shopNotifSettings} onShopNotifSettings={setShopNotifSettings} calEventsCount={calEvents.length} onSyncCalendar={syncCalendar} syncingCal={syncingCal} authUser={authUser} isPremium={isPremium} onAppleSignIn={handleAppleSignIn} onSignOut={handleSignOut} onBulkAdd={bulkAddTasks} bulkHistory={bulkHistory} onBulkHistoryDelete={bulkHistoryDelete} onBulkHistoryEdit={bulkHistoryEdit} lifePatterns={lifePatterns} onLifePatterns={setLifePatterns} patternOverrides={patternOverrides} onApplyPattern={applyPattern} initialSub={settingsInitSub}/>
+        <SettingsScreen settings={settings} onSettings={setSettings} onClose={()=>setSOp(false)} globalTags={globalTags} onGlobalTags={setGlobalTags} customTabs={customTabs} onCustomTabs={setCustomTabs} onDeleteTabTasks={(tabId)=>setTasks(prev=>prev.filter(t=>t.category!==tabId))} shopNotifSettings={shopNotifSettings} onShopNotifSettings={setShopNotifSettings} calEventsCount={calEvents.length} onSyncCalendar={syncCalendar} syncingCal={syncingCal} authUser={authUser} isPremium={isPremium} onAppleSignIn={handleAppleSignIn} onSignOut={handleSignOut} onBulkAdd={bulkAddTasks} bulkHistory={bulkHistory} onBulkHistoryDelete={bulkHistoryDelete} onBulkHistoryEdit={bulkHistoryEdit} lifePatterns={lifePatterns} onLifePatterns={setLifePatterns} patternOverrides={patternOverrides} onApplyPattern={applyPattern} initialSub={settingsInitSub}/>
       )}
 
       {/* ── Recurrence edit confirm ── */}
