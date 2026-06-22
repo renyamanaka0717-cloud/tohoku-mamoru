@@ -1140,8 +1140,9 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                 <div className="flex gap-2 overflow-x-auto pb-0.5" style={{scrollbarWidth:'none',WebkitOverflowScrolling:'touch'} as React.CSSProperties}>
                   {(['daily','weekly','monthly','yearly','custom'] as const).map((r,i)=>(
                     <button key={r} onClick={()=>setRecur(r)}
-                      className={`shrink-0 px-4 py-2 rounded-full text-sm font-semibold ${recur===r?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
+                      className={`shrink-0 px-4 py-2 rounded-full text-sm font-semibold inline-flex items-center gap-1.5 ${recur===r?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
                       {['毎日','毎週','毎月','毎年','カスタム'][i]}
+                      {r==='custom'&&<span className={`inline-flex items-center border rounded px-1 py-0.5 text-[9px] font-bold leading-none tracking-wide ${recur===r?'border-white/60 text-white/80':'border-gray-300 text-gray-400'}`}>PRO</span>}
                     </button>
                   ))}
                 </div>
