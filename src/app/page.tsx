@@ -2882,6 +2882,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   const [editTabId,setEditTabId]   = useState<string|null>(null);
   const [editTabVal,setEditTabVal] = useState('');
   const [deleteTabId,setDeleteTabId] = useState<string|null>(null);
+  const [deleteTabMode,setDeleteTabMode] = useState<'move'|'delete'|null>(null);
   const _today0 = todayStr();
   const _todayD = new Date(_today0+'T12:00:00');
   const [bulkName,setBulkName] = useState('');
@@ -3272,16 +3273,32 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             </div>
           </>
         )}
-        {deleteTabId&&(()=>{const dt=customTabs.find(t=>t.id===deleteTabId);return(
+        {deleteTabId&&!deleteTabMode&&(()=>{const dt=customTabs.find(t=>t.id===deleteTabId);return(
           <div className="fixed inset-0 z-[100] flex items-end justify-center" onClick={()=>setDeleteTabId(null)}>
             <div className="absolute inset-0 bg-black/40"/>
             <div className="relative bg-white rounded-t-2xl w-full max-w-md px-6 pt-6 pb-10" onClick={e=>e.stopPropagation()}>
               <p className="text-center text-[17px] font-semibold text-gray-900 mb-1">「{dt?.name}」を削除しますか？</p>
               <p className="text-center text-[13px] text-gray-400 mb-6">このタブのタスクをどうしますか？</p>
               <div className="flex flex-col gap-3">
-                <button onClick={()=>{onCustomTabs(customTabs.filter(t=>t.id!==deleteTabId));setDeleteTabId(null);}} className="w-full py-3.5 rounded-2xl bg-gray-100 text-gray-900 text-[15px] font-semibold">タスクを【すべて】に移動</button>
-                <button onClick={()=>{onDeleteTabTasks(deleteTabId);onCustomTabs(customTabs.filter(t=>t.id!==deleteTabId));setDeleteTabId(null);}} className="w-full py-3.5 rounded-2xl bg-[#D97A7A] text-white text-[15px] font-semibold">タスクも完全に削除</button>
+                <button onClick={()=>setDeleteTabMode('move')} className="w-full py-3.5 rounded-2xl bg-gray-100 text-gray-900 text-[15px] font-semibold">タスクを【すべて】に移動</button>
+                <button onClick={()=>setDeleteTabMode('delete')} className="w-full py-3.5 rounded-2xl bg-[#D97A7A] text-white text-[15px] font-semibold">タスクも完全に削除</button>
                 <button onClick={()=>setDeleteTabId(null)} className="w-full py-3.5 rounded-2xl bg-gray-50 text-gray-500 text-[15px] font-semibold">キャンセル</button>
+              </div>
+            </div>
+          </div>
+        );})()}
+        {deleteTabId&&deleteTabMode&&(()=>{const dt=customTabs.find(t=>t.id===deleteTabId);const isDelete=deleteTabMode==='delete';return(
+          <div className="fixed inset-0 z-[100] flex items-end justify-center" onClick={()=>setDeleteTabMode(null)}>
+            <div className="absolute inset-0 bg-black/40"/>
+            <div className="relative bg-white rounded-t-2xl w-full max-w-md px-6 pt-6 pb-10" onClick={e=>e.stopPropagation()}>
+              <p className="text-center text-[17px] font-semibold text-gray-900 mb-1">本当に削除しますか？</p>
+              <p className="text-center text-[13px] text-gray-400 mb-6">{isDelete?`「${dt?.name}」のタスクもすべて完全に削除されます`:`「${dt?.name}」のタスクは【すべて】タブに移動されます`}</p>
+              <div className="flex flex-col gap-3">
+                <button onClick={()=>{if(isDelete)onDeleteTabTasks(deleteTabId!);onCustomTabs(customTabs.filter(t=>t.id!==deleteTabId));setDeleteTabId(null);setDeleteTabMode(null);}}
+                  className={`w-full py-3.5 rounded-2xl text-[15px] font-semibold ${isDelete?'bg-[#D97A7A] text-white':'bg-gray-100 text-gray-900'}`}>
+                  {isDelete?'完全に削除する':'移動して削除する'}
+                </button>
+                <button onClick={()=>setDeleteTabMode(null)} className="w-full py-3.5 rounded-2xl bg-gray-50 text-gray-500 text-[15px] font-semibold">戻る</button>
               </div>
             </div>
           </div>
