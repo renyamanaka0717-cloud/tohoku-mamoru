@@ -47,7 +47,7 @@ interface Task {
   allDay?: boolean;
 }
 
-interface Settings { wakeTime: string; sleepTime: string; keepIncomplete?: boolean; showFreeCard?: boolean; freeCardMinMin?: number; wakeColor?:string; sleepColor?:string; theme?:string; }
+interface Settings { wakeTime: string; sleepTime: string; keepIncomplete?: boolean; showFreeCard?: boolean; freeCardMinMin?: number; wakeColor?:string; sleepColor?:string; theme?:string; notificationsEnabled?:boolean; }
 type AuthUser = {uid:string;email?:string;displayName?:string;isPremium?:boolean};
 interface FreeSlot  { start: string; end: string; min: number; }
 interface ShopItem  { id: string; name: string; checked: boolean; purchasedAt?: string; }
@@ -3370,12 +3370,36 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
       {subHeader('通知')}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">リスト</p>
-        <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
+        <div className="bg-white rounded-2xl overflow-hidden shadow-sm mt-6">
+          <SettingsRow icon={<AppIcons.bell size={18}/>} iconBg="bg-gray-100" title="通知設定"
+            desc={(settings.notificationsEnabled??true)?'オン':'オフ'}
+            onClick={()=>setSub('notifications-general')}/>
+          <div className="h-px bg-gray-100 mx-4"/>
           <SettingsRow icon={<AppIcons.shopping size={18}/>} iconBg="bg-gray-100" title="買い物リスト"
             desc={shopNotifSettings.filter(s=>s.enabled).length>0?`${shopNotifSettings.filter(s=>s.enabled).length}件の通知が有効`:'通知なし'}
             onClick={()=>setSub('notifications-shop')} isLast pro/>
         </div>
+      </div>
+    </div>
+  );
+
+  if(sub==='notifications-general') return (
+    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
+      {subHeader('通知設定')}
+      <div className="flex-1 overflow-y-auto px-4 pb-8">
+        <div className="bg-white rounded-2xl overflow-hidden shadow-sm mt-6">
+          <div className="px-4 py-3.5 flex items-center justify-between">
+            <div className="flex-1 min-w-0">
+              <p className="text-[15px] font-medium text-gray-900">通知を有効にする</p>
+              <p className="text-xs text-gray-400 mt-0.5">タスクのアラートや買い物リストの通知</p>
+            </div>
+            <button onClick={()=>onSettings({...settings,notificationsEnabled:!(settings.notificationsEnabled??true)})}
+              className={`relative w-10 h-6 rounded-full transition-colors shrink-0 ${(settings.notificationsEnabled??true)?'bg-[var(--c-primary)]':'bg-gray-200'}`}>
+              <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${(settings.notificationsEnabled??true)?'left-[18px]':'left-0.5'}`}/>
+            </button>
+          </div>
+        </div>
+        <p className="text-xs text-gray-400 px-1 mt-2 leading-relaxed">通知を受け取るには、端末の設定でこのアプリの通知を許可してください。</p>
       </div>
     </div>
   );
