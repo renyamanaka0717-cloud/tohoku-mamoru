@@ -3807,22 +3807,28 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
 
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2">★ PRO 機能一覧</p>
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm mb-4">
+          <div className="grid px-4 py-2.5 bg-gray-50 border-b border-gray-100" style={{gridTemplateColumns:'1fr 72px 64px'}}>
+            <p className="text-xs font-semibold text-gray-500">機能</p>
+            <p className="text-xs font-semibold text-gray-500 text-center">無料</p>
+            <p className="text-xs font-bold text-[var(--c-primary)] text-center">PRO</p>
+          </div>
           {[
-            {icon:<AppIcons.tag size={18}/>,      label:'タグ',                        desc:'4個目からPro（現在：無料開放中）'},
-            {icon:<AppIcons.caretRight size={18}/>,label:'ファイルタブ',               desc:'2個目からPro（現在：無料開放中）'},
-            {icon:<AppIcons.pencil size={18}/>,   label:'タスク一括入力',              desc:'月2回目からPro（現在：無料開放中）'},
-            {icon:<AppIcons.calendar size={18}/>, label:'生活パターン',                desc:'2個目からPro（現在：無料開放中）'},
-            {icon:<AppIcons.wake size={18}/>,     label:'起床・就寝のアイコン色変更',  desc:'Pro限定（現在：無料開放中）'},
-            {icon:<AppIcons.shopping size={18}/>, label:'買い物リストの通知',          desc:'Pro限定（現在：無料開放中）'},
-            {icon:<AppIcons.palette size={18}/>,  label:'テーマカラー変更',            desc:'Pro限定（現在：無料開放中）'},
-            {icon:<AppIcons.home size={18}/>,     label:'アプリアイコン変更',          desc:'Pro限定（近日リリース予定）'},
-          ].map(({icon,label,desc},i,arr)=>(
-            <div key={i} className={`px-4 py-3 flex items-center gap-3${i<arr.length-1?' border-b border-gray-100':''}`}>
-              <span className="text-[var(--c-primary)] shrink-0">{icon}</span>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-800">{label}</p>
-                <p className="text-xs text-gray-400">{desc}</p>
-              </div>
+            {label:'生活パターン',         free:'1個',       pro:'無制限'},
+            {label:'タスク一括入力',       free:'月1回',     pro:'無制限'},
+            {label:'タグ',                 free:'3個',       pro:'無制限'},
+            {label:'ファイルタブ',         free:'1個',       pro:'無制限'},
+            {label:'繰り返し間隔カスタム', free:'基本のみ',  pro:'完全対応'},
+            {label:'タスクの写真追加',     free:'×',         pro:'対応'},
+            {label:'テーマカラー',         free:'ミントのみ', pro:'16色'},
+            {label:'アプリアイコン変更',   free:'×',         pro:'対応'},
+            {label:'起床アイコン色変更',   free:'×',         pro:'対応'},
+            {label:'就寝アイコン色変更',   free:'×',         pro:'対応'},
+            {label:'買い物リスト通知',     free:'×',         pro:'対応'},
+          ].map(({label,free,pro},i,arr)=>(
+            <div key={i} className={`grid items-center px-4 py-3${i<arr.length-1?' border-b border-gray-100':''}`} style={{gridTemplateColumns:'1fr 72px 64px'}}>
+              <p className="text-sm text-gray-800">{label}</p>
+              <p className={`text-sm text-center ${free==='×'?'text-gray-300':'text-gray-500'}`}>{free}</p>
+              <p className="text-sm font-semibold text-[var(--c-primary)] text-center">{pro}</p>
             </div>
           ))}
         </div>
