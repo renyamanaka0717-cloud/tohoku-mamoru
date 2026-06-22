@@ -3442,13 +3442,13 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             desc={THEMES.find(t=>t.id===(settings.theme??'mint'))?.name??'ミント'}
             onClick={()=>setSub('themeColor')} pro/>
           <div className="h-px bg-gray-100 mx-4"/>
+          <SettingsRow icon={<AppIcons.home/>} iconBg="bg-gray-100"
+            title="アプリアイコン" desc="近日リリース予定" onClick={()=>{}} pro/>
+          <div className="h-px bg-gray-100 mx-4"/>
           <SettingsRow icon={<AppIcons.freeTime size={18}/>} iconBg="bg-gray-100"
             title="空き時間カード"
             desc={(settings.showFreeCard??true)?`表示中・最小${settings.freeCardMinMin??120}分`:'非表示'}
             onClick={()=>setSub('freeCard')}/>
-          <div className="h-px bg-gray-100 mx-4"/>
-          <SettingsRow icon={<AppIcons.home/>} iconBg="bg-gray-100"
-            title="アプリアイコン" desc="近日リリース予定" onClick={()=>{}} pro/>
           <div className="h-px bg-gray-100 mx-4"/>
           <SettingsRow icon={<AppIcons.book size={18}/>} iconBg="bg-gray-100"
             title="言語" desc="日本語" onClick={()=>{}} isLast/>
