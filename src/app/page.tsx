@@ -2401,9 +2401,11 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
 
 // ── ShopNotifPanel ────────────────────────────────────────────────────────────
 
-function ShopNotifPanel({settings,onChange}:{
+function ShopNotifPanel({settings,onChange,notificationsEnabled=true,onEnableNotifications}:{
   settings:ShopNotifSetting[];
   onChange:(s:ShopNotifSetting[])=>void;
+  notificationsEnabled?:boolean;
+  onEnableNotifications?:()=>void;
 }) {
   const DOW=['日','月','火','水','木','金','土'];
   const [editing,setEditing]=useState<ShopNotifSetting|null>(null);
@@ -2424,7 +2426,15 @@ function ShopNotifPanel({settings,onChange}:{
     setEditing(null);setAdding(false);
   };
   const del=(id:string)=>onChange(settings.filter(s=>s.id!==id));
-  const toggleEnabled=(id:string)=>onChange(settings.map(s=>s.id===id?{...s,enabled:!s.enabled}:s));
+  const toggleEnabled=(id:string)=>{
+    const target=settings.find(s=>s.id===id);
+    if(target&&!target.enabled&&!notificationsEnabled){
+      const ok=window.confirm('通知機能がオフになっています。\n通知を有効にしますか？');
+      if(!ok) return;
+      onEnableNotifications?.();
+    }
+    onChange(settings.map(s=>s.id===id?{...s,enabled:!s.enabled}:s));
+  };
   return (
     <div className="px-4 pb-6">
       <div className="flex items-center justify-between mb-3 mt-1">
@@ -2491,7 +2501,8 @@ function ShopNotifPanel({settings,onChange}:{
 // ── BottomTabs ────────────────────────────────────────────────────────────────
 
 function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,shopPending,
-  onToggle,onEdit,onAddShop,onToggleShop,onDeleteShop,onDragStart,shopNotifSettings,onShopNotifSettings
+  onToggle,onEdit,onAddShop,onToggleShop,onDeleteShop,onDragStart,shopNotifSettings,onShopNotifSettings,
+  notificationsEnabled,onEnableNotifications
 }:{
   activeTab:'later'|'shop'; onSwitchTab:(t:'later'|'shop')=>void; onClose:()=>void;
   tasks:Task[]; shopItems:ShopItem[]; pendingCount:number; shopPending:number;
@@ -2499,6 +2510,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
   onAddShop:(n:string)=>void; onToggleShop:(id:string)=>void; onDeleteShop:(id:string)=>void;
   onDragStart:(t:Task,x:number,y:number)=>void;
   shopNotifSettings:ShopNotifSetting[]; onShopNotifSettings:(s:ShopNotifSetting[])=>void;
+  notificationsEnabled?:boolean; onEnableNotifications?:()=>void;
 }) {
   const [shopInput,setShopInput] = useState('');
   const [sortDir,setSortDir]     = useState<null|'asc'|'desc'>(null);
@@ -2743,7 +2755,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
             </div>
             <div className="overflow-y-auto pb-10 flex-1">
               {showShopNotif?(
-                <ShopNotifPanel settings={shopNotifSettings} onChange={onShopNotifSettings}/>
+                <ShopNotifPanel settings={shopNotifSettings} onChange={onShopNotifSettings} notificationsEnabled={notificationsEnabled} onEnableNotifications={onEnableNotifications}/>
               ):shopItems.length===0?(
                 <div className="py-12 text-center px-4"><AppIcons.shopping size={40} className="mx-auto mb-2 text-gray-300"/><p className="text-sm text-gray-400">リストは空です</p></div>
               ):(
@@ -3421,7 +3433,9 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
       </div>
       <div className="flex-1 overflow-y-auto pb-8">
         <div className="mt-6">
-          <ShopNotifPanel settings={shopNotifSettings} onChange={onShopNotifSettings}/>
+          <ShopNotifPanel settings={shopNotifSettings} onChange={onShopNotifSettings}
+            notificationsEnabled={settings.notificationsEnabled??true}
+            onEnableNotifications={()=>onSettings({...settings,notificationsEnabled:true})}/>
         </div>
       </div>
     </div>
@@ -4635,7 +4649,9 @@ export default function App() {
           onToggle={toggle} onEdit={openEdit}
           onAddShop={addShopItem} onToggleShop={toggleShop} onDeleteShop={deleteShop}
           onDragStart={startDrag}
-          shopNotifSettings={shopNotifSettings} onShopNotifSettings={setShopNotifSettings}/>
+          shopNotifSettings={shopNotifSettings} onShopNotifSettings={setShopNotifSettings}
+          notificationsEnabled={settings.notificationsEnabled??true}
+          onEnableNotifications={()=>setSettings(s=>({...s,notificationsEnabled:true}))}/>
       )}
 
       {/* あとでやる FAB */}
