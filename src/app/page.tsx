@@ -3927,9 +3927,9 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           <SettingsRow icon={<AppIcons.tag/>} iconBg="bg-gray-100" title="タグ" desc="3個まで無料・4個目からPro" onClick={()=>setSub('tags')} pro/>
           <SettingsRow icon={<AppIcons.caretRight/>} iconBg="bg-gray-100" title="ファイルタブ" desc="1個まで無料・2個目からPro" onClick={()=>setSub('tabs')} pro/>
           <SettingsRow icon={<AppIcons.pencil size={18}/>} iconBg="bg-gray-100" title="タスク一括入力" desc="月1回まで無料・2回目からPro" onClick={()=>setSub('bulkInput')} pro/>
+          <SettingsRow icon={<AppIcons.calendar size={18}/>} iconBg="bg-gray-100" title="生活パターン" desc="1個まで無料・2個目からPro" onClick={()=>setSub('lifePatterns')} pro/>
           <SettingsRow icon={<AppIcons.repeat size={18}/>} iconBg="bg-gray-100" title="繰り返しタスク" desc="繰り返しタスクを管理" onClick={()=>setSub('recurring')}/>
           <SettingsRow icon={<AppIcons.freeTime size={18}/>} iconBg="bg-gray-100" title="空き時間カード" desc="表示設定・最小表示時間" onClick={()=>setSub('freeCard')}/>
-          <SettingsRow icon={<AppIcons.calendar size={18}/>} iconBg="bg-gray-100" title="生活パターン" desc="1個まで無料・2個目からPro" onClick={()=>setSub('lifePatterns')} pro/>
           <SettingsRow icon={<AppIcons.wake size={18}/>} iconBg="bg-gray-100" title="起床・就寝" desc="起床時間、就寝時間を設定" onClick={()=>setSub('wakeSleep')} isLast/>
         </div>
 
