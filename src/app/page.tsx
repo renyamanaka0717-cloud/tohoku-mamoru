@@ -47,8 +47,7 @@ interface Task {
   allDay?: boolean;
 }
 
-interface Settings { wakeTime: string; sleepTime: string; keepIncomplete?: boolean; showFreeCard?: boolean; freeCardMinMin?: number; googleCalEnabled?: boolean; iphoneCalEnabled?: boolean; googleCalUrl?: string; iphoneCalUrl?: string; wakeColor?:string; sleepColor?:string; theme?:string; }
-type CalendarEvent = {id:string;title:string;date:string;startTime:string;endTime:string|null;allDay?:boolean;source:'google'|'iphone'};
+interface Settings { wakeTime: string; sleepTime: string; keepIncomplete?: boolean; showFreeCard?: boolean; freeCardMinMin?: number; wakeColor?:string; sleepColor?:string; theme?:string; }
 type AuthUser = {uid:string;email?:string;displayName?:string;isPremium?:boolean};
 interface FreeSlot  { start: string; end: string; min: number; }
 interface ShopItem  { id: string; name: string; checked: boolean; purchasedAt?: string; }
@@ -78,7 +77,6 @@ const PATTERN_OVERRIDES_KEY= 'tl-pattern-overrides-v1';
 const MORNING_NOTIF_KEY = 'tl-morning-notif-v1';
 const MORNING_SNOOZE_KEY = 'tl-morning-snooze-v1'; // stores snooze timestamp (ms)
 const SHOP_NOTIF_KEY    = 'tl-shop-notif-v1';
-const CAL_EVENTS_KEY    = 'tl-cal-events-v1';
 const AUTH_KEY          = 'tl-auth-v1';
 
 // テーマカラー — 将来的にここを差し替えるだけで全体の色が変わる
@@ -227,14 +225,11 @@ const generateCustomDates=(base:string,r:CustomRec):string[]=>{
 
 // ── Free slots ────────────────────────────────────────────────────────────────
 
-function calcFreeSlots(tasks: Task[], date: string, s: Settings, calEvents: CalendarEvent[] = []): FreeSlot[] {
+function calcFreeSlots(tasks: Task[], date: string, s: Settings): FreeSlot[] {
   const taskSlots = tasks
     .filter(t=>t.date===date&&!t.isLater&&t.startTime)
     .map(t=>[toMin(t.startTime!),toMin(t.startTime!)+(t.duration??0)] as [number,number]);
-  const calSlots = calEvents
-    .filter(e=>e.date===date&&!e.allDay&&e.endTime)
-    .map(e=>[toMin(e.startTime),toMin(e.endTime!)] as [number,number]);
-  const raw = [...taskSlots,...calSlots].sort((a,b)=>a[0]-b[0]);
+  const raw = [...taskSlots].sort((a,b)=>a[0]-b[0]);
   const scheduled:[number,number][]=[];
   for(const s of raw){
     if(scheduled.length===0||s[0]>scheduled[scheduled.length-1][1]) scheduled.push([...s]);
@@ -645,38 +640,6 @@ function defaultIconKey(name:string):string {
   return 'task';
 }
 
-function parseICS(text:string, source:'google'|'iphone'): CalendarEvent[] {
-  const events:CalendarEvent[]=[];
-  const blocks=text.split('BEGIN:VEVENT');
-  for(let i=1;i<blocks.length;i++){
-    const endIdx=blocks[i].indexOf('END:VEVENT');
-    if(endIdx===-1) continue;
-    const b=blocks[i].slice(0,endIdx).replace(/\r\n[ \t]/g,'').replace(/\n[ \t]/g,'');
-    const get=(key:string)=>b.match(new RegExp(`(?:^|\\n)${key}[^:\\r\\n]*:([^\\r\\n]+)`))?.[1]?.trim()??'';
-    const summary=get('SUMMARY').replace(/\\,/g,',').replace(/\\n/g,' ');
-    const uid=get('UID')||Math.random().toString(36).slice(2);
-    const dtstart=get('DTSTART');
-    const dtend=get('DTEND');
-    if(!dtstart||!summary) continue;
-    const parseDT=(s:string):{date:string;time:string|null}|null=>{
-      if(!s) return null;
-      if(/^\d{8}$/.test(s)) return {date:`${s.slice(0,4)}-${s.slice(4,6)}-${s.slice(6,8)}`,time:null};
-      const m=s.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})/);
-      if(!m) return null;
-      if(s.endsWith('Z')){
-        const d=new Date(`${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:00Z`);
-        const loc=d.toLocaleString('sv',{timeZone:Intl.DateTimeFormat().resolvedOptions().timeZone});
-        return {date:loc.slice(0,10),time:loc.slice(11,16)};
-      }
-      return {date:`${m[1]}-${m[2]}-${m[3]}`,time:`${m[4]}:${m[5]}`};
-    };
-    const start=parseDT(dtstart);
-    const end=parseDT(dtend);
-    if(!start) continue;
-    events.push({id:`${source}-${uid}`,title:summary,date:start.date,startTime:start.time??'00:00',endTime:end?.time??null,allDay:!start.time,source});
-  }
-  return events;
-}
 
 // ── PickerCol (drum-roll time picker column) ──────────────────────────────────
 
@@ -1874,20 +1837,10 @@ function CompactTaskCard({task,onToggle,onEdit}:{task:Task;onToggle:()=>void;onE
   );
 }
 
-function CalendarEventCard({event}:{event:CalendarEvent}) {
-  const borderColor=event.source==='google'?'#4285F4':'#6B7280';
-  return (
-    <div className="h-full bg-blue-50/70 border border-blue-100 rounded-xl px-3 py-1.5 flex items-center gap-2 overflow-hidden pointer-events-none select-none" style={{borderLeftWidth:'3px',borderLeftColor:borderColor}}>
-      <AppIcons.calendar size={11} className="text-blue-400 shrink-0"/>
-      <span className="text-xs font-medium text-gray-600 truncate flex-1">{event.title}</span>
-      <span className="text-[10px] text-gray-400 shrink-0">{event.startTime}{event.endTime?`〜${event.endTime}`:''}</span>
-    </div>
-  );
-}
 
 // ── Timeline ──────────────────────────────────────────────────────────────────
 
-function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet,onSchedule,onAddAtTime,onDragStart,dragTaskId,yToTimeRef,layoutYRef,globalTags,todayHistory,onSubtaskToggle,onDragWake,onDragSleep,onCameraClick,calEvents=[],lifePatterns=[],patternOverrides={},onOpenWakeSleep,customTabs=[]}:{
+function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet,onSchedule,onAddAtTime,onDragStart,dragTaskId,yToTimeRef,layoutYRef,globalTags,todayHistory,onSubtaskToggle,onDragWake,onDragSleep,onCameraClick,lifePatterns=[],patternOverrides={},onOpenWakeSleep,customTabs=[]}:{
   date:string;tasks:Task[];later:Task[];settings:Settings;now:string;
   onToggle:(id:string)=>void;onEdit:(t:Task)=>void;onEditIconSheet:(t:Task)=>void;
   onSchedule:(t:Task,time:string)=>void;onAddAtTime:(time:string)=>void;
@@ -1900,7 +1853,6 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
   onDragWake:(x:number,y:number)=>void;
   onDragSleep:(x:number,y:number)=>void;
   onCameraClick:(taskId:string)=>void;
-  calEvents?:CalendarEvent[];
   lifePatterns?:LifePattern[];
   onOpenWakeSleep?:()=>void;
   patternOverrides?:Record<string,string>;
@@ -1960,7 +1912,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
 
   const dayTasks=tasks.filter(t=>t.date===date&&!t.isLater&&t.startTime).sort((a,b)=>toMin(a.startTime!)-toMin(b.startTime!));
   const freeCardMinMin=settings.freeCardMinMin??120;
-  const freeSlots=(settings.showFreeCard===false)?[]:calcFreeSlots(tasks,date,settings,calEvents).filter(sl=>sl.min>=freeCardMinMin);
+  const freeSlots=(settings.showFreeCard===false)?[]:calcFreeSlots(tasks,date,settings).filter(sl=>sl.min>=freeCardMinMin);
   const laterPool=later.filter(t=>!t.completed);
 
   const MIN_CARD_H = 60;
@@ -2433,20 +2385,8 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
         );
       })}
 
-      {/* calendar events */}
-      {calEvents.filter(e=>e.date===date&&!e.allDay).map(e=>{
-        const y=layoutCalcY(toMin(e.startTime));
-        const dMin=e.endTime?Math.max(0,toMin(e.endTime)-toMin(e.startTime)):60;
-        const h=Math.max(32,dMin*PX_PER_MIN);
-        return (
-          <div key={e.id} className="absolute z-[5]" style={{top:`${y}px`,left:`${CARD_LEFT}px`,right:'0px',height:`${h}px`}}>
-            <CalendarEventCard event={e}/>
-          </div>
-        );
-      })}
-
       {/* empty state */}
-      {dayTasks.length===0&&freeSlots.length===0&&calEvents.filter(e=>e.date===date).length===0&&(
+      {dayTasks.length===0&&freeSlots.length===0&&(
         <div className="absolute inset-0 flex flex-col items-center justify-center" style={{left:`${CARD_LEFT}px`}}>
           <AppIcons.task size={40} className="mb-2 text-gray-300"/>
           <p className="text-sm text-gray-400">タスクがありません</p>
@@ -2857,13 +2797,12 @@ function SettingsRow({icon,iconBg,title,desc,onClick,isLast=false,pro=false}:{
   );
 }
 
-function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,customTabs,onCustomTabs,onDeleteTabTasks,onDeleteTag,onRenameTag,shopNotifSettings,onShopNotifSettings,calEventsCount,onSyncCalendar,syncingCal,authUser,isPremium,onAppleSignIn,onSignOut,onBulkAdd,bulkHistory,onBulkHistoryDelete,onBulkHistoryEdit,lifePatterns,onLifePatterns,patternOverrides,onApplyPattern,initialSub}:{
+function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,customTabs,onCustomTabs,onDeleteTabTasks,onDeleteTag,onRenameTag,shopNotifSettings,onShopNotifSettings,authUser,isPremium,onAppleSignIn,onSignOut,onBulkAdd,bulkHistory,onBulkHistoryDelete,onBulkHistoryEdit,lifePatterns,onLifePatterns,patternOverrides,onApplyPattern,initialSub}:{
   settings:Settings; onSettings:(s:Settings)=>void; onClose:()=>void;
   globalTags:TagDef[]; onGlobalTags:(tags:TagDef[])=>void;
   customTabs:CustomTab[]; onCustomTabs:(tabs:CustomTab[])=>void; onDeleteTabTasks:(tabId:string)=>void;
   onDeleteTag:(tagName:string)=>void; onRenameTag:(oldName:string, newName:string, newColor:string)=>void;
   shopNotifSettings:ShopNotifSetting[]; onShopNotifSettings:(s:ShopNotifSetting[])=>void;
-  calEventsCount:number; onSyncCalendar:(source:'google'|'iphone',url:string)=>Promise<void>; syncingCal:'google'|'iphone'|null;
   authUser:AuthUser|null; isPremium:boolean;
   onAppleSignIn:()=>Promise<void>; onSignOut:()=>void;
   onBulkAdd:(tasks:Omit<Task,'id'>[],endTime:string)=>void;
@@ -3910,76 +3849,6 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   );
 
 
-  if(sub==='calendar') return (
-    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
-      {subHeader('カレンダー連携')}
-      <div className="flex-1 overflow-y-auto px-4 pb-8">
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">カレンダー</p>
-
-        {/* iPhone Calendar */}
-        <div className="bg-white rounded-2xl overflow-hidden shadow-sm mb-3">
-          <div className="px-4 py-3.5 flex items-center gap-3 border-b border-gray-100">
-            <AppIcons.calendar size={18} className="text-gray-400 shrink-0"/>
-            <span className="flex-1 text-[15px] font-medium text-gray-900">iPhoneカレンダー</span>
-            <button onClick={()=>onSettings({...settings,iphoneCalEnabled:!(settings.iphoneCalEnabled??false)})}
-              className={`relative w-10 h-6 rounded-full transition-colors shrink-0 ${(settings.iphoneCalEnabled??false)?'bg-[var(--c-primary)]':'bg-gray-200'}`}>
-              <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${(settings.iphoneCalEnabled??false)?'left-[18px]':'left-0.5'}`}/>
-            </button>
-          </div>
-          {(settings.iphoneCalEnabled??false)&&(
-            <div className="px-4 py-3">
-              <p className="text-xs text-gray-400 mb-2 leading-relaxed">iPhoneの「カレンダー」アプリ → 対象カレンダーを長押し →「カレンダーを共有」→「リンクをコピー」で取得したURLを貼り付けてください。</p>
-              <input value={settings.iphoneCalUrl??''} onChange={e=>onSettings({...settings,iphoneCalUrl:e.target.value})}
-                placeholder="webcal://p17-caldav.icloud.com/..."
-                className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 outline-none focus:border-[var(--c-primary)] bg-gray-50"/>
-              <button disabled={!settings.iphoneCalUrl||syncingCal==='iphone'}
-                onClick={()=>settings.iphoneCalUrl&&onSyncCalendar('iphone',settings.iphoneCalUrl)}
-                className={`mt-2 w-full py-2 rounded-xl text-sm font-semibold transition-colors ${!settings.iphoneCalUrl||syncingCal==='iphone'?'bg-gray-100 text-gray-400':'bg-[var(--c-primary)] text-white'}`}>
-                {syncingCal==='iphone'?'同期中…':'今すぐ同期'}
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Google Calendar */}
-        <div className="bg-white rounded-2xl overflow-hidden shadow-sm mb-3">
-          <div className="px-4 py-3.5 flex items-center gap-3 border-b border-gray-100">
-            <AppIcons.calendar size={18} className="text-gray-400 shrink-0"/>
-            <span className="flex-1 text-[15px] font-medium text-gray-900">Googleカレンダー</span>
-            <button onClick={()=>onSettings({...settings,googleCalEnabled:!(settings.googleCalEnabled??false)})}
-              className={`relative w-10 h-6 rounded-full transition-colors shrink-0 ${(settings.googleCalEnabled??false)?'bg-[var(--c-primary)]':'bg-gray-200'}`}>
-              <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${(settings.googleCalEnabled??false)?'left-[18px]':'left-0.5'}`}/>
-            </button>
-          </div>
-          {(settings.googleCalEnabled??false)&&(
-            <div className="px-4 py-3">
-              <p className="text-xs text-gray-400 mb-2 leading-relaxed">Googleカレンダー → 設定 → 対象カレンダー → 「カレンダーの統合」→「非公開のアドレス(ICS)」をコピーして貼り付けてください。</p>
-              <input value={settings.googleCalUrl??''} onChange={e=>onSettings({...settings,googleCalUrl:e.target.value})}
-                placeholder="https://calendar.google.com/calendar/ical/..."
-                className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 outline-none focus:border-[var(--c-primary)] bg-gray-50"/>
-              <button disabled={!settings.googleCalUrl||syncingCal==='google'}
-                onClick={()=>settings.googleCalUrl&&onSyncCalendar('google',settings.googleCalUrl)}
-                className={`mt-2 w-full py-2 rounded-xl text-sm font-semibold transition-colors ${!settings.googleCalUrl||syncingCal==='google'?'bg-gray-100 text-gray-400':'bg-[var(--c-primary)] text-white'}`}>
-                {syncingCal==='google'?'同期中…':'今すぐ同期'}
-              </button>
-            </div>
-          )}
-        </div>
-
-        {calEventsCount>0&&(
-          <p className="text-xs text-gray-400 text-center mt-2">{calEventsCount}件の予定を読み込み済み</p>
-        )}
-
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">注意事項</p>
-        <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
-          <div className="px-4 py-3.5">
-            <p className="text-xs text-gray-500 leading-relaxed">カレンダーの予定はタイムラインに表示されますが、編集はできません。空き時間の計算にも反映されます。URLはこのデバイスのみに保存されます。</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
   if(sub==='premium') return (
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
       {subHeader('プレミアム')}
@@ -4008,7 +3877,6 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             {icon:<AppIcons.pencil size={18}/>,   label:'タスク一括入力',              desc:'月2回目からPro（現在：無料開放中）'},
             {icon:<AppIcons.calendar size={18}/>, label:'生活パターン',                desc:'2個目からPro（現在：無料開放中）'},
             {icon:<AppIcons.wake size={18}/>,     label:'起床・就寝のアイコン色変更',  desc:'Pro限定（現在：無料開放中）'},
-            {icon:<AppIcons.calendar size={18}/>, label:'カレンダー連携',              desc:'Pro限定（現在：無料開放中）'},
             {icon:<AppIcons.shopping size={18}/>, label:'買い物リストの通知',          desc:'Pro限定（現在：無料開放中）'},
             {icon:<AppIcons.palette size={18}/>,  label:'テーマカラー変更',            desc:'Pro限定（現在：無料開放中）'},
             {icon:<AppIcons.home size={18}/>,     label:'アプリアイコン変更',          desc:'Pro限定（近日リリース予定）'},
@@ -4067,8 +3935,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
 
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">連携</p>
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
-          <SettingsRow icon={<AppIcons.link size={18}/>} iconBg="bg-gray-100" title="アカウント" desc="Appleアカウント・iCloudバックアップ" onClick={()=>setSub('account')}/>
-          <SettingsRow icon={<AppIcons.calendar size={18}/>} iconBg="bg-gray-100" title="カレンダー連携" desc="カレンダーと同期" onClick={()=>setSub('calendar')} isLast pro/>
+          <SettingsRow icon={<AppIcons.link size={18}/>} iconBg="bg-gray-100" title="アカウント" desc="Appleアカウント・iCloudバックアップ" onClick={()=>setSub('account')} isLast/>
         </div>
 
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">サブスクリプション</p>
@@ -4280,8 +4147,6 @@ export default function App() {
   const [bulkHistory,setBulkHistory] = useState<BulkHistoryEntry[]>([]);
   const [lifePatterns,setLifePatterns] = useState<LifePattern[]>([]);
   const [patternOverrides,setPatternOverrides] = useState<Record<string,string>>({});
-  const [calEvents,setCalEvents] = useState<CalendarEvent[]>([]);
-  const [syncingCal,setSyncingCal] = useState<'google'|'iphone'|null>(null);
   const [authUser,setAuthUser] = useState<AuthUser|null>(null);
   const { isPremium } = usePremium();
 
@@ -4315,8 +4180,6 @@ export default function App() {
       if(ds) setDayOverrides(JSON.parse(ds) as Record<string,{wakeTime?:string;sleepTime?:string}>);
       const sn=localStorage.getItem(SHOP_NOTIF_KEY);
       if(sn) setShopNotifSettings(JSON.parse(sn) as ShopNotifSetting[]);
-      const ce=localStorage.getItem(CAL_EVENTS_KEY);
-      if(ce) setCalEvents(JSON.parse(ce) as CalendarEvent[]);
       const au=localStorage.getItem(AUTH_KEY);
       if(au) setAuthUser(JSON.parse(au) as AuthUser);
       const bh=localStorage.getItem(BULK_HIST_KEY);
@@ -4340,7 +4203,6 @@ export default function App() {
   useEffect(()=>{ if(loaded) localStorage.setItem(CUSTOM_TABS_KEY,JSON.stringify(customTabs)); },[customTabs,loaded]);
   useEffect(()=>{ if(loaded) localStorage.setItem(SHOP_NOTIF_KEY,JSON.stringify(shopNotifSettings)); },[shopNotifSettings,loaded]);
   useEffect(()=>{ if(loaded) localStorage.setItem(DAY_SETTINGS_KEY,JSON.stringify(dayOverrides)); },[dayOverrides,loaded]);
-  useEffect(()=>{ if(loaded) localStorage.setItem(CAL_EVENTS_KEY,JSON.stringify(calEvents)); },[calEvents,loaded]);
   useEffect(()=>{ if(loaded) localStorage.setItem(BULK_HIST_KEY,JSON.stringify(bulkHistory)); },[bulkHistory,loaded]);
   useEffect(()=>{ if(loaded) localStorage.setItem(LIFE_PATTERNS_KEY,JSON.stringify(lifePatterns)); },[lifePatterns,loaded]);
   useEffect(()=>{ if(loaded) localStorage.setItem(PATTERN_OVERRIDES_KEY,JSON.stringify(patternOverrides)); },[patternOverrides,loaded]);
@@ -4352,18 +4214,6 @@ export default function App() {
     const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
     document.documentElement.style.setProperty('--c-primary-dark',`rgb(${Math.round(r*0.82)},${Math.round(g*0.82)},${Math.round(b*0.82)})`);
   },[settings.theme]);
-
-  const syncCalendar=async(source:'google'|'iphone',url:string):Promise<void>=>{
-    setSyncingCal(source);
-    try{
-      const res=await fetch(`/api/calendar?url=${encodeURIComponent(url)}`);
-      if(!res.ok) throw new Error('fetch failed');
-      const text=await res.text();
-      const events=parseICS(text,source);
-      setCalEvents(prev=>[...prev.filter(e=>e.source!==source),...events]);
-    }catch(e){console.error('Calendar sync failed:',e);}
-    setSyncingCal(null);
-  };
 
   const handleAppleSignIn=async():Promise<void>=>{
     try{
@@ -4835,7 +4685,6 @@ export default function App() {
           onDragWake={(x,y)=>startDragSetting('wake',x,y)}
           onDragSleep={(x,y)=>startDragSetting('sleep',x,y)}
           onCameraClick={openEditAtPhotos}
-          calEvents={calEvents.filter(e=>(e.source==='google'&&(settings.googleCalEnabled??false))||(e.source==='iphone'&&(settings.iphoneCalEnabled??false)))}
           lifePatterns={lifePatterns} patternOverrides={patternOverrides}
           onOpenWakeSleep={()=>{setSettingsInitSub('wakeSleep');setSOp(true);}}
           customTabs={activeCategory===null?customTabs:[]}/>
@@ -4986,7 +4835,7 @@ export default function App() {
 
       {/* ── Settings Screen ── */}
       {settingsOpen&&(
-        <SettingsScreen settings={settings} onSettings={setSettings} onClose={()=>setSOp(false)} globalTags={globalTags} onGlobalTags={setGlobalTags} customTabs={customTabs} onCustomTabs={setCustomTabs} onDeleteTabTasks={(tabId)=>setTasks(prev=>prev.filter(t=>t.category!==tabId))} onDeleteTag={(tagName)=>{setGlobalTags(prev=>prev.filter(t=>t.name!==tagName));setTasks(prev=>prev.map(t=>({...t,tags:(t.tags??[]).filter(n=>n!==tagName)})));}} onRenameTag={(oldName,newName,newColor)=>{setGlobalTags(prev=>prev.map(t=>t.name===oldName?{name:newName,color:newColor}:t));setTasks(prev=>prev.map(t=>({...t,tags:(t.tags??[]).map(n=>n===oldName?newName:n)})));}} shopNotifSettings={shopNotifSettings} onShopNotifSettings={setShopNotifSettings} calEventsCount={calEvents.length} onSyncCalendar={syncCalendar} syncingCal={syncingCal} authUser={authUser} isPremium={isPremium} onAppleSignIn={handleAppleSignIn} onSignOut={handleSignOut} onBulkAdd={bulkAddTasks} bulkHistory={bulkHistory} onBulkHistoryDelete={bulkHistoryDelete} onBulkHistoryEdit={bulkHistoryEdit} lifePatterns={lifePatterns} onLifePatterns={setLifePatterns} patternOverrides={patternOverrides} onApplyPattern={applyPattern} initialSub={settingsInitSub}/>
+        <SettingsScreen settings={settings} onSettings={setSettings} onClose={()=>setSOp(false)} globalTags={globalTags} onGlobalTags={setGlobalTags} customTabs={customTabs} onCustomTabs={setCustomTabs} onDeleteTabTasks={(tabId)=>setTasks(prev=>prev.filter(t=>t.category!==tabId))} onDeleteTag={(tagName)=>{setGlobalTags(prev=>prev.filter(t=>t.name!==tagName));setTasks(prev=>prev.map(t=>({...t,tags:(t.tags??[]).filter(n=>n!==tagName)})));}} onRenameTag={(oldName,newName,newColor)=>{setGlobalTags(prev=>prev.map(t=>t.name===oldName?{name:newName,color:newColor}:t));setTasks(prev=>prev.map(t=>({...t,tags:(t.tags??[]).map(n=>n===oldName?newName:n)})));}} shopNotifSettings={shopNotifSettings} onShopNotifSettings={setShopNotifSettings} authUser={authUser} isPremium={isPremium} onAppleSignIn={handleAppleSignIn} onSignOut={handleSignOut} onBulkAdd={bulkAddTasks} bulkHistory={bulkHistory} onBulkHistoryDelete={bulkHistoryDelete} onBulkHistoryEdit={bulkHistoryEdit} lifePatterns={lifePatterns} onLifePatterns={setLifePatterns} patternOverrides={patternOverrides} onApplyPattern={applyPattern} initialSub={settingsInitSub}/>
       )}
 
       {/* ── Recurrence edit confirm ── */}
