@@ -3439,7 +3439,10 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           <SettingsRow icon={<AppIcons.palette/>} iconBg="bg-gray-100"
             title="テーマカラー"
             desc={THEMES.find(t=>t.id===(settings.theme??'mint'))?.name??'ミント'}
-            onClick={()=>setSub('themeColor')} isLast/>
+            onClick={()=>setSub('themeColor')}/>
+          <div className="h-px bg-gray-100 mx-4"/>
+          <SettingsRow icon={<AppIcons.home/>} iconBg="bg-gray-100"
+            title="アプリアイコン" desc="近日リリース予定" onClick={()=>{}} isLast/>
         </div>
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">言語</p>
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
