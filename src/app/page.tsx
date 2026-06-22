@@ -3778,21 +3778,20 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2">★ PRO 機能一覧</p>
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm mb-4">
           {[
-            {icon:<AppIcons.tag size={18}/>,       label:'タグ',                       desc:'タスクにラベルを付けて整理・検索',       limit:'3個まで無料・4個目からPro'},
-            {icon:<AppIcons.caretRight size={18}/>, label:'ファイルタブ',              desc:'タスクをフォルダ別に管理',               limit:'1個まで無料・2個目からPro'},
-            {icon:<AppIcons.pencil size={18}/>,    label:'タスク一括入力',             desc:'まとめてタスクを登録',                   limit:'月1回まで無料・2回目からPro'},
-            {icon:<AppIcons.calendar size={18}/>,  label:'生活パターン',               desc:'シフトや休日で起床・就寝時間を切り替え', limit:'1個まで無料・2個目からPro'},
-            {icon:<AppIcons.wake size={18}/>,      label:'起床・就寝のアイコン色変更', desc:'アイコンカラーをカスタマイズ',           limit:'Pro限定（現在：無料開放中）'},
-            {icon:<AppIcons.shopping size={18}/>,  label:'買い物リストの通知',         desc:'曜日・時間を指定して定期通知',           limit:'Pro限定（現在：無料開放中）'},
-            {icon:<AppIcons.palette size={18}/>,   label:'テーマカラー変更',           desc:'アプリ全体の色をカスタマイズ',           limit:'Pro限定（現在：無料開放中）'},
-            {icon:<AppIcons.home size={18}/>,      label:'アプリアイコン変更',         desc:'ホーム画面のアイコンを変更',             limit:'近日リリース予定'},
-          ].map(({icon,label,desc,limit},i,arr)=>(
+            {icon:<AppIcons.tag size={18}/>,      label:'タグ',                        desc:'4個目からPro（現在：無料開放中）'},
+            {icon:<AppIcons.caretRight size={18}/>,label:'ファイルタブ',               desc:'2個目からPro（現在：無料開放中）'},
+            {icon:<AppIcons.pencil size={18}/>,   label:'タスク一括入力',              desc:'月2回目からPro（現在：無料開放中）'},
+            {icon:<AppIcons.calendar size={18}/>, label:'生活パターン',                desc:'2個目からPro（現在：無料開放中）'},
+            {icon:<AppIcons.wake size={18}/>,     label:'起床・就寝のアイコン色変更',  desc:'Pro限定（現在：無料開放中）'},
+            {icon:<AppIcons.shopping size={18}/>, label:'買い物リストの通知',          desc:'Pro限定（現在：無料開放中）'},
+            {icon:<AppIcons.palette size={18}/>,  label:'テーマカラー変更',            desc:'Pro限定（現在：無料開放中）'},
+            {icon:<AppIcons.home size={18}/>,     label:'アプリアイコン変更',          desc:'Pro限定（近日リリース予定）'},
+          ].map(({icon,label,desc},i,arr)=>(
             <div key={i} className={`px-4 py-3 flex items-center gap-3${i<arr.length-1?' border-b border-gray-100':''}`}>
               <span className="text-[var(--c-primary)] shrink-0">{icon}</span>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-800">{label}</p>
                 <p className="text-xs text-gray-400">{desc}</p>
-                <p className="text-[11px] text-gray-300 mt-0.5">{limit}</p>
               </div>
             </div>
           ))}
