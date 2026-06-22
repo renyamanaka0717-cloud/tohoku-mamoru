@@ -3403,12 +3403,11 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
     </div>
   );
 
-  if(sub==='display') return (
+  if(sub==='freeCard') return (
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
-      {subHeader('表示設定')}
+      {subHeader('空き時間カード')}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">空き時間カード</p>
-        <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
+        <div className="bg-white rounded-2xl overflow-hidden shadow-sm mt-6">
           <div className="px-4 py-3.5 flex items-center justify-between border-b border-gray-100">
             <p className="text-[15px] font-medium text-gray-900">空き時間カードを表示</p>
             <button onClick={()=>onSettings({...settings,showFreeCard:!(settings.showFreeCard??true)})}
@@ -3434,6 +3433,14 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             </div>
           )}
         </div>
+      </div>
+    </div>
+  );
+
+  if(sub==='display') return (
+    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
+      {subHeader('表示設定')}
+      <div className="flex-1 overflow-y-auto px-4 pb-8">
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">外観</p>
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
           <SettingsRow icon={<AppIcons.palette/>} iconBg="bg-gray-100"
@@ -3986,6 +3993,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           <SettingsRow icon={<AppIcons.caretRight/>} iconBg="bg-gray-100" title="ファイルタブ" desc="タブを管理" onClick={()=>setSub('tabs')}/>
           <SettingsRow icon={<AppIcons.pencil size={18}/>} iconBg="bg-gray-100" title="タスク一括入力" desc="複数日にまとめて登録" onClick={()=>setSub('bulkInput')}/>
           <SettingsRow icon={<AppIcons.repeat size={18}/>} iconBg="bg-gray-100" title="繰り返しタスク" desc="繰り返しタスクを管理" onClick={()=>setSub('recurring')}/>
+          <SettingsRow icon={<AppIcons.freeTime size={18}/>} iconBg="bg-gray-100" title="空き時間カード" desc="表示設定・最小表示時間" onClick={()=>setSub('freeCard')}/>
           <SettingsRow icon={<AppIcons.calendar size={18}/>} iconBg="bg-gray-100" title="生活パターン" desc="シフトや予定に合わせた時間設定" onClick={()=>setSub('lifePatterns')}/>
           <SettingsRow icon={<AppIcons.wake size={18}/>} iconBg="bg-gray-100" title="起床・就寝" desc="起床時間、就寝時間を設定" onClick={()=>setSub('wakeSleep')} isLast/>
         </div>
