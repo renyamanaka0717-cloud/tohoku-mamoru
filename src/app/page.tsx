@@ -1806,6 +1806,7 @@ function FreeTimeCard({slot,fits,height,onSchedule,onDragStart}:{
 }) {
   const [pressingId,setPressingId] = useState<string|null>(null);
   const lpTimer = useRef<ReturnType<typeof setTimeout>|null>(null);
+  const didDrag = useRef(false);
 
   const startLP=(task:Task,e:React.TouchEvent)=>{
     const touch=e.touches[0];
@@ -1813,6 +1814,7 @@ function FreeTimeCard({slot,fits,height,onSchedule,onDragStart}:{
     lpTimer.current=setTimeout(()=>{
       navigator.vibrate?.(40);
       setPressingId(null);
+      didDrag.current=true;
       onDragStart(task,touch.clientX,touch.clientY);
     },500);
   };
@@ -1836,7 +1838,7 @@ function FreeTimeCard({slot,fits,height,onSchedule,onDragStart}:{
         <div className="flex flex-wrap gap-1.5 mt-2">
           {fits.map(t=>(
             <button key={t.id}
-              onClick={()=>onSchedule(t,slot.start)}
+              onClick={()=>{if(didDrag.current){didDrag.current=false;return;}onSchedule(t,slot.start);}}
               onTouchStart={e=>startLP(t,e)}
               onTouchEnd={cancelLP}
               onTouchMove={cancelLP}
