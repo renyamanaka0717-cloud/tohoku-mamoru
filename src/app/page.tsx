@@ -3693,132 +3693,14 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             )}
           </div>
 
-          <p className="text-xs text-gray-400 px-1 mb-1">シフトや予定に合わせて、日ごとの起床・就寝時間を変更できます</p>
-          <p className="text-xs text-gray-400 px-1 mb-2">パターンを追加・選択して日付をタップ</p>
-          <div className="bg-white rounded-2xl overflow-hidden shadow-sm mb-1">
-            {lifePatterns.length===0&&!lpAddMode&&(
-              <p className="text-sm text-gray-400 text-center py-6">パターンがまだありません</p>
-            )}
-            {lifePatterns.map((pat,i)=>(
-              <div key={pat.id} className={`px-4 py-3 flex items-center gap-3${i<lifePatterns.length-1||lpAddMode?' border-b border-gray-100':''}`}>
-                {lpEditId===pat.id ? (
-                  <div className="flex-1 flex flex-col gap-2">
-                    <input autoFocus value={pat.name}
-                      onChange={e=>onLifePatterns(lifePatterns.map(p=>p.id===pat.id?{...p,name:e.target.value}:p))}
-                      className="text-[15px] border-b border-gray-200 outline-none bg-transparent text-gray-900 py-0.5"/>
-                    <div className="flex gap-3 items-center">
-                      <input type="time" value={pat.wakeTime}
-                        onChange={e=>onLifePatterns(lifePatterns.map(p=>p.id===pat.id?{...p,wakeTime:e.target.value}:p))}
-                        className="border border-gray-200 rounded-xl px-2 py-1 text-xs bg-gray-50"/>
-                      <span className="text-xs text-gray-400">〜</span>
-                      <input type="time" value={pat.sleepTime}
-                        onChange={e=>onLifePatterns(lifePatterns.map(p=>p.id===pat.id?{...p,sleepTime:e.target.value}:p))}
-                        className="border border-gray-200 rounded-xl px-2 py-1 text-xs bg-gray-50"/>
-                    </div>
-                    <div className="flex gap-1.5 flex-wrap">
-                      {PATTERN_COLORS.map(c=>(
-                        <button key={c} onClick={()=>onLifePatterns(lifePatterns.map(p=>p.id===pat.id?{...p,color:c}:p))}
-                          style={{background:c}}
-                          className={`w-6 h-6 rounded-full border-2 ${pat.color===c?'border-gray-700':'border-transparent'}`}/>
-                      ))}
-                    </div>
-                    <div className="flex gap-2">
-                      <button onClick={()=>setLpEditId(null)}
-                        className="flex-1 py-2 rounded-xl text-xs font-semibold bg-[var(--c-primary)] text-white">確定</button>
-                      <button onClick={()=>{onLifePatterns(lifePatterns.filter(p=>p.id!==pat.id));setLpEditId(null);if(lpActivePat===pat.id)setLpActivePat(null);}}
-                        className="flex-1 py-2 rounded-xl text-xs font-semibold bg-gray-100 text-[#D97A7A]">削除</button>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <button onClick={()=>setLpActivePat(lpActivePat===pat.id?null:pat.id)}
-                      className="flex items-center gap-3 flex-1 min-w-0">
-                      <div className="w-4 h-4 rounded-full shrink-0" style={{background:pat.color}}/>
-                      <div className="flex-1 min-w-0 text-left">
-                        <p className={`text-[15px] font-medium ${lpActivePat===pat.id?'text-[var(--c-primary)]':'text-gray-900'}`}>{pat.name}</p>
-                        <p className="text-xs text-gray-400">{pat.wakeTime} 起床 / {pat.sleepTime} 就寝</p>
-                      </div>
-                    </button>
-                    <button onClick={()=>setLpEditId(pat.id)} className="text-xs text-gray-400 font-medium px-2 py-1 shrink-0">編集</button>
-                  </>
-                )}
-              </div>
-            ))}
-            {lpAddMode&&(
-              <div className="px-4 py-3 flex flex-col gap-2">
-                <input autoFocus value={lpNewName} onChange={e=>setLpNewName(e.target.value)}
-                  placeholder="パターン名（例：平日、休日、早番、遅番）"
-                  className="text-[15px] border-b border-gray-200 outline-none bg-transparent text-gray-900 placeholder-gray-300 py-0.5"/>
-                <div className="flex gap-3 items-center">
-                  <input type="time" value={lpNewWake} onChange={e=>setLpNewWake(e.target.value)}
-                    className="border border-gray-200 rounded-xl px-2 py-1 text-xs bg-gray-50"/>
-                  <span className="text-xs text-gray-400">〜</span>
-                  <input type="time" value={lpNewSleep} onChange={e=>setLpNewSleep(e.target.value)}
-                    className="border border-gray-200 rounded-xl px-2 py-1 text-xs bg-gray-50"/>
-                </div>
-                <div className="flex gap-1.5 flex-wrap">
-                  {PATTERN_COLORS.map(c=>(
-                    <button key={c} onClick={()=>setLpNewColor(c)}
-                      style={{background:c}}
-                      className={`w-6 h-6 rounded-full border-2 ${lpNewColor===c?'border-gray-700':'border-transparent'}`}/>
-                  ))}
-                </div>
-                <div className="flex gap-2">
-                  <button onClick={()=>{
-                    if(!lpNewName.trim()) return;
-                    const np:LifePattern={id:uid(),name:lpNewName.trim(),wakeTime:lpNewWake,sleepTime:lpNewSleep,color:lpNewColor};
-                    onLifePatterns([...lifePatterns,np]);
-                    setLpNewName('');setLpAddMode(false);
-                  }} className="flex-1 py-2 rounded-xl text-xs font-semibold bg-[var(--c-primary)] text-white">追加</button>
-                  <button onClick={()=>setLpAddMode(false)}
-                    className="flex-1 py-2 rounded-xl text-xs font-semibold bg-gray-100 text-gray-500">キャンセル</button>
-                </div>
-              </div>
-            )}
-          </div>
-          {!lpAddMode&&(
-            <button onClick={()=>{setLpAddMode(true);setLpNewName('');setLpNewWake('07:00');setLpNewSleep('23:00');setLpNewColor('#94CFC8');}}
-              className="w-full py-3 rounded-2xl text-sm font-semibold text-[var(--c-primary)] bg-white shadow-sm mb-5">＋ パターンを追加</button>
-          )}
-
-          <div className="bg-white rounded-2xl overflow-hidden shadow-sm mb-3">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-              <button onClick={()=>setLpVm(prev=>shiftMonth(prev.year,prev.month,-1))}
-                className="w-8 h-8 flex items-center justify-center rounded-full active:bg-gray-100">
-                <AppIcons.caretLeft size={16} className="text-gray-600"/>
+          <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
+            <div className="px-4 py-4">
+              <p className="text-sm font-medium text-gray-800 mb-1">日ごとに起床・就寝時間を変えたいときは</p>
+              <p className="text-xs text-gray-400 mb-3 leading-relaxed">生活パターンを使うと、シフトや休日など日ごとの時間帯を設定できます。</p>
+              <button onClick={()=>setSub('lifePatterns')}
+                className="w-full py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200">
+                生活パターンの設定へ
               </button>
-              <p className="text-[15px] font-semibold text-gray-900">{lpVm.year}年{lpVm.month+1}月</p>
-              <button onClick={()=>setLpVm(prev=>shiftMonth(lpVm.year,lpVm.month,1))}
-                className="w-8 h-8 flex items-center justify-center rounded-full active:bg-gray-100">
-                <AppIcons.caretRight size={16} className="text-gray-600"/>
-              </button>
-            </div>
-            <div className="grid grid-cols-7 px-2 pt-2">
-              {['日','月','火','水','木','金','土'].map(d=>(
-                <div key={d} className="text-center text-xs text-gray-400 pb-1">{d}</div>
-              ))}
-            </div>
-            <div className="grid grid-cols-7 px-2 pb-3">
-              {calCells.map((day,idx)=>{
-                if(!day) return <div key={idx}/>;
-                const ds=cellDate(day);
-                const patId=patternOverrides[ds]??null;
-                const cellPat=patId?lifePatterns.find(p=>p.id===patId)??null:null;
-                const isToday=ds===_lpToday;
-                return (
-                  <button key={idx}
-                    onClick={()=>{ if(!lpActivePat) return; onApplyPattern([ds],lpActivePat===patId?null:lpActivePat); }}
-                    className="flex flex-col items-center py-1 rounded-xl active:bg-gray-50">
-                    <span className={`text-sm w-8 h-8 flex items-center justify-center rounded-full font-medium
-                      ${isToday&&!cellPat?'bg-gray-100 text-gray-900':''}
-                      ${cellPat?'text-white':'text-gray-700'}
-                    `} style={cellPat?{background:cellPat.color}:undefined}>{day}</span>
-                    {cellPat&&(
-                      <span className="text-[9px] leading-tight text-center mt-0.5 max-w-[40px] truncate" style={{color:cellPat.color}}>{cellPat.name}</span>
-                    )}
-                  </button>
-                );
-              })}
             </div>
           </div>
         </div>
