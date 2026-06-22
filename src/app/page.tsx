@@ -77,6 +77,7 @@ const PATTERN_OVERRIDES_KEY= 'tl-pattern-overrides-v1';
 const MORNING_NOTIF_KEY = 'tl-morning-notif-v1';
 const MORNING_SNOOZE_KEY = 'tl-morning-snooze-v1'; // stores snooze timestamp (ms)
 const SHOP_NOTIF_KEY    = 'tl-shop-notif-v1';
+const NOTIF_ASKED_KEY   = 'tl-notif-asked-v1';
 const AUTH_KEY          = 'tl-auth-v1';
 
 // テーマカラー — 将来的にここを差し替えるだけで全体の色が変わる
@@ -4082,6 +4083,7 @@ export default function App() {
   const [lifePatterns,setLifePatterns] = useState<LifePattern[]>([]);
   const [patternOverrides,setPatternOverrides] = useState<Record<string,string>>({});
   const [authUser,setAuthUser] = useState<AuthUser|null>(null);
+  const [showNotifPrompt,setShowNotifPrompt] = useState(false);
   const { isPremium } = usePremium();
 
   useEffect(()=>{
@@ -4124,8 +4126,8 @@ export default function App() {
       if(po) setPatternOverrides(JSON.parse(po) as Record<string,string>);
     }catch{}
     setLoaded(true);
-    if(typeof Notification!=='undefined'&&Notification.permission==='default'){
-      Notification.requestPermission();
+    if(!localStorage.getItem(NOTIF_ASKED_KEY)){
+      setShowNotifPrompt(true);
     }
   },[]);
 
@@ -4171,6 +4173,18 @@ export default function App() {
   const handleSignOut=():void=>{
     setAuthUser(null);
     localStorage.removeItem(AUTH_KEY);
+  };
+
+  const dismissNotifPrompt=()=>{
+    localStorage.setItem(NOTIF_ASKED_KEY,'1');
+    setShowNotifPrompt(false);
+  };
+  const enableNotifFromPrompt=()=>{
+    if(typeof Notification!=='undefined'&&Notification.permission==='default'){
+      Notification.requestPermission();
+    }
+    setSettings(s=>({...s,notificationsEnabled:true}));
+    dismissNotifPrompt();
   };
 
   // 起床時間後、初回起動時に過去の未完了タスクをポップアップで確認（スヌーズ対応）
@@ -4815,6 +4829,27 @@ export default function App() {
               <button onClick={()=>setRecConfirm(null)}
                 className="w-full py-2.5 text-sm text-gray-400 font-semibold">キャンセル</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Notification onboarding prompt ── */}
+      {showNotifPrompt&&(
+        <div className="fixed inset-0 z-[210] flex items-end justify-center">
+          <div className="absolute inset-0 bg-black/40" onClick={dismissNotifPrompt}/>
+          <div className="relative bg-white rounded-t-3xl w-full max-w-md px-6 pt-7 pb-10 shadow-2xl">
+            <div className="flex justify-center mb-4">
+              <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{background:'rgba(217,163,178,0.12)'}}>
+                <AppIcons.bell size={32} className="text-[var(--c-primary)]"/>
+              </div>
+            </div>
+            <p className="text-lg font-bold text-gray-900 text-center mb-2">通知を有効にしよう</p>
+            <p className="text-sm text-gray-500 text-center mb-7 leading-relaxed">タスクのアラームや買い物リストのリマインダーをお届けします。</p>
+            <button onClick={enableNotifFromPrompt}
+              className="w-full py-3.5 rounded-2xl text-[15px] font-bold text-white mb-3"
+              style={{background:'var(--c-primary)'}}>通知をオンにする</button>
+            <button onClick={dismissNotifPrompt}
+              className="w-full py-2.5 text-sm font-medium text-gray-400">あとで</button>
           </div>
         </div>
       )}
