@@ -2855,10 +2855,11 @@ function SettingsRow({icon,iconBg,title,desc,onClick,isLast=false}:{
   );
 }
 
-function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,customTabs,onCustomTabs,onDeleteTabTasks,shopNotifSettings,onShopNotifSettings,calEventsCount,onSyncCalendar,syncingCal,authUser,isPremium,onAppleSignIn,onSignOut,onBulkAdd,bulkHistory,onBulkHistoryDelete,onBulkHistoryEdit,lifePatterns,onLifePatterns,patternOverrides,onApplyPattern,initialSub}:{
+function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,customTabs,onCustomTabs,onDeleteTabTasks,onDeleteTag,onRenameTag,shopNotifSettings,onShopNotifSettings,calEventsCount,onSyncCalendar,syncingCal,authUser,isPremium,onAppleSignIn,onSignOut,onBulkAdd,bulkHistory,onBulkHistoryDelete,onBulkHistoryEdit,lifePatterns,onLifePatterns,patternOverrides,onApplyPattern,initialSub}:{
   settings:Settings; onSettings:(s:Settings)=>void; onClose:()=>void;
   globalTags:TagDef[]; onGlobalTags:(tags:TagDef[])=>void;
   customTabs:CustomTab[]; onCustomTabs:(tabs:CustomTab[])=>void; onDeleteTabTasks:(tabId:string)=>void;
+  onDeleteTag:(tagName:string)=>void; onRenameTag:(oldName:string, newName:string, newColor:string)=>void;
   shopNotifSettings:ShopNotifSetting[]; onShopNotifSettings:(s:ShopNotifSetting[])=>void;
   calEventsCount:number; onSyncCalendar:(source:'google'|'iphone',url:string)=>Promise<void>; syncingCal:'google'|'iphone'|null;
   authUser:AuthUser|null; isPremium:boolean;
@@ -2939,15 +2940,24 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
     onGlobalTags([...globalTags, {name:t, color:newTagColor}]);
     setTagInput('');
   };
-  const deleteTag = (i:number) => onGlobalTags(globalTags.filter((_,idx)=>idx!==i));
+  const [deleteTagIdx,setDeleteTagIdx] = useState<number|null>(null);
+  const [pendingCommitEdit,setPendingCommitEdit] = useState(false);
+  const deleteTag = (i:number) => setDeleteTagIdx(i);
   const startEdit = (i:number) => { setEditIdx(i); setEditVal(globalTags[i].name); setEditColor(globalTags[i].color); };
   const commitEdit = () => {
     if(editIdx===null) return;
     const v = editVal.trim();
-    if(v && !globalTags.some((t,i)=>t.name===v&&i!==editIdx)){
-      onGlobalTags(globalTags.map((t,i)=>i===editIdx?{name:v,color:editColor}:t));
-    }
-    setEditIdx(null);
+    if(!v || globalTags.some((t,i)=>t.name===v&&i!==editIdx&&t.color===editColor)) { setEditIdx(null); return; }
+    const orig=globalTags[editIdx];
+    if(orig.name===v && orig.color===editColor){ setEditIdx(null); return; }
+    setPendingCommitEdit(true);
+  };
+  const doCommitEdit = () => {
+    if(editIdx===null) return;
+    const v=editVal.trim(); if(!v) return;
+    const oldName=globalTags[editIdx].name;
+    onRenameTag(oldName, v, editColor);
+    setEditIdx(null); setPendingCommitEdit(false);
   };
 
   if(sub==='bulkInput'){
@@ -3334,7 +3344,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                       </div>
                       <input autoFocus value={editVal}
                         onChange={e=>setEditVal(e.target.value)}
-                        onKeyDown={e=>e.key==='Enter'&&commitEdit()}
+                        onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();commitEdit();}}}
                         className="w-full text-[15px] border-b border-gray-300 outline-none bg-transparent text-gray-900 py-0.5"/>
                     </div>
                   ) : (
@@ -3361,6 +3371,32 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
         {globalTags.length===0&&(
           <p className="text-sm text-gray-400 text-center mt-10">タグがまだありません</p>
         )}
+        {deleteTagIdx!==null&&(()=>{const dt=globalTags[deleteTagIdx];return(
+          <div className="fixed inset-0 z-[100] flex items-end justify-center" onClick={()=>setDeleteTagIdx(null)}>
+            <div className="absolute inset-0 bg-black/40"/>
+            <div className="relative bg-white rounded-t-2xl w-full max-w-md px-6 pt-6 pb-10" onClick={e=>e.stopPropagation()}>
+              <p className="text-center text-[17px] font-semibold text-gray-900 mb-1">「{dt?.name}」を削除しますか？</p>
+              <p className="text-center text-[13px] text-gray-400 mb-6">このタグがついているタスクからも削除されます</p>
+              <div className="flex flex-col gap-3">
+                <button onClick={()=>{if(dt)onDeleteTag(dt.name);setDeleteTagIdx(null);}} className="w-full py-3.5 rounded-2xl bg-[#D97A7A] text-white text-[15px] font-semibold">削除する</button>
+                <button onClick={()=>setDeleteTagIdx(null)} className="w-full py-3.5 rounded-2xl bg-gray-100 text-gray-700 text-[15px] font-semibold">キャンセル</button>
+              </div>
+            </div>
+          </div>
+        );})()}
+        {pendingCommitEdit&&editIdx!==null&&(()=>{const orig=globalTags[editIdx];return(
+          <div className="fixed inset-0 z-[100] flex items-end justify-center" onClick={()=>setPendingCommitEdit(false)}>
+            <div className="absolute inset-0 bg-black/40"/>
+            <div className="relative bg-white rounded-t-2xl w-full max-w-md px-6 pt-6 pb-10" onClick={e=>e.stopPropagation()}>
+              <p className="text-center text-[17px] font-semibold text-gray-900 mb-1">「{orig.name}」を変更しますか？</p>
+              <p className="text-center text-[13px] text-gray-400 mb-6">このタグがついているすべてのタスクのタグ名・色も変更されます</p>
+              <div className="flex flex-col gap-3">
+                <button onClick={doCommitEdit} className="w-full py-3.5 rounded-2xl bg-[var(--c-primary)] text-white text-[15px] font-semibold">変更する</button>
+                <button onClick={()=>setPendingCommitEdit(false)} className="w-full py-3.5 rounded-2xl bg-gray-100 text-gray-700 text-[15px] font-semibold">キャンセル</button>
+              </div>
+            </div>
+          </div>
+        );})()}
       </div>
     </div>
   );
@@ -4920,7 +4956,7 @@ export default function App() {
 
       {/* ── Settings Screen ── */}
       {settingsOpen&&(
-        <SettingsScreen settings={settings} onSettings={setSettings} onClose={()=>setSOp(false)} globalTags={globalTags} onGlobalTags={setGlobalTags} customTabs={customTabs} onCustomTabs={setCustomTabs} onDeleteTabTasks={(tabId)=>setTasks(prev=>prev.filter(t=>t.category!==tabId))} shopNotifSettings={shopNotifSettings} onShopNotifSettings={setShopNotifSettings} calEventsCount={calEvents.length} onSyncCalendar={syncCalendar} syncingCal={syncingCal} authUser={authUser} isPremium={isPremium} onAppleSignIn={handleAppleSignIn} onSignOut={handleSignOut} onBulkAdd={bulkAddTasks} bulkHistory={bulkHistory} onBulkHistoryDelete={bulkHistoryDelete} onBulkHistoryEdit={bulkHistoryEdit} lifePatterns={lifePatterns} onLifePatterns={setLifePatterns} patternOverrides={patternOverrides} onApplyPattern={applyPattern} initialSub={settingsInitSub}/>
+        <SettingsScreen settings={settings} onSettings={setSettings} onClose={()=>setSOp(false)} globalTags={globalTags} onGlobalTags={setGlobalTags} customTabs={customTabs} onCustomTabs={setCustomTabs} onDeleteTabTasks={(tabId)=>setTasks(prev=>prev.filter(t=>t.category!==tabId))} onDeleteTag={(tagName)=>{setGlobalTags(prev=>prev.filter(t=>t.name!==tagName));setTasks(prev=>prev.map(t=>({...t,tags:(t.tags??[]).filter(n=>n!==tagName)})));}} onRenameTag={(oldName,newName,newColor)=>{setGlobalTags(prev=>prev.map(t=>t.name===oldName?{name:newName,color:newColor}:t));setTasks(prev=>prev.map(t=>({...t,tags:(t.tags??[]).map(n=>n===oldName?newName:n)})));}} shopNotifSettings={shopNotifSettings} onShopNotifSettings={setShopNotifSettings} calEventsCount={calEvents.length} onSyncCalendar={syncCalendar} syncingCal={syncingCal} authUser={authUser} isPremium={isPremium} onAppleSignIn={handleAppleSignIn} onSignOut={handleSignOut} onBulkAdd={bulkAddTasks} bulkHistory={bulkHistory} onBulkHistoryDelete={bulkHistoryDelete} onBulkHistoryEdit={bulkHistoryEdit} lifePatterns={lifePatterns} onLifePatterns={setLifePatterns} patternOverrides={patternOverrides} onApplyPattern={applyPattern} initialSub={settingsInitSub}/>
       )}
 
       {/* ── Recurrence edit confirm ── */}
