@@ -2837,8 +2837,8 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
 
 // ── Settings Screen ──────────────────────────────────────────────────────────
 
-function SettingsRow({icon,iconBg,title,desc,onClick,isLast=false}:{
-  icon:React.ReactNode; iconBg:string; title:string; desc?:string; onClick?:()=>void; isLast?:boolean;
+function SettingsRow({icon,iconBg,title,desc,onClick,isLast=false,pro=false}:{
+  icon:React.ReactNode; iconBg:string; title:string; desc?:string; onClick?:()=>void; isLast?:boolean; pro?:boolean;
 }) {
   return (
     <button
@@ -2849,7 +2849,7 @@ function SettingsRow({icon,iconBg,title,desc,onClick,isLast=false}:{
         {icon}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-[15px] font-medium text-gray-900 leading-tight">{title}</p>
+        <p className="text-[15px] font-medium text-gray-900 leading-tight">{title}{pro&&<span className="ml-1 text-[13px]">⭐</span>}</p>
         {desc&&<p className="text-xs text-gray-400 mt-0.5">{desc}</p>}
       </div>
       <AppIcons.caretRight className="text-gray-300 shrink-0"/>
@@ -3435,7 +3435,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
           <SettingsRow icon={<AppIcons.shopping size={18}/>} iconBg="bg-gray-100" title="買い物リスト"
             desc={shopNotifSettings.filter(s=>s.enabled).length>0?`${shopNotifSettings.filter(s=>s.enabled).length}件の通知が有効`:'通知なし'}
-            onClick={()=>setSub('notifications-shop')} isLast/>
+            onClick={()=>setSub('notifications-shop')} isLast pro/>
         </div>
       </div>
     </div>
@@ -3502,10 +3502,10 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           <SettingsRow icon={<AppIcons.palette/>} iconBg="bg-gray-100"
             title="テーマカラー"
             desc={THEMES.find(t=>t.id===(settings.theme??'mint'))?.name??'ミント'}
-            onClick={()=>setSub('themeColor')}/>
+            onClick={()=>setSub('themeColor')} pro/>
           <div className="h-px bg-gray-100 mx-4"/>
           <SettingsRow icon={<AppIcons.home/>} iconBg="bg-gray-100"
-            title="アプリアイコン" desc="近日リリース予定" onClick={()=>{}} isLast/>
+            title="アプリアイコン" desc="近日リリース予定" onClick={()=>{}} isLast pro/>
         </div>
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">言語</p>
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
@@ -3741,7 +3741,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             </div>
             {colorPicking&&(
               <div className="px-4 pb-4 border-t border-gray-100 pt-3">
-                <p className="text-xs text-gray-400 mb-2">{colorPicking==='wake'?'起床':'就寝'}アイコンの色</p>
+                <p className="text-xs text-gray-400 mb-2">⭐ {colorPicking==='wake'?'起床':'就寝'}アイコンの色</p>
                 <div className="flex flex-wrap gap-2">
                   {['#94CFC8',...TASK_COLORS.filter(Boolean)].map((c,i)=>{
                     const cur=colorPicking==='wake'?(settings.wakeColor||'#94CFC8'):(settings.sleepColor||'#94CFC8');
@@ -3992,15 +3992,26 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           <p className="text-sm text-gray-500 mt-1">より便利な機能で、毎日をもっとスムーズに</p>
         </div>
 
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2">プレミアム機能（予定）</p>
+        <div className="bg-[var(--c-primary)]/10 rounded-2xl px-4 py-3 mb-4 flex items-center gap-2">
+          <span className="text-lg">⭐</span>
+          <div>
+            <p className="text-sm font-bold text-gray-900">Pro機能 無料開放中</p>
+            <p className="text-xs text-gray-500">現在はすべての機能を無料でご利用いただけます</p>
+          </div>
+        </div>
+
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2">⭐ Pro機能一覧</p>
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm mb-4">
           {[
-            {icon:<AppIcons.repeat size={18}/>,   label:'クラウド保存・複数端末同期',  desc:'どの端末からでもアクセス'},
-            {icon:<AppIcons.calendar size={18}/>,  label:'Googleカレンダー連携',        desc:'予定を自動で取り込み'},
-            {icon:<AppIcons.stats size={18}/>,     label:'高度な統計',                  desc:'週・月単位で振り返り'},
-            {icon:<AppIcons.sparkle size={18}/>,   label:'AI タスク提案',               desc:'習慣から最適スケジュールを提案'},
-            {icon:<AppIcons.link size={18}/>,      label:'バックアップ',                desc:'大切なデータを安全に保管'},
-            {icon:<AppIcons.star size={18}/>,      label:'今後追加予定の機能',          desc:'継続的にアップデート'},
+            {icon:<AppIcons.tag size={18}/>,      label:'タグ',                        desc:'4個目からPro（現在：無料開放中）'},
+            {icon:<AppIcons.caretRight size={18}/>,label:'ファイルタブ',               desc:'2個目からPro（現在：無料開放中）'},
+            {icon:<AppIcons.pencil size={18}/>,   label:'タスク一括入力',              desc:'月2回目からPro（現在：無料開放中）'},
+            {icon:<AppIcons.calendar size={18}/>, label:'生活パターン',                desc:'2個目からPro（現在：無料開放中）'},
+            {icon:<AppIcons.wake size={18}/>,     label:'起床・就寝のアイコン色変更',  desc:'Pro限定（現在：無料開放中）'},
+            {icon:<AppIcons.calendar size={18}/>, label:'カレンダー連携',              desc:'Pro限定（現在：無料開放中）'},
+            {icon:<AppIcons.shopping size={18}/>, label:'買い物リストの通知',          desc:'Pro限定（現在：無料開放中）'},
+            {icon:<AppIcons.palette size={18}/>,  label:'テーマカラー変更',            desc:'Pro限定（現在：無料開放中）'},
+            {icon:<AppIcons.home size={18}/>,     label:'アプリアイコン変更',          desc:'Pro限定（近日リリース予定）'},
           ].map(({icon,label,desc},i,arr)=>(
             <div key={i} className={`px-4 py-3 flex items-center gap-3${i<arr.length-1?' border-b border-gray-100':''}`}>
               <span className="text-[var(--c-primary)] shrink-0">{icon}</span>
@@ -4013,7 +4024,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
         </div>
 
         <div className="bg-gray-100 rounded-2xl px-4 py-3 text-center">
-          <p className="text-xs text-gray-500">プレミアムプランは近日公開予定です</p>
+          <p className="text-xs text-gray-500">Proプランは近日公開予定です</p>
         </div>
       </div>
     </div>
@@ -4045,19 +4056,19 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
 
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">機能</p>
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
-          <SettingsRow icon={<AppIcons.tag/>} iconBg="bg-gray-100" title="タグ" desc="タグを管理" onClick={()=>setSub('tags')}/>
-          <SettingsRow icon={<AppIcons.caretRight/>} iconBg="bg-gray-100" title="ファイルタブ" desc="タブを管理" onClick={()=>setSub('tabs')}/>
-          <SettingsRow icon={<AppIcons.pencil size={18}/>} iconBg="bg-gray-100" title="タスク一括入力" desc="複数日にまとめて登録" onClick={()=>setSub('bulkInput')}/>
+          <SettingsRow icon={<AppIcons.tag/>} iconBg="bg-gray-100" title="タグ" desc="タグを管理" onClick={()=>setSub('tags')} pro/>
+          <SettingsRow icon={<AppIcons.caretRight/>} iconBg="bg-gray-100" title="ファイルタブ" desc="タブを管理" onClick={()=>setSub('tabs')} pro/>
+          <SettingsRow icon={<AppIcons.pencil size={18}/>} iconBg="bg-gray-100" title="タスク一括入力" desc="複数日にまとめて登録" onClick={()=>setSub('bulkInput')} pro/>
           <SettingsRow icon={<AppIcons.repeat size={18}/>} iconBg="bg-gray-100" title="繰り返しタスク" desc="繰り返しタスクを管理" onClick={()=>setSub('recurring')}/>
           <SettingsRow icon={<AppIcons.freeTime size={18}/>} iconBg="bg-gray-100" title="空き時間カード" desc="表示設定・最小表示時間" onClick={()=>setSub('freeCard')}/>
-          <SettingsRow icon={<AppIcons.calendar size={18}/>} iconBg="bg-gray-100" title="生活パターン" desc="シフトや予定に合わせた時間設定" onClick={()=>setSub('lifePatterns')}/>
+          <SettingsRow icon={<AppIcons.calendar size={18}/>} iconBg="bg-gray-100" title="生活パターン" desc="シフトや予定に合わせた時間設定" onClick={()=>setSub('lifePatterns')} pro/>
           <SettingsRow icon={<AppIcons.wake size={18}/>} iconBg="bg-gray-100" title="起床・就寝" desc="起床時間、就寝時間を設定" onClick={()=>setSub('wakeSleep')} isLast/>
         </div>
 
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">連携</p>
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
           <SettingsRow icon={<AppIcons.link size={18}/>} iconBg="bg-gray-100" title="アカウント" desc="Appleアカウント・iCloudバックアップ" onClick={()=>setSub('account')}/>
-          <SettingsRow icon={<AppIcons.calendar size={18}/>} iconBg="bg-gray-100" title="カレンダー連携" desc="カレンダーと同期" onClick={()=>setSub('calendar')} isLast/>
+          <SettingsRow icon={<AppIcons.calendar size={18}/>} iconBg="bg-gray-100" title="カレンダー連携" desc="カレンダーと同期" onClick={()=>setSub('calendar')} isLast pro/>
         </div>
 
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">サブスクリプション</p>
