@@ -42,7 +42,6 @@ interface Task {
   lastPostponedDate?: string;
   color?: string;
   subtasks?: {id:string;name:string;completed:boolean}[];
-  photoCount?: number;
   userId?: string;  // future: cloud sync owner
   allDay?: boolean;
 }
@@ -69,7 +68,6 @@ const SHOP_KEY     = 'tl-shop-v1';
 const TAGS_KEY     = 'tl-tags-v1';
 const HISTORY_KEY      = 'tl-history-v1';
 const CUSTOM_TABS_KEY  = 'tl-custom-tabs-v1';
-const PHOTOS_KEY       = 'tl-photos-v1';
 const BULK_HIST_KEY        = 'tl-bulk-hist-v1';
 const DAY_SETTINGS_KEY     = 'tl-day-settings-v1';
 const LIFE_PATTERNS_KEY    = 'tl-life-patterns-v1';
@@ -734,9 +732,9 @@ function PickerCol({items,value,onChange}:{items:string[];value:string;onChange:
 
 // ── TaskModal ─────────────────────────────────────────────────────────────────
 
-function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:initIconSheet,scrollToPhotos,onSave,onUpdate,onDelete,onClose,onBulkInput,globalTags,customTabs,notificationsEnabled,onEnableNotifications}:{
-  task:Task|null; currentDate:string; prefillTime?:string; prefillCategory?:string; openIconSheet?:boolean; scrollToPhotos?:boolean;
-  onSave:(tasks:Omit<Task,'id'>[], pendingPhotos?:string[])=>void; onUpdate?:(data:Omit<Task,'id'>)=>void; onDelete?:()=>void; onClose:()=>void; onBulkInput?:()=>void;
+function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:initIconSheet,onSave,onUpdate,onDelete,onClose,onBulkInput,globalTags,customTabs,notificationsEnabled,onEnableNotifications}:{
+  task:Task|null; currentDate:string; prefillTime?:string; prefillCategory?:string; openIconSheet?:boolean;
+  onSave:(tasks:Omit<Task,'id'>[])=>void; onUpdate?:(data:Omit<Task,'id'>)=>void; onDelete?:()=>void; onClose:()=>void; onBulkInput?:()=>void;
   globalTags:TagDef[]; customTabs:CustomTab[];
   notificationsEnabled?:boolean; onEnableNotifications?:()=>void;
 }) {
@@ -821,61 +819,6 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
     const d=new Date((task?.date??currentDate)+'T12:00:00');
     return {year:d.getFullYear(),month:d.getMonth()};
   });
-  const [photos,setPhotos]       = useState<string[]>([]);
-  const [photoViewIdx,setPhotoViewIdx] = useState<number|null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const photoSectionRef = useRef<HTMLDivElement>(null);
-
-  useEffect(()=>{
-    if(!task) return;
-    try{
-      const store=JSON.parse(localStorage.getItem(PHOTOS_KEY)||'{}') as Record<string,string[]>;
-      setPhotos(store[task.id]??[]);
-    }catch{}
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[]);
-
-  useEffect(()=>{
-    if(!scrollToPhotos) return;
-    const t=setTimeout(()=>photoSectionRef.current?.scrollIntoView({behavior:'smooth',block:'start'}),120);
-    return ()=>clearTimeout(t);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[]);
-
-  const compressImage=(file:File):Promise<string>=>new Promise((resolve,reject)=>{
-    const img=new Image();
-    const url=URL.createObjectURL(file);
-    img.onload=()=>{
-      const MAX=800; let w=img.width,h=img.height;
-      if(w>MAX||h>MAX){if(w>h){h=Math.round(h*MAX/w);w=MAX;}else{w=Math.round(w*MAX/h);h=MAX;}}
-      const canvas=document.createElement('canvas'); canvas.width=w; canvas.height=h;
-      canvas.getContext('2d')!.drawImage(img,0,0,w,h);
-      URL.revokeObjectURL(url);
-      resolve(canvas.toDataURL('image/jpeg',0.7));
-    };
-    img.onerror=()=>{URL.revokeObjectURL(url);reject(new Error('load failed'));};
-    img.src=url;
-  });
-
-  const addPhotos=async(files:FileList|null)=>{
-    if(!files) return;
-    const remaining=3-photos.length; if(remaining<=0) return;
-    const compressed=await Promise.all(Array.from(files).slice(0,remaining).map(f=>compressImage(f)));
-    setPhotos(prev=>{
-      const next=[...prev,...compressed];
-      if(task){try{const s=JSON.parse(localStorage.getItem(PHOTOS_KEY)||'{}') as Record<string,string[]>;s[task.id]=next;localStorage.setItem(PHOTOS_KEY,JSON.stringify(s));}catch{}}
-      return next;
-    });
-  };
-
-  const removePhoto=(idx:number)=>{
-    setPhotos(prev=>{
-      const next=prev.filter((_,i)=>i!==idx);
-      if(task){try{const s=JSON.parse(localStorage.getItem(PHOTOS_KEY)||'{}') as Record<string,string[]>;if(next.length===0)delete s[task.id];else s[task.id]=next;localStorage.setItem(PHOTOS_KEY,JSON.stringify(s));}catch{}}
-      return next;
-    });
-  };
-
   const computedEnd = (startTime&&duration>0) ? fromMin(toMin(startTime)+duration) : null;
 
   // ── Auto-save (edit mode only) ─────────────────────────────────────────────
@@ -898,7 +841,6 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
     incompleteReminder:(mode!=='later'&&mode!=='allday')?incompleteRem:false,
     category:category??undefined, pinned, tags,
     subtasks:subtasks.length>0?subtasks:undefined,
-    photoCount:photos.length>0?photos.length:undefined,
   });
 
   const doSave = (data: Omit<Task,'id'>) => {
@@ -928,7 +870,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
     },400);
     return ()=>{if(autoSaveTimer.current) clearTimeout(autoSaveTimer.current);};
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[name,taskDate,startTime,duration,mode,recur,customRec,tags,subtasks,memo,category,notifications,incompleteRem,photos,icon,color]);
+  },[name,taskDate,startTime,duration,mode,recur,customRec,tags,subtasks,memo,category,notifications,incompleteRem,icon,color]);
 
   const flushAndClose = () => {
     if(autoSaveTimer.current){
@@ -990,7 +932,6 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
       pinned,
       tags,
       subtasks:subtasks.length>0?subtasks:undefined,
-      photoCount:photos.length>0?photos.length:undefined,
     };
     if(mode==='recurring'&&!task){
       const instances:Omit<Task,'id'>[]=[];
@@ -1021,13 +962,13 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
         const ok=window.confirm('通知機能がオフになっています。\nタスクのアラートを受け取るには通知を有効にしてください。\n\n通知をオンにしますか？');
         if(ok) onEnableNotifications?.();
       }
-      onSave(instances, photos.length>0?photos:undefined);
+      onSave(instances);
     } else {
       if(!task&&(mode==='scheduled'||mode==='recurring')&&(notificationsEnabled===false)){
         const ok=window.confirm('通知機能がオフになっています。\nタスクのアラートを受け取るには通知を有効にしてください。\n\n通知をオンにしますか？');
         if(ok) onEnableNotifications?.();
       }
-      onSave([base], photos.length>0?photos:undefined);
+      onSave([base]);
     }
   };
 
@@ -1525,40 +1466,6 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
               className="w-full text-sm text-gray-700 placeholder-gray-400 outline-none resize-none bg-transparent"/>
           </div>
 
-          {/* Photos */}
-          <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden"
-            onChange={e=>{addPhotos(e.target.files);if(fileInputRef.current)fileInputRef.current.value='';}}/>
-          <div ref={photoSectionRef} className="bg-white mx-3 mt-3 rounded-2xl p-4">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <AppIcons.camera size={16} className="text-gray-400"/>
-                <span className="text-sm font-medium text-gray-700">写真</span>
-                <span className="inline-flex items-center border border-gray-300 rounded px-1.5 py-0.5 text-[10px] font-bold text-gray-400 leading-none tracking-wide">★ PRO</span>
-              </div>
-              {photos.length>0&&photos.length<3&&(
-                <button onClick={()=>fileInputRef.current?.click()}
-                  className="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full active:bg-gray-200">追加</button>
-              )}
-            </div>
-            {photos.length>0?(
-              <div className="flex gap-2 flex-wrap">
-                {photos.map((src,i)=>(
-                  <div key={i} className="relative">
-                    <img src={src} alt="" className="w-20 h-20 rounded-xl object-cover cursor-pointer"
-                      onClick={()=>setPhotoViewIdx(i)}/>
-                    <button onClick={e=>{e.stopPropagation();removePhoto(i);}}
-                      className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-[#D97A7A] rounded-full text-white text-[10px] flex items-center justify-center leading-none">×</button>
-                  </div>
-                ))}
-              </div>
-            ):(
-              <button onClick={()=>fileInputRef.current?.click()}
-                className="w-full text-sm text-gray-400 text-center py-4 border border-dashed border-gray-200 rounded-xl active:bg-gray-50">
-                タップして追加（最大3枚）
-              </button>
-            )}
-          </div>
-
           {/* Delete */}
           {task&&onDelete&&(
             <button onClick={()=>{onDelete();onClose();}}
@@ -1673,25 +1580,18 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
           </div>
         </div>
       )}
-      {photoViewIdx!==null&&(
-        <div className="fixed inset-0 z-[120] bg-black/90 flex items-center justify-center"
-          onClick={()=>setPhotoViewIdx(null)}>
-          <img src={photos[photoViewIdx]} alt="" className="max-w-full max-h-full object-contain p-4"/>
-          <button className="absolute top-4 right-4 w-10 h-10 bg-white/20 rounded-full flex items-center justify-center text-white text-xl leading-none">×</button>
-        </div>
-      )}
     </div>
   );
 }
 
 // ── TaskCard ──────────────────────────────────────────────────────────────────
 
-function TaskCard({task,onToggle,onEdit,globalTags,onSubtaskToggle,onCameraClick,tabName}:{task:Task;onToggle:()=>void;onEdit:()=>void;globalTags:TagDef[];onSubtaskToggle?:(subtaskId:string)=>void;onCameraClick?:()=>void;tabName?:string;}) {
+function TaskCard({task,onToggle,onEdit,globalTags,onSubtaskToggle,tabName}:{task:Task;onToggle:()=>void;onEdit:()=>void;globalTags:TagDef[];onSubtaskToggle?:(subtaskId:string)=>void;tabName?:string;}) {
   const [openPanel,setOpenPanel] = useState<'subtask'|'memo'|null>(null);
   const endTime = (task.startTime&&(task.duration??0)>0) ? fromMin(toMin(task.startTime)+(task.duration??0)) : null;
   const subtasks = task.subtasks??[];
   const doneCount = subtasks.filter(s=>s.completed).length;
-  const hasIcons = subtasks.length>0||!!task.memo||(task.photoCount??0)>0;
+  const hasIcons = subtasks.length>0||!!task.memo;
   const firstTagColor = (task.tags??[]).map(n=>globalTags.find(t=>t.name===n)?.color).find(Boolean);
   return (
     <div className={`relative bg-white rounded-2xl border border-gray-100 px-3 py-2.5 overflow-hidden ${task.completed?'opacity-50':''}`} style={{boxShadow:'0 4px 12px rgba(0,0,0,0.06)'}}
@@ -1733,13 +1633,6 @@ function TaskCard({task,onToggle,onEdit,globalTags,onSubtaskToggle,onCameraClick
                   className={`inline-flex items-center justify-center bg-gray-100 rounded-xl active:bg-gray-200 ${openPanel==='memo'?'ring-1 ring-gray-300':''}`}
                   style={{width:'32px',height:'32px'}}>
                   <AppIcons.task size={14} className="text-gray-500"/>
-                </button>
-              )}
-              {(task.photoCount??0)>0&&(
-                <button onClick={e=>{e.stopPropagation();onCameraClick?.();}}
-                  className="inline-flex items-center justify-center bg-gray-100 rounded-xl active:bg-gray-200"
-                  style={{width:'32px',height:'32px'}}>
-                  <AppIcons.camera size={14} className="text-gray-500"/>
                 </button>
               )}
             </div>
@@ -1844,7 +1737,6 @@ function CompactTaskCard({task,onToggle,onEdit}:{task:Task;onToggle:()=>void;onE
         style={{display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical',overflow:'hidden'} as React.CSSProperties}>
         {task.name}
       </p>
-      {(task.photoCount??0)>0&&<AppIcons.camera size={10} className="text-gray-400 mt-0.5"/>}
     </div>
   );
 }
@@ -1852,7 +1744,7 @@ function CompactTaskCard({task,onToggle,onEdit}:{task:Task;onToggle:()=>void;onE
 
 // ── Timeline ──────────────────────────────────────────────────────────────────
 
-function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet,onSchedule,onAddAtTime,onDragStart,dragTaskId,yToTimeRef,layoutYRef,globalTags,todayHistory,onSubtaskToggle,onDragWake,onDragSleep,onCameraClick,lifePatterns=[],patternOverrides={},onOpenWakeSleep,customTabs=[]}:{
+function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet,onSchedule,onAddAtTime,onDragStart,dragTaskId,yToTimeRef,layoutYRef,globalTags,todayHistory,onSubtaskToggle,onDragWake,onDragSleep,lifePatterns=[],patternOverrides={},onOpenWakeSleep,customTabs=[]}:{
   date:string;tasks:Task[];later:Task[];settings:Settings;now:string;
   onToggle:(id:string)=>void;onEdit:(t:Task)=>void;onEditIconSheet:(t:Task)=>void;
   onSchedule:(t:Task,time:string)=>void;onAddAtTime:(time:string)=>void;
@@ -1864,7 +1756,6 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
   onSubtaskToggle:(taskId:string,subtaskId:string)=>void;
   onDragWake:(x:number,y:number)=>void;
   onDragSleep:(x:number,y:number)=>void;
-  onCameraClick:(taskId:string)=>void;
   lifePatterns?:LifePattern[];
   onOpenWakeSleep?:()=>void;
   patternOverrides?:Record<string,string>;
@@ -2321,7 +2212,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
               onTouchStart={e=>startLP(task,e)}
               onTouchEnd={cancelLP}
               onTouchMove={cancelLP}>
-              <TaskCard task={task} onToggle={()=>onToggle(task.id)} onEdit={()=>onEdit(task)} globalTags={globalTags} onSubtaskToggle={(sid)=>onSubtaskToggle(task.id,sid)} onCameraClick={()=>onCameraClick(task.id)} tabName={task.category?customTabs.find(t=>t.id===task.category)?.name:undefined}/>
+              <TaskCard task={task} onToggle={()=>onToggle(task.id)} onEdit={()=>onEdit(task)} globalTags={globalTags} onSubtaskToggle={(sid)=>onSubtaskToggle(task.id,sid)} tabName={task.category?customTabs.find(t=>t.id===task.category)?.name:undefined}/>
             </div>,
           ];
         }
@@ -2377,7 +2268,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
                     onTouchStart={e=>startLP(task,e)}
                     onTouchEnd={cancelLP}
                     onTouchMove={cancelLP}>
-                    <TaskCard task={task} onToggle={()=>onToggle(task.id)} onEdit={()=>onEdit(task)} globalTags={globalTags} onSubtaskToggle={(sid)=>onSubtaskToggle(task.id,sid)} onCameraClick={()=>onCameraClick(task.id)} tabName={task.category?customTabs.find(t=>t.id===task.category)?.name:undefined}/>
+                    <TaskCard task={task} onToggle={()=>onToggle(task.id)} onEdit={()=>onEdit(task)} globalTags={globalTags} onSubtaskToggle={(sid)=>onSubtaskToggle(task.id,sid)} tabName={task.category?customTabs.find(t=>t.id===task.category)?.name:undefined}/>
                   </div>
                 );
               })}
@@ -4051,7 +3942,7 @@ export default function App() {
   const [globalTags,setGlobalTags] = useState<TagDef[]>([]);
   const [moveHistory,setMoveHistory] = useState<MoveHistory[]>([]);
   const [date,setDate]           = useState(todayStr());
-  const [modal,setModal]         = useState<{open:boolean;task:Task|null;prefillTime?:string;prefillCategory?:string;iconSheet?:boolean;scrollToPhotos?:boolean}>({open:false,task:null});
+  const [modal,setModal]         = useState<{open:boolean;task:Task|null;prefillTime?:string;prefillCategory?:string;iconSheet?:boolean}>({open:false,task:null});
   const [activeCategory,setActiveCat] = useState<string|null>(null);
   const [customTabs,setCustomTabs]   = useState<CustomTab[]>([]);
   const [editTabId,setEditTabId]     = useState<string|null>(null);
@@ -4414,10 +4305,6 @@ export default function App() {
   const openEdit = (task:Task) => {
     if(task.recurrence) { setRecConfirm(task); } else { setModal({open:true,task}); }
   };
-  const openEditAtPhotos = (taskId:string) => {
-    const task=tasks.find(t=>t.id===taskId); if(!task) return;
-    setModal({open:true,task,scrollToPhotos:true});
-  };
   const openEditIconSheet=(task:Task)=>{
     if(task.recurrence){setRecConfirm(task);}else{setModal({open:true,task,iconSheet:true});}
   };
@@ -4453,7 +4340,7 @@ export default function App() {
     });
   };
 
-  const saveTasks = (data:Omit<Task,'id'>[], pendingPhotos?:string[]) => {
+  const saveTasks = (data:Omit<Task,'id'>[]) => {
     if(editScope==='all'&&modal.task){
       const orig=modal.task, d=data[0];
       setTasks(prev=>prev.map(t=>
@@ -4463,9 +4350,6 @@ export default function App() {
       ));
     } else {
       const newTasks=data.map(d=>({...d,id:uid()}));
-      if(pendingPhotos&&pendingPhotos.length>0&&newTasks.length>0){
-        try{const s=JSON.parse(localStorage.getItem(PHOTOS_KEY)||'{}') as Record<string,string[]>;s[newTasks[0].id]=pendingPhotos;localStorage.setItem(PHOTOS_KEY,JSON.stringify(s));}catch{}
-      }
       setTasks(prev=>modal.task
         ?prev.map(t=>t.id===modal.task!.id?{...newTasks[0],id:t.id}:t)
         :[...prev,...newTasks]
@@ -4480,7 +4364,6 @@ export default function App() {
       :t));
   const delTask  = (id:string) => {
     setTasks(prev=>prev.filter(t=>t.id!==id));
-    try{const s=JSON.parse(localStorage.getItem(PHOTOS_KEY)||'{}') as Record<string,string[]>;delete s[id];localStorage.setItem(PHOTOS_KEY,JSON.stringify(s));}catch{}
   };
   const toggle   = (id:string) => setTasks(prev=>prev.map(t=>t.id===id?{...t,completed:!t.completed}:t));
   const scheduleInSlot=(task:Task,startTime:string)=>setModal({open:true,task:{...task,isLater:false,startTime,date}});
@@ -4638,7 +4521,6 @@ export default function App() {
           todayHistory={moveHistory.find(h=>h.date===date)} onSubtaskToggle={subtaskToggle}
           onDragWake={(x,y)=>startDragSetting('wake',x,y)}
           onDragSleep={(x,y)=>startDragSetting('sleep',x,y)}
-          onCameraClick={openEditAtPhotos}
           lifePatterns={lifePatterns} patternOverrides={patternOverrides}
           onOpenWakeSleep={()=>{setSettingsInitSub('wakeSleep');setSOp(true);}}
           customTabs={activeCategory===null?customTabs:[]}/>
@@ -4783,7 +4665,6 @@ export default function App() {
       {/* ── Task Modal ── */}
       {modal.open&&(
         <TaskModal task={modal.task} currentDate={date} prefillTime={modal.prefillTime} prefillCategory={modal.prefillCategory} openIconSheet={!!modal.iconSheet}
-          scrollToPhotos={!!modal.scrollToPhotos}
           onSave={saveTasks} onUpdate={modal.task?updateTask:undefined}
           onDelete={modal.task?()=>delTask(modal.task!.id):undefined}
           onClose={closeModal} onBulkInput={()=>{closeModal();setSettingsInitSub('bulkInput');setSOp(true);}} globalTags={globalTags} customTabs={customTabs}
