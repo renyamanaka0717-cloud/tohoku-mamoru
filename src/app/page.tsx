@@ -1523,6 +1523,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
               <div className="flex items-center gap-2">
                 <AppIcons.camera size={16} className="text-gray-400"/>
                 <span className="text-sm font-medium text-gray-700">写真</span>
+                <span className="inline-flex items-center border border-gray-300 rounded px-1.5 py-0.5 text-[10px] font-bold text-gray-400 leading-none tracking-wide">★ PRO</span>
               </div>
               {photos.length>0&&photos.length<3&&(
                 <button onClick={()=>fileInputRef.current?.click()}
