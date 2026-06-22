@@ -2849,7 +2849,7 @@ function SettingsRow({icon,iconBg,title,desc,onClick,isLast=false,pro=false}:{
         {icon}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-[15px] font-medium text-gray-900 leading-tight">{title}{pro&&<span className="ml-1 text-[13px]">⭐</span>}</p>
+        <p className="text-[15px] font-medium text-gray-900 leading-tight flex items-center gap-1.5">{title}{pro&&<span className="inline-flex items-center gap-0.5 border border-gray-300 rounded px-1.5 py-0.5 text-[10px] font-bold text-gray-400 leading-none tracking-wide">★ PRO</span>}</p>
         {desc&&<p className="text-xs text-gray-400 mt-0.5">{desc}</p>}
       </div>
       <AppIcons.caretRight className="text-gray-300 shrink-0"/>
@@ -3741,7 +3741,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             </div>
             {colorPicking&&(
               <div className="px-4 pb-4 border-t border-gray-100 pt-3">
-                <p className="text-xs text-gray-400 mb-2">⭐ {colorPicking==='wake'?'起床':'就寝'}アイコンの色</p>
+                <p className="text-xs text-gray-400 mb-2 flex items-center gap-1.5">{colorPicking==='wake'?'起床':'就寝'}アイコンの色<span className="inline-flex items-center gap-0.5 border border-gray-300 rounded px-1.5 py-0.5 text-[10px] font-bold text-gray-400 leading-none tracking-wide">★ PRO</span></p>
                 <div className="flex flex-wrap gap-2">
                   {['#94CFC8',...TASK_COLORS.filter(Boolean)].map((c,i)=>{
                     const cur=colorPicking==='wake'?(settings.wakeColor||'#94CFC8'):(settings.sleepColor||'#94CFC8');
@@ -3993,14 +3993,14 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
         </div>
 
         <div className="bg-[var(--c-primary)]/10 rounded-2xl px-4 py-3 mb-4 flex items-center gap-2">
-          <span className="text-lg">⭐</span>
+          <span className="inline-flex items-center gap-0.5 border border-gray-400 rounded px-2 py-1 text-[11px] font-bold text-gray-500 leading-none tracking-wide shrink-0">★ PRO</span>
           <div>
             <p className="text-sm font-bold text-gray-900">Pro機能 無料開放中</p>
             <p className="text-xs text-gray-500">現在はすべての機能を無料でご利用いただけます</p>
           </div>
         </div>
 
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2">⭐ Pro機能一覧</p>
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2">★ PRO 機能一覧</p>
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm mb-4">
           {[
             {icon:<AppIcons.tag size={18}/>,      label:'タグ',                        desc:'4個目からPro（現在：無料開放中）'},
