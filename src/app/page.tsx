@@ -733,10 +733,11 @@ function PickerCol({items,value,onChange}:{items:string[];value:string;onChange:
 
 // ── TaskModal ─────────────────────────────────────────────────────────────────
 
-function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:initIconSheet,scrollToPhotos,onSave,onUpdate,onDelete,onClose,onBulkInput,globalTags,customTabs}:{
+function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:initIconSheet,scrollToPhotos,onSave,onUpdate,onDelete,onClose,onBulkInput,globalTags,customTabs,notificationsEnabled,onEnableNotifications}:{
   task:Task|null; currentDate:string; prefillTime?:string; prefillCategory?:string; openIconSheet?:boolean; scrollToPhotos?:boolean;
   onSave:(tasks:Omit<Task,'id'>[], pendingPhotos?:string[])=>void; onUpdate?:(data:Omit<Task,'id'>)=>void; onDelete?:()=>void; onClose:()=>void; onBulkInput?:()=>void;
   globalTags:TagDef[]; customTabs:CustomTab[];
+  notificationsEnabled?:boolean; onEnableNotifications?:()=>void;
 }) {
   const initMode=():TaskMode=>{
     if(!task) return prefillTime?'scheduled':'later';
@@ -1015,8 +1016,16 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
           generateCustomDates(currentDate,customRec).forEach(d=>instances.push({...base,date:d}));
         }
       }
+      if(!task&&(notificationsEnabled===false)){
+        const ok=window.confirm('通知機能がオフになっています。\nタスクのアラートを受け取るには通知を有効にしてください。\n\n通知をオンにしますか？');
+        if(ok) onEnableNotifications?.();
+      }
       onSave(instances, photos.length>0?photos:undefined);
     } else {
+      if(!task&&(mode==='scheduled'||mode==='recurring')&&(notificationsEnabled===false)){
+        const ok=window.confirm('通知機能がオフになっています。\nタスクのアラートを受け取るには通知を有効にしてください。\n\n通知をオンにしますか？');
+        if(ok) onEnableNotifications?.();
+      }
       onSave([base], photos.length>0?photos:undefined);
     }
   };
@@ -4757,7 +4766,9 @@ export default function App() {
           scrollToPhotos={!!modal.scrollToPhotos}
           onSave={saveTasks} onUpdate={modal.task?updateTask:undefined}
           onDelete={modal.task?()=>delTask(modal.task!.id):undefined}
-          onClose={closeModal} onBulkInput={()=>{closeModal();setSettingsInitSub('bulkInput');setSOp(true);}} globalTags={globalTags} customTabs={customTabs}/>
+          onClose={closeModal} onBulkInput={()=>{closeModal();setSettingsInitSub('bulkInput');setSOp(true);}} globalTags={globalTags} customTabs={customTabs}
+          notificationsEnabled={settings.notificationsEnabled??true}
+          onEnableNotifications={()=>setSettings(s=>({...s,notificationsEnabled:true}))}/>
       )}
 
       {/* ── Settings Screen ── */}
