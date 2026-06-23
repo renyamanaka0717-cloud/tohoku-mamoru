@@ -225,9 +225,12 @@ const generateCustomDates=(base:string,r:CustomRec):string[]=>{
 // ── Free slots ────────────────────────────────────────────────────────────────
 
 function calcFreeSlots(tasks: Task[], date: string, s: Settings): FreeSlot[] {
+  const wMin=toMin(s.wakeTime);
+  // Adjust times that fall before wakeTime to be treated as next-day (midnight-crossing)
+  const adjM=(t:string)=>{const m=toMin(t);return m<wMin?m+1440:m;};
   const taskSlots = tasks
     .filter(t=>t.date===date&&!t.isLater&&t.startTime)
-    .map(t=>[toMin(t.startTime!),toMin(t.startTime!)+(t.duration??0)] as [number,number]);
+    .map(t=>{const st=adjM(t.startTime!);return [st,st+(t.duration??0)] as [number,number];});
   const raw = [...taskSlots].sort((a,b)=>a[0]-b[0]);
   const scheduled:[number,number][]=[];
   for(const s of raw){
@@ -235,8 +238,8 @@ function calcFreeSlots(tasks: Task[], date: string, s: Settings): FreeSlot[] {
     else scheduled[scheduled.length-1][1]=Math.max(scheduled[scheduled.length-1][1],s[1]);
   }
   const slots:FreeSlot[]=[];
-  let cur=toMin(s.wakeTime);
-  const end=toMin(s.sleepTime);
+  let cur=wMin;
+  const end=adjM(s.sleepTime);
   for(const [st,en] of scheduled){
     if(cur>=end) break;
     if(st>cur){
@@ -1834,6 +1837,9 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
     setPressingWake(false);setPressingSleep(false);
   };
   const wakeMin=toMin(settings.wakeTime),sleepMin=toMin(settings.sleepTime);
+  // When sleep < wake (midnight-crossing), treat sleep as next-day for layout math
+  const sleepMinEff=sleepMin<wakeMin?sleepMin+1440:sleepMin;
+  const adjM=(t:string)=>{const m=toMin(t);return m<wakeMin?m+1440:m;};
   const nowMin=toMin(now);
 
   const dayTasks=tasks.filter(t=>t.date===date&&!t.isLater&&t.startTime).sort((a,b)=>toMin(a.startTime!)-toMin(b.startTime!));
@@ -1925,9 +1931,9 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
     |{kind:'free';slot:FreeSlot;startMin:number;h:number};
   const dayItems:DayItem[]=[
     ...taskGroupList
-      .filter(g=>toMin(g.startTime)>=wakeMin&&toMin(g.startTime)<sleepMin)
-      .map(g=>({kind:'task' as const,g,startMin:toMin(g.startTime),h:g.h})),
-    ...freeSlots.map(s=>({kind:'free' as const,slot:s,startMin:toMin(s.start),
+      .filter(g=>{const m=adjM(g.startTime);return m>=wakeMin&&m<sleepMinEff;})
+      .map(g=>({kind:'task' as const,g,startMin:adjM(g.startTime),h:g.h})),
+    ...freeSlots.map(s=>({kind:'free' as const,slot:s,startMin:adjM(s.start),
       h:calcFreeContentH(laterPool)})),
   ].sort((a,b)=>a.startMin-b.startMin);
 
@@ -1947,7 +1953,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
 
   // Sleep card: right after the last daytime card, fully compacted
   const sleepCardTop=dayPrevBottom+CARD_GAP_MIN;
-  anchors.push({min:sleepMin,y:sleepCardTop});
+  anchors.push({min:sleepMinEff,y:sleepCardTop});
 
   // Phase 2: post-sleep tasks — compact (card order, no time gap)
   prevBottom=sleepCardTop+SLEEP_CARD_H;
@@ -2108,8 +2114,8 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
       })()}
 
       {/* current time */}
-      {date===todayStr()&&nowMin>=wakeMin&&nowMin<=sleepMin&&(
-        <div className="absolute flex items-center z-20 gap-1.5" style={{top:`${layoutCalcY(nowMin)-12}px`,left:'-4px',right:0}}>
+      {date===todayStr()&&(nowMin>=wakeMin||sleepMinEff>1440&&nowMin<sleepMin)&&adjM(now)<=sleepMinEff&&(
+        <div className="absolute flex items-center z-20 gap-1.5" style={{top:`${layoutCalcY(adjM(now))-12}px`,left:'-4px',right:0}}>
           <div className="bg-[var(--c-primary)] text-white text-xs font-bold px-2 py-1 rounded-full whitespace-nowrap">{now}</div>
         </div>
       )}
