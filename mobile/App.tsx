@@ -2,7 +2,7 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView, StyleSheet } from 'react-native';
 import { WebView } from 'react-native-webview';
 
-const APP_URL = 'https://tohoku-mamoru.vercel.app';
+const APP_URL = 'https://tohoku-mamoru-mxpy.vercel.app';
 
 export default function App() {
   return (
