@@ -4401,7 +4401,7 @@ export default function App() {
     setTasks(prev=>prev.map(t=>{
       if(!ids.has(t.id)) return t;
       if(type==='done') return {...t,completed:true};
-      return {...t,isLater:true,startTime:null};
+      return {...t,isLater:true,startTime:null,postponedCount:(t.postponedCount??0)+1,lastPostponedDate:todayStr()};
     }));
     const remaining=(morningTasks||[]).filter(t=>!ids.has(t.id));
     if(remaining.length===0){setMorningTasks(null);}
