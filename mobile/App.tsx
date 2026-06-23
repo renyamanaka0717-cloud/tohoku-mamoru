@@ -1,31 +1,19 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView, StyleSheet } from 'react-native';
+import { WebView } from 'react-native-webview';
+
+const APP_URL = 'https://tohoku-mamoru.vercel.app';
 
 export default function App() {
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>BrainBox</Text>
-      <Text style={styles.subtitle}>1日タイムライン</Text>
+    <SafeAreaView style={styles.container}>
       <StatusBar style="auto" />
-    </View>
+      <WebView source={{ uri: APP_URL }} style={styles.webview} />
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  title: {
-    fontSize: 36,
-    fontWeight: 'bold',
-    color: '#D9A3B2',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#6B7280',
-  },
+  container: { flex: 1, backgroundColor: '#fff' },
+  webview: { flex: 1 },
 });
