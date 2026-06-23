@@ -1905,7 +1905,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
       .filter(g=>toMin(g.startTime)>=wakeMin&&toMin(g.startTime)<sleepMin)
       .map(g=>({kind:'task' as const,g,startMin:toMin(g.startTime),h:g.h})),
     ...freeSlots.map(s=>({kind:'free' as const,slot:s,startMin:toMin(s.start),
-      h:measuredH[`free-${s.start}`]??calcFreeContentH(laterPool)})),
+      h:calcFreeContentH(laterPool)})),
   ].sort((a,b)=>a.startMin-b.startMin);
 
   type Anchor={min:number;y:number};
