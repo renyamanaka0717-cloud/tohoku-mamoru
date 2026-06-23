@@ -647,12 +647,29 @@ const MINS  = ['00','05','10','15','20','25','30','35','40','45','50','55'];
 
 function PickerCol({items,value,onChange}:{items:string[];value:string;onChange:(v:string)=>void}){
   const H=44,SHOW=5,HALF=2;
+  const N=items.length;
+  // Triple the items for infinite circular scroll
+  const loopItems=[...items,...items,...items];
   const listRef=useRef<HTMLDivElement>(null);
   const touchY=useRef(0),baseTy=useRef(0),curTy=useRef(0);
   const lastY=useRef(0),lastT=useRef(0),vel=useRef(0);
   const rafId=useRef(0);
-  const minTy=HALF*H-(items.length-1)*H, maxTy=HALF*H;
-  const clamp=(n:number)=>Math.max(0,Math.min(items.length-1,n));
+
+  const toTy=(idx:number)=>HALF*H-idx*H;
+  const tyToIdx=(ty:number)=>Math.round((HALF*H-ty)/H);
+
+  // Silently jump to the equivalent position in the middle copy
+  const recenter=()=>{
+    if(!listRef.current) return;
+    const i=tyToIdx(curTy.current);
+    const realIdx=((i%N)+N)%N;
+    const midI=N+realIdx;
+    const ty=toTy(midI);
+    curTy.current=ty;
+    listRef.current.style.transition='none';
+    listRef.current.style.transform=`translateY(${ty}px)`;
+  };
+
   const raw=(ty:number)=>{
     if(!listRef.current) return;
     listRef.current.style.transition='none';
@@ -661,13 +678,16 @@ function PickerCol({items,value,onChange}:{items:string[];value:string;onChange:
   };
   const snapTo=(ty:number)=>{
     cancelAnimationFrame(rafId.current);
-    const i=clamp(Math.round((HALF*H-ty)/H));
-    const dest=HALF*H-i*H;
+    const i=tyToIdx(ty);
+    const dest=toTy(i);
     if(!listRef.current) return;
     listRef.current.style.transition='transform 0.18s cubic-bezier(0.33,1,0.68,1)';
     listRef.current.style.transform=`translateY(${dest}px)`;
     curTy.current=dest;
-    if(items[i]!==value) onChange(items[i]);
+    const realIdx=((i%N)+N)%N;
+    const newValue=items[realIdx];
+    if(newValue!==value) onChange(newValue);
+    setTimeout(recenter,220);
   };
   const startMomentum=(v0:number)=>{
     cancelAnimationFrame(rafId.current);
@@ -676,7 +696,7 @@ function PickerCol({items,value,onChange}:{items:string[];value:string;onChange:
       const dt=Math.min(now-prev,32);prev=now;
       v*=Math.exp(-dt/220);
       const next=curTy.current+v*dt;
-      if(Math.abs(v)<0.04||next<minTy-H||next>maxTy+H){snapTo(curTy.current);return;}
+      if(Math.abs(v)<0.04){snapTo(curTy.current);return;}
       raw(next);
       rafId.current=requestAnimationFrame(tick);
     };
@@ -684,12 +704,14 @@ function PickerCol({items,value,onChange}:{items:string[];value:string;onChange:
   };
   useEffect(()=>{
     const i=items.indexOf(value);
-    if(i>=0){cancelAnimationFrame(rafId.current);const ty=HALF*H-i*H;
+    if(i>=0){cancelAnimationFrame(rafId.current);
+      const ty=toTy(N+i);
       if(listRef.current){listRef.current.style.transition='transform 0.22s cubic-bezier(0.33,1,0.68,1)';listRef.current.style.transform=`translateY(${ty}px)`;curTy.current=ty;}}
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[value]);
   useEffect(()=>{
-    const i=items.indexOf(value);const ty=i>=0?HALF*H-i*H:HALF*H;
+    const i=items.indexOf(value);
+    const ty=toTy(N+(i>=0?i:0));
     curTy.current=ty;if(listRef.current) listRef.current.style.transform=`translateY(${ty}px)`;
     return ()=>cancelAnimationFrame(rafId.current);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -698,6 +720,7 @@ function PickerCol({items,value,onChange}:{items:string[];value:string;onChange:
     <div style={{height:SHOW*H,overflow:'hidden',position:'relative',width:52,touchAction:'none',userSelect:'none'}}
       onTouchStart={e=>{
         cancelAnimationFrame(rafId.current);
+        recenter();
         const y=e.touches[0].clientY;
         touchY.current=y;baseTy.current=curTy.current;
         lastY.current=y;lastT.current=performance.now();vel.current=0;
@@ -716,7 +739,7 @@ function PickerCol({items,value,onChange}:{items:string[];value:string;onChange:
       <div style={{position:'absolute',inset:0,pointerEvents:'none',zIndex:2,
         background:`linear-gradient(to bottom,#fff 0%,transparent ${HALF*H}px,transparent ${(SHOW-HALF)*H}px,#fff 100%)`}}/>
       <div ref={listRef} style={{willChange:'transform'}}>
-        {items.map((v,i)=>(
+        {loopItems.map((v,i)=>(
           <div key={i} style={{height:H,display:'flex',alignItems:'center',justifyContent:'center'}}>
             <span style={{fontSize:v===value?22:16,fontWeight:v===value?700:400,
               color:v===value?'#1F2937':'#9CA3AF',fontVariantNumeric:'tabular-nums',
