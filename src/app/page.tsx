@@ -3810,9 +3810,9 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
 
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">情報</p>
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
-          <SettingsRow icon={<AppIcons.task size={18}/>} iconBg="bg-gray-100" title="プライバシーポリシー" onClick={()=>window.open('https://renyamanaka0717-cloud.github.io/tohoku-mamoru/privacy.html','_blank')}/>
-          <SettingsRow icon={<AppIcons.task size={18}/>} iconBg="bg-gray-100" title="利用規約" onClick={()=>window.open('https://renyamanaka0717-cloud.github.io/tohoku-mamoru/terms.html','_blank')}/>
-          <SettingsRow icon={<AppIcons.question size={18}/>} iconBg="bg-gray-100" title="サポート" onClick={()=>window.open('https://renyamanaka0717-cloud.github.io/tohoku-mamoru/support.html','_blank')}/>
+          <SettingsRow icon={<AppIcons.task size={18}/>} iconBg="bg-gray-100" title="プライバシーポリシー" onClick={()=>window.open('/privacy.html','_blank')}/>
+          <SettingsRow icon={<AppIcons.task size={18}/>} iconBg="bg-gray-100" title="利用規約" onClick={()=>window.open('/terms.html','_blank')}/>
+          <SettingsRow icon={<AppIcons.question size={18}/>} iconBg="bg-gray-100" title="サポート" onClick={()=>window.open('/support.html','_blank')}/>
           <div className="w-full flex items-center gap-3 px-4 py-3.5">
             <div className="w-[30px] h-[30px] rounded-[8px] flex items-center justify-center shrink-0 text-gray-700 bg-gray-100">
               <AppIcons.sparkle size={18}/>
