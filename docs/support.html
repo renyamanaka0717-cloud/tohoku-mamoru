@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>サポート - BrainBox</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', sans-serif; background: #F9FAFB; color: #1F2937; line-height: 1.7; font-size: 16px; }
+  header { background: #fff; border-bottom: 1px solid #F3F4F6; padding: 16px 24px; display: flex; align-items: center; gap: 12px; position: sticky; top: 0; z-index: 10; }
+  .logo { width: 36px; height: 36px; background: #D9A3B2; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .logo svg { width: 20px; height: 20px; fill: white; }
+  header h1 { font-size: 17px; font-weight: 700; color: #1F2937; }
+  header a { margin-left: auto; font-size: 14px; color: #D9A3B2; text-decoration: none; font-weight: 600; }
+  main { max-width: 720px; margin: 0 auto; padding: 40px 24px 80px; }
+  .page-title { font-size: 28px; font-weight: 800; color: #1F2937; margin-bottom: 6px; }
+  .subtitle { font-size: 15px; color: #6B7280; margin-bottom: 40px; }
+  section { background: #fff; border-radius: 16px; padding: 24px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+  h2 { font-size: 17px; font-weight: 700; color: #1F2937; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+  h2::before { content: ''; width: 4px; height: 18px; background: #D9A3B2; border-radius: 2px; display: inline-block; flex-shrink: 0; }
+  p { font-size: 15px; color: #374151; margin-bottom: 10px; }
+  p:last-child { margin-bottom: 0; }
+  .faq-item { border-bottom: 1px solid #F3F4F6; padding: 16px 0; }
+  .faq-item:first-child { padding-top: 0; }
+  .faq-item:last-child { border-bottom: none; padding-bottom: 0; }
+  .faq-q { font-size: 15px; font-weight: 600; color: #1F2937; margin-bottom: 6px; }
+  .faq-a { font-size: 15px; color: #374151; }
+  .contact-btn { display: inline-block; background: #D9A3B2; color: #fff; font-weight: 700; font-size: 15px; padding: 12px 28px; border-radius: 12px; text-decoration: none; margin-top: 8px; }
+  .contact-btn:hover { opacity: 0.9; }
+  a { color: #D9A3B2; }
+  .feature-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; margin-top: 4px; }
+  .feature-item { background: #F9FAFB; border-radius: 12px; padding: 14px 16px; }
+  .feature-title { font-size: 14px; font-weight: 600; color: #1F2937; margin-bottom: 4px; }
+  .feature-desc { font-size: 13px; color: #6B7280; }
+  footer { text-align: center; padding: 24px; font-size: 13px; color: #9CA3AF; }
+  footer a { color: #D9A3B2; text-decoration: none; }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">
+    <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg>
+  </div>
+  <h1>BrainBox</h1>
+  <a href="privacy.html">プライバシーポリシー</a>
+</header>
+
+<main>
+  <div class="page-title">BrainBox サポート</div>
+  <div class="subtitle">1日タイムライン型タスク管理アプリ</div>
+
+  <section>
+    <h2>アプリ概要</h2>
+    <p>BrainBoxは、ADHD気質の方やToDoリストが続かない方向けに設計されたタイムライン型タスク管理アプリです。今日やることを時間軸で見える化することで、タスクの先延ばしを防ぎます。</p>
+    <div class="feature-grid">
+      <div class="feature-item">
+        <div class="feature-title">タイムライン表示</div>
+        <div class="feature-desc">1日のタスクを時間軸で一覧表示</div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-title">空き時間の可視化</div>
+        <div class="feature-desc">予定の隙間をわかりやすく表示</div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-title">繰り返しタスク</div>
+        <div class="feature-desc">毎日・毎週などの繰り返し設定</div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-title">あとでやるリスト</div>
+        <div class="feature-desc">時間未定タスクをまとめて管理</div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-title">サブタスク・メモ</div>
+        <div class="feature-desc">タスクの詳細を細かく管理</div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-title">写真添付</div>
+        <div class="feature-desc">タスクに写真をメモとして添付</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>よくある質問（FAQ）</h2>
+
+    <div class="faq-item">
+      <div class="faq-q">Q. データはどこに保存されますか？</div>
+      <div class="faq-a">A. すべてのデータはお使いのデバイスのローカルストレージに保存されます。外部サーバーへの送信は行いません。</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q">Q. アプリを削除するとデータはどうなりますか？</div>
+      <div class="faq-a">A. アプリをアンインストールするとすべてのデータが削除されます。現在、クラウドバックアップ機能はありません。</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q">Q. タスクを誤って削除してしまいました。復元できますか？</div>
+      <div class="faq-a">A. 申し訳ありませんが、削除したタスクの復元機能は現在ありません。重要なタスクは削除前にご確認ください。</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q">Q. 繰り返しタスクの一部だけ削除できますか？</div>
+      <div class="faq-a">A. はい。繰り返しタスクを削除する際、「この予定のみ削除」または「すべての予定を削除」を選択できます。</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q">Q. 起床・就寝時間はどこで変更できますか？</div>
+      <div class="faq-a">A. 設定画面（歯車アイコン）の「起床・就寝」から変更できます。タイムライン上の起床・就寝カードを長押しして直接ドラッグして変更することもできます。</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q">Q. 「あとでやる」に移動したタスクはどこで確認できますか？</div>
+      <div class="faq-a">A. 画面下部のバーにある「あとでやる」ボタンをタップすると、あとでやるリストが表示されます。</div>
+    </div>
+  </section>
+
+  <section>
+    <h2>お問い合わせ方法</h2>
+    <p>ご質問・ご要望がございましたら、以下のメールアドレスまでお気軽にお問い合わせください。</p>
+    <p>お返事まで数日いただく場合があります。あらかじめご了承ください。</p>
+    <a class="contact-btn" href="mailto:support@brainbox-app.example.com">メールで問い合わせる</a>
+  </section>
+
+  <section>
+    <h2>不具合報告方法</h2>
+    <p>アプリの不具合を発見された場合は、以下の情報をご記載の上、サポートメールまでご連絡ください。</p>
+    <ul style="padding-left:20px;margin-top:8px;">
+      <li style="font-size:15px;color:#374151;margin-bottom:6px;">お使いのデバイスの機種名・OSバージョン</li>
+      <li style="font-size:15px;color:#374151;margin-bottom:6px;">アプリのバージョン（設定画面から確認できます）</li>
+      <li style="font-size:15px;color:#374151;margin-bottom:6px;">不具合の内容と再現手順</li>
+      <li style="font-size:15px;color:#374151;">可能であればスクリーンショット</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>プライバシーポリシー</h2>
+    <p>個人情報の取り扱いについては、プライバシーポリシーをご確認ください。</p>
+    <p><a href="privacy.html">プライバシーポリシーを読む →</a></p>
+  </section>
+</main>
+
+<footer>
+  &copy; 2026 BrainBox. All rights reserved. &nbsp;|&nbsp; <a href="privacy.html">プライバシーポリシー</a>
+</footer>
+</body>
+</html>
