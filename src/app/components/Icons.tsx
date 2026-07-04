@@ -57,6 +57,7 @@ import {
   PersonSimpleTaiChi,
   Bicycle,
   PencilSimple,
+  Funnel,
 } from '@phosphor-icons/react';
 
 type PhosphorComp = React.ComponentType<{
@@ -134,4 +135,5 @@ export const AppIcons = {
   gift:       make(Gift, 18),
   scissors:   make(Scissors, 18),
   pencil:     make(PencilSimple, 18),
+  filter:     make(Funnel, 18),
 };

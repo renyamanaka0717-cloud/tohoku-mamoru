@@ -4004,6 +4004,8 @@ export default function App() {
   const [date,setDate]           = useState(todayStr());
   const [modal,setModal]         = useState<{open:boolean;task:Task|null;prefillTime?:string;prefillCategory?:string;iconSheet?:boolean}>({open:false,task:null});
   const [activeCategory,setActiveCat] = useState<string|null>(null);
+  const [tabFilter,setTabFilter]       = useState<string[]>([]);
+  const [showTabFilter,setShowTabFilter] = useState(false);
   const [customTabs,setCustomTabs]   = useState<CustomTab[]>([]);
   const [editTabId,setEditTabId]     = useState<string|null>(null);
   const [editTabName,setEditTabName] = useState('');
@@ -4210,9 +4212,11 @@ export default function App() {
   const filteredTasks = useMemo(()=>{
     const base=activeCategory
       ?tasks.filter(t=>t.category===activeCategory)
-      :tasks.filter(t=>!t.category||customTabs.find(ct=>ct.id===t.category)?.showInAll!==false);
+      :tabFilter.length>0
+        ?tasks.filter(t=>tabFilter.includes(t.category??''))
+        :tasks.filter(t=>!t.category||customTabs.find(ct=>ct.id===t.category)?.showInAll!==false);
     return base.filter(t=>!t.allDay);
-  },[tasks,activeCategory,customTabs]);
+  },[tasks,activeCategory,customTabs,tabFilter]);
   const laterTasks    = useMemo(()=>filteredTasks.filter(t=>t.isLater),[filteredTasks]);
   const pendingCount  = useMemo(()=>laterTasks.filter(t=>!t.completed).length,[laterTasks]);
   const shopPending   = useMemo(()=>shopItems.filter(i=>!i.checked).length,[shopItems]);
@@ -4504,8 +4508,8 @@ export default function App() {
         </div>
 
         {/* Category filter tabs */}
-        <div className="bg-gray-50">
-          <div className="tabs-scroll flex items-end pl-3 pt-2" style={{overflowX:'auto',WebkitOverflowScrolling:'touch',overflowY:'hidden',touchAction:'pan-x'}}>
+        <div className="bg-gray-50 flex items-end">
+          <div className="flex-1 min-w-0 tabs-scroll flex items-end pl-3 pt-2" style={{overflowX:'auto',WebkitOverflowScrolling:'touch',overflowY:'hidden',touchAction:'pan-x'}}>
           <button onClick={()=>{setActiveCat(null);setEditTabId(null);}} className="shrink-0 relative"
             style={activeCategory===null?{
               width:'80px',padding:'7px 12px 9px',background:'var(--c-primary)',color:'white',fontWeight:700,fontSize:'0.875rem',
@@ -4537,6 +4541,13 @@ export default function App() {
             className="shrink-0 w-8 h-7 flex items-center justify-center text-gray-400 text-xl font-light ml-1 mb-0.5">+</button>
           <div className="shrink-0" style={{width:'12px'}}/>
           </div>
+          {activeCategory===null&&(
+            <button onClick={()=>setShowTabFilter(true)}
+              className="shrink-0 w-9 h-8 flex items-center justify-center mb-1 mr-2"
+              style={{color:tabFilter.length>0?'var(--c-primary)':'#9CA3AF'}}>
+              <AppIcons.filter size={18}/>
+            </button>
+          )}
         </div>
 
         {/* All-day strip — sticky, aligned with timeline CARD_LEFT */}
@@ -4735,6 +4746,44 @@ export default function App() {
       {/* ── Settings Screen ── */}
       {settingsOpen&&(
         <SettingsScreen settings={settings} onSettings={setSettings} onClose={()=>setSOp(false)} globalTags={globalTags} onGlobalTags={setGlobalTags} customTabs={customTabs} onCustomTabs={setCustomTabs} onDeleteTabTasks={(tabId)=>setTasks(prev=>prev.filter(t=>t.category!==tabId))} onDeleteTag={(tagName)=>{setGlobalTags(prev=>prev.filter(t=>t.name!==tagName));setTasks(prev=>prev.map(t=>({...t,tags:(t.tags??[]).filter(n=>n!==tagName)})));}} onRenameTag={(oldName,newName,newColor)=>{setGlobalTags(prev=>prev.map(t=>t.name===oldName?{name:newName,color:newColor}:t));setTasks(prev=>prev.map(t=>({...t,tags:(t.tags??[]).map(n=>n===oldName?newName:n)})));}} shopNotifSettings={shopNotifSettings} onShopNotifSettings={setShopNotifSettings} authUser={authUser} isPremium={isPremium} onAppleSignIn={handleAppleSignIn} onSignOut={handleSignOut} onBulkAdd={bulkAddTasks} bulkHistory={bulkHistory} onBulkHistoryDelete={bulkHistoryDelete} onBulkHistoryEdit={bulkHistoryEdit} lifePatterns={lifePatterns} onLifePatterns={setLifePatterns} patternOverrides={patternOverrides} onApplyPattern={applyPattern} initialSub={settingsInitSub}/>
+      )}
+
+      {/* ── Tab filter bottom sheet ── */}
+      {showTabFilter&&(
+        <div className="fixed inset-0 z-[200] bg-black/40 flex items-end justify-center" onClick={()=>setShowTabFilter(false)}>
+          <div className="bg-white w-full max-w-md rounded-t-3xl px-5 pt-5 pb-10 shadow-2xl" onClick={e=>e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-base font-bold text-gray-900">表示するタブを選択</p>
+              {tabFilter.length>0&&(
+                <button onClick={()=>setTabFilter([])} className="text-sm text-gray-400 font-medium">クリア</button>
+              )}
+            </div>
+            {customTabs.length===0?(
+              <p className="text-sm text-gray-400 text-center py-4">タブが作成されていません</p>
+            ):(
+              <div className="space-y-1">
+                {customTabs.map(tab=>{
+                  const selected=tabFilter.includes(tab.id);
+                  return(
+                    <button key={tab.id} onClick={()=>setTabFilter(prev=>selected?prev.filter(id=>id!==tab.id):[...prev,tab.id])}
+                      className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl active:bg-gray-50"
+                      style={{background:selected?'var(--c-primary)10':undefined}}>
+                      <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 ${selected?'border-[var(--c-primary)] bg-[var(--c-primary)]':'border-gray-300'}`}>
+                        {selected&&<span className="block w-2 h-2 rounded-sm bg-white"/>}
+                      </div>
+                      <span className={`text-[15px] font-medium ${selected?'text-gray-900':'text-gray-700'}`}>{tab.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            <button onClick={()=>setShowTabFilter(false)}
+              className="mt-5 w-full py-3.5 rounded-2xl text-[15px] font-semibold"
+              style={{background:'var(--c-primary)',color:'white'}}>
+              完了
+            </button>
+          </div>
+        </div>
       )}
 
       {/* ── Recurrence edit confirm ── */}
