@@ -3805,9 +3805,9 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
 
   if(sub==='support') return (
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
-      {subHeader('サポート')}
+      {subHeader('よくある質問')}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
-        <div className="mt-4 bg-white rounded-2xl overflow-hidden shadow-sm mb-3">
+        <div className="mt-4 bg-white rounded-2xl overflow-hidden shadow-sm">
           {([
             {q:'データはどこに保存されますか？',a:'すべてのデータはお使いのデバイスのローカルストレージに保存されます。外部サーバーへの送信は行いません。'},
             {q:'アプリを削除するとデータはどうなりますか？',a:'アプリをアンインストールするとすべてのデータが削除されます。現在、クラウドバックアップ機能はありません。'},
@@ -3823,15 +3823,6 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
               </div>
             </div>
           ))}
-        </div>
-        <div className="bg-white rounded-2xl shadow-sm px-4 py-4">
-          <p className="text-[15px] font-bold text-gray-900 mb-1">お問い合わせ</p>
-          <p className="text-[14px] text-gray-500 leading-relaxed mb-3">ご質問・ご要望は以下のメールアドレスまでお気軽にお問い合わせください。お返事まで数日いただく場合があります。</p>
-          <button onClick={()=>window.open('mailto:support.brainbox.jp@gmail.com')}
-            className="w-full py-3 rounded-xl text-[15px] font-semibold text-white"
-            style={{background:'var(--c-primary)'}}>
-            メールで問い合わせる
-          </button>
         </div>
       </div>
     </div>
@@ -3908,7 +3899,8 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
           <SettingsRow icon={<AppIcons.tag size={18}/>} iconBg="bg-gray-100" title="プライバシーポリシー" onClick={()=>setSub('privacy')}/>
           <SettingsRow icon={<AppIcons.book size={18}/>} iconBg="bg-gray-100" title="利用規約" onClick={()=>setSub('terms')}/>
-          <SettingsRow icon={<AppIcons.mail size={18}/>} iconBg="bg-gray-100" title="サポート" onClick={()=>setSub('support')}/>
+          <SettingsRow icon={<AppIcons.question size={18}/>} iconBg="bg-gray-100" title="よくある質問" onClick={()=>setSub('support')}/>
+          <SettingsRow icon={<AppIcons.mail size={18}/>} iconBg="bg-gray-100" title="お問い合わせ" onClick={()=>window.open('mailto:support.brainbox.jp@gmail.com')}/>
           <div className="w-full flex items-center gap-3 px-4 py-3.5">
             <div className="w-[30px] h-[30px] rounded-[8px] flex items-center justify-center shrink-0 text-gray-700 bg-gray-100">
               <AppIcons.sparkle size={18}/>
