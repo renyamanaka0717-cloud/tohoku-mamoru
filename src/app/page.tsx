@@ -4544,7 +4544,7 @@ export default function App() {
           {activeCategory===null&&(
             <button onClick={()=>setShowTabFilter(true)}
               className="shrink-0 w-9 h-8 flex items-center justify-center mb-1 mr-2"
-              style={{color:tabFilter.length>0?'var(--c-primary)':'#9CA3AF'}}>
+              style={{color:'#9CA3AF'}}>
               <AppIcons.filter size={18}/>
             </button>
           )}
