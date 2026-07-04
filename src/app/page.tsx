@@ -3828,6 +3828,25 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
     </div>
   );
 
+  if(sub==='contact') return (
+    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
+      {subHeader('お問い合わせ')}
+      <div className="flex-1 overflow-y-auto px-4 pb-8">
+        <div className="mt-4 bg-white rounded-2xl shadow-sm px-4 py-5">
+          <p className="text-[15px] font-bold text-gray-900 mb-2">メールでお問い合わせ</p>
+          <p className="text-[14px] text-gray-500 leading-relaxed mb-1">ご質問・ご要望がございましたら、以下のメールアドレスまでお気軽にお問い合わせください。</p>
+          <p className="text-[14px] text-gray-400 mb-4">お返事まで数日いただく場合があります。</p>
+          <p className="text-[13px] text-gray-400 mb-4 text-center">support.brainbox.jp@gmail.com</p>
+          <button onClick={()=>window.open('mailto:support.brainbox.jp@gmail.com')}
+            className="w-full py-3 rounded-xl text-[15px] font-semibold text-white"
+            style={{background:'var(--c-primary)'}}>
+            メールアプリで開く
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
   if(sub==='faq') return (
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
       {subHeader('よくある質問')}
@@ -3900,7 +3919,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           <SettingsRow icon={<AppIcons.tag size={18}/>} iconBg="bg-gray-100" title="プライバシーポリシー" onClick={()=>setSub('privacy')}/>
           <SettingsRow icon={<AppIcons.book size={18}/>} iconBg="bg-gray-100" title="利用規約" onClick={()=>setSub('terms')}/>
           <SettingsRow icon={<AppIcons.question size={18}/>} iconBg="bg-gray-100" title="よくある質問" onClick={()=>setSub('support')}/>
-          <SettingsRow icon={<AppIcons.mail size={18}/>} iconBg="bg-gray-100" title="お問い合わせ" onClick={()=>window.open('mailto:support.brainbox.jp@gmail.com')}/>
+          <SettingsRow icon={<AppIcons.mail size={18}/>} iconBg="bg-gray-100" title="お問い合わせ" onClick={()=>setSub('contact')}/>
           <div className="w-full flex items-center gap-3 px-4 py-3.5">
             <div className="w-[30px] h-[30px] rounded-[8px] flex items-center justify-center shrink-0 text-gray-700 bg-gray-100">
               <AppIcons.sparkle size={18}/>
