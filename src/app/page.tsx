@@ -3909,11 +3909,6 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           <SettingsRow icon={<AppIcons.star/>} iconBg="bg-gray-100" title="プレミアム" desc={isPremium?'利用中':'近日公開'} onClick={()=>setSub('premium')} isLast/>
         </div>
 
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">その他</p>
-        <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
-          <SettingsRow icon={<AppIcons.question/>} iconBg="bg-gray-100" title="よくある質問" onClick={()=>setSub('faq')} isLast/>
-        </div>
-
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">情報</p>
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
           <SettingsRow icon={<AppIcons.tag size={18}/>} iconBg="bg-gray-100" title="プライバシーポリシー" onClick={()=>setSub('privacy')}/>
