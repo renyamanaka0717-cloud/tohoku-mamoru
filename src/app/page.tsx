@@ -4213,7 +4213,7 @@ export default function App() {
     const base=activeCategory
       ?tasks.filter(t=>t.category===activeCategory)
       :tabFilter.length>0
-        ?tasks.filter(t=>tabFilter.includes(t.category??''))
+        ?tasks.filter(t=>!(t.category&&tabFilter.includes(t.category)))
         :tasks.filter(t=>!t.category||customTabs.find(ct=>ct.id===t.category)?.showInAll!==false);
     return base.filter(t=>!t.allDay);
   },[tasks,activeCategory,customTabs,tabFilter]);
@@ -4755,7 +4755,7 @@ export default function App() {
             <div className="flex items-center justify-between mb-4">
               <p className="text-base font-bold text-gray-900">表示するタブを選択</p>
               {tabFilter.length>0&&(
-                <button onClick={()=>setTabFilter([])} className="text-sm text-gray-400 font-medium">クリア</button>
+                <button onClick={()=>setTabFilter([])} className="text-sm font-medium" style={{color:'var(--c-primary)'}}>すべて表示</button>
               )}
             </div>
             {customTabs.length===0?(
@@ -4763,15 +4763,15 @@ export default function App() {
             ):(
               <div className="space-y-1">
                 {customTabs.map(tab=>{
-                  const selected=tabFilter.includes(tab.id);
+                  const excluded=tabFilter.includes(tab.id);
+                  const checked=!excluded;
                   return(
-                    <button key={tab.id} onClick={()=>setTabFilter(prev=>selected?prev.filter(id=>id!==tab.id):[...prev,tab.id])}
-                      className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl active:bg-gray-50"
-                      style={{background:selected?'var(--c-primary)10':undefined}}>
-                      <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 ${selected?'border-[var(--c-primary)] bg-[var(--c-primary)]':'border-gray-300'}`}>
-                        {selected&&<span className="block w-2 h-2 rounded-sm bg-white"/>}
+                    <button key={tab.id} onClick={()=>setTabFilter(prev=>excluded?prev.filter(id=>id!==tab.id):[...prev,tab.id])}
+                      className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl active:bg-gray-50">
+                      <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 ${checked?'border-[var(--c-primary)] bg-[var(--c-primary)]':'border-gray-300'}`}>
+                        {checked&&<span className="block w-2 h-2 rounded-sm bg-white"/>}
                       </div>
-                      <span className={`text-[15px] font-medium ${selected?'text-gray-900':'text-gray-700'}`}>{tab.name}</span>
+                      <span className={`text-[15px] font-medium ${checked?'text-gray-900':'text-gray-400'}`}>{tab.name}</span>
                     </button>
                   );
                 })}
