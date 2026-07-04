@@ -3762,7 +3762,25 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   if(sub==='faq') return (
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
       {subHeader('よくある質問')}
-      <div className="flex-1 overflow-y-auto px-4 pb-8">{comingSoon(<AppIcons.question size={48}/>,'よくある質問は近日公開予定です')}</div>
+      <div className="flex-1 overflow-y-auto px-4 pb-8">
+        <div className="mt-4 bg-white rounded-2xl overflow-hidden shadow-sm">
+          {[
+            {q:'データはどこに保存されますか？',a:'すべてのデータはお使いのデバイスのローカルストレージに保存されます。外部サーバーへの送信は行いません。'},
+            {q:'アプリを削除するとデータはどうなりますか？',a:'アプリをアンインストールするとすべてのデータが削除されます。現在、クラウドバックアップ機能はありません。'},
+            {q:'タスクを誤って削除してしまいました。復元できますか？',a:'申し訳ありませんが、削除したタスクの復元機能は現在ありません。重要なタスクは削除前にご確認ください。'},
+            {q:'繰り返しタスクの一部だけ削除できますか？',a:'はい。繰り返しタスクを削除する際、「この予定のみ削除」または「すべての予定を削除」を選択できます。'},
+            {q:'起床・就寝時間はどこで変更できますか？',a:'設定画面の「起床・就寝」から変更できます。タイムライン上の起床・就寝カードを長押しして直接ドラッグして変更することもできます。'},
+            {q:'「あとでやる」に移動したタスクはどこで確認できますか？',a:'画面下部のバーにある「あとでやる」ボタンをタップすると、あとでやるリストが表示されます。'},
+          ].map(({q,a},i,arr)=>(
+            <div key={i} className={i<arr.length-1?'border-b border-gray-100':''}>
+              <div className="px-4 py-4">
+                <p className="text-[15px] font-semibold text-gray-900 mb-1.5">Q. {q}</p>
+                <p className="text-[14px] text-gray-500 leading-relaxed">A. {a}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 
