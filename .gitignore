@@ -31,3 +31,5 @@ yarn-error.log*
 # TypeScript の自動生成ファイル
 *.tsbuildinfo
 next-env.d.ts
+ios/
+out/
