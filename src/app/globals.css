@@ -14,16 +14,14 @@
 }
 
 html {
-  height: -webkit-fill-available;
   height: 100%;
-  overscroll-behavior: none;
+  overflow: hidden;
 }
 
 body {
   font-size: 17px;
-  min-height: -webkit-fill-available;
-  overscroll-behavior: none;
-  -webkit-overflow-scrolling: touch;
+  height: 100%;
+  overflow: hidden;
   padding-top: env(safe-area-inset-top);
   padding-bottom: env(safe-area-inset-bottom);
 }

@@ -4548,9 +4548,9 @@ export default function App() {
   if(!loaded) return <div className="flex h-screen items-center justify-center text-gray-400">読み込み中…</div>;
 
   return (
-    <div className="max-w-md mx-auto min-h-screen bg-white font-sans">
+    <div className="max-w-md mx-auto bg-white font-sans flex flex-col" style={{height:'100%'}}>
       {/* ── Header ── */}
-      <header className="sticky top-0 z-30 bg-gray-50">
+      <header className="z-30 bg-gray-50 flex-shrink-0">
         <div className="px-4 pt-1 pb-0">
           {/* Date + nav */}
           <div className="flex items-center justify-between mb-1">
@@ -4662,7 +4662,7 @@ export default function App() {
       </header>
 
       {/* ── Timeline ── */}
-      <main className="px-3 pt-3 pb-24"
+      <main className="px-3 pt-3 pb-24 flex-1 overflow-y-auto"
         onTouchStart={e=>{mainSwX.current=e.touches[0].clientX;mainSwY.current=e.touches[0].clientY;}}
         onTouchEnd={e=>{
           if(dragTask) return;
