@@ -1,6 +1,5 @@
-import type { CapacitorConfig } from '@capacitor/cli';
-
-const config: CapacitorConfig = {
+/** @type {import('@capacitor/cli').CapacitorConfig} */
+const config = {
   appId: 'jp.brainbox.app',
   appName: 'BrainBox',
   webDir: 'out',
@@ -9,4 +8,4 @@ const config: CapacitorConfig = {
   },
 };
 
-export default config;
+module.exports = config;
