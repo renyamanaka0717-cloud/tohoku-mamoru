@@ -4380,6 +4380,13 @@ export default function App() {
   useEffect(()=>{
     if(!dragSetting) return;
     const calcTime=(clientY:number)=>{
+      if(dragSetting==='sleep'&&layoutYRef.current){
+        // 就寝ドラッグ: 就寝カード位置からの差分でアンカー範囲外も対応
+        const sleepMin=toMin(settings.sleepTime);
+        const sleepScreenY=layoutYRef.current(sleepMin);
+        const deltaMin=(clientY-sleepScreenY)/PX_PER_MIN;
+        return fromMin(Math.max(0,Math.min(23*60+55,Math.round((sleepMin+deltaMin)/5)*5)));
+      }
       if(yToTimeRef.current) return yToTimeRef.current(clientY);
       const header=document.querySelector('header');
       const headerBottom=header?header.getBoundingClientRect().bottom:130;
