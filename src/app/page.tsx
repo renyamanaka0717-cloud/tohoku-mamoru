@@ -2741,7 +2741,7 @@ function SettingsRow({icon,iconBg,title,desc,onClick,isLast=false,pro=false}:{
   );
 }
 
-function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,customTabs,onCustomTabs,onDeleteTabTasks,onDeleteTag,onRenameTag,shopNotifSettings,onShopNotifSettings,authUser,isPremium,onAppleSignIn,onSignOut,onBulkAdd,bulkHistory,onBulkHistoryDelete,onBulkHistoryEdit,lifePatterns,onLifePatterns,patternOverrides,onApplyPattern,initialSub}:{
+function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,customTabs,onCustomTabs,onDeleteTabTasks,onDeleteTag,onRenameTag,shopNotifSettings,onShopNotifSettings,authUser,isPremium,onAppleSignIn,onSignOut,onBulkAdd,bulkHistory,onBulkHistoryDelete,onBulkHistoryEdit,lifePatterns,onLifePatterns,patternOverrides,onApplyPattern,initialSub,tasks,onEditTask}:{
   settings:Settings; onSettings:(s:Settings)=>void; onClose:()=>void;
   globalTags:TagDef[]; onGlobalTags:(tags:TagDef[])=>void;
   customTabs:CustomTab[]; onCustomTabs:(tabs:CustomTab[])=>void; onDeleteTabTasks:(tabId:string)=>void;
@@ -2756,6 +2756,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   lifePatterns:LifePattern[]; onLifePatterns:(p:LifePattern[])=>void;
   patternOverrides:Record<string,string>; onApplyPattern:(dates:string[],patternId:string|null)=>void;
   initialSub?:string;
+  tasks:Task[]; onEditTask:(t:Task)=>void;
 }) {
   const [sub,setSub]           = useState<string|null>(initialSub??null);
   const [tagInput,setTagInput] = useState('');
@@ -3307,12 +3308,52 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
     </div>
   );
 
-  if(sub==='recurring') return (
-    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
-      {subHeader('繰り返しタスク')}
-      <div className="flex-1 overflow-y-auto px-4 pb-8">{comingSoon(<AppIcons.repeat size={48}/>,'繰り返しタスクの一覧・管理機能は近日公開予定です')}</div>
-    </div>
-  );
+  if(sub==='recurring') {
+    const seen=new Set<string>();
+    const recurTasks=tasks.filter(t=>{
+      if(!t.recurrence||t.isLater) return false;
+      const key=`${t.name}|${t.startTime}|${t.recurrence}`;
+      if(seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    }).sort((a,b)=>(a.startTime??'').localeCompare(b.startTime??''));
+    return (
+      <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
+        {subHeader('繰り返しタスク')}
+        <div className="flex-1 overflow-y-auto px-4 pb-8">
+          {recurTasks.length===0?(
+            <div className="flex flex-col items-center justify-center pt-20 gap-3">
+              <div className="text-gray-300"><AppIcons.repeat size={48}/></div>
+              <p className="text-[17px] font-semibold text-gray-900">繰り返しタスクはありません</p>
+              <p className="text-sm text-gray-400 text-center px-8 leading-relaxed">タスク作成時に「繰り返し」を選ぶと、ここに表示されます</p>
+            </div>
+          ):(
+            <>
+              <p className="text-xs text-gray-400 px-1 mt-4 mb-2">{recurTasks.length}件</p>
+              <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
+                {recurTasks.map((t,i)=>{
+                  const Icon=getTaskIcon(t.icon||'task');
+                  return (
+                    <button key={t.id} onClick={()=>{onEditTask(t);onClose();}}
+                      className={`w-full flex items-center gap-3 px-4 py-3.5 text-left active:bg-gray-50 ${i<recurTasks.length-1?'border-b border-gray-100':''}`}>
+                      <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{background:t.color??'var(--c-primary)'}}>
+                        <Icon size={18} className="text-white"/>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[15px] font-medium text-gray-900 truncate">{t.name}</p>
+                        <p className="text-xs text-gray-400 mt-0.5">{recLabel(t)}{t.startTime?` · ${t.startTime}`:''}</p>
+                      </div>
+                      <AppIcons.caretRight size={14} className="text-gray-300 shrink-0"/>
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   if(sub==='notifications') return (
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
@@ -4835,7 +4876,7 @@ export default function App() {
 
       {/* ── Settings Screen ── */}
       {settingsOpen&&(
-        <SettingsScreen settings={settings} onSettings={setSettings} onClose={()=>setSOp(false)} globalTags={globalTags} onGlobalTags={setGlobalTags} customTabs={customTabs} onCustomTabs={setCustomTabs} onDeleteTabTasks={(tabId)=>setTasks(prev=>prev.filter(t=>t.category!==tabId))} onDeleteTag={(tagName)=>{setGlobalTags(prev=>prev.filter(t=>t.name!==tagName));setTasks(prev=>prev.map(t=>({...t,tags:(t.tags??[]).filter(n=>n!==tagName)})));}} onRenameTag={(oldName,newName,newColor)=>{setGlobalTags(prev=>prev.map(t=>t.name===oldName?{name:newName,color:newColor}:t));setTasks(prev=>prev.map(t=>({...t,tags:(t.tags??[]).map(n=>n===oldName?newName:n)})));}} shopNotifSettings={shopNotifSettings} onShopNotifSettings={setShopNotifSettings} authUser={authUser} isPremium={isPremium} onAppleSignIn={handleAppleSignIn} onSignOut={handleSignOut} onBulkAdd={bulkAddTasks} bulkHistory={bulkHistory} onBulkHistoryDelete={bulkHistoryDelete} onBulkHistoryEdit={bulkHistoryEdit} lifePatterns={lifePatterns} onLifePatterns={setLifePatterns} patternOverrides={patternOverrides} onApplyPattern={applyPattern} initialSub={settingsInitSub}/>
+        <SettingsScreen settings={settings} onSettings={setSettings} onClose={()=>setSOp(false)} globalTags={globalTags} onGlobalTags={setGlobalTags} customTabs={customTabs} onCustomTabs={setCustomTabs} onDeleteTabTasks={(tabId)=>setTasks(prev=>prev.filter(t=>t.category!==tabId))} onDeleteTag={(tagName)=>{setGlobalTags(prev=>prev.filter(t=>t.name!==tagName));setTasks(prev=>prev.map(t=>({...t,tags:(t.tags??[]).filter(n=>n!==tagName)})));}} onRenameTag={(oldName,newName,newColor)=>{setGlobalTags(prev=>prev.map(t=>t.name===oldName?{name:newName,color:newColor}:t));setTasks(prev=>prev.map(t=>({...t,tags:(t.tags??[]).map(n=>n===oldName?newName:n)})));}} shopNotifSettings={shopNotifSettings} onShopNotifSettings={setShopNotifSettings} authUser={authUser} isPremium={isPremium} onAppleSignIn={handleAppleSignIn} onSignOut={handleSignOut} onBulkAdd={bulkAddTasks} bulkHistory={bulkHistory} onBulkHistoryDelete={bulkHistoryDelete} onBulkHistoryEdit={bulkHistoryEdit} lifePatterns={lifePatterns} onLifePatterns={setLifePatterns} patternOverrides={patternOverrides} onApplyPattern={applyPattern} initialSub={settingsInitSub} tasks={tasks} onEditTask={(t)=>{setSOp(false);openEdit(t);}}/>
       )}
 
       {/* ── Tab filter bottom sheet ── */}
