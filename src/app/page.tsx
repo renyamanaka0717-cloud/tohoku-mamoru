@@ -1999,8 +1999,8 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
   // Y座標→時刻の逆引き（アンカー区分線形補間の逆関数）
   yToTimeRef.current=(clientY:number):string=>{
     const el=containerRef.current;
-    const baseY=el?(el.getBoundingClientRect().top+window.scrollY):0;
-    const timelineY=clientY+window.scrollY-baseY;
+    const baseY=el?el.getBoundingClientRect().top:0;
+    const timelineY=clientY-baseY;
     let min=anchors[0].min;
     if(timelineY>anchors[0].y){
       min=anchors[anchors.length-1].min;
@@ -4086,6 +4086,7 @@ export default function App() {
   const [globalTags,setGlobalTags] = useState<TagDef[]>([]);
   const [moveHistory,setMoveHistory] = useState<MoveHistory[]>([]);
   const [date,setDate]           = useState(todayStr());
+  const [weekAnchor,setWeekAnchor] = useState(todayStr());
   const [modal,setModal]         = useState<{open:boolean;task:Task|null;prefillTime?:string;prefillCategory?:string;iconSheet?:boolean}>({open:false,task:null});
   const [activeCategory,setActiveCat] = useState<string|null>(null);
   const [tabFilter,setTabFilter]       = useState<string[]>([]);
@@ -4104,6 +4105,7 @@ export default function App() {
   const [dragTask,setDragTask]   = useState<Task|null>(null);
   const [dragPos,setDragPos]     = useState({x:0,y:0});
   const [dropTime,setDropTime]   = useState<string|null>(null);
+  const mainRef = useRef<HTMLElement|null>(null);
   const mainSwX = useRef(0);
   const mainSwY = useRef(0);
   const weekSwX = useRef(0);
@@ -4304,7 +4306,7 @@ export default function App() {
   const laterTasks    = useMemo(()=>filteredTasks.filter(t=>t.isLater),[filteredTasks]);
   const pendingCount  = useMemo(()=>laterTasks.filter(t=>!t.completed).length,[laterTasks]);
   const shopPending   = useMemo(()=>shopItems.filter(i=>!i.checked).length,[shopItems]);
-  const weekDates     = useMemo(()=>getWeekDates(date),[date]);
+  const weekDates     = useMemo(()=>getWeekDates(weekAnchor),[weekAnchor]);
   const taskDateSet   = useMemo(()=>new Set(filteredTasks.filter(t=>!t.isLater&&t.startTime).map(t=>t.date)),[filteredTasks]);
   const {day,month,year} = useMemo(()=>getDateInfo(date),[date]);
   const today = todayStr();
@@ -4338,7 +4340,7 @@ export default function App() {
       const header=document.querySelector('header');
       const headerBottom=header?header.getBoundingClientRect().bottom:130;
       const wakeMin=toMin(settings.wakeTime);
-      const rawMin=wakeMin+(clientY+window.scrollY-headerBottom-16)/PX_PER_MIN;
+      const rawMin=wakeMin+(clientY+(mainRef.current?.scrollTop??0)-headerBottom-16)/PX_PER_MIN;
       return fromMin(Math.max(0,Math.min(23*60+55,Math.round(rawMin/5)*5)));
     };
     const onMove=(e:TouchEvent)=>{
@@ -4366,7 +4368,7 @@ export default function App() {
       const header=document.querySelector('header');
       const headerBottom=header?header.getBoundingClientRect().bottom:130;
       const wakeMin=toMin(settings.wakeTime);
-      const rawMin=wakeMin+(clientY+window.scrollY-headerBottom-16)/PX_PER_MIN;
+      const rawMin=wakeMin+(clientY+(mainRef.current?.scrollTop??0)-headerBottom-16)/PX_PER_MIN;
       const snapped=Math.round(rawMin/5)*5;
       return fromMin(Math.max(0,Math.min(23*60+55,snapped)));
     };
@@ -4574,13 +4576,13 @@ export default function App() {
             onTouchEnd={e=>{
               const dx=e.changedTouches[0].clientX-weekSwX.current;
               const dy=e.changedTouches[0].clientY-weekSwY.current;
-              if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)*1.5) setDate(shiftDate(date,dx<0?7:-7));
+              if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)*1.5) setWeekAnchor(shiftDate(weekAnchor,dx<0?7:-7));
             }}>
             {DAY_NAMES.map((name,i)=>{
               const d=weekDates[i];
               const isSel=d===date, isToday=d===today;
               return (
-                <button key={i} onClick={()=>setDate(d)} className="flex flex-col items-center py-1">
+                <button key={i} onClick={()=>{setDate(d);setWeekAnchor(d);}} className="flex flex-col items-center py-1">
                   <span className="text-[13px] font-medium text-gray-400">{name}</span>
                   <span className={`w-8 h-8 flex items-center justify-center rounded-full font-bold transition-colors ${isSel?'bg-[var(--c-primary)] text-white':isToday?'bg-gray-200 text-gray-900':'text-gray-600'}`} style={{fontSize:'17px'}}>
                     {new Date(d+'T12:00:00').getDate()}
@@ -4662,13 +4664,13 @@ export default function App() {
       </header>
 
       {/* ── Timeline ── */}
-      <main className="px-3 pt-3 pb-24 flex-1 overflow-y-auto"
+      <main ref={mainRef} className="px-3 pt-3 pb-24 flex-1 overflow-y-auto"
         onTouchStart={e=>{mainSwX.current=e.touches[0].clientX;mainSwY.current=e.touches[0].clientY;}}
         onTouchEnd={e=>{
           if(dragTask) return;
           const dx=e.changedTouches[0].clientX-mainSwX.current;
           const dy=e.changedTouches[0].clientY-mainSwY.current;
-          if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)*1.5) setDate(shiftDate(date,dx<0?1:-1));
+          if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)*1.5){const nd=shiftDate(date,dx<0?1:-1);setDate(nd);setWeekAnchor(nd);}
         }}>
         <Timeline date={date} tasks={filteredTasks} later={laterTasks} settings={effectiveSettings} now={now}
           onToggle={toggle} onEdit={openEdit} onEditIconSheet={openEditIconSheet} onSchedule={scheduleInSlot} onAddAtTime={openAdd}
@@ -4808,13 +4810,13 @@ export default function App() {
 
       {/* ── Calendar ── */}
       {calendarOpen&&(
-        <CalendarPage date={date} tasks={tasks} customTabs={customTabs} onSelect={(d)=>{setDate(d);setCalOp(false);}} onClose={()=>setCalOp(false)}/>
+        <CalendarPage date={date} tasks={tasks} customTabs={customTabs} onSelect={(d)=>{setDate(d);setWeekAnchor(d);setCalOp(false);}} onClose={()=>setCalOp(false)}/>
       )}
 
       {/* ── Search ── */}
       {searchOpen&&(
         <SearchPage tasks={tasks} onClose={()=>setSearchOpen(false)}
-          onSelect={(t)=>{if(!t.isLater)setDate(t.date);setSearchOpen(false);}}/>
+          onSelect={(t)=>{if(!t.isLater){setDate(t.date);setWeekAnchor(t.date);}setSearchOpen(false);}}/>
       )}
 
       {/* ── Task Modal ── */}
