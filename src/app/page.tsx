@@ -4690,7 +4690,7 @@ export default function App() {
         onTouchStart={e=>setTouchY(e.touches[0].clientY)}
         onTouchEnd={e=>{ if(touchY-e.changedTouches[0].clientY>30) setActiveTab('later'); }}
       >
-        <div className="flex" style={{paddingBottom:'env(safe-area-inset-bottom)'}}>
+        <div className="flex">
           {([['later','あとでやる',pendingCount],['shop','買い物リスト',shopPending]] as const).map(([tab,label,cnt],i)=>(
             <button key={tab} onClick={()=>setActiveTab(t=>t===tab?null:tab)}
               className={`flex-1 flex items-center justify-center gap-2 py-4 transition-colors ${i===0?'border-r border-gray-300':''} ${activeTab===tab?'bg-gray-100':''}`}>
@@ -4699,6 +4699,8 @@ export default function App() {
             </button>
           ))}
         </div>
+        <div style={{height:'env(safe-area-inset-bottom)'}}/>
+
       </div>
 
       {/* ── FAB ── */}
