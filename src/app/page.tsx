@@ -358,7 +358,7 @@ function CalendarPage({date,tasks,customTabs,onSelect,onClose}:{date:string;task
   return (
     <div className="fixed inset-0 z-[80] bg-white flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-gray-100 bg-white">
+      <div className="flex items-center justify-between px-4 pb-3 border-b border-gray-100 bg-white" style={{paddingTop:'calc(1rem + env(safe-area-inset-top))'}}>
         <button onClick={onClose} className="w-9 h-9 flex items-center justify-center text-gray-600"><AppIcons.caretLeft/></button>
         <div className="flex items-center gap-3">
           <button onClick={()=>setVm(m=>shiftMonth(m.year,m.month,-1))}
@@ -458,7 +458,7 @@ function SearchPage({tasks,onClose,onSelect}:{tasks:Task[];onClose:()=>void;onSe
   return (
     <div className="fixed inset-0 z-[90] bg-white flex flex-col">
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 pt-4 pb-3 border-b border-gray-100">
+      <div className="flex items-center gap-3 px-4 pb-3 border-b border-gray-100" style={{paddingTop:'calc(1rem + env(safe-area-inset-top))'}}>
         <button onClick={onClose} className="text-sm font-semibold text-gray-600 shrink-0">キャンセル</button>
         <div className="flex-1 flex items-center gap-2 bg-gray-100 rounded-xl px-3 py-2.5">
           <AppIcons.search size={16} className="text-gray-400 shrink-0"/>
@@ -2802,7 +2802,8 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   const back = () => setSub(null);
 
   const subHeader = (title:string) => (
-    <div className="bg-white border-b border-gray-200 px-4 py-3.5 flex items-center shrink-0">
+    <div className="bg-white border-b border-gray-200 px-4 py-3.5 flex items-center shrink-0" style={{paddingTop:'calc(0.875rem + env(safe-area-inset-top))'}}>
+
       <button onClick={back} className="flex items-center gap-0.5 text-gray-900 min-w-[80px]">
         <AppIcons.caretLeft size={20}/>
         <span className="text-[15px]">設定</span>
@@ -3874,7 +3875,8 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
 
   return (
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
-      <div className="bg-[#F2F2F7] px-4 pt-4 pb-2 shrink-0 relative flex items-center justify-center">
+      <div className="bg-[#F2F2F7] px-4 pb-2 shrink-0 relative flex items-center justify-center" style={{paddingTop:'calc(1rem + env(safe-area-inset-top))'}}>
+
         <button onClick={onClose} className="absolute left-4 flex items-center text-gray-900">
           <AppIcons.caretLeft size={20}/>
         </button>
