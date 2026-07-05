@@ -3354,7 +3354,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
 
   if(sub==='notifications-shop') return (
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
-      <div className="bg-white border-b border-gray-200 px-4 py-3.5 flex items-center shrink-0">
+      <div className="bg-white border-b border-gray-200 px-4 flex items-center shrink-0" style={{paddingTop:'calc(0.875rem + env(safe-area-inset-top))',paddingBottom:'0.875rem'}}>
         <button onClick={()=>setSub('notifications')} className="flex items-center gap-0.5 text-gray-900 min-w-[80px]">
           <AppIcons.caretLeft size={20}/>
           <span className="text-[15px]">通知</span>
