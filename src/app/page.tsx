@@ -1770,7 +1770,7 @@ function CompactTaskCard({task,onToggle,onEdit}:{task:Task;onToggle:()=>void;onE
 
 // ── Timeline ──────────────────────────────────────────────────────────────────
 
-function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet,onSchedule,onAddAtTime,onDragStart,dragTaskId,yToTimeRef,layoutYRef,globalTags,todayHistory,onSubtaskToggle,onDragWake,onDragSleep,lifePatterns=[],patternOverrides={},onOpenWakeSleep,customTabs=[]}:{
+function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet,onSchedule,onAddAtTime,onDragStart,dragTaskId,yToTimeRef,layoutYRef,globalTags,todayHistory,onSubtaskToggle,onDragWake,onDragSleep,lifePatterns=[],patternOverrides={},onPickColor,customTabs=[]}:{
   date:string;tasks:Task[];later:Task[];settings:Settings;now:string;
   onToggle:(id:string)=>void;onEdit:(t:Task)=>void;onEditIconSheet:(t:Task)=>void;
   onSchedule:(t:Task,time:string)=>void;onAddAtTime:(time:string)=>void;
@@ -1783,7 +1783,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
   onDragWake:(x:number,y:number)=>void;
   onDragSleep:(x:number,y:number)=>void;
   lifePatterns?:LifePattern[];
-  onOpenWakeSleep?:()=>void;
+  onPickColor?:(target:'wake'|'sleep')=>void;
   patternOverrides?:Record<string,string>;
   customTabs?:CustomTab[];
 }) {
@@ -2077,7 +2077,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
         <span className="text-xs w-10 text-right pr-1 leading-none text-gray-300">{settings.wakeTime}</span>
       </div>
       <div className="absolute z-10 cursor-pointer active:opacity-70" style={{top:`${wakeCardTop}px`,left:`${AXIS_X-28}px`,width:'56px',height:'56px'}}
-        onClick={()=>onOpenWakeSleep?.()}>
+        onClick={()=>onPickColor?.('wake')}>
         <div className="w-full h-full flex items-center justify-center" style={{borderRadius:'28px',background:settings.wakeColor||'var(--c-primary)'}}>
           <AppIcons.wake size={24} className="text-white"/>
         </div>
@@ -2086,7 +2086,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
         <span className="text-xs w-10 text-right pr-1 leading-none text-gray-300">{settings.sleepTime}</span>
       </div>
       <div className="absolute z-10 cursor-pointer active:opacity-70" style={{top:`${sleepCardTop}px`,left:`${AXIS_X-28}px`,width:'56px',height:'56px'}}
-        onClick={()=>onOpenWakeSleep?.()}>
+        onClick={()=>onPickColor?.('sleep')}>
         <div className="w-full h-full flex items-center justify-center" style={{borderRadius:'28px',background:settings.sleepColor||'var(--c-primary)'}}>
           <AppIcons.sleep size={24} className="text-white"/>
         </div>
@@ -4139,6 +4139,7 @@ export default function App() {
   const [editTabName,setEditTabName] = useState('');
   const [settingsOpen,setSOp]    = useState(false);
   const [settingsInitSub,setSettingsInitSub] = useState<string|undefined>(undefined);
+  const [colorPickTarget,setColorPickTarget] = useState<'wake'|'sleep'|null>(null);
   const [calendarOpen,setCalOp]  = useState(false);
   const [searchOpen,setSearchOpen] = useState(false);
   const [activeTab,setActiveTab] = useState<'later'|'shop'|null>(null);
@@ -4722,7 +4723,7 @@ export default function App() {
           onDragWake={(x,y)=>startDragSetting('wake',x,y)}
           onDragSleep={(x,y)=>startDragSetting('sleep',x,y)}
           lifePatterns={lifePatterns} patternOverrides={patternOverrides}
-          onOpenWakeSleep={()=>{setSettingsInitSub('wakeSleep');setSOp(true);}}
+          onPickColor={setColorPickTarget}
           customTabs={activeCategory===null?customTabs:[]}/>
       </main>
 
@@ -4745,6 +4746,24 @@ export default function App() {
         <div style={{height:'env(safe-area-inset-bottom)'}}/>
 
       </div>
+
+      {/* ── Wake/Sleep color picker ── */}
+      {colorPickTarget&&(
+        <div className="fixed inset-0 z-[120] bg-black/40 flex items-end justify-center" onClick={()=>setColorPickTarget(null)}>
+          <div className="bg-white w-full max-w-md rounded-t-3xl px-5 pt-5 pb-8 shadow-2xl" onClick={e=>e.stopPropagation()}>
+            <div className="flex justify-center mb-4"><div className="w-10 h-1 bg-gray-200 rounded-full"/></div>
+            <p className="text-[15px] font-semibold text-gray-900 mb-4">{colorPickTarget==='wake'?'起床':'就寝'}アイコンの色</p>
+            <div className="flex flex-wrap gap-3">
+              {['#94CFC8',...TASK_COLORS.filter(Boolean)].map((c,i)=>{
+                const cur=colorPickTarget==='wake'?(settings.wakeColor||'#94CFC8'):(settings.sleepColor||'#94CFC8');
+                return <button key={i} onClick={()=>{setSettings(prev=>({...prev,[colorPickTarget==='wake'?'wakeColor':'sleepColor']:c}));setColorPickTarget(null);}}
+                  className={`w-9 h-9 rounded-full border-2 transition-all ${cur===c?'border-gray-700 scale-110':'border-transparent'}`}
+                  style={{background:c}}/>;
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── FAB ── */}
       <div className="fixed right-4 z-50" style={{bottom:'calc(3.5rem + env(safe-area-inset-bottom))'}}>
