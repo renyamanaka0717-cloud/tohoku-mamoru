@@ -2,7 +2,12 @@
 set -e
 
 echo "📦 APIルートを一時的に退避..."
-mv src/app/api src/app/_api
+if [ -d src/app/_api ] && [ ! -d src/app/api ]; then
+  echo "  (前回の退避済みファイルを再利用)"
+elif [ -d src/app/api ]; then
+  [ -d src/app/_api ] && rm -rf src/app/_api
+  mv src/app/api src/app/_api
+fi
 
 echo "🔨 iOSビルド中..."
 BUILD_TARGET=ios npm run build
