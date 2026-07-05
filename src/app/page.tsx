@@ -4374,20 +4374,20 @@ export default function App() {
     setActiveTab(null);
   };
   const startDragSetting=(type:'wake'|'sleep',x:number,y:number)=>{
-    const initTime=type==='wake'?effectiveSettings.wakeTime:effectiveSettings.sleepTime;
-    dragSettingInitY.current=y;
-    dragSettingInitMin.current=toMin(initTime);
     setDragSetting(type);
     setDragPos({x,y});
-    setDropTime(initTime);
+    setDropTime(type==='wake'?effectiveSettings.wakeTime:effectiveSettings.sleepTime);
   };
 
   useEffect(()=>{
     if(!dragSetting) return;
     const calcTime=(clientY:number)=>{
-      // ドラッグ開始位置からのデルタで時刻を計算（就寝を就寝時刻より後にも動かせる）
-      const deltaMin=(clientY-dragSettingInitY.current)/PX_PER_MIN;
-      return fromMin(Math.max(0,Math.min(23*60+55,Math.round((dragSettingInitMin.current+deltaMin)/5)*5)));
+      if(yToTimeRef.current) return yToTimeRef.current(clientY);
+      const header=document.querySelector('header');
+      const headerBottom=header?header.getBoundingClientRect().bottom:130;
+      const wakeMin=toMin(settings.wakeTime);
+      const rawMin=wakeMin+(clientY+(mainRef.current?.scrollTop??0)-headerBottom-16)/PX_PER_MIN;
+      return fromMin(Math.max(0,Math.min(23*60+55,Math.round(rawMin/5)*5)));
     };
     const onMove=(e:TouchEvent)=>{
       e.preventDefault();
