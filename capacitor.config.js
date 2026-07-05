@@ -5,8 +5,7 @@ const config = {
   webDir: 'out',
   backgroundColor: '#F9FAFB',
   ios: {
-    contentInset: 'automatic',
-    backgroundColor: '#F9FAFB',
+    contentInset: 'never',
   },
 };
 
