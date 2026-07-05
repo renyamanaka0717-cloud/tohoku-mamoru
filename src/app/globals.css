@@ -22,8 +22,6 @@ body {
   font-size: 17px;
   height: 100%;
   overflow: hidden;
-  padding-top: env(safe-area-inset-top);
-  padding-bottom: env(safe-area-inset-bottom);
 }
 
 input[type="time"]::-webkit-calendar-picker-indicator {

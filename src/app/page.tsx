@@ -4552,7 +4552,7 @@ export default function App() {
   return (
     <div className="max-w-md mx-auto bg-white font-sans flex flex-col" style={{height:'100%'}}>
       {/* ── Header ── */}
-      <header className="z-30 bg-gray-50 flex-shrink-0">
+      <header className="z-30 bg-gray-50 flex-shrink-0" style={{paddingTop:'env(safe-area-inset-top)'}}>
         <div className="px-4 pt-1 pb-0">
           {/* Date + nav */}
           <div className="flex items-center justify-between mb-1">
@@ -4664,7 +4664,7 @@ export default function App() {
       </header>
 
       {/* ── Timeline ── */}
-      <main ref={mainRef} className="px-3 pt-3 pb-24 flex-1 overflow-y-auto"
+      <main ref={mainRef} className="px-3 pt-3 flex-1 overflow-y-auto" style={{paddingBottom:'calc(5rem + env(safe-area-inset-bottom))'}}
         onTouchStart={e=>{mainSwX.current=e.touches[0].clientX;mainSwY.current=e.touches[0].clientY;}}
         onTouchEnd={e=>{
           if(dragTask) return;
@@ -4690,10 +4690,10 @@ export default function App() {
         onTouchStart={e=>setTouchY(e.touches[0].clientY)}
         onTouchEnd={e=>{ if(touchY-e.changedTouches[0].clientY>30) setActiveTab('later'); }}
       >
-        <div className="flex">
+        <div className="flex" style={{paddingBottom:'env(safe-area-inset-bottom)'}}>
           {([['later','あとでやる',pendingCount],['shop','買い物リスト',shopPending]] as const).map(([tab,label,cnt],i)=>(
             <button key={tab} onClick={()=>setActiveTab(t=>t===tab?null:tab)}
-              className={`flex-1 flex items-center justify-center gap-2 py-8 transition-colors ${i===0?'border-r border-gray-300':''} ${activeTab===tab?'bg-gray-100':''}`}>
+              className={`flex-1 flex items-center justify-center gap-2 py-4 transition-colors ${i===0?'border-r border-gray-300':''} ${activeTab===tab?'bg-gray-100':''}`}>
               <span className={`text-base font-semibold ${activeTab===tab?'text-gray-900':'text-gray-500'}`}>{label}</span>
               {cnt>0&&<span className="text-[13px] bg-[var(--c-primary)] text-white min-w-[22px] h-[22px] rounded-full flex items-center justify-center font-bold px-1">{cnt}</span>}
             </button>
@@ -4702,7 +4702,7 @@ export default function App() {
       </div>
 
       {/* ── FAB ── */}
-      <div className="fixed bottom-24 right-4 z-50">
+      <div className="fixed right-4 z-50" style={{bottom:'calc(4.5rem + env(safe-area-inset-bottom))'}}>
         <button onClick={()=>openAdd()}
           className="w-14 h-14 bg-[var(--c-primary)] text-white rounded-full shadow-2xl active:bg-gray-700"
           style={{display:'grid',placeItems:'center'}}>
