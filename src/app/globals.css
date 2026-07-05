@@ -24,6 +24,8 @@ body {
   min-height: -webkit-fill-available;
   overscroll-behavior: none;
   -webkit-overflow-scrolling: touch;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 input[type="time"]::-webkit-calendar-picker-indicator {
