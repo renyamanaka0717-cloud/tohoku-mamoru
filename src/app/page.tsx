@@ -3763,7 +3763,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[var(--c-primary)]/10 mb-3">
             <AppIcons.star size={32} className="text-[var(--c-primary)]"/>
           </div>
-          <p className="text-lg font-bold text-gray-900">Premium</p>
+          <p className="text-lg font-bold text-gray-900">PROにアップグレード</p>
           <p className="text-sm text-gray-500 mt-1">より便利な機能で、毎日をもっとスムーズに</p>
         </div>
 
