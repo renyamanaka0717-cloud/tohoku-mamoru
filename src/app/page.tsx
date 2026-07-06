@@ -2715,7 +2715,7 @@ function ProGateSheet({onClose,onView}:{onClose:()=>void;onView?:()=>void}) {
           <p className="text-[17px] font-bold text-gray-900">Proプランが必要です</p>
           <p className="text-sm text-gray-500 text-center leading-relaxed">この機能はProプランでご利用いただけます。<br/>近日公開予定です。</p>
         </div>
-        {onView&&<button onClick={onView} className="w-full py-3.5 rounded-2xl text-[15px] font-semibold text-white mb-2" style={{background:'var(--c-primary)'}}>プレミアムプランを見る</button>}
+        {onView&&<button onClick={onView} className="w-full py-3.5 rounded-2xl text-[15px] font-semibold text-white mb-2" style={{background:'var(--c-primary)'}}>PROプランを見る</button>}
         <button onClick={onClose} className="w-full py-2.5 text-sm text-gray-400">閉じる</button>
       </div>
     </div>
@@ -3757,7 +3757,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
 
   if(sub==='premium') return (
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
-      {subHeader('プレミアム')}
+      {subHeader('PRO')}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
         <div className="mt-6 mb-4 text-center">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[var(--c-primary)]/10 mb-3">
@@ -3957,7 +3957,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
 
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">サブスクリプション</p>
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
-          <SettingsRow icon={<AppIcons.star/>} iconBg="bg-gray-100" title="プレミアム" desc={isPremium?'利用中':'近日公開'} onClick={()=>setSub('premium')} isLast/>
+          <SettingsRow icon={<AppIcons.star/>} iconBg="bg-gray-100" title="PRO" desc={isPremium?'利用中':'近日公開'} onClick={()=>setSub('premium')} isLast/>
         </div>
 
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">情報</p>
