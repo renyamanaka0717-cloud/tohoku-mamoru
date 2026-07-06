@@ -758,9 +758,10 @@ function PickerCol({items,value,onChange}:{items:string[];value:string;onChange:
 
 // ── TaskModal ─────────────────────────────────────────────────────────────────
 
-function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:initIconSheet,onSave,onUpdate,onDelete,onClose,onBulkInput,globalTags,customTabs,notificationsEnabled,onEnableNotifications}:{
+function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:initIconSheet,onSave,onUpdate,onDelete,onClose,onBulkInput,globalTags,customTabs,notificationsEnabled,onEnableNotifications,isPremium=true}:{
   task:Task|null; currentDate:string; prefillTime?:string; prefillCategory?:string; openIconSheet?:boolean;
   onSave:(tasks:Omit<Task,'id'>[])=>void; onUpdate?:(data:Omit<Task,'id'>)=>void; onDelete?:()=>void; onClose:()=>void; onBulkInput?:()=>void;
+  isPremium?:boolean;
   globalTags:TagDef[]; customTabs:CustomTab[];
   notificationsEnabled?:boolean; onEnableNotifications?:()=>void;
 }) {
@@ -816,6 +817,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
   const [custDurOpen,setCDurOpen] = useState(false);
   const [custDurMin,setCDurMin]  = useState(duration>0&&!DUR_OPTS.find(o=>o.v===duration)?duration:90);
   const [notifications,setNotifs]  = useState<number[]>(task?.notifications??(!task?[0]:[]));
+  const [modalProPrompt,setModalProPrompt] = useState(false);
   const modalSwX=useRef(0), modalSwY=useRef(0);
   const modeOrder:TaskMode[]=['later','scheduled','recurring','allday'];
   const onModalSwipe=(e:React.TouchEvent)=>{
@@ -1116,7 +1118,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                 </div>
                 <div className="flex gap-2 overflow-x-auto pb-0.5" style={{scrollbarWidth:'none',WebkitOverflowScrolling:'touch'} as React.CSSProperties}>
                   {(['daily','weekly','monthly','yearly','custom'] as const).map((r,i)=>(
-                    <button key={r} onClick={()=>setRecur(r)}
+                    <button key={r} onClick={()=>{if(r==='custom'&&!isPremium){setModalProPrompt(true);return;}setRecur(r);}}
                       className={`shrink-0 px-4 py-2 rounded-full text-sm font-semibold inline-flex items-center gap-1.5 ${recur===r?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
                       {['毎日','毎週','毎月','毎年','カスタム'][i]}
                       {r==='custom'&&<span className={`inline-flex items-center border rounded px-1 py-0.5 text-[9px] font-bold leading-none tracking-wide ${recur===r?'border-white/60 text-white/80':'border-gray-300 text-gray-400'}`}>PRO</span>}
@@ -1606,6 +1608,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
           </div>
         </div>
       )}
+      {modalProPrompt&&<ProGateSheet onClose={()=>setModalProPrompt(false)}/>}
     </div>
   );
 }
@@ -2700,6 +2703,25 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
 
 // ── Settings Screen ──────────────────────────────────────────────────────────
 
+function ProGateSheet({onClose,onView}:{onClose:()=>void;onView?:()=>void}) {
+  return (
+    <div className="fixed inset-0 z-[200] bg-black/40 flex items-end justify-center" onClick={onClose}>
+      <div className="bg-white w-full max-w-md rounded-t-3xl px-5 pt-5 pb-10 shadow-2xl" onClick={e=>e.stopPropagation()}>
+        <div className="flex justify-center mb-4"><div className="w-10 h-1 bg-gray-200 rounded-full"/></div>
+        <div className="flex flex-col items-center gap-3 mb-6">
+          <div className="w-14 h-14 rounded-full flex items-center justify-center" style={{background:'var(--c-primary)'}}>
+            <AppIcons.star size={28} className="text-white"/>
+          </div>
+          <p className="text-[17px] font-bold text-gray-900">Proプランが必要です</p>
+          <p className="text-sm text-gray-500 text-center leading-relaxed">この機能はProプランでご利用いただけます。<br/>近日公開予定です。</p>
+        </div>
+        {onView&&<button onClick={onView} className="w-full py-3.5 rounded-2xl text-[15px] font-semibold text-white mb-2" style={{background:'var(--c-primary)'}}>プレミアムプランを見る</button>}
+        <button onClick={onClose} className="w-full py-2.5 text-sm text-gray-400">閉じる</button>
+      </div>
+    </div>
+  );
+}
+
 function SettingsRow({icon,iconBg,title,desc,onClick,isLast=false,pro=false}:{
   icon:React.ReactNode; iconBg:string; title:string; desc?:string; onClick?:()=>void; isLast?:boolean; pro?:boolean;
 }) {
@@ -2778,6 +2800,8 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   const [lpNewColor,setLpNewColor] = useState('#94CFC8');
   const [lpEditId,setLpEditId]     = useState<string|null>(null);
   const [colorPicking,setColorPicking] = useState<'wake'|'sleep'|null>(null);
+  const [proPrompt,setProPrompt] = useState(false);
+  const proSheet = proPrompt ? <ProGateSheet onClose={()=>setProPrompt(false)} onView={()=>{setProPrompt(false);setSub('premium');}}/> : null;
 
   const back = () => setSub(null);
 
@@ -2804,6 +2828,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   const addTag = () => {
     const t = tagInput.trim();
     if(!t || globalTags.some(td=>td.name===t)) return;
+    if(!isPremium && globalTags.length >= 3) { setProPrompt(true); return; }
     onGlobalTags([...globalTags, {name:t, color:newTagColor}]);
     setTagInput('');
   };
@@ -2842,6 +2867,8 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
     const bulkIcon = bulkIconOverride ?? defaultIconKey(bulkName);
     const register=()=>{
       if(!bulkName.trim()||bulkDates.size===0) return;
+      const thisMonth=todayStr().slice(0,7);
+      if(!isPremium&&bulkHistory.filter(e=>e.registeredAt.startsWith(thisMonth)).length>=1){setProPrompt(true);return;}
       onBulkAdd([...bulkDates].map(date=>({
         name:bulkName.trim(),startTime:bulkStart,duration:bDur,
         date,completed:false,isLater:false,memo:'',
@@ -2853,7 +2880,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
     };
     return (
       <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
-        {subHeader('タスク一括入力')}
+        {subHeader('タスク一括入力')}{proSheet}
         <div className="flex-1 overflow-y-auto px-4 pb-10">
           <p className="text-xs text-gray-400 px-1 mt-4 mb-4">月1回まで無料・2回目からPro（現在：無料開放中）</p>
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2">タスク情報</p>
@@ -3087,17 +3114,17 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
 
   if(sub==='tabs') return (
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
-      {subHeader('ファイルタブ')}
+      {subHeader('ファイルタブ')}{proSheet}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
         <p className="text-xs text-gray-400 px-1 mt-4 mb-4">1個まで無料・2個目からPro（現在：無料開放中）</p>
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2">新しいタブ</p>
         <div className="bg-white rounded-2xl shadow-sm px-4 py-3">
           <div className="flex gap-2 items-center">
             <input value={tabInput} onChange={e=>setTabInput(e.target.value)}
-              onKeyDown={e=>{if(e.key==='Enter'){const v=tabInput.trim();if(v){onCustomTabs([...customTabs,{id:uid(),name:v}]);setTabInput('');}}} }
+              onKeyDown={e=>{if(e.key==='Enter'){const v=tabInput.trim();if(v){if(!isPremium&&customTabs.length>=1){setProPrompt(true);return;}onCustomTabs([...customTabs,{id:uid(),name:v}]);setTabInput('');}}} }
               placeholder="タブ名を入力"
               className="flex-1 text-[15px] bg-transparent outline-none text-gray-900 placeholder-gray-300 border-b border-gray-200 pb-1"/>
-            <button onClick={()=>{const v=tabInput.trim();if(v){onCustomTabs([...customTabs,{id:uid(),name:v}]);setTabInput('');}}}
+            <button onClick={()=>{const v=tabInput.trim();if(v){if(!isPremium&&customTabs.length>=1){setProPrompt(true);return;}onCustomTabs([...customTabs,{id:uid(),name:v}]);setTabInput('');}}}
               className="px-4 py-1.5 bg-[var(--c-primary)] text-white text-sm font-semibold rounded-xl shrink-0">追加</button>
           </div>
         </div>
@@ -3180,7 +3207,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
 
   if(sub==='tags') return (
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
-      {subHeader('タグ')}
+      {subHeader('タグ')}{proSheet}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
         <p className="text-xs text-gray-400 px-1 mt-4">3個まで無料・4個目からPro（現在：無料開放中）</p>
 
@@ -3453,14 +3480,15 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
 
   if(sub==='themeColor') return (
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
-      {subHeader('テーマカラー')}
+      {subHeader('テーマカラー')}{proSheet}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
         <p className="text-xs text-gray-400 px-1 mb-4 mt-6">テーマを選択するとアプリ全体の色が切り替わります</p>
         <div className="grid grid-cols-4 gap-4">
           {THEMES.map(t=>{
             const selected=(settings.theme??'mint')===t.id;
+            const isFree=t.id==='mint';
             return (
-              <button key={t.id} onClick={()=>onSettings({...settings,theme:t.id})}
+              <button key={t.id} onClick={()=>{if(!isPremium&&!isFree){setProPrompt(true);return;}onSettings({...settings,theme:t.id});}}
                 className="flex flex-col items-center gap-2 py-3">
                 <div className="relative w-14 h-14 rounded-full flex items-center justify-center"
                   style={{background:t.color}}>
@@ -3473,6 +3501,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                   )}
                 </div>
                 <span className={`text-xs text-center leading-tight ${selected?'font-bold text-gray-900':'text-gray-500'}`}>{t.name}</span>
+                {!isFree&&!isPremium&&<span className="text-[9px] font-bold text-gray-400 border border-gray-300 rounded px-1 py-0.5 leading-none">PRO</span>}
               </button>
             );
           })}
@@ -3494,7 +3523,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
     const cellDate=(day:number)=>`${lpVm.year}-${String(lpVm.month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
     return (
       <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
-        {subHeader('生活パターン')}
+        {subHeader('生活パターン')}{proSheet}
         <div className="flex-1 overflow-y-auto px-4 pb-10">
           <p className="text-xs text-gray-400 px-1 mt-4 mb-2">1個まで無料・2個目からPro（現在：無料開放中）</p>
           <p className="text-xs text-gray-400 px-1 mb-1 mt-6">シフトや予定に合わせて、日ごとの起床・就寝時間を変更できます</p>
@@ -3581,7 +3610,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             )}
           </div>
           {!lpAddMode&&(
-            <button onClick={()=>{setLpAddMode(true);setLpNewName('');setLpNewWake('07:00');setLpNewSleep('23:00');setLpNewColor('#94CFC8');}}
+            <button onClick={()=>{if(!isPremium&&lifePatterns.length>=1){setProPrompt(true);return;}setLpAddMode(true);setLpNewName('');setLpNewWake('07:00');setLpNewSleep('23:00');setLpNewColor('#94CFC8');}}
               className="w-full py-3 rounded-2xl text-sm font-semibold text-[var(--c-primary)] bg-white shadow-sm mb-5">＋ パターンを追加</button>
           )}
 
@@ -4851,7 +4880,8 @@ export default function App() {
           onDelete={modal.task?()=>delTask(modal.task!.id):undefined}
           onClose={closeModal} onBulkInput={()=>{closeModal();setSettingsInitSub('bulkInput');setSOp(true);}} globalTags={globalTags} customTabs={customTabs}
           notificationsEnabled={settings.notificationsEnabled??true}
-          onEnableNotifications={()=>setSettings(s=>({...s,notificationsEnabled:true}))}/>
+          onEnableNotifications={()=>setSettings(s=>({...s,notificationsEnabled:true}))}
+          isPremium={isPremium}/>
       )}
 
       {/* ── Settings Screen ── */}
