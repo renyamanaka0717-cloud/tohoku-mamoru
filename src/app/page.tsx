@@ -1943,7 +1943,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
 
   // Phase 2: post-sleep tasks — compact (card order, no time gap)
   prevBottom=sleepCardTop+SLEEP_CARD_H;
-  for(const g of taskGroupList.filter(g=>toMin(g.startTime)>=sleepMin)){
+  for(const g of taskGroupList.filter(g=>adjM(g.startTime)>=sleepMinEff)){
     const top=prevBottom+16;
     groupLayout.push({g,top});
     prevBottom=top+(g.tasks.length>1?MIN_CARD_H:g.h);
