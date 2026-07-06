@@ -3802,8 +3802,22 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           ))}
         </div>
 
-        <div className="bg-gray-100 rounded-2xl px-4 py-3 text-center">
-          <p className="text-xs text-gray-500">Proプランは近日公開予定です</p>
+        <div className="bg-white rounded-2xl px-4 py-5 shadow-sm mb-3">
+          <p className="text-[13px] font-semibold text-gray-400 text-center mb-3">料金プラン（予定）</p>
+          <div className="flex gap-3">
+            <div className="flex-1 bg-gray-50 rounded-xl px-3 py-3 text-center">
+              <p className="text-xs text-gray-400 mb-1">月額</p>
+              <p className="text-lg font-bold text-gray-800">¥250</p>
+            </div>
+            <div className="flex-1 rounded-xl px-3 py-3 text-center" style={{background:'var(--c-primary)'}}>
+              <p className="text-xs text-white/70 mb-1">年額（おトク）</p>
+              <p className="text-lg font-bold text-white">¥1,800</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-gray-100 rounded-2xl px-4 py-4 text-center">
+          <p className="text-[13px] text-gray-500 mb-1">Proプランは近日公開予定です</p>
+          <p className="text-xs text-gray-400">公開時にアップデートでご案内します</p>
         </div>
       </div>
     </div>
@@ -3863,7 +3877,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             {q:'アプリを削除するとデータはどうなりますか？',a:'アプリをアンインストールするとすべてのデータが削除されます。現在、クラウドバックアップ機能はありません。'},
             {q:'タスクを誤って削除してしまいました。復元できますか？',a:'申し訳ありませんが、削除したタスクの復元機能は現在ありません。重要なタスクは削除前にご確認ください。'},
             {q:'繰り返しタスクの一部だけ削除できますか？',a:'はい。繰り返しタスクを削除する際、「この予定のみ削除」または「すべての予定を削除」を選択できます。'},
-            {q:'起床・就寝時間はどこで変更できますか？',a:'設定画面の「起床・就寝」から変更できます。タイムライン上の起床・就寝カードを長押しして直接ドラッグして変更することもできます。'},
+            {q:'起床・就寝時間はどこで変更できますか？',a:'設定画面の「起床・就寝」から変更できます。タイムライン上の起床・就寝カードをタップしても変更できます。'},
             {q:'「あとでやる」に移動したタスクはどこで確認できますか？',a:'画面下部のバーにある「あとでやる」ボタンをタップすると、あとでやるリストが表示されます。'},
           ] as {q:string;a:string}[]).map(({q,a},i,arr)=>(
             <div key={i} className={i<arr.length-1?'border-b border-gray-100':''}>
@@ -3907,7 +3921,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             {q:'アプリを削除するとデータはどうなりますか？',a:'アプリをアンインストールするとすべてのデータが削除されます。現在、クラウドバックアップ機能はありません。'},
             {q:'タスクを誤って削除してしまいました。復元できますか？',a:'申し訳ありませんが、削除したタスクの復元機能は現在ありません。重要なタスクは削除前にご確認ください。'},
             {q:'繰り返しタスクの一部だけ削除できますか？',a:'はい。繰り返しタスクを削除する際、「この予定のみ削除」または「すべての予定を削除」を選択できます。'},
-            {q:'起床・就寝時間はどこで変更できますか？',a:'設定画面の「起床・就寝」から変更できます。タイムライン上の起床・就寝カードを長押しして直接ドラッグして変更することもできます。'},
+            {q:'起床・就寝時間はどこで変更できますか？',a:'設定画面の「起床・就寝」から変更できます。タイムライン上の起床・就寝カードをタップしても変更できます。'},
             {q:'「あとでやる」に移動したタスクはどこで確認できますか？',a:'画面下部のバーにある「あとでやる」ボタンをタップすると、あとでやるリストが表示されます。'},
           ].map(({q,a},i,arr)=>(
             <div key={i} className={i<arr.length-1?'border-b border-gray-100':''}>
