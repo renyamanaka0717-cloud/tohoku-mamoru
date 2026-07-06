@@ -3804,15 +3804,10 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
 
         <div className="bg-white rounded-2xl px-4 py-5 shadow-sm mb-3">
           <p className="text-[13px] font-semibold text-gray-400 text-center mb-3">料金プラン（予定）</p>
-          <div className="flex gap-3">
-            <div className="flex-1 bg-gray-50 rounded-xl px-3 py-3 text-center">
-              <p className="text-xs text-gray-400 mb-1">月額</p>
-              <p className="text-lg font-bold text-gray-800">¥250</p>
-            </div>
-            <div className="flex-1 rounded-xl px-3 py-3 text-center" style={{background:'var(--c-primary)'}}>
-              <p className="text-xs text-white/70 mb-1">年額（おトク）</p>
-              <p className="text-lg font-bold text-white">¥1,800</p>
-            </div>
+          <div className="rounded-xl px-4 py-4 text-center" style={{background:'var(--c-primary)'}}>
+            <p className="text-xs text-white/70 mb-1">月額</p>
+            <p className="text-2xl font-bold text-white">¥200</p>
+            <p className="text-xs text-white/60 mt-1">いつでもキャンセル可能</p>
           </div>
         </div>
         <div className="bg-gray-100 rounded-2xl px-4 py-4 text-center">
