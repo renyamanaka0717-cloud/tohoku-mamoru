@@ -2063,19 +2063,21 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
         <span className="text-xs w-10 text-right pr-1 leading-none text-gray-300">{settings.wakeTime}</span>
       </div>
       <div className="absolute z-10 cursor-pointer active:opacity-70" style={{top:`${wakeCardTop}px`,left:`${AXIS_X-28}px`,width:'56px',height:'56px'}}
-        onClick={()=>onEditTime?.('wake')}>
+        onClick={()=>onPickColor?.('wake')}>
         <div className="w-full h-full flex items-center justify-center" style={{borderRadius:'28px',background:settings.wakeColor||'var(--c-primary)'}}>
           <AppIcons.wake size={24} className="text-white"/>
         </div>
+        <div className="absolute -top-1 -right-1 bg-gray-700 text-white rounded px-1 leading-none" style={{fontSize:'8px',fontWeight:700,paddingTop:'2px',paddingBottom:'2px'}}>PRO</div>
       </div>
       <div className="absolute flex items-center" style={{top:`${sleepCardTop+SLEEP_CARD_H/2}px`,transform:'translateY(-50%)',left:0}}>
         <span className="text-xs w-10 text-right pr-1 leading-none text-gray-300">{settings.sleepTime}</span>
       </div>
       <div className="absolute z-10 cursor-pointer active:opacity-70" style={{top:`${sleepCardTop}px`,left:`${AXIS_X-28}px`,width:'56px',height:'56px'}}
-        onClick={()=>onEditTime?.('sleep')}>
+        onClick={()=>onPickColor?.('sleep')}>
         <div className="w-full h-full flex items-center justify-center" style={{borderRadius:'28px',background:settings.sleepColor||'var(--c-primary)'}}>
           <AppIcons.sleep size={24} className="text-white"/>
         </div>
+        <div className="absolute -top-1 -right-1 bg-gray-700 text-white rounded px-1 leading-none" style={{fontSize:'8px',fontWeight:700,paddingTop:'2px',paddingBottom:'2px'}}>PRO</div>
       </div>
 
       {/* left axis: event times only (wake, tasks, sleep) */}
