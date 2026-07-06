@@ -2828,7 +2828,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   const addTag = () => {
     const t = tagInput.trim();
     if(!t || globalTags.some(td=>td.name===t)) return;
-    if(!isPremium && globalTags.length >= 3) { setProPrompt(true); return; }
+    if(!isPremium && globalTags.length >= 2) { setProPrompt(true); return; }
     onGlobalTags([...globalTags, {name:t, color:newTagColor}]);
     setTagInput('');
   };
@@ -3209,7 +3209,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
       {subHeader('タグ')}{proSheet}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
-        <p className="text-xs text-gray-400 px-1 mt-4">3個まで無料・4個目からPro（現在：無料開放中）</p>
+        <p className="text-xs text-gray-400 px-1 mt-4">2個まで無料・3個目からPro（現在：無料開放中）</p>
 
         {/* New tag */}
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-4">新しいタグ</p>
@@ -3785,7 +3785,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           {[
             {label:'生活パターン',         free:'1個',       pro:'無制限'},
             {label:'タスク一括入力',       free:'月1回',     pro:'無制限'},
-            {label:'タグ',                 free:'3個',       pro:'無制限'},
+            {label:'タグ',                 free:'2個',       pro:'無制限'},
             {label:'ファイルタブ',         free:'1個',       pro:'無制限'},
             {label:'繰り返し間隔カスタム', free:'基本のみ',  pro:'完全対応'},
             {label:'テーマカラー',         free:'ミントのみ', pro:'16色'},
