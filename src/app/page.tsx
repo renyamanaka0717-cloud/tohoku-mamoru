@@ -2067,7 +2067,6 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
         <div className="w-full h-full flex items-center justify-center" style={{borderRadius:'28px',background:settings.wakeColor||'var(--c-primary)'}}>
           <AppIcons.wake size={24} className="text-white"/>
         </div>
-        <div className="absolute -top-1 -right-1 bg-gray-700 text-white rounded px-1 leading-none" style={{fontSize:'8px',fontWeight:700,paddingTop:'2px',paddingBottom:'2px'}}>PRO</div>
       </div>
       <div className="absolute flex items-center" style={{top:`${sleepCardTop+SLEEP_CARD_H/2}px`,transform:'translateY(-50%)',left:0}}>
         <span className="text-xs w-10 text-right pr-1 leading-none text-gray-300">{settings.sleepTime}</span>
@@ -2077,7 +2076,6 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
         <div className="w-full h-full flex items-center justify-center" style={{borderRadius:'28px',background:settings.sleepColor||'var(--c-primary)'}}>
           <AppIcons.sleep size={24} className="text-white"/>
         </div>
-        <div className="absolute -top-1 -right-1 bg-gray-700 text-white rounded px-1 leading-none" style={{fontSize:'8px',fontWeight:700,paddingTop:'2px',paddingBottom:'2px'}}>PRO</div>
       </div>
 
       {/* left axis: event times only (wake, tasks, sleep) */}
@@ -4736,7 +4734,10 @@ export default function App() {
         <div className="fixed inset-0 z-[120] bg-black/40 flex items-end justify-center" onClick={()=>setColorPickTarget(null)}>
           <div className="bg-white w-full max-w-md rounded-t-3xl px-5 pt-5 pb-8 shadow-2xl" onClick={e=>e.stopPropagation()}>
             <div className="flex justify-center mb-4"><div className="w-10 h-1 bg-gray-200 rounded-full"/></div>
-            <p className="text-[15px] font-semibold text-gray-900 mb-4">{colorPickTarget==='wake'?'起床':'就寝'}アイコンの色</p>
+            <div className="flex items-center gap-2 mb-4">
+              <p className="text-[15px] font-semibold text-gray-900">{colorPickTarget==='wake'?'起床':'就寝'}アイコンの色</p>
+              <span className="bg-gray-700 text-white rounded px-1.5 leading-none" style={{fontSize:'9px',fontWeight:700,paddingTop:'3px',paddingBottom:'3px'}}>PRO</span>
+            </div>
             <div className="flex flex-wrap gap-3">
               {['#94CFC8',...TASK_COLORS.filter(Boolean)].map((c,i)=>{
                 const cur=colorPickTarget==='wake'?(settings.wakeColor||'#94CFC8'):(settings.sleepColor||'#94CFC8');
