@@ -3363,7 +3363,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
 
   if(sub==='notifications') return (
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
-      {subHeader('通知')}
+      {subHeader('通知')}{proSheet}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm mt-6">
           <SettingsRow icon={<AppIcons.bell size={18}/>} iconBg="bg-gray-100" title="通知設定"
@@ -3372,7 +3372,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           <div className="h-px bg-gray-100 mx-4"/>
           <SettingsRow icon={<AppIcons.shopping size={18}/>} iconBg="bg-gray-100" title="買い物リスト"
             desc={shopNotifSettings.filter(s=>s.enabled).length>0?`${shopNotifSettings.filter(s=>s.enabled).length}件の通知が有効`:'通知なし'}
-            onClick={()=>setSub('notifications-shop')} isLast pro/>
+            onClick={()=>{if(!isPremium){setProPrompt(true);return;}setSub('notifications-shop');}} isLast pro/>
         </div>
       </div>
     </div>
@@ -4184,6 +4184,7 @@ export default function App() {
   const [patternOverrides,setPatternOverrides] = useState<Record<string,string>>({});
   const [authUser,setAuthUser] = useState<AuthUser|null>(null);
   const [showNotifPrompt,setShowNotifPrompt] = useState(false);
+  const [appProPrompt,setAppProPrompt] = useState(false);
   const { isPremium } = usePremium();
 
   useEffect(()=>{
@@ -4703,7 +4704,7 @@ export default function App() {
           onDragStart={startDrag} dragTaskId={dragTask?.id} yToTimeRef={yToTimeRef} layoutYRef={layoutYRef} globalTags={globalTags}
           todayHistory={moveHistory.find(h=>h.date===date)} onSubtaskToggle={subtaskToggle}
           lifePatterns={lifePatterns} patternOverrides={patternOverrides}
-          onPickColor={setColorPickTarget}
+          onPickColor={(target)=>{if(!isPremium){setAppProPrompt(true);return;}setColorPickTarget(target);}}
           onEditTime={openTimePicker}
           customTabs={activeCategory===null?customTabs:[]}/>
       </main>
@@ -4969,6 +4970,8 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {appProPrompt&&<ProGateSheet onClose={()=>setAppProPrompt(false)} onView={()=>{setAppProPrompt(false);setSettingsInitSub('premium');setSOp(true);}}/>}
 
       {/* ── Notification onboarding prompt ── */}
       {showNotifPrompt&&(
