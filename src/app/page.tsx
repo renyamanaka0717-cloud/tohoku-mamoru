@@ -1905,8 +1905,9 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
   const freePassItems:FreePassItem[]=[];
 
   // Phase 0: pre-wake tasks — compact (card order, no time gap)
+  // Only include tasks that are before wake AND before sleep (excludes post-midnight tasks when sleep is past midnight)
   let prevBottom=-16;
-  for(const g of taskGroupList.filter(g=>toMin(g.startTime)<wakeMin)){
+  for(const g of taskGroupList.filter(g=>{const rawM=toMin(g.startTime);return rawM<wakeMin&&(sleepMin>wakeMin||rawM<sleepMin);})){
     const top=prevBottom+16;
     groupLayout.push({g,top});
     prevBottom=top+(g.tasks.length>1?MIN_CARD_H:g.h);
@@ -1953,8 +1954,9 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
   anchors.push({min:sleepMinEff,y:sleepCardTop});
 
   // Phase 2: post-sleep tasks — compact (card order, no time gap)
+  // Exclude Phase 0 tasks: only include tasks where rawMin >= wakeMin, or past-midnight sleep and rawMin >= sleepMin
   prevBottom=sleepCardTop+SLEEP_CARD_H;
-  for(const g of taskGroupList.filter(g=>adjM(g.startTime)>=sleepMinEff)){
+  for(const g of taskGroupList.filter(g=>{const rawM=toMin(g.startTime);return adjM(g.startTime)>=sleepMinEff&&(rawM>=wakeMin||(sleepMin<wakeMin&&rawM>=sleepMin));})){
     const top=prevBottom+16;
     groupLayout.push({g,top});
     prevBottom=top+(g.tasks.length>1?MIN_CARD_H:g.h);
