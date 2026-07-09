@@ -2010,7 +2010,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
       }
     }
     const snapped=Math.round(min/5)*5;
-    return fromMin(Math.max(0,Math.min(23*60+55,snapped)));
+    return fromMin(Math.max(0,Math.min(24*60,snapped))%(24*60));
   };
 
   // 時刻→スクリーンY（アンカー補間ベース、ドラッグオーバーレイ用）
@@ -4417,7 +4417,7 @@ export default function App() {
       const wakeMin=toMin(settings.wakeTime);
       const rawMin=wakeMin+(clientY+(mainRef.current?.scrollTop??0)-headerBottom-16)/PX_PER_MIN;
       const snapped=Math.round(rawMin/5)*5;
-      return fromMin(Math.max(0,Math.min(23*60+55,snapped)));
+      return fromMin(Math.max(0,Math.min(24*60,snapped))%(24*60));
     };
     const TRASH_H=100;
     const isInBottomZone=(y:number)=>y>window.innerHeight-TRASH_H;
