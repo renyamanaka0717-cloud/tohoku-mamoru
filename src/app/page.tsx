@@ -4381,8 +4381,8 @@ export default function App() {
     const pat=patId?lifePatterns.find(p=>p.id===patId):null;
     const ov=dayOverrides[date]??{};
     return {...settings,
-      wakeTime:  pat?.wakeTime  ?? ov.wakeTime  ?? settings.wakeTime,
-      sleepTime: pat?.sleepTime ?? ov.sleepTime ?? settings.sleepTime,
+      wakeTime:  ov.wakeTime  ?? pat?.wakeTime  ?? settings.wakeTime,
+      sleepTime: ov.sleepTime ?? pat?.sleepTime ?? settings.sleepTime,
     };
   },[settings,dayOverrides,date,patternOverrides,lifePatterns]);
 
