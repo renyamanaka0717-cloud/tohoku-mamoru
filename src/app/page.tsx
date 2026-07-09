@@ -4846,19 +4846,32 @@ export default function App() {
       )}
 
       {/* ── Setting time confirm popup ── */}
-      {settingConfirm&&(
+      {settingConfirm&&(()=>{
+        const activePatId=patternOverrides[date];
+        const activePat=activePatId?lifePatterns.find(p=>p.id===activePatId):null;
+        const clearPattern=()=>setPatternOverrides(prev=>{const n={...prev};delete n[date];return n;});
+        return(
         <div className="fixed inset-0 z-[200] bg-black/50 flex items-end justify-center" onClick={()=>setSettingConfirm(null)}>
           <div className="bg-white w-full max-w-md rounded-t-3xl px-5 pt-6 pb-10 shadow-2xl" onClick={e=>e.stopPropagation()}>
             <p className="text-base font-bold text-gray-900 mb-1">{settingConfirm.type==='wake'?'起床':'就寝'}時間を変更</p>
-            <p className="text-sm text-gray-500 mb-6">{settingConfirm.newTime} に変更します</p>
+            <p className="text-sm text-gray-500 mb-3">{settingConfirm.newTime} に変更します</p>
+            {activePat&&(
+              <div className="bg-orange-50 border border-orange-100 rounded-xl px-3 py-2.5 mb-5">
+                <p className="text-xs text-orange-500 font-medium">「{activePat.name}」パターンが設定されています</p>
+                <p className="text-xs text-orange-400 mt-0.5">変更するとこの日のパターンが解除されます</p>
+              </div>
+            )}
+            {!activePat&&<div className="mb-3"/>}
             <div className="space-y-3">
               <button onClick={()=>{
                 const key=settingConfirm.type==='wake'?'wakeTime':'sleepTime';
+                if(activePat) clearPattern();
                 setDayOverrides(prev=>({...prev,[date]:{...prev[date],[key]:settingConfirm.newTime}}));
                 setSettingConfirm(null);
-              }} className="w-full py-3.5 bg-gray-100 rounded-2xl text-sm font-semibold text-gray-900">この日だけ変更</button>
+              }} className="w-full py-3.5 bg-gray-100 rounded-2xl text-sm font-semibold text-gray-900">{activePat?'パターンを解除してこの日だけ変更':'この日だけ変更'}</button>
               <button onClick={()=>{
                 const key=settingConfirm.type==='wake'?'wakeTime':'sleepTime';
+                if(activePat) clearPattern();
                 setSettings(prev=>({...prev,[key]:settingConfirm.newTime}));
                 setDayOverrides(prev=>{
                   const n={...prev};
@@ -4871,7 +4884,8 @@ export default function App() {
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* ── Week Icon View ── */}
 
