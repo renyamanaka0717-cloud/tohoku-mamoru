@@ -1583,12 +1583,23 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
               const [hStr,mStr]=startTime.split(':');
               const normM=String(Math.min(55,Math.round((parseInt(mStr)||0)/5)*5)).padStart(2,'0');
               return(
-                <div className="flex items-center justify-center gap-2 px-5 pb-6 pt-2">
-                  <PickerCol items={HOURS} value={hStr} onChange={v=>setST(`${v}:${normM}`)}/>
-                  <span className="text-base font-medium text-gray-500 w-5 text-center">時</span>
-                  <PickerCol items={MINS} value={normM} onChange={v=>setST(`${hStr}:${v}`)}/>
-                  <span className="text-base font-medium text-gray-500 w-5 text-center">分</span>
-                </div>
+                <>
+                  <div className="flex items-center justify-center gap-2 px-5 pb-3 pt-2">
+                    <PickerCol items={HOURS} value={hStr} onChange={v=>setST(`${v}:${normM}`)}/>
+                    <span className="text-base font-medium text-gray-500 w-5 text-center">時</span>
+                    <PickerCol items={MINS} value={normM} onChange={v=>setST(`${hStr}:${v}`)}/>
+                    <span className="text-base font-medium text-gray-500 w-5 text-center">分</span>
+                  </div>
+                  <div className="flex justify-center gap-3 pb-6">
+                    {['00','15','30','45'].map(m=>(
+                      <button key={m} onClick={()=>setST(`${hStr}:${m}`)}
+                        className={`w-14 py-1.5 rounded-full text-sm font-bold transition-colors ${normM===m?'text-white':'text-[var(--c-primary)] bg-gray-50'}`}
+                        style={normM===m?{background:'var(--c-primary)'}:{}}>
+                        {m}
+                      </button>
+                    ))}
+                  </div>
+                </>
               );
             })()}
           </div>
