@@ -2821,7 +2821,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   const subHeader = (title:string) => (
     <div className="bg-white border-b border-gray-200 px-4 py-3.5 flex items-center shrink-0" style={{paddingTop:'calc(0.875rem + env(safe-area-inset-top))'}}>
 
-      <button onClick={back} className="flex items-center gap-0.5 text-gray-900 min-w-[80px]">
+      <button onClick={back} className="flex items-center gap-0.5 min-w-[80px]" style={{color:'var(--c-primary)'}}>
         <AppIcons.caretLeft size={20}/>
         <span className="text-[15px]">設定</span>
       </button>
@@ -3948,7 +3948,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
       <div className="bg-[#F2F2F7] px-4 pb-2 shrink-0 relative flex items-center justify-center" style={{paddingTop:'calc(1rem + env(safe-area-inset-top))'}}>
 
-        <button onClick={onClose} className="absolute left-4 flex items-center text-gray-900">
+        <button onClick={onClose} className="absolute left-4 flex items-center" style={{color:'var(--c-primary)'}}>
           <AppIcons.caretLeft size={20}/>
         </button>
         <h1 className="text-[20px] font-bold text-gray-900">設定</h1>
