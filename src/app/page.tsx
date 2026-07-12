@@ -94,7 +94,7 @@ const TAG_COLORS: {bg:string;text:string}[] = [
   {bg:'#FFF3CC',text:'#7A5800'},{bg:'#E2F5CC',text:'#3A6B0E'},
   {bg:'#CCF0E8',text:'#0E5E47'},{bg:'#CCE8F5',text:'#0A4F76'},
   {bg:'#CCE0FF',text:'#1A3F9E'},{bg:'#E8CCFF',text:'#5B1F9E'},
-  {bg:'#F0CCF5',text:'#7A1A8E'},{bg:'#F5DDCC',text:'#8C3D10'},
+  {bg:'#F0CCF5',text:'#7A1A8E'},
 ];
 const getTagTextColor=(bg:string)=>TAG_COLORS.find(c=>c.bg===bg)?.text??'#374151';
 const PX_PER_HOUR  = 40;
@@ -567,10 +567,10 @@ const ICON_CATEGORIES:{label:string;icons:{key:string;label:string}[]}[]=[
 const ICON_OPTIONS=ICON_CATEGORIES.flatMap(c=>c.icons);
 const TASK_COLORS=[
   '',
+  // 明るめ（パステル）
+  '#F4A7B0','#F4AA80','#F4D47A','#A8D8B0','#90C4E0','#B8AADC','#DDB0CC','#D4C8B8',
   // 濃いめ（白文字映え）
   '#C4888E','#C47A5E','#C4A44A','#7A9E8A','#6A8FAF','#8F82B8','#A67899','#8F8880',
-  // 明るめ（柔らかい雰囲気）
-  '#F4A7B0','#F4AA80','#F4D47A','#A8D8B0','#90C4E0','#B8AADC','#DDB0CC','#D4C8B8',
 ];
 const THEMES=[
   {id:'coral',   name:'コーラルピンク',     color:'#E88878'},
