@@ -4645,29 +4645,31 @@ export default function App() {
         {/* Category filter tabs */}
         <div className="bg-gray-50 flex items-end">
           <div className="flex-1 min-w-0 tabs-scroll flex items-end pl-3 pt-2" style={{overflowX:'auto',WebkitOverflowScrolling:'touch',overflowY:'hidden',touchAction:'pan-x'}}>
+          {(()=>{const totalZ=1+customTabs.length;return(
           <button onClick={()=>{setActiveCat(null);setEditTabId(null);}} className="shrink-0 relative"
             style={activeCategory===null?{
               width:'80px',padding:'7px 12px 9px',background:'var(--c-primary)',color:'white',fontWeight:700,fontSize:'0.875rem',
-              border:'none',borderRadius:'14px 14px 0 0',marginBottom:'-2px',zIndex:10,
+              border:'none',borderRadius:'14px 14px 0 0',marginBottom:'-2px',zIndex:totalZ,
               boxShadow:'0 4px 12px rgba(0,0,0,0.10)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',
             }:{
               width:'80px',padding:'5px 12px',background:'#FFFFFF',color:'#6B7280',fontWeight:600,fontSize:'0.875rem',
-              border:'none',borderRadius:'14px 14px 0 0',marginBottom:'2px',
+              border:'none',borderRadius:'14px 14px 0 0',marginBottom:'2px',zIndex:totalZ,
               boxShadow:'0 4px 10px rgba(0,0,0,0.08)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',
-            }}>すべて</button>
-          {customTabs.map(tab=>{
+            }}>すべて</button>);})()}
+          {customTabs.map((tab,i)=>{
             const active=activeCategory===tab.id;
+            const tabZ=customTabs.length-i;
             return (
               <button key={tab.id} onClick={()=>{
                 setActiveCat(active?null:tab.id);
               }} className="shrink-0 relative"
                 style={active?{
                   width:'80px',padding:'7px 12px 9px',background:'var(--c-primary)',color:'white',fontWeight:700,fontSize:'0.875rem',
-                  border:'none',borderRadius:'14px 14px 0 0',marginBottom:'-2px',zIndex:10,
+                  border:'none',borderRadius:'14px 14px 0 0',marginBottom:'-2px',zIndex:tabZ,
                   boxShadow:'0 4px 12px rgba(0,0,0,0.10)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',
                 }:{
                   width:'80px',padding:'5px 12px',background:'#FFFFFF',color:'#6B7280',fontWeight:600,fontSize:'0.875rem',
-                  border:'none',borderRadius:'14px 14px 0 0',marginBottom:'2px',
+                  border:'none',borderRadius:'14px 14px 0 0',marginBottom:'2px',zIndex:tabZ,
                   boxShadow:'0 4px 10px rgba(0,0,0,0.08)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',
                 }}>{tab.name}</button>
             );
