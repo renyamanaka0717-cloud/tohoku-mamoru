@@ -2726,7 +2726,7 @@ function ProGateSheet({onClose,onView}:{onClose:()=>void;onView?:()=>void}) {
             <AppIcons.star size={28} className="text-white"/>
           </div>
           <p className="text-[17px] font-bold text-gray-900">Proプランが必要です</p>
-          <p className="text-sm text-gray-500 text-center leading-relaxed">この機能はProプランでご利用いただけます。<br/>近日公開予定です。</p>
+          <p className="text-sm text-gray-500 text-center leading-relaxed">この機能はProプランでご利用いただけます。<br/>設定画面のPROから登録できます。</p>
         </div>
         {onView&&<button onClick={onView} className="w-full py-3.5 rounded-2xl text-[15px] font-semibold text-white mb-2" style={{background:'var(--c-primary)'}}>PROプランを見る</button>}
         <button onClick={onClose} className="w-full py-2.5 text-sm text-gray-400">閉じる</button>
@@ -2813,6 +2813,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   const [lpNewColor,setLpNewColor] = useState('#94CFC8');
   const [lpEditId,setLpEditId]     = useState<string|null>(null);
   const [colorPicking,setColorPicking] = useState<'wake'|'sleep'|null>(null);
+  const { purchase, restore, isPurchasing } = usePremium();
   const [proPrompt,setProPrompt] = useState(false);
   const proSheet = proPrompt ? <ProGateSheet onClose={()=>setProPrompt(false)} onView={()=>{setProPrompt(false);setSub('premium');}}/> : null;
 
@@ -3780,14 +3781,6 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           <p className="text-sm text-gray-500 mt-1">より便利な機能で、毎日をもっとスムーズに</p>
         </div>
 
-        <div className="bg-[var(--c-primary)]/10 rounded-2xl px-4 py-3 mb-4 flex items-center gap-2">
-          <span className="inline-flex items-center gap-0.5 border border-gray-400 rounded px-2 py-1 text-[11px] font-bold text-gray-500 leading-none tracking-wide shrink-0">★ PRO</span>
-          <div>
-            <p className="text-sm font-bold text-gray-900">Pro機能 無料開放中</p>
-            <p className="text-xs text-gray-500">現在はすべての機能を無料でご利用いただけます</p>
-          </div>
-        </div>
-
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2">★ PRO 機能一覧</p>
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm mb-4">
           <div className="grid px-4 py-2.5 bg-gray-50 border-b border-gray-100" style={{gridTemplateColumns:'1fr 72px 64px'}}>
@@ -3815,18 +3808,37 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           ))}
         </div>
 
-        <div className="bg-white rounded-2xl px-4 py-5 shadow-sm mb-3">
-          <p className="text-[13px] font-semibold text-gray-400 text-center mb-3">料金プラン（予定）</p>
-          <div className="rounded-xl px-4 py-4 text-center" style={{background:'var(--c-primary)'}}>
-            <p className="text-xs text-white/70 mb-1">月額</p>
-            <p className="text-2xl font-bold text-white">¥200</p>
-            <p className="text-xs text-white/60 mt-1">いつでもキャンセル可能</p>
+        {isPremium ? (
+          <div className="bg-white rounded-2xl px-4 py-5 shadow-sm text-center">
+            <p className="text-sm font-bold text-[var(--c-primary)] mb-1">PROプランを利用中です</p>
+            <p className="text-xs text-gray-400">すべての機能をご利用いただけます</p>
           </div>
-        </div>
-        <div className="bg-gray-100 rounded-2xl px-4 py-4 text-center">
-          <p className="text-[13px] text-gray-500 mb-1">Proプランは近日公開予定です</p>
-          <p className="text-xs text-gray-400">公開時にアップデートでご案内します</p>
-        </div>
+        ) : (
+          <>
+            <div className="bg-white rounded-2xl px-4 py-5 shadow-sm mb-3">
+              <p className="text-[13px] font-semibold text-gray-400 text-center mb-3">料金プラン</p>
+              <div className="rounded-xl px-4 py-4 text-center" style={{background:'var(--c-primary)'}}>
+                <p className="text-xs text-white/70 mb-1">月額</p>
+                <p className="text-2xl font-bold text-white">¥200</p>
+                <p className="text-xs text-white/60 mt-1">いつでもキャンセル可能</p>
+              </div>
+            </div>
+            <button
+              disabled={isPurchasing}
+              onClick={async()=>{try{await purchase();}catch{}}}
+              className="w-full py-4 rounded-2xl text-[15px] font-bold text-white mb-2 active:opacity-80 disabled:opacity-50"
+              style={{background:'var(--c-primary)'}}
+            >
+              {isPurchasing?'処理中...':'PROプランを始める'}
+            </button>
+            <button
+              onClick={async()=>{const ok=await restore();if(!ok)alert('復元できる購入履歴が見つかりませんでした');}}
+              className="w-full py-2.5 text-sm text-gray-400 text-center"
+            >
+              購入を復元
+            </button>
+          </>
+        )}
       </div>
     </div>
   );
@@ -3979,7 +3991,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
 
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">サブスクリプション</p>
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
-          <SettingsRow icon={<AppIcons.star/>} iconBg="bg-gray-100" title="PRO" desc={isPremium?'利用中':'近日公開'} onClick={()=>setSub('premium')} isLast/>
+          <SettingsRow icon={<AppIcons.star/>} iconBg="bg-gray-100" title="PRO" desc={isPremium?'利用中':'月額¥200'} onClick={()=>setSub('premium')} isLast/>
         </div>
 
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">情報</p>
