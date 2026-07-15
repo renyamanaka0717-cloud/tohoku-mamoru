@@ -14,6 +14,7 @@
 - データ永続化: localStorage（サーバーDBなし）
 - デプロイ: Vercel（`main` または `claude/**` push で GitHub Actions 経由で自動デプロイ）
 - iOS ネイティブ: Capacitor v8（WKWebView）でラップし App Store 配信
+- 課金: RevenueCat（`@revenuecat/purchases-capacitor` v13）— 月額¥200 PRO サブスクリプション
 
 ---
 
@@ -51,6 +52,7 @@ src/app/
   globals.css           # グローバルスタイル（font-size: 17px、html背景色 #F9FAFB）
   components/
     Icons.tsx           # AppIcons — Phosphor Icons の一元管理
+    Premium.tsx         # PremiumProvider・usePremium・PremiumFeatureGate — RevenueCat 連携
   api/
     generate/
       route.ts          # POST /api/generate — Groq でThreads投稿生成
@@ -204,6 +206,87 @@ const groupIconTop = (g) => g.tasks.length > 1 ? DUP_LABEL_H : 0;
 
 **時刻ラベルの配置:**  
 `top + groupIconTop(g) + groupStackH(g)/2` に vertically-centered で表示（アイコンスタック全体の中央）。
+
+---
+
+## RevenueCat / サブスクリプション実装
+
+### 概要
+
+`src/app/components/Premium.tsx` で RevenueCat SDK を管理する。
+
+```typescript
+const RC_API_KEY = 'appl_zyfcgKyGH0RBKcOppeougWslCRP';
+const ENTITLEMENT_ID = 'BrainBox Pro';
+```
+
+- **ブラウザ・開発環境**: `isNative()` が false → `isPremium = true`（全機能解放）
+- **iOS ネイティブ**: RevenueCat SDK を動的 import し、エンタイトルメント `BrainBox Pro` を確認
+
+### isNative()
+
+```typescript
+function isNative(): boolean {
+  if (typeof window === 'undefined') return false;
+  return !!(window as {Capacitor?: {isNativePlatform?: () => boolean}}).Capacitor?.isNativePlatform?.();
+}
+```
+
+### 動的 import（重要）
+
+Next.js バンドルに含めないよう `/* webpackIgnore: true */` を付ける。
+
+```typescript
+const { Purchases, LOG_LEVEL } = await import(/* webpackIgnore: true */ '@revenuecat/purchases-capacitor');
+```
+
+### v13 API の注意点
+
+`getOfferings()` はオブジェクトを直接返す（分割代入しない）：
+
+```typescript
+const offerings = await Purchases.getOfferings();       // ✅ v13
+// const { offerings } = await Purchases.getOfferings(); // ❌ v9以前の書き方
+const pkg = offerings.current?.monthly;
+```
+
+### PremiumContext が提供する値
+
+| 値 | 型 | 説明 |
+|---|---|---|
+| `isPremium` | boolean | PRO 加入済みか |
+| `isLoading` | boolean | 初期確認中か |
+| `isPurchasing` | boolean | 購入処理中か |
+| `purchase` | `()=>Promise<void>` | 月額プランを購入 |
+| `restore` | `()=>Promise<boolean>` | 購入を復元 |
+
+### App Store Connect 設定
+
+| 項目 | 値 |
+|---|---|
+| 製品ID | `jp.brainbox.app.premium.monthly` |
+| サブスクリプショングループ | PROプラン |
+| Apple ID | 6787816884 |
+| 価格 | ¥200/月 |
+| ローカリゼーション（日本語） | 表示名: BrainBox PRO / 説明: PRO機能が使い放題に |
+
+### PRO画面（SettingsScreen 内 `sub==='pro'`）
+
+```tsx
+// isPremium=false: 購入UI
+<div>¥200/月カード + "PROプランを始める"ボタン + "購入を復元"リンク</div>
+// isPremium=true: 利用中UI
+<div>"PROプランを利用中です"カード</div>
+```
+
+- `SettingsRow` の PRO 行: `isPremium ? '利用中' : '月額¥200'`
+- `purchase()` / `restore()` は `usePremium()` から取得
+
+### 避けるパターン
+
+- `Premium.tsx` の `isPremium` をブラウザ環境以外でハードコード `true` に戻さない
+- `@revenuecat/purchases-capacitor` を `/* webpackIgnore: true */` なしで static import しない（ビルドエラー）
+- v13 の `getOfferings()` を `{ offerings }` で分割代入しない
 
 ---
 
