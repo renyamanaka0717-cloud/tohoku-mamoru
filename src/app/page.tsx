@@ -46,7 +46,7 @@ interface Task {
   allDay?: boolean;
 }
 
-interface Settings { wakeTime: string; sleepTime: string; keepIncomplete?: boolean; showFreeCard?: boolean; freeCardMinMin?: number; wakeColor?:string; sleepColor?:string; theme?:string; notificationsEnabled?:boolean; }
+interface Settings { wakeTime: string; sleepTime: string; keepIncomplete?: boolean; showFreeCard?: boolean; freeCardMinMin?: number; wakeColor?:string; sleepColor?:string; theme?:string; appIcon?:string; notificationsEnabled?:boolean; }
 type AuthUser = {uid:string;email?:string;displayName?:string;isPremium?:boolean};
 interface FreeSlot  { start: string; end: string; min: number; }
 interface ShopItem  { id: string; name: string; checked: boolean; purchasedAt?: string; }
@@ -3478,7 +3478,9 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             onClick={()=>setSub('themeColor')} pro/>
           <div className="h-px bg-gray-100 mx-4"/>
           <SettingsRow icon={<AppIcons.home/>} iconBg="bg-gray-100"
-            title="アプリアイコン" desc="近日リリース予定" onClick={()=>{}} pro/>
+            title="アプリアイコン"
+            desc={THEMES.find(t=>t.id===(settings.appIcon??'mint'))?.name??'ミント'}
+            onClick={()=>setSub('appIcon')} pro/>
           <div className="h-px bg-gray-100 mx-4"/>
           <SettingsRow icon={<AppIcons.freeTime size={18}/>} iconBg="bg-gray-100"
             title="空き時間カード"
@@ -3505,6 +3507,38 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
               <button key={t.id} onClick={()=>{if(!isPremium&&!isFree){setProPrompt(true);return;}onSettings({...settings,theme:t.id});}}
                 className="flex flex-col items-center gap-2 py-3">
                 <div className="relative w-14 h-14 rounded-full flex items-center justify-center"
+                  style={{background:t.color}}>
+                  {selected&&(
+                    <div className="w-7 h-7 bg-white rounded-full flex items-center justify-center shadow">
+                      <svg width="12" height="9" viewBox="0 0 12 9" fill="none">
+                        <path d="M1 4L4.5 7.5L11 1" stroke={t.color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </div>
+                  )}
+                </div>
+                <span className={`text-xs text-center leading-tight ${selected?'font-bold text-gray-900':'text-gray-500'}`}>{t.name}</span>
+                {!isFree&&!isPremium&&<span className="text-[9px] font-bold text-gray-400 border border-gray-300 rounded px-1 py-0.5 leading-none">PRO</span>}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+
+  if(sub==='appIcon') return (
+    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
+      {subHeader('アプリアイコン')}{proSheet}
+      <div className="flex-1 overflow-y-auto px-4 pb-8">
+        <p className="text-xs text-gray-400 px-1 mb-4 mt-6">選択したアイコンはホーム画面に反映されます（次回アップデートで対応予定）</p>
+        <div className="grid grid-cols-4 gap-4">
+          {THEMES.map(t=>{
+            const selected=(settings.appIcon??'mint')===t.id;
+            const isFree=t.id==='mint';
+            return (
+              <button key={t.id} onClick={()=>{if(!isPremium&&!isFree){setProPrompt(true);return;}onSettings({...settings,appIcon:t.id});}}
+                className="flex flex-col items-center gap-2 py-3">
+                <div className="relative w-14 h-14 rounded-[16px] flex items-center justify-center"
                   style={{background:t.color}}>
                   {selected&&(
                     <div className="w-7 h-7 bg-white rounded-full flex items-center justify-center shadow">
