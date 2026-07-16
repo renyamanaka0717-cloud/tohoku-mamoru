@@ -622,18 +622,11 @@ const THEMES=[
   {id:'mint',    name:'ミント',             color:'#94CFC8'},
   {id:'coral',   name:'コーラルピンク',     color:'#E88878'},
   {id:'sunset',  name:'サンセットオレンジ', color:'#E8906A'},
-  {id:'mocha',   name:'モカブラウン',       color:'#9E7B65'},
-  {id:'cream',   name:'クリームベージュ',   color:'#C0A882'},
   {id:'forest',  name:'フォレストグリーン', color:'#5A8A6A'},
-  {id:'powder',  name:'パウダーブルー',     color:'#A0C8E8'},
   {id:'sky',     name:'スカイブルー',       color:'#7CB9E8'},
-  {id:'dusty',   name:'ダスティブルー',     color:'#7090A8'},
-  {id:'slate',   name:'スレートグレー',     color:'#8896A5'},
   {id:'navy',    name:'ネイビー',           color:'#5F7EA8'},
   {id:'lavender',name:'ラベンダー',         color:'#9B8EC4'},
-  {id:'lilac',   name:'ライラック',         color:'#B8A0D4'},
   {id:'peach',   name:'ピーチ',             color:'#E8A0B0'},
-  {id:'rose',    name:'ローズピンク',       color:'#D4788A'},
   {id:'mono',    name:'モノクロ',           color:'#666666'},
 ];
 
@@ -3911,10 +3904,9 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             {label:'タグ',                 free:'2個',       pro:'無制限'},
             {label:'ファイルタブ',         free:'1個',       pro:'無制限'},
             {label:'繰り返し間隔カスタム', free:'基本のみ',  pro:'完全対応'},
-            {label:'テーマカラー',         free:'ミントのみ', pro:'16色'},
+            {label:'テーマカラー',         free:'ミントのみ', pro:'9色'},
             {label:'アプリアイコン変更',   free:'×',         pro:'対応'},
-            {label:'起床アイコン色変更',   free:'×',         pro:'対応'},
-            {label:'就寝アイコン色変更',   free:'×',         pro:'対応'},
+            {label:'起床・就寝アイコン色変更', free:'×',      pro:'対応'},
             {label:'買い物リスト通知',     free:'×',         pro:'対応'},
           ].map(({label,free,pro},i,arr)=>(
             <div key={i} className={`grid items-center px-4 py-3${i<arr.length-1?' border-b border-gray-100':''}`} style={{gridTemplateColumns:'1fr 72px 64px'}}>
