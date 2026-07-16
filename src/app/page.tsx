@@ -2074,7 +2074,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
       }
     }
     const snapped=Math.round(min/5)*5;
-    return fromMin(Math.max(0,Math.min(24*60,snapped))%(24*60));
+    return fromMin(((snapped%1440)+1440)%1440);
   };
 
   // 時刻→スクリーンY（アンカー補間ベース、ドラッグオーバーレイ用）
