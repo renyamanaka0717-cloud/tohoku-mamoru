@@ -3605,7 +3605,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
       {subHeader('アプリアイコン')}{proSheet}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
         <p className="text-xs text-gray-400 px-1 mb-4 mt-6">選択したアイコンがホーム画面に反映されます</p>
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-3 gap-4">
           {APP_ICONS.map(ic=>{
             const selected=(settings.appIcon??'mint')===ic.id;
             const isFree=ic.id==='mint';
