@@ -1929,7 +1929,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
     |{kind:'free';slot:FreeSlot;startMin:number;h:number};
   const dayItems:DayItem[]=[
     ...taskGroupList
-      .filter(g=>{const m=adjM(g.startTime);return m>=wakeMin&&m<sleepMinEff;})
+      .filter(g=>{const m=adjM(g.startTime);return m>=wakeMin&&m<=sleepMinEff;})
       .map(g=>({kind:'task' as const,g,startMin:adjM(g.startTime),h:g.h})),
     ...freeSlots.map(s=>({kind:'free' as const,slot:s,startMin:adjM(s.start),
       h:calcFreeContentH(laterPool)})),
@@ -1956,7 +1956,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
   // Phase 2: post-sleep tasks — compact (card order, no time gap)
   // Exclude Phase 0 tasks: only include tasks where rawMin >= wakeMin, or past-midnight sleep and rawMin >= sleepMin
   prevBottom=sleepCardTop+SLEEP_CARD_H;
-  for(const g of taskGroupList.filter(g=>{const rawM=toMin(g.startTime);return adjM(g.startTime)>=sleepMinEff&&(rawM>=wakeMin||(sleepMin<wakeMin&&rawM>=sleepMin));})){
+  for(const g of taskGroupList.filter(g=>{const rawM=toMin(g.startTime);return adjM(g.startTime)>sleepMinEff&&(rawM>=wakeMin||(sleepMin<wakeMin&&rawM>=sleepMin));})){
     const top=prevBottom+16;
     groupLayout.push({g,top});
     prevBottom=top+(g.tasks.length>1?MIN_CARD_H:g.h);
