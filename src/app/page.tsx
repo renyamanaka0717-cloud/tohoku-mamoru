@@ -573,12 +573,12 @@ const TASK_COLORS=[
   '#C4888E','#C47A5E','#C4A44A','#7A9E8A','#6A8FAF','#8F82B8','#A67899','#8F8880',
 ];
 const THEMES=[
+  {id:'mint',    name:'ミント',             color:'#94CFC8'},
   {id:'coral',   name:'コーラルピンク',     color:'#E88878'},
   {id:'sunset',  name:'サンセットオレンジ', color:'#E8906A'},
   {id:'mocha',   name:'モカブラウン',       color:'#9E7B65'},
   {id:'cream',   name:'クリームベージュ',   color:'#C0A882'},
   {id:'forest',  name:'フォレストグリーン', color:'#5A8A6A'},
-  {id:'mint',    name:'ミント',             color:'#94CFC8'},
   {id:'powder',  name:'パウダーブルー',     color:'#A0C8E8'},
   {id:'sky',     name:'スカイブルー',       color:'#7CB9E8'},
   {id:'dusty',   name:'ダスティブルー',     color:'#7090A8'},
