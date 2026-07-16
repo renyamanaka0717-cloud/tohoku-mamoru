@@ -2013,7 +2013,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
 
   // Sleep card: right after the last daytime card, fully compacted
   const sleepCardTop=dayPrevBottom+CARD_GAP_MIN;
-  anchors.push({min:sleepMinEff,y:sleepCardTop});
+  if(anchors[anchors.length-1].min!==sleepMinEff) anchors.push({min:sleepMinEff,y:sleepCardTop});
 
   // Phase 2: post-sleep tasks — compact (card order, no time gap)
   // Exclude Phase 0 tasks: only include tasks where rawMin >= wakeMin, or past-midnight sleep and rawMin >= sleepMin
@@ -3079,7 +3079,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
     const disp=bulkHistory.slice(0,10);
     return (
       <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
-        {subHeader('登録履歴')}
+        {subHeader('登録履歴')}{proSheet}
         <div className="flex-1 overflow-y-auto px-4 pb-10">
           {disp.length===0&&(
             <div className="flex flex-col items-center justify-center pt-20 gap-3">
@@ -3567,8 +3567,8 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
       <div className="flex-1 overflow-y-auto px-4 pb-8">
         <p className="text-xs text-gray-400 px-1 mb-4 mt-6">テーマを選択するとアプリ全体の色が切り替わります</p>
         <div className="grid grid-cols-4 gap-4">
-          {THEMES.map(t=>{
-            const selected=(settings.theme??'mint')===t.id;
+          {(()=>{const effectiveTheme=THEMES.some(th=>th.id===settings.theme)?(settings.theme??'mint'):'mint';return THEMES.map(t=>{
+            const selected=effectiveTheme===t.id;
             const isFree=t.id==='mint';
             return (
               <button key={t.id} onClick={()=>{if(!isPremium&&!isFree){setProPrompt('テーマカラーの変更');return;}onSettings({...settings,theme:t.id});}}
@@ -3592,7 +3592,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                 <span className={`text-xs text-center leading-tight ${selected?'font-bold text-gray-900':'text-gray-500'}`}>{t.name}</span>
               </button>
             );
-          })}
+          });})()}
         </div>
       </div>
     </div>
@@ -3802,12 +3802,12 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
     const cellDate=(day:number)=>`${lpVm.year}-${String(lpVm.month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
     return (
       <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
-        {subHeader('起床・就寝')}
+        {subHeader('起床・就寝')}{proSheet}
         <div className="flex-1 overflow-y-auto px-4 pb-10">
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">時間設定</p>
           <div className="bg-white rounded-2xl overflow-hidden shadow-sm mb-5">
             <div className="px-4 py-4 flex items-center gap-3">
-              <button onClick={()=>setColorPicking(colorPicking==='wake'?null:'wake')} className="relative shrink-0">
+              <button onClick={()=>{if(!isPremium){setProPrompt('起床・就寝アイコンの色変更');return;}setColorPicking(colorPicking==='wake'?null:'wake');}} className="relative shrink-0">
                 <div className="w-9 h-9 rounded-full flex items-center justify-center" style={{background:settings.wakeColor||'var(--c-primary)'}}>
                   <AppIcons.wake size={16} className="text-white"/>
                 </div>
@@ -3819,7 +3819,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                 onChange={e=>onSettings({...settings,wakeTime:e.target.value})}
                 className="border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50"/>
               <span className="text-gray-300 text-sm">〜</span>
-              <button onClick={()=>setColorPicking(colorPicking==='sleep'?null:'sleep')} className="relative shrink-0">
+              <button onClick={()=>{if(!isPremium){setProPrompt('起床・就寝アイコンの色変更');return;}setColorPicking(colorPicking==='sleep'?null:'sleep');}} className="relative shrink-0">
                 <div className="w-9 h-9 rounded-full flex items-center justify-center" style={{background:settings.sleepColor||'var(--c-primary)'}}>
                   <AppIcons.sleep size={16} className="text-white"/>
                 </div>
