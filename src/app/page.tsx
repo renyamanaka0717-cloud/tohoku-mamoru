@@ -4949,12 +4949,16 @@ export default function App() {
       )}
 
       {/* ── Drag overlay ── */}
-      {dragTask&&(
+      {dragTask&&(()=>{
+        const wakeMinDrag=toMin(settings.wakeTime);
+        const dropMinRaw=dropTime?toMin(dropTime):0;
+        const adjDropMin=dropMinRaw<wakeMinDrag?dropMinRaw+1440:dropMinRaw;
+        return (
         <div className="fixed inset-0 z-[70] pointer-events-none">
           {/* Drop time line */}
           {dropTime&&!overTrash&&!overLater&&(
             <div className="absolute right-0 flex items-center justify-end"
-              style={{top:`${layoutYRef.current?layoutYRef.current(toMin(dropTime)):dragPos.y}px`,left:'68px'}}>
+              style={{top:`${layoutYRef.current?layoutYRef.current(adjDropMin):dragPos.y}px`,left:'68px'}}>
               <span className="bg-gray-600 text-white text-xs font-bold px-2 py-0.5 rounded-full whitespace-nowrap shrink-0 mr-2">{dropTime}</span>
             </div>
           )}
@@ -4963,7 +4967,7 @@ export default function App() {
             <div style={{
               position:'absolute',
               left:`${Math.max(8,Math.min(dragPos.x-70,window.innerWidth-180))}px`,
-              top:`${(layoutYRef.current&&dropTime?layoutYRef.current(toMin(dropTime)):dragPos.y)-60}px`,
+              top:`${(layoutYRef.current&&dropTime?layoutYRef.current(adjDropMin):dragPos.y)-60}px`,
               transform:'rotate(-3deg) scale(1.05)',
             }}>
               <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 px-4 py-3 w-44">
@@ -4984,7 +4988,8 @@ export default function App() {
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* ── Setting time confirm popup ── */}
       {settingConfirm&&(()=>{
