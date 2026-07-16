@@ -2743,7 +2743,8 @@ function SettingsRow({icon,iconBg,title,desc,onClick,isLast=false,pro=false}:{
       onClick={onClick}
       className={`w-full flex items-center gap-3 px-4 py-3.5 text-left active:bg-gray-50 transition-colors${!isLast?' border-b border-gray-100':''}`}
     >
-      <div className={`w-[30px] h-[30px] rounded-[8px] flex items-center justify-center shrink-0 text-gray-700 ${iconBg}`}>
+      <div className="w-[30px] h-[30px] rounded-[8px] flex items-center justify-center shrink-0"
+        style={{background:'color-mix(in srgb, var(--c-primary) 15%, white)', color:'var(--c-primary)'}}>
         {icon}
       </div>
       <div className="flex-1 min-w-0">
