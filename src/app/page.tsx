@@ -1619,7 +1619,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
           </div>
         </div>
       )}
-      {modalProPrompt&&<ProGateSheet onClose={()=>setModalProPrompt(false)}/>}
+      {modalProPrompt&&<ProGateSheet onClose={()=>setModalProPrompt(false)} feature="繰り返しのカスタム設定"/>}
     </div>
   );
 }
@@ -2716,7 +2716,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
 
 // ── Settings Screen ──────────────────────────────────────────────────────────
 
-function ProGateSheet({onClose,onView}:{onClose:()=>void;onView?:()=>void}) {
+function ProGateSheet({onClose,onView,feature}:{onClose:()=>void;onView?:()=>void;feature?:string}) {
   return (
     <div className="fixed inset-0 z-[200] bg-black/40 flex items-end justify-center" onClick={onClose}>
       <div className="bg-white w-full max-w-md rounded-t-3xl px-5 pt-5 pb-10 shadow-2xl" onClick={e=>e.stopPropagation()}>
@@ -2726,7 +2726,7 @@ function ProGateSheet({onClose,onView}:{onClose:()=>void;onView?:()=>void}) {
             <AppIcons.star size={28} className="text-white"/>
           </div>
           <p className="text-[17px] font-bold text-gray-900">Proプランが必要です</p>
-          <p className="text-sm text-gray-500 text-center leading-relaxed">この機能はProプランでご利用いただけます。<br/>設定画面のPROから登録できます。</p>
+          <p className="text-sm text-gray-500 text-center leading-relaxed">{feature?`「${feature}」はProプランでご利用いただけます。`:'この機能はProプランでご利用いただけます。'}<br/>設定画面のPROから登録できます。</p>
         </div>
         {onView&&<button onClick={onView} className="w-full py-3.5 rounded-2xl text-[15px] font-semibold text-white mb-2" style={{background:'var(--c-primary)'}}>PROプランを見る</button>}
         <button onClick={onClose} className="w-full py-2.5 text-sm text-gray-400">閉じる</button>
@@ -2814,8 +2814,8 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   const [lpEditId,setLpEditId]     = useState<string|null>(null);
   const [colorPicking,setColorPicking] = useState<'wake'|'sleep'|null>(null);
   const { purchase, restore, isPurchasing } = usePremium();
-  const [proPrompt,setProPrompt] = useState(false);
-  const proSheet = proPrompt ? <ProGateSheet onClose={()=>setProPrompt(false)} onView={()=>{setProPrompt(false);setSub('premium');}}/> : null;
+  const [proPrompt,setProPrompt] = useState<string|null>(null);
+  const proSheet = proPrompt ? <ProGateSheet feature={proPrompt} onClose={()=>setProPrompt(null)} onView={()=>{setProPrompt(null);setSub('premium');}}/> : null;
 
   const back = () => setSub(null);
 
@@ -2842,7 +2842,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   const addTag = () => {
     const t = tagInput.trim();
     if(!t || globalTags.some(td=>td.name===t)) return;
-    if(!isPremium && globalTags.length >= 2) { setProPrompt(true); return; }
+    if(!isPremium && globalTags.length >= 2) { setProPrompt('タグを3個以上作成'); return; }
     onGlobalTags([...globalTags, {name:t, color:newTagColor}]);
     setTagInput('');
   };
@@ -2882,7 +2882,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
     const register=()=>{
       if(!bulkName.trim()||bulkDates.size===0) return;
       const thisMonth=todayStr().slice(0,7);
-      if(!isPremium&&bulkHistory.filter(e=>e.registeredAt.startsWith(thisMonth)).length>=1){setProPrompt(true);return;}
+      if(!isPremium&&bulkHistory.filter(e=>e.registeredAt.startsWith(thisMonth)).length>=1){setProPrompt('一括入力を月2回以上利用');return;}
       onBulkAdd([...bulkDates].map(date=>({
         name:bulkName.trim(),startTime:bulkStart,duration:bDur,
         date,completed:false,isLater:false,memo:'',
@@ -3135,10 +3135,10 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
         <div className="bg-white rounded-2xl shadow-sm px-4 py-3">
           <div className="flex gap-2 items-center">
             <input value={tabInput} onChange={e=>setTabInput(e.target.value)}
-              onKeyDown={e=>{if(e.key==='Enter'){const v=tabInput.trim();if(v){if(!isPremium&&customTabs.length>=1){setProPrompt(true);return;}onCustomTabs([...customTabs,{id:uid(),name:v}]);setTabInput('');}}} }
+              onKeyDown={e=>{if(e.key==='Enter'){const v=tabInput.trim();if(v){if(!isPremium&&customTabs.length>=1){setProPrompt('ファイルタブを2個以上作成');return;}onCustomTabs([...customTabs,{id:uid(),name:v}]);setTabInput('');}}} }
               placeholder="タブ名を入力"
               className="flex-1 text-[15px] bg-transparent outline-none text-gray-900 placeholder-gray-300 border-b border-gray-200 pb-1"/>
-            <button onClick={()=>{const v=tabInput.trim();if(v){if(!isPremium&&customTabs.length>=1){setProPrompt(true);return;}onCustomTabs([...customTabs,{id:uid(),name:v}]);setTabInput('');}}}
+            <button onClick={()=>{const v=tabInput.trim();if(v){if(!isPremium&&customTabs.length>=1){setProPrompt('ファイルタブを2個以上作成');return;}onCustomTabs([...customTabs,{id:uid(),name:v}]);setTabInput('');}}}
               className="px-4 py-1.5 bg-[var(--c-primary)] text-white text-sm font-semibold rounded-xl shrink-0">追加</button>
           </div>
         </div>
@@ -3386,7 +3386,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           <div className="h-px bg-gray-100 mx-4"/>
           <SettingsRow icon={<AppIcons.shopping size={18}/>} iconBg="bg-gray-100" title="買い物リスト"
             desc={shopNotifSettings.filter(s=>s.enabled).length>0?`${shopNotifSettings.filter(s=>s.enabled).length}件の通知が有効`:'通知なし'}
-            onClick={()=>{if(!isPremium){setProPrompt(true);return;}setSub('notifications-shop');}} isLast pro/>
+            onClick={()=>{if(!isPremium){setProPrompt('買い物リストの通知設定');return;}setSub('notifications-shop');}} isLast pro/>
         </div>
       </div>
     </div>
@@ -3504,7 +3504,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             const selected=(settings.theme??'mint')===t.id;
             const isFree=t.id==='mint';
             return (
-              <button key={t.id} onClick={()=>{if(!isPremium&&!isFree){setProPrompt(true);return;}onSettings({...settings,theme:t.id});}}
+              <button key={t.id} onClick={()=>{if(!isPremium&&!isFree){setProPrompt('テーマカラーの変更');return;}onSettings({...settings,theme:t.id});}}
                 className="flex flex-col items-center gap-2 py-3">
                 <div className="relative w-14 h-14 rounded-full flex items-center justify-center"
                   style={{background:t.color}}>
@@ -3536,7 +3536,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             const selected=(settings.appIcon??'mint')===t.id;
             const isFree=t.id==='mint';
             return (
-              <button key={t.id} onClick={()=>{if(!isPremium&&!isFree){setProPrompt(true);return;}onSettings({...settings,appIcon:t.id});}}
+              <button key={t.id} onClick={()=>{if(!isPremium&&!isFree){setProPrompt('アプリアイコンの変更');return;}onSettings({...settings,appIcon:t.id});}}
                 className="flex flex-col items-center gap-2 py-3">
                 <div className="relative w-14 h-14 rounded-[16px] flex items-center justify-center"
                   style={{background:t.color}}>
@@ -3658,7 +3658,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             )}
           </div>
           {!lpAddMode&&(
-            <button onClick={()=>{if(!isPremium&&lifePatterns.length>=1){setProPrompt(true);return;}setLpAddMode(true);setLpNewName('');setLpNewWake('07:00');setLpNewSleep('23:00');setLpNewColor('#94CFC8');}}
+            <button onClick={()=>{if(!isPremium&&lifePatterns.length>=1){setProPrompt('生活パターンを2個以上登録');return;}setLpAddMode(true);setLpNewName('');setLpNewWake('07:00');setLpNewSleep('23:00');setLpNewColor('#94CFC8');}}
               className="w-full py-3 rounded-2xl text-sm font-semibold text-[var(--c-primary)] bg-white shadow-sm mb-5">＋ パターンを追加</button>
           )}
 
@@ -5058,7 +5058,7 @@ export default function App() {
         </div>
       )}
 
-      {appProPrompt&&<ProGateSheet onClose={()=>setAppProPrompt(false)} onView={()=>{setAppProPrompt(false);setSettingsInitSub('premium');setSOp(true);}}/>}
+      {appProPrompt&&<ProGateSheet onClose={()=>setAppProPrompt(false)} onView={()=>{setAppProPrompt(false);setSettingsInitSub('premium');setSOp(true);}} feature="起床・就寝アイコンの色変更"/>}
 
       {/* ── Notification onboarding prompt ── */}
       {showNotifPrompt&&(
