@@ -3627,8 +3627,8 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                     )}
                   </div>
                   {!isFree&&!isPremium&&(
-                    <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center shadow z-10" style={{background:'var(--c-primary)'}}>
-                      <AppIcons.star size={11} className="text-white"/>
+                    <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-white border border-gray-200 flex items-center justify-center shadow z-10">
+                      <AppIcons.lock size={10} className="text-gray-400"/>
                     </div>
                   )}
                 </div>
