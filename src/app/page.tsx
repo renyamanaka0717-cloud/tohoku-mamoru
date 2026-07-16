@@ -3612,20 +3612,22 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             return (
               <button key={ic.id} onClick={()=>{if(!isPremium&&!isFree){setProPrompt('アプリアイコンの変更');return;}onSettings({...settings,appIcon:ic.id});setNativeAppIcon(ic.id);}}
                 className="flex flex-col items-center gap-2 py-3">
-                <div className="relative w-14 h-14 rounded-[16px] overflow-hidden">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={`/app-icons/${ic.file}`} alt={ic.name} className="w-full h-full object-cover"/>
-                  {selected&&(
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-                      <div className="w-7 h-7 bg-white rounded-full flex items-center justify-center shadow">
-                        <svg width="12" height="9" viewBox="0 0 12 9" fill="none">
-                          <path d="M1 4L4.5 7.5L11 1" stroke="#1F1F1F" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
+                <div className="relative w-14 h-14">
+                  <div className="w-14 h-14 rounded-[16px] overflow-hidden">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={`/app-icons/${ic.file}`} alt={ic.name} className="w-full h-full object-cover"/>
+                    {selected&&(
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                        <div className="w-7 h-7 bg-white rounded-full flex items-center justify-center shadow">
+                          <svg width="12" height="9" viewBox="0 0 12 9" fill="none">
+                            <path d="M1 4L4.5 7.5L11 1" stroke="#1F1F1F" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
                   {!isFree&&!isPremium&&(
-                    <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center shadow" style={{background:'var(--c-primary)'}}>
+                    <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center shadow z-10" style={{background:'var(--c-primary)'}}>
                       <AppIcons.star size={11} className="text-white"/>
                     </div>
                   )}
