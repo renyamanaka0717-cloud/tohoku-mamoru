@@ -1969,7 +1969,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
   // Phase 0: pre-wake tasks — compact (card order, no time gap)
   // Only include tasks that are before wake AND before sleep (excludes post-midnight tasks when sleep is past midnight)
   let prevBottom=-16;
-  for(const g of taskGroupList.filter(g=>{const rawM=toMin(g.startTime);return rawM<wakeMin&&(sleepMin>wakeMin||rawM<sleepMin);})){
+  for(const g of taskGroupList.filter(g=>{const rawM=toMin(g.startTime);return rawM<wakeMin&&sleepMin>wakeMin;})){
     const top=prevBottom+16;
     groupLayout.push({g,top});
     prevBottom=top+(g.tasks.length>1?MIN_CARD_H:g.h);
