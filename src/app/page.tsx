@@ -519,7 +519,7 @@ function autoIcon(name: string): string {
   return '';
 }
 
-const ICON_CATEGORIES:{label:string;icons:{key:string;label:string}[]}[]=[
+const ICON_CATEGORIES:{label:string;icons:{key:string;label:string;pro?:boolean}[]}[]=[
   {label:'日常',icons:[
     {key:'task',    label:'メモ'},
     {key:'shopping',label:'買い物'},
@@ -532,6 +532,10 @@ const ICON_CATEGORIES:{label:string;icons:{key:string;label:string}[]}[]=[
     {key:'home',    label:'家'},
     {key:'paw',     label:'散歩'},
     {key:'health',  label:'健康'},
+    {key:'cake',    label:'お菓子',    pro:true},
+    {key:'pizza',   label:'ピザ',      pro:true},
+    {key:'bathtub', label:'お風呂',    pro:true},
+    {key:'bed',     label:'ベッド',    pro:true},
   ]},
   {label:'仕事・学習',icons:[
     {key:'work',     label:'仕事'},
@@ -544,6 +548,8 @@ const ICON_CATEGORIES:{label:string;icons:{key:string;label:string}[]}[]=[
     {key:'phone',    label:'電話'},
     {key:'money',    label:'お金'},
     {key:'payment',  label:'支払い'},
+    {key:'creditcard', label:'カード', pro:true},
+    {key:'piggybank',  label:'貯金',   pro:true},
   ]},
   {label:'健康・医療',icons:[
     {key:'hospital', label:'病院'},
@@ -562,6 +568,34 @@ const ICON_CATEGORIES:{label:string;icons:{key:string;label:string}[]}[]=[
     {key:'scissors', label:'趣味'},
     {key:'camera',   label:'カメラ'},
     {key:'question', label:'その他'},
+  ]},
+  {label:'趣味・スポーツ',icons:[
+    {key:'guitar',     label:'ギター',   pro:true},
+    {key:'basketball', label:'バスケ',   pro:true},
+    {key:'soccer',     label:'サッカー', pro:true},
+    {key:'volleyball', label:'バレー',   pro:true},
+    {key:'paint',      label:'アート',   pro:true},
+    {key:'rocket',     label:'挑戦',     pro:true},
+  ]},
+  {label:'生き物・自然',icons:[
+    {key:'cat',    label:'猫',   pro:true},
+    {key:'dog',    label:'犬',   pro:true},
+    {key:'bird',   label:'鳥',   pro:true},
+    {key:'fish',   label:'魚',   pro:true},
+    {key:'rabbit', label:'うさぎ',pro:true},
+    {key:'flower', label:'花',   pro:true},
+    {key:'tree',   label:'木',   pro:true},
+    {key:'sun',    label:'天気', pro:true},
+  ]},
+  {label:'おでかけ',icons:[
+    {key:'airplane', label:'飛行機', pro:true},
+    {key:'bus',      label:'バス',   pro:true},
+    {key:'boat',     label:'船',     pro:true},
+    {key:'backpack', label:'旅行',   pro:true},
+    {key:'suitcase', label:'出張',   pro:true},
+    {key:'location', label:'場所',   pro:true},
+    {key:'tent',     label:'キャンプ',pro:true},
+    {key:'campfire', label:'焚き火', pro:true},
   ]},
 ];
 const ICON_OPTIONS=ICON_CATEGORIES.flatMap(c=>c.icons);
@@ -604,6 +638,14 @@ function getTaskIcon(key:string){
     document:AppIcons.document,mail:AppIcons.mail,meeting:AppIcons.meeting,
     train:AppIcons.train,gift:AppIcons.gift,scissors:AppIcons.scissors,
     running:AppIcons.running,yoga:AppIcons.yoga,bicycle:AppIcons.bicycle,
+    guitar:AppIcons.guitar,basketball:AppIcons.basketball,soccer:AppIcons.soccer,
+    volleyball:AppIcons.volleyball,paint:AppIcons.paint,rocket:AppIcons.rocket,
+    cat:AppIcons.cat,dog:AppIcons.dog,bird:AppIcons.bird,fish:AppIcons.fish,
+    rabbit:AppIcons.rabbit,flower:AppIcons.flower,tree:AppIcons.tree,sun:AppIcons.sun,
+    airplane:AppIcons.airplane,bus:AppIcons.bus,boat:AppIcons.boat,
+    backpack:AppIcons.backpack,suitcase:AppIcons.suitcase,location:AppIcons.location,
+    tent:AppIcons.tent,campfire:AppIcons.campfire,cake:AppIcons.cake,pizza:AppIcons.pizza,
+    bathtub:AppIcons.bathtub,bed:AppIcons.bed,creditcard:AppIcons.creditcard,piggybank:AppIcons.piggybank,
   } as Record<string,typeof AppIcons.task>;
   return m[key]??AppIcons.task;
 }
@@ -789,13 +831,28 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
     if(typeof window==='undefined') return [];
     try{return JSON.parse(localStorage.getItem('tl-recent-icons')||'[]');}catch{return [];}
   });
-  const pickIcon=(key:string)=>{
-    setIcon(key);
+  const [iconQuery,setIconQuery] = useState('');
+  const pickIcon=(opt:{key:string;label:string;pro?:boolean})=>{
+    if(opt.pro&&!isPremium){ setModalProPrompt(`アイコン「${opt.label}」の使用`); return; }
+    setIcon(opt.key);
     setRecentIcons(prev=>{
-      const next=[key,...prev.filter(k=>k!==key)].slice(0,5);
+      const next=[opt.key,...prev.filter(k=>k!==opt.key)].slice(0,5);
       try{localStorage.setItem('tl-recent-icons',JSON.stringify(next));}catch{}
       return next;
     });
+  };
+  const renderIconBtn=(opt:{key:string;label:string;pro?:boolean})=>{
+    const Ic=getTaskIcon(opt.key);
+    const sel=icon===opt.key;
+    const locked=!!opt.pro&&!isPremium;
+    return (
+      <button key={opt.key} onClick={()=>pickIcon(opt)}
+        className={`relative flex flex-col items-center gap-1.5 py-3 rounded-2xl ${sel?'':'bg-gray-50'}`}
+        style={sel?{background:color||'var(--c-primary)'}:undefined}>
+        <Ic size={22} className={sel?'text-white':locked?'text-gray-300':'text-gray-700'}/>
+        {locked&&<span className="absolute top-1 right-1 text-[8px] font-bold text-white bg-gray-400 rounded px-1 leading-none">PRO</span>}
+      </button>
+    );
   };
   const [recur,setRecur]      = useState<'daily'|'weekly'|'monthly'|'yearly'|'custom'>(
     task?.recurrence==='weekly'?'weekly':
@@ -817,7 +874,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
   const [custDurOpen,setCDurOpen] = useState(false);
   const [custDurMin,setCDurMin]  = useState(duration>0&&!DUR_OPTS.find(o=>o.v===duration)?duration:90);
   const [notifications,setNotifs]  = useState<number[]>(task?.notifications??(!task?[0]:[]));
-  const [modalProPrompt,setModalProPrompt] = useState(false);
+  const [modalProPrompt,setModalProPrompt] = useState<string|null>(null);
   const modalSwX=useRef(0), modalSwY=useRef(0);
   const modeOrder:TaskMode[]=['later','scheduled','recurring','allday'];
   const onModalSwipe=(e:React.TouchEvent)=>{
@@ -1118,7 +1175,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                 </div>
                 <div className="flex gap-2 overflow-x-auto pb-0.5" style={{scrollbarWidth:'none',WebkitOverflowScrolling:'touch'} as React.CSSProperties}>
                   {(['daily','weekly','monthly','yearly','custom'] as const).map((r,i)=>(
-                    <button key={r} onClick={()=>{if(r==='custom'&&!isPremium){setModalProPrompt(true);return;}setRecur(r);}}
+                    <button key={r} onClick={()=>{if(r==='custom'&&!isPremium){setModalProPrompt('繰り返しのカスタム設定');return;}setRecur(r);}}
                       className={`shrink-0 px-4 py-2 rounded-full text-sm font-semibold inline-flex items-center gap-1.5 ${recur===r?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
                       {['毎日','毎週','毎月','毎年','カスタム'][i]}
                       {r==='custom'&&<span className={`inline-flex items-center border rounded px-1 py-0.5 text-[9px] font-bold leading-none tracking-wide ${recur===r?'border-white/60 text-white/80':'border-gray-300 text-gray-400'}`}>PRO</span>}
@@ -1516,56 +1573,56 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
               </div>
             </div>
             <div className="overflow-y-auto px-5 pb-10 flex-1">
-              {/* Color */}
-              <p className="text-xs font-bold text-gray-400 mb-2 mt-1">カラー</p>
-              <div className="tabs-scroll flex gap-2 mb-4"
-                style={{overflowX:'auto',WebkitOverflowScrolling:'touch',overflowY:'visible',touchAction:'pan-x',paddingTop:'5px',paddingBottom:'5px',marginLeft:'-20px',marginRight:'-20px',paddingLeft:'20px',paddingRight:'20px'}}>
-                {TASK_COLORS.map((c,i)=>(
-                  <button key={i} onClick={()=>setColor(c)}
-                    className={`shrink-0 w-8 h-8 rounded-full border-2 transition-all ${color===c?'border-gray-800 scale-110':'border-gray-100'}`}
-                    style={{background:c||'#E5E7EB'}}/>
-                ))}
+              {/* Icon search */}
+              <div className="relative mb-4">
+                <AppIcons.search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"/>
+                <input type="text" value={iconQuery} onChange={e=>setIconQuery(e.target.value)}
+                  placeholder="アイコンを検索"
+                  className="w-full bg-gray-50 rounded-xl pl-9 pr-3 py-2.5 text-sm outline-none"/>
               </div>
-              {/* Recent */}
-              {recentIcons.length>0&&(
-                <>
-                  <p className="text-xs font-bold text-gray-400 mb-2">最近使ったアイコン</p>
-                  <div className="grid grid-cols-5 gap-2 mb-5">
-                    {recentIcons.map(key=>{
-                      const opt=ICON_OPTIONS.find(o=>o.key===key);
-                      if(!opt) return null;
-                      const Ic=getTaskIcon(key);
-                      const sel=icon===key;
-                      return (
-                        <button key={key} onClick={()=>pickIcon(key)}
-                          className={`flex flex-col items-center gap-1.5 py-3 rounded-2xl ${sel?'':'bg-gray-50'}`}
-                          style={sel?{background:color||'var(--c-primary)'}:undefined}>
-                          <Ic size={22} className={sel?'text-white':'text-gray-700'}/>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </>
-              )}
-              {/* Categories */}
-              {ICON_CATEGORIES.map(cat=>(
-                <div key={cat.label} className="mb-5">
-                  <p className="text-xs font-bold text-gray-400 mb-2">{cat.label}</p>
-                  <div className="grid grid-cols-5 gap-2">
-                    {cat.icons.map(opt=>{
-                      const Ic=getTaskIcon(opt.key);
-                      const sel=icon===opt.key;
-                      return (
-                        <button key={opt.key} onClick={()=>pickIcon(opt.key)}
-                          className={`flex flex-col items-center gap-1.5 py-3 rounded-2xl ${sel?'':'bg-gray-50'}`}
-                          style={sel?{background:color||'var(--c-primary)'}:undefined}>
-                          <Ic size={22} className={sel?'text-white':'text-gray-700'}/>
-                        </button>
-                      );
-                    })}
-                  </div>
+              {iconQuery.trim()?(
+                <div className="mb-5">
+                  <p className="text-xs font-bold text-gray-400 mb-2">検索結果</p>
+                  {(()=>{
+                    const results=ICON_OPTIONS.filter(o=>o.label.includes(iconQuery.trim()));
+                    if(results.length===0) return <p className="text-sm text-gray-400 text-center py-6">見つかりませんでした</p>;
+                    return <div className="grid grid-cols-5 gap-2">{results.map(renderIconBtn)}</div>;
+                  })()}
                 </div>
-              ))}
+              ):(<>
+                {/* Color */}
+                <p className="text-xs font-bold text-gray-400 mb-2 mt-1">カラー</p>
+                <div className="tabs-scroll flex gap-2 mb-4"
+                  style={{overflowX:'auto',WebkitOverflowScrolling:'touch',overflowY:'visible',touchAction:'pan-x',paddingTop:'5px',paddingBottom:'5px',marginLeft:'-20px',marginRight:'-20px',paddingLeft:'20px',paddingRight:'20px'}}>
+                  {TASK_COLORS.map((c,i)=>(
+                    <button key={i} onClick={()=>setColor(c)}
+                      className={`shrink-0 w-8 h-8 rounded-full border-2 transition-all ${color===c?'border-gray-800 scale-110':'border-gray-100'}`}
+                      style={{background:c||'#E5E7EB'}}/>
+                  ))}
+                </div>
+                {/* Recent */}
+                {recentIcons.length>0&&(
+                  <>
+                    <p className="text-xs font-bold text-gray-400 mb-2">最近使ったアイコン</p>
+                    <div className="grid grid-cols-5 gap-2 mb-5">
+                      {recentIcons.map(key=>{
+                        const opt=ICON_OPTIONS.find(o=>o.key===key);
+                        if(!opt) return null;
+                        return renderIconBtn(opt);
+                      })}
+                    </div>
+                  </>
+                )}
+                {/* Categories */}
+                {ICON_CATEGORIES.map(cat=>(
+                  <div key={cat.label} className="mb-5">
+                    <p className="text-xs font-bold text-gray-400 mb-2">{cat.label}</p>
+                    <div className="grid grid-cols-5 gap-2">
+                      {cat.icons.map(renderIconBtn)}
+                    </div>
+                  </div>
+                ))}
+              </>)}
             </div>
           </div>
         </div>
@@ -1619,7 +1676,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
           </div>
         </div>
       )}
-      {modalProPrompt&&<ProGateSheet onClose={()=>setModalProPrompt(false)} feature="繰り返しのカスタム設定"/>}
+      {modalProPrompt&&<ProGateSheet onClose={()=>setModalProPrompt(null)} feature={modalProPrompt}/>}
     </div>
   );
 }
@@ -2992,11 +3049,13 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                         const Ic=getTaskIcon(opt.key);
                         const sel=bulkIcon===opt.key;
                         const bg=bulkColor||'var(--c-primary)';
+                        const locked=!!opt.pro&&!isPremium;
                         return (
-                          <button key={opt.key} onClick={()=>setBulkIconOverride(opt.key)}
-                            className={`flex flex-col items-center gap-1.5 py-3 rounded-2xl ${sel?'':'bg-gray-50'}`}
+                          <button key={opt.key} onClick={()=>{if(locked){setProPrompt(`アイコン「${opt.label}」の使用`);return;}setBulkIconOverride(opt.key);}}
+                            className={`relative flex flex-col items-center gap-1.5 py-3 rounded-2xl ${sel?'':'bg-gray-50'}`}
                             style={sel?{background:bg}:undefined}>
-                            <Ic size={22} className={sel?'text-white':'text-gray-700'}/>
+                            <Ic size={22} className={sel?'text-white':locked?'text-gray-300':'text-gray-700'}/>
+                            {locked&&<span className="absolute top-1 right-1 text-[8px] font-bold text-white bg-gray-400 rounded px-1 leading-none">PRO</span>}
                             </button>
                         );
                       })}
@@ -3101,11 +3160,13 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                         const Ic=getTaskIcon(opt.key);
                         const sel=histEditIcon===opt.key;
                         const bg=histEditColor||'var(--c-primary)';
+                        const locked=!!opt.pro&&!isPremium;
                         return (
-                          <button key={opt.key} onClick={()=>setHEIcon(opt.key)}
-                            className={`flex flex-col items-center gap-1.5 py-3 rounded-2xl ${sel?'':'bg-gray-50'}`}
+                          <button key={opt.key} onClick={()=>{if(locked){setProPrompt(`アイコン「${opt.label}」の使用`);return;}setHEIcon(opt.key);}}
+                            className={`relative flex flex-col items-center gap-1.5 py-3 rounded-2xl ${sel?'':'bg-gray-50'}`}
                             style={sel?{background:bg}:undefined}>
-                            <Ic size={22} className={sel?'text-white':'text-gray-700'}/>
+                            <Ic size={22} className={sel?'text-white':locked?'text-gray-300':'text-gray-700'}/>
+                            {locked&&<span className="absolute top-1 right-1 text-[8px] font-bold text-white bg-gray-400 rounded px-1 leading-none">PRO</span>}
                             </button>
                         );
                       })}
