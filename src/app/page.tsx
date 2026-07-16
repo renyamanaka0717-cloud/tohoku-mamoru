@@ -2556,8 +2556,8 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
                       onTouchStart={e=>startLP(t,e)}
                       onTouchEnd={cancelLP}
                       onTouchMove={cancelLP}>
-                      <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{background:t.color||'#F3F4F6'}}>
-                        <LaterIc size={14} className={t.color?'text-white':'text-gray-400'}/>
+                      <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{background:t.color||'color-mix(in srgb, var(--c-primary) 15%, white)'}}>
+                        <LaterIc size={14} className={t.color?'text-white':'text-[var(--c-primary)]'}/>
                       </div>
                       <div className="flex-1 min-w-0" onClick={()=>onEdit(t)}>
                         {(t.duration??0)>0&&<p className="text-xs text-gray-400">{durLabel(t.duration??0)}</p>}
@@ -2585,8 +2585,8 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
                     const SchedIc=getTaskIcon(t.icon||defaultIconKey(t.name));
                     return (
                     <div key={t.id} className="flex items-center gap-2.5 bg-white border border-gray-100 rounded-2xl shadow-sm px-3 py-3">
-                      <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{background:t.color||'#F3F4F6'}}>
-                        <SchedIc size={14} className={t.color?'text-white':'text-gray-400'}/>
+                      <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{background:t.color||'color-mix(in srgb, var(--c-primary) 15%, white)'}}>
+                        <SchedIc size={14} className={t.color?'text-white':'text-[var(--c-primary)]'}/>
                       </div>
                       <div className="flex-1 min-w-0" onClick={()=>onEdit(t)}>
                         <p className="text-xs text-gray-400">{t.date.slice(5).replace('-','/')} {t.startTime}</p>
@@ -2613,8 +2613,8 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
                     <div key={`${t.name}||${t.recurrence}||${t.startTime??''}`}
                       className="flex items-center gap-2.5 bg-white border border-gray-100 rounded-2xl shadow-sm px-3 py-3"
                       onClick={()=>onEdit(t)}>
-                      <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{background:t.color||'#F3F4F6'}}>
-                        <RecIc size={14} className={t.color?'text-white':'text-gray-400'}/>
+                      <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{background:t.color||'color-mix(in srgb, var(--c-primary) 15%, white)'}}>
+                        <RecIc size={14} className={t.color?'text-white':'text-[var(--c-primary)]'}/>
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs text-gray-400">{recLabel(t)}{t.startTime?` ${t.startTime}`:''}</p>
