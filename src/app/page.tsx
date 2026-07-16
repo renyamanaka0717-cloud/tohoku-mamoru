@@ -862,7 +862,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
         className={`relative flex flex-col items-center gap-1.5 py-3 rounded-2xl ${sel?'':'bg-gray-50'}`}
         style={sel?{background:color||'var(--c-primary)'}:undefined}>
         <Ic size={22} className={sel?'text-white':locked?'text-gray-300':'text-gray-700'}/>
-        {locked&&<span className="absolute top-1 right-1 text-[8px] font-bold text-white bg-gray-400 rounded px-1 leading-none">PRO</span>}
+        {locked&&<AppIcons.lock size={10} className="absolute top-1.5 right-1.5 text-gray-300"/>}
       </button>
     );
   };
@@ -3067,7 +3067,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                             className={`relative flex flex-col items-center gap-1.5 py-3 rounded-2xl ${sel?'':'bg-gray-50'}`}
                             style={sel?{background:bg}:undefined}>
                             <Ic size={22} className={sel?'text-white':locked?'text-gray-300':'text-gray-700'}/>
-                            {locked&&<span className="absolute top-1 right-1 text-[8px] font-bold text-white bg-gray-400 rounded px-1 leading-none">PRO</span>}
+                            {locked&&<AppIcons.lock size={10} className="absolute top-1.5 right-1.5 text-gray-300"/>}
                             </button>
                         );
                       })}
@@ -3178,7 +3178,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                             className={`relative flex flex-col items-center gap-1.5 py-3 rounded-2xl ${sel?'':'bg-gray-50'}`}
                             style={sel?{background:bg}:undefined}>
                             <Ic size={22} className={sel?'text-white':locked?'text-gray-300':'text-gray-700'}/>
-                            {locked&&<span className="absolute top-1 right-1 text-[8px] font-bold text-white bg-gray-400 rounded px-1 leading-none">PRO</span>}
+                            {locked&&<AppIcons.lock size={10} className="absolute top-1.5 right-1.5 text-gray-300"/>}
                             </button>
                         );
                       })}
