@@ -607,6 +607,17 @@ const TASK_COLORS=[
   // 濃いめ（白文字映え）
   '#C4888E','#C47A5E','#C4A44A','#7A9E8A','#6A8FAF','#8F82B8','#A67899','#8F8880',
 ];
+const APP_ICONS=[
+  {id:'mint',    name:'ミント',           file:'mint.png'},
+  {id:'sage',    name:'セージグリーン',   file:'sage.png'},
+  {id:'lilac',   name:'ライラック',       file:'lilac.png'},
+  {id:'rose',    name:'ダスティローズ',   file:'rose.png'},
+  {id:'dusty',   name:'ダスティブルー',   file:'dusty.png'},
+  {id:'apricot', name:'アプリコット',     file:'apricot.png'},
+  {id:'greige',  name:'グレージュ',       file:'greige.png'},
+  {id:'charcoal',name:'チャコールグレー', file:'charcoal.png'},
+  {id:'mocha',   name:'モカベージュ',     file:'mocha.png'},
+];
 const THEMES=[
   {id:'mint',    name:'ミント',             color:'#94CFC8'},
   {id:'coral',   name:'コーラルピンク',     color:'#E88878'},
@@ -3542,7 +3553,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           <div className="h-px bg-gray-100 mx-4"/>
           <SettingsRow icon={<AppIcons.home/>} iconBg="bg-gray-100"
             title="アプリアイコン"
-            desc={THEMES.find(t=>t.id===(settings.appIcon??'mint'))?.name??'ミント'}
+            desc={APP_ICONS.find(t=>t.id===(settings.appIcon??'mint'))?.name??'ミント'}
             onClick={()=>setSub('appIcon')} pro/>
           <div className="h-px bg-gray-100 mx-4"/>
           <SettingsRow icon={<AppIcons.freeTime size={18}/>} iconBg="bg-gray-100"
@@ -3595,23 +3606,26 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
       <div className="flex-1 overflow-y-auto px-4 pb-8">
         <p className="text-xs text-gray-400 px-1 mb-4 mt-6">選択したアイコンがホーム画面に反映されます</p>
         <div className="grid grid-cols-4 gap-4">
-          {THEMES.map(t=>{
-            const selected=(settings.appIcon??'mint')===t.id;
-            const isFree=t.id==='mint';
+          {APP_ICONS.map(ic=>{
+            const selected=(settings.appIcon??'mint')===ic.id;
+            const isFree=ic.id==='mint';
             return (
-              <button key={t.id} onClick={()=>{if(!isPremium&&!isFree){setProPrompt('アプリアイコンの変更');return;}onSettings({...settings,appIcon:t.id});setNativeAppIcon(t.id);}}
+              <button key={ic.id} onClick={()=>{if(!isPremium&&!isFree){setProPrompt('アプリアイコンの変更');return;}onSettings({...settings,appIcon:ic.id});setNativeAppIcon(ic.id);}}
                 className="flex flex-col items-center gap-2 py-3">
-                <div className="relative w-14 h-14 rounded-[16px] flex items-center justify-center"
-                  style={{background:t.color}}>
+                <div className="relative w-14 h-14 rounded-[16px] overflow-hidden">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={`/app-icons/${ic.file}`} alt={ic.name} className="w-full h-full object-cover"/>
                   {selected&&(
-                    <div className="w-7 h-7 bg-white rounded-full flex items-center justify-center shadow">
-                      <svg width="12" height="9" viewBox="0 0 12 9" fill="none">
-                        <path d="M1 4L4.5 7.5L11 1" stroke={t.color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                      <div className="w-7 h-7 bg-white rounded-full flex items-center justify-center shadow">
+                        <svg width="12" height="9" viewBox="0 0 12 9" fill="none">
+                          <path d="M1 4L4.5 7.5L11 1" stroke="#1F1F1F" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </div>
                     </div>
                   )}
                 </div>
-                <span className={`text-xs text-center leading-tight ${selected?'font-bold text-gray-900':'text-gray-500'}`}>{t.name}</span>
+                <span className={`text-xs text-center leading-tight ${selected?'font-bold text-gray-900':'text-gray-500'}`}>{ic.name}</span>
                 {!isFree&&!isPremium&&<span className="text-[9px] font-bold text-gray-400 border border-gray-300 rounded px-1 py-0.5 leading-none">PRO</span>}
               </button>
             );
