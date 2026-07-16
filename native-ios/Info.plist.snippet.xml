@@ -1,0 +1,46 @@
+<!--
+ios/App/App/Info.plist の <dict> 直下に追加するスニペット。
+
+各 <key> の名前（coral, sunset...）はアプリ側の THEMES id とそのまま対応させている
+（src/app/page.tsx の setNativeAppIcon 呼び出しが id をそのまま渡す）。
+CFBundleIconFiles の "AppIcon-Coral" などは、Xcodeで
+Assets.xcassets を右クリック → New iOS App Icon (Alternate) で作成する
+アイコンセット名と一致させること（先頭大文字のPascalCase）。
+mint はプライマリアイコン（既存のAppIcon）を流用するため、ここには含めない。
+-->
+<key>CFBundleIcons</key>
+<dict>
+  <key>CFBundleAlternateIcons</key>
+  <dict>
+    <key>coral</key>
+    <dict><key>CFBundleIconFiles</key><array><string>AppIcon-Coral</string></array></dict>
+    <key>sunset</key>
+    <dict><key>CFBundleIconFiles</key><array><string>AppIcon-Sunset</string></array></dict>
+    <key>mocha</key>
+    <dict><key>CFBundleIconFiles</key><array><string>AppIcon-Mocha</string></array></dict>
+    <key>cream</key>
+    <dict><key>CFBundleIconFiles</key><array><string>AppIcon-Cream</string></array></dict>
+    <key>forest</key>
+    <dict><key>CFBundleIconFiles</key><array><string>AppIcon-Forest</string></array></dict>
+    <key>powder</key>
+    <dict><key>CFBundleIconFiles</key><array><string>AppIcon-Powder</string></array></dict>
+    <key>sky</key>
+    <dict><key>CFBundleIconFiles</key><array><string>AppIcon-Sky</string></array></dict>
+    <key>dusty</key>
+    <dict><key>CFBundleIconFiles</key><array><string>AppIcon-Dusty</string></array></dict>
+    <key>slate</key>
+    <dict><key>CFBundleIconFiles</key><array><string>AppIcon-Slate</string></array></dict>
+    <key>navy</key>
+    <dict><key>CFBundleIconFiles</key><array><string>AppIcon-Navy</string></array></dict>
+    <key>lavender</key>
+    <dict><key>CFBundleIconFiles</key><array><string>AppIcon-Lavender</string></array></dict>
+    <key>lilac</key>
+    <dict><key>CFBundleIconFiles</key><array><string>AppIcon-Lilac</string></array></dict>
+    <key>peach</key>
+    <dict><key>CFBundleIconFiles</key><array><string>AppIcon-Peach</string></array></dict>
+    <key>rose</key>
+    <dict><key>CFBundleIconFiles</key><array><string>AppIcon-Rose</string></array></dict>
+    <key>mono</key>
+    <dict><key>CFBundleIconFiles</key><array><string>AppIcon-Mono</string></array></dict>
+  </dict>
+</dict>
