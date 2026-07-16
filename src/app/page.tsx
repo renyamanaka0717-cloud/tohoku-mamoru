@@ -3624,9 +3624,13 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                       </div>
                     </div>
                   )}
+                  {!isFree&&!isPremium&&(
+                    <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center shadow" style={{background:'var(--c-primary)'}}>
+                      <AppIcons.star size={11} className="text-white"/>
+                    </div>
+                  )}
                 </div>
                 <span className={`text-xs text-center leading-tight ${selected?'font-bold text-gray-900':'text-gray-500'}`}>{ic.name}</span>
-                {!isFree&&!isPremium&&<span className="text-[9px] font-bold text-gray-400 border border-gray-300 rounded px-1 py-0.5 leading-none">PRO</span>}
               </button>
             );
           })}
