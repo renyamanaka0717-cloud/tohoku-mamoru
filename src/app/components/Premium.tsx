@@ -94,9 +94,3 @@ export function PremiumProvider({ children }: { children: React.ReactNode }) {
 export function usePremium(): PremiumContextValue {
   return useContext(PremiumContext);
 }
-
-export function PremiumFeatureGate({ children }: { children: React.ReactNode }) {
-  const { isPremium } = usePremium();
-  if (!isPremium) return null;
-  return <>{children}</>;
-}
