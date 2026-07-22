@@ -234,10 +234,17 @@ function isNative(): boolean {
 
 ### 動的 import（重要）
 
-Next.js バンドルに含めないよう `/* webpackIgnore: true */` を付ける。
+**`webpackIgnore: true` は付けない。** 付けるとバンドルされず、実機で
+`import()` がパッケージ名を素のURLとして解決しようとして
+`Module name, '@revenuecat/purchases-capacitor' does not resolve to a valid URL`
+エラーになり、購入・復元・起動時のisPremiumチェックが全て失敗する
+（過去にこの状態でリリースし、購入ボタンが無反応/エラーになるバグを
+起こした実績あり）。static importでのビルドエラーを避けたいだけなら、
+webpackIgnoreなしのdynamic importで十分（webpackが別チャンクとして
+正しくバンドルし、ビルドも通る）。
 
 ```typescript
-const { Purchases, LOG_LEVEL } = await import(/* webpackIgnore: true */ '@revenuecat/purchases-capacitor');
+const { Purchases, LOG_LEVEL } = await import('@revenuecat/purchases-capacitor');
 ```
 
 ### v13 API の注意点
@@ -285,7 +292,7 @@ const pkg = offerings.current?.monthly;
 ### 避けるパターン
 
 - `Premium.tsx` の `isPremium` をブラウザ環境以外でハードコード `true` に戻さない
-- `@revenuecat/purchases-capacitor` を `/* webpackIgnore: true */` なしで static import しない（ビルドエラー）
+- `@revenuecat/purchases-capacitor` を **static import** しない（ビルドエラー）。ただし **dynamic import に `webpackIgnore: true` は付けない**（実機で購入が失敗する実際のバグの原因になった）
 - v13 の `getOfferings()` を `{ offerings }` で分割代入しない
 
 ---
