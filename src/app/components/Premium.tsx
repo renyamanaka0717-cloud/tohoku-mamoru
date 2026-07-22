@@ -39,8 +39,9 @@ export function PremiumProvider({ children }: { children: React.ReactNode }) {
     }
     (async () => {
       try {
-        // webpackIgnore: Capacitorネイティブプラグイン（ビルド時はバンドルしない）
-        const { Purchases, LOG_LEVEL } = await import(/* webpackIgnore: true */ '@revenuecat/purchases-capacitor');
+        // dynamic import（webpackIgnoreは付けない — 付けるとバンドルされず
+        // 実機で「does not resolve to a valid URL」エラーになり購入が失敗する）
+        const { Purchases, LOG_LEVEL } = await import('@revenuecat/purchases-capacitor');
         await Purchases.setLogLevel({ level: LOG_LEVEL.DEBUG });
         await Purchases.configure({ apiKey: RC_API_KEY });
         const { customerInfo } = await Purchases.getCustomerInfo();
@@ -57,7 +58,7 @@ export function PremiumProvider({ children }: { children: React.ReactNode }) {
     if (!isNative()) return;
     setIsPurchasing(true);
     try {
-      const { Purchases } = await import(/* webpackIgnore: true */ '@revenuecat/purchases-capacitor');
+      const { Purchases } = await import('@revenuecat/purchases-capacitor');
       const offerings = await Purchases.getOfferings();
       const pkg = offerings.current?.monthly;
       if (!pkg) throw new Error('No monthly package found');
@@ -74,7 +75,7 @@ export function PremiumProvider({ children }: { children: React.ReactNode }) {
   const restore = useCallback(async (): Promise<boolean> => {
     if (!isNative()) return false;
     try {
-      const { Purchases } = await import(/* webpackIgnore: true */ '@revenuecat/purchases-capacitor');
+      const { Purchases } = await import('@revenuecat/purchases-capacitor');
       const { customerInfo } = await Purchases.restorePurchases();
       const active = ENTITLEMENT_ID in customerInfo.entitlements.active;
       setIsPremium(active);
