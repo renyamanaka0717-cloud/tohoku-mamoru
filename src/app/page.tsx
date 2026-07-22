@@ -3939,7 +3939,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             </div>
             <button
               disabled={isPurchasing}
-              onClick={async()=>{try{await purchase();}catch{alert('購入処理に失敗しました。時間をおいて再度お試しください。');}}}
+              onClick={async()=>{try{await purchase();}catch(e){console.error('PURCHASE_ERROR_DEBUG',e);alert('購入処理に失敗しました。時間をおいて再度お試しください。\n\n'+JSON.stringify(e));}}}
               className="w-full py-4 rounded-2xl text-[15px] font-bold text-white mb-2 active:opacity-80 disabled:opacity-50"
               style={{background:'var(--c-primary)'}}
             >
