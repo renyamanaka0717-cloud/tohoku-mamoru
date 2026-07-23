@@ -1,7 +1,7 @@
 'use client';
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 
-const RC_API_KEY = 'appl_zyfcgKyGH0RBKcOppeougWslCRP';
+const RC_API_KEY = 'appl_zyfcgKyGHORBKcOppeougWslCRP';
 const ENTITLEMENT_ID = 'BrainBox Pro';
 
 interface PremiumContextValue {
