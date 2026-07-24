@@ -3932,7 +3932,8 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             <div className="bg-white rounded-2xl px-4 py-5 shadow-sm mb-3">
               <p className="text-[13px] font-semibold text-gray-400 text-center mb-3">料金プラン</p>
               <div className="rounded-xl px-4 py-4 text-center border border-gray-100" style={{background:'color-mix(in srgb, var(--c-primary) 8%, white)'}}>
-                <p className="text-xs text-gray-400 mb-1">月額</p>
+                <p className="text-sm font-bold mb-1" style={{color:'var(--c-primary)'}}>7日間無料トライアル</p>
+                <p className="text-xs text-gray-400 mb-1">トライアル終了後 月額</p>
                 <p className="text-2xl font-bold" style={{color:'var(--c-primary)'}}>¥200</p>
                 <p className="text-xs text-gray-400 mt-1">いつでもキャンセル可能</p>
               </div>
@@ -3943,7 +3944,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
               className="w-full py-4 rounded-2xl text-[15px] font-bold text-white mb-2 active:opacity-80 disabled:opacity-50"
               style={{background:'var(--c-primary)'}}
             >
-              {isPurchasing?'処理中...':'PROプランを始める'}
+              {isPurchasing?'処理中...':'7日間無料で始める'}
             </button>
             <button
               onClick={async()=>{const ok=await restore();if(!ok)alert('復元できる購入履歴が見つかりませんでした');}}
