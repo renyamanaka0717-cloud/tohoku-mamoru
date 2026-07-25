@@ -2875,6 +2875,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   const [lpNewSleep,setLpNewSleep] = useState('23:00');
   const [lpNewColor,setLpNewColor] = useState('#94CFC8');
   const [lpEditId,setLpEditId]     = useState<string|null>(null);
+  const [lpDeleteId,setLpDeleteId] = useState<string|null>(null);
   const [colorPicking,setColorPicking] = useState<'wake'|'sleep'|null>(null);
   const { purchase, restore, isPurchasing } = usePremium();
   const [proPrompt,setProPrompt] = useState<string|null>(null);
@@ -3687,7 +3688,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                     <div className="flex gap-2">
                       <button onClick={()=>setLpEditId(null)}
                         className="flex-1 py-2 rounded-xl text-xs font-semibold bg-[var(--c-primary)] text-white">確定</button>
-                      <button onClick={()=>{onLifePatterns(lifePatterns.filter(p=>p.id!==pat.id));setLpEditId(null);if(lpActivePat===pat.id)setLpActivePat(null);}}
+                      <button onClick={()=>setLpDeleteId(pat.id)}
                         className="flex-1 py-2 rounded-xl text-xs font-semibold bg-gray-100 text-[#D97A7A]">削除</button>
                     </div>
                   </div>
@@ -3785,6 +3786,27 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             </div>
           </div>
         </div>
+        {lpDeleteId&&(()=>{const dp=lifePatterns.find(p=>p.id===lpDeleteId);const affectedDates=Object.keys(patternOverrides).filter(d=>patternOverrides[d]===lpDeleteId);return(
+          <div className="fixed inset-0 z-[100] flex items-end justify-center" onClick={()=>setLpDeleteId(null)}>
+            <div className="absolute inset-0 bg-black/40"/>
+            <div className="relative bg-white rounded-t-2xl w-full max-w-md px-6 pt-6 pb-10" onClick={e=>e.stopPropagation()}>
+              <p className="text-center text-[17px] font-semibold text-gray-900 mb-1">「{dp?.name}」を削除しますか？</p>
+              <p className="text-center text-[13px] text-gray-400 mb-6">
+                {affectedDates.length>0?`このパターンを設定した${affectedDates.length}日分の日付も解除されます`:'このパターンを削除します'}
+              </p>
+              <div className="flex flex-col gap-3">
+                <button onClick={()=>{
+                  if(affectedDates.length>0) onApplyPattern(affectedDates,null);
+                  onLifePatterns(lifePatterns.filter(p=>p.id!==lpDeleteId));
+                  setLpEditId(null);
+                  if(lpActivePat===lpDeleteId) setLpActivePat(null);
+                  setLpDeleteId(null);
+                }} className="w-full py-3.5 rounded-2xl bg-[#D97A7A] text-white text-[15px] font-semibold">削除する</button>
+                <button onClick={()=>setLpDeleteId(null)} className="w-full py-3.5 rounded-2xl bg-gray-50 text-gray-500 text-[15px] font-semibold">キャンセル</button>
+              </div>
+            </div>
+          </div>
+        );})()}
       </div>
     );
   }
