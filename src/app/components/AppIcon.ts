@@ -16,7 +16,8 @@ export async function setNativeAppIcon(name: string): Promise<void> {
   if (!isNative()) return;
   try {
     await AppIconPlugin.setAppIcon({ name });
-  } catch {
-    // ネイティブ側プラグイン未導入・切り替え失敗時はWeb側の選択状態のみ残す
+  } catch (e) {
+    // デバッグ用一時ログ（原因特定後に削除）
+    alert('iconerr:' + JSON.stringify(e, Object.getOwnPropertyNames(e as object)));
   }
 }
