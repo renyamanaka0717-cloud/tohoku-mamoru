@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { AppIcons } from './components/Icons';
 import { usePremium } from './components/Premium';
 import { setNativeAppIcon } from './components/AppIcon';
+import { updateWidgetData } from './components/WidgetData';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -4406,6 +4407,17 @@ export default function App() {
   useEffect(()=>{ if(loaded) localStorage.setItem(TASKS_KEY,JSON.stringify(tasks)); },[tasks,loaded]);
   useEffect(()=>{ if(loaded) localStorage.setItem(SETTINGS_KEY,JSON.stringify(settings)); },[settings,loaded]);
   useEffect(()=>{ if(loaded) localStorage.setItem(SHOP_KEY,JSON.stringify(shopItems)); },[shopItems,loaded]);
+  useEffect(()=>{
+    if(!loaded) return;
+    const today=todayStr();
+    const nextTasks=tasks
+      .filter(t=>!t.completed && !t.isLater && t.date===today && t.startTime && t.startTime>=now)
+      .sort((a,b)=>(a.startTime! < b.startTime! ? -1 : 1))
+      .slice(0,3)
+      .map(t=>({name:t.name,time:t.startTime!}));
+    const shopList=shopItems.filter(s=>!s.checked).slice(0,5).map(s=>({name:s.name}));
+    updateWidgetData(nextTasks,shopList);
+  },[tasks,shopItems,now,loaded]);
   useEffect(()=>{ if(loaded) localStorage.setItem(TAGS_KEY,JSON.stringify(globalTags)); },[globalTags,loaded]);
   useEffect(()=>{ if(loaded) localStorage.setItem(HISTORY_KEY,JSON.stringify(moveHistory)); },[moveHistory,loaded]);
   useEffect(()=>{ if(loaded) localStorage.setItem(CUSTOM_TABS_KEY,JSON.stringify(customTabs)); },[customTabs,loaded]);

@@ -314,6 +314,50 @@ PRO機能の1つ。設定 → PRO → アプリアイコン で選んだ色を�
 
 ---
 
+## ホーム画面ウィジェット（次の予定・買い物リスト）
+
+iOS標準のホーム画面ウィジェット（WidgetKit）。「次の予定」（今日の未完了タスクを最大3件、時刻付きで表示）と「買い物リスト」（未購入アイテムを最大5件表示）の2種類。
+
+### データの流れ
+
+1. `src/app/page.tsx` の App コンポーネントに、`tasks`/`shopItems`/`now` が変わるたびに次の予定3件・未購入アイテム5件を計算して `updateWidgetData()` を呼ぶ `useEffect` がある
+2. `src/app/components/WidgetData.ts` — `updateWidgetData(tasks, shopItems)` がCapacitorカスタムプラグイン `WidgetDataPlugin` を呼ぶ（Web/開発環境では何もしない）
+3. `native-ios/WidgetDataPlugin.swift` / `.m` — JSON文字列をApp Group共有の `UserDefaults(suiteName: "group.jp.brainbox.app")` に書き込み、`WidgetCenter.shared.reloadAllTimelines()` でウィジェットを更新する
+4. `native-ios/Widgets/BrainBoxWidgets.swift` — 実際のウィジェット表示（Widget Extensionターゲット用）。同じApp Groupから読み取って描画する
+
+### Xcodeでの手動セットアップ（`ios/`はgitignore対象なので毎回必要）
+
+**① App Group を作成（メインAppターゲット）**
+
+1. `App` ターゲット → 「Signing & Capabilities」→「+ Capability」→「App Groups」
+2. `group.jp.brainbox.app` を追加
+
+**② WidgetDataPlugin を追加（メインAppターゲット、AppIconPluginと同じ手順）**
+
+1. `native-ios/WidgetDataPlugin.swift` / `.m` を `ios/App/App/` に追加（Target Membership: App）
+2. `native-ios/BridgeViewController.swift` の `capacitorDidLoad()` に `bridge?.registerPluginInstance(WidgetDataPlugin())` の行があることを確認（無ければ手動で追記。すでに `ios/App/App/BridgeViewController.swift` がある場合、`git pull` しても自動反映されないので **Xcode上で直接編集** すること）
+
+**③ Widget Extension ターゲットを新規作成**
+
+1. Xcodeメニュー File → New → Target → 「Widget Extension」を選択
+2. Product Name: `BrainBoxWidgets`（任意）、"Include Configuration App Intent" は**オフ**（固定表示のみで良いため）
+3. 作成すると自動生成される雛形の `.swift` ファイル（サンプルWidgetコード）は削除する
+4. `native-ios/Widgets/BrainBoxWidgets.swift` をこの **Widget Extension ターゲット**に追加（Target Membership: BrainBoxWidgets。メインAppターゲットには入れない）
+5. Widget Extensionターゲットにも①と同じ「Signing & Capabilities」→「App Groups」→ `group.jp.brainbox.app` を追加（メインAppと共有するため両方に必要）
+
+**④ ビルド・実機確認**
+
+1. メインの `App` スキームのままビルド・実行（Widget Extensionは自動的に埋め込まれる）
+2. 実機のホーム画面で長押し →「ウィジェットを追加」→「BrainBox」を検索 →「次の予定」「買い物リスト」を追加
+
+### 避けるパターン
+
+- `WidgetDataPlugin` を Widget Extension ターゲットに追加しない（メインAppターゲットのみ。データを書き込む側と読み取る側が逆）
+- `BrainBoxWidgets.swift` をメインAppターゲットに追加しない（Widget Extensionターゲットのみ）
+- App Group ID をメインAppとWidget Extensionで一致させ忘れる（`group.jp.brainbox.app` で統一）
+
+---
+
 ## 主要な型定義
 
 | 型 | 説明 |
