@@ -297,6 +297,23 @@ const pkg = offerings.current?.monthly;
 
 ---
 
+## ホーム画面アイコン切り替え（AppIconPlugin）
+
+PRO機能の1つ。設定 → PRO → アプリアイコン で選んだ色をホーム画面アイコンに反映する。
+
+- `src/app/components/AppIcon.ts` — `setNativeAppIcon(name)` がCapacitorカスタムプラグイン `AppIconPlugin` を呼び出す（Web/開発環境では何もしない）
+- `native-ios/AppIconPlugin.swift` / `native-ios/AppIconPlugin.m` — 実際のアイコン切り替え処理（`UIApplication.shared.setAlternateIconName`）。Xcodeで `ios/App/App/` に追加し、Target Membership: App にする
+- `native-ios/BridgeViewController.swift` — **これが無いとプラグインが動かない（重要）**。Capacitor 8はnpm経由ではないローカルカスタムプラグインを自動検出しないため、`capacitorDidLoad()` で `bridge?.registerPluginInstance(AppIconPlugin())` を明示的に呼ぶ必要がある
+
+**`ios/` はgitignore対象なので、新しいXcodeプロジェクトやクリーンチェックアウトでは以下を毎回手動で行うこと：**
+
+1. `native-ios/AppIconPlugin.swift` / `.m` / `BridgeViewController.swift` を Xcodeの `App` グループに追加（Target Membership: App）
+2. `Main.storyboard` を開き、ルートのView Controllerを選択 → Identity Inspector → Custom Class を `CAPBridgeViewController` から `BridgeViewController` に変更
+
+この2つを両方やらないと、`setNativeAppIcon` 呼び出し時に `"AppIconPlugin" plugin is not implemented on ios` (UNIMPLEMENTED) エラーになる（Target Membershipだけ・CAP_PLUGINマクロだけでは自動登録されない）。
+
+---
+
 ## 主要な型定義
 
 | 型 | 説明 |
