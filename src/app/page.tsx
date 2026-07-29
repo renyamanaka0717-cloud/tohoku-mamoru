@@ -75,7 +75,6 @@ const BULK_HIST_KEY        = 'tl-bulk-hist-v1';
 const DAY_SETTINGS_KEY     = 'tl-day-settings-v1';
 const LIFE_PATTERNS_KEY    = 'tl-life-patterns-v1';
 const PATTERN_OVERRIDES_KEY= 'tl-pattern-overrides-v1';
-const MORNING_NOTIF_KEY = 'tl-morning-notif-v1';
 const MORNING_SNOOZE_KEY = 'tl-morning-snooze-v1'; // stores snooze timestamp (ms)
 const SHOP_NOTIF_KEY    = 'tl-shop-notif-v1';
 const NOTIF_ASKED_KEY   = 'tl-notif-asked-v1';
@@ -884,7 +883,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
   const [category,setCategory]   = useState<string|null>(task?.category??prefillCategory??null);
   const [custDurOpen,setCDurOpen] = useState(false);
   const [custDurMin,setCDurMin]  = useState(duration>0&&!DUR_OPTS.find(o=>o.v===duration)?duration:90);
-  const [notifications,setNotifs]  = useState<number[]>(task?.notifications??(!task?[0]:[]));
+  const [notifications,setNotifs]  = useState<number[]>(task?.notifications??((!task||task.isLater)?[0]:[]));
   const [modalProPrompt,setModalProPrompt] = useState<string|null>(null);
   const modalSwX=useRef(0), modalSwY=useRef(0);
   const modeOrder:TaskMode[]=['later','scheduled','recurring','allday'];
@@ -3464,7 +3463,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             onClick={()=>{if(!isPremium){setProPrompt('買い物リストの通知設定');return;}setSub('notifications-shop');}} pro/>
           <div className="h-px bg-gray-100 mx-4"/>
           <SettingsRow icon={<AppIcons.postponed size={18}/>} iconBg="bg-gray-100" title="放置タスク"
-            desc={LATER_REMINDER_OPTS.find(o=>o.v===(settings.laterReminderHours??24))?.l??'1日'}
+            desc={LATER_REMINDER_OPTS.find(o=>o.v===(settings.laterReminderHours??72))?.l??'3日'}
             onClick={()=>setSub('notifications-later')} isLast/>
         </div>
       </div>
@@ -3480,7 +3479,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           <div className="flex gap-2 flex-wrap">
             {LATER_REMINDER_OPTS.map(o=>(
               <button key={o.v} onClick={()=>onSettings({...settings,laterReminderHours:o.v})}
-                className={`px-3 py-1.5 rounded-xl text-sm font-medium transition-colors ${(settings.laterReminderHours??24)===o.v?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
+                className={`px-3 py-1.5 rounded-xl text-sm font-medium transition-colors ${(settings.laterReminderHours??72)===o.v?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
                 {o.l}
               </button>
             ))}
@@ -4562,23 +4561,6 @@ export default function App() {
     setMorningSel(new Set());
   },[loaded,tasks,settings.wakeTime,now]);
 
-  // 起床時間に未完了タスク通知を送信
-  useEffect(()=>{
-    if(!loaded) return;
-    const today=todayStr();
-    const nowM=toMin(now);
-    const wakeM=toMin(settings.wakeTime);
-    if(nowM!==wakeM) return;
-    const lastDate=localStorage.getItem(MORNING_NOTIF_KEY);
-    if(lastDate===today) return;
-    const past=tasks.filter(t=>!t.completed&&!t.isLater&&!!t.startTime&&!t.recurrence&&t.date===shiftDate(today,-1));
-    if(past.length===0) return;
-    localStorage.setItem(MORNING_NOTIF_KEY,today);
-    if(typeof Notification!=='undefined'&&Notification.permission==='granted'){
-      new Notification('昨日のタスクが残っています',{body:`昨日のタスクが${past.length}件残っています`});
-    }
-  },[loaded,now,tasks,settings.wakeTime]);
-
   // 買い物リスト通知
   useEffect(()=>{
     if(!loaded||shopNotifSettings.length===0) return;
@@ -4598,22 +4580,24 @@ export default function App() {
     });
   },[loaded,now,shopNotifSettings,shopItems]);
 
-  // 起床時間にアプリを開くよう促す通知（前日タスク有無に関わらず毎朝1回）
+  // 起床時間にアプリを開くよう促す通知（前日の未完了タスクがあれば1つにまとめる）
   useEffect(()=>{
     if(!loaded||!(settings.notificationsEnabled??true)) return;
     const today=todayStr();
     if(toMin(now)!==toMin(settings.wakeTime)) return;
     if(localStorage.getItem(WAKE_CHECKIN_NOTIF_KEY)===today) return;
     localStorage.setItem(WAKE_CHECKIN_NOTIF_KEY,today);
+    const past=tasks.filter(t=>!t.completed&&!t.isLater&&!!t.startTime&&!t.recurrence&&t.date===shiftDate(today,-1));
     if(typeof Notification!=='undefined'&&Notification.permission==='granted'){
-      new Notification('おはようございます',{body:'今日の予定をチェックしましょう'});
+      const body=past.length>0?`今日の予定をチェックしましょう。昨日のタスクが${past.length}件残っています`:'今日の予定をチェックしましょう';
+      new Notification('おはようございます',{body});
     }
-  },[loaded,now,settings.wakeTime,settings.notificationsEnabled]);
+  },[loaded,now,tasks,settings.wakeTime,settings.notificationsEnabled]);
 
   // 「あとでやる」に長時間放置されているタスクの通知
   useEffect(()=>{
     if(!loaded||!(settings.notificationsEnabled??true)) return;
-    const hours=settings.laterReminderHours??24;
+    const hours=settings.laterReminderHours??72;
     if(hours<=0) return;
     const thresholdMs=hours*3600*1000;
     const nowTs=Date.now();
@@ -4725,7 +4709,7 @@ export default function App() {
           setPendingDragMove({task:dragTask,time});
         } else {
           setTasks(prev=>prev.map(tk=>tk.id===dragTask.id
-            ? dragTask.isLater ? {...tk,isLater:false,startTime:time,date,laterSince:undefined} : {...tk,startTime:time}
+            ? dragTask.isLater ? {...tk,isLater:false,startTime:time,date,laterSince:undefined,notifications:tk.notifications?.length?tk.notifications:[0]} : {...tk,startTime:time}
             : tk
           ));
         }
