@@ -2496,11 +2496,122 @@ function ShopNotifPanel({settings,onChange,notificationsEnabled=true,onEnableNot
 
 // ── ShopLocationPanel ─────────────────────────────────────────────────────────
 
-function ShopLocationPanel({locations,onChange}:{
+// OpenStreetMapタイルを使った軽量な地図ピッカー（ライブラリ追加なし）。
+// ピンは画面中央に固定し、地図側をドラッグして動かす（Google/Appleマップと同じUX）。
+function ShopMapPicker({initialCenter,onConfirm,onCancel}:{
+  initialCenter:{lat:number;lng:number};
+  onConfirm:(loc:{name:string;lat:number;lng:number})=>void;
+  onCancel:()=>void;
+}) {
+  const TILE=256, W=304, H=240;
+  const [center,setCenter]=useState(initialCenter);
+  const [zoom,setZoom]=useState(16);
+  const [drag,setDrag]=useState({x:0,y:0});
+  const dragStart=useRef<{x:number;y:number}|null>(null);
+  const [confirming,setConfirming]=useState(false);
+
+  const lonLatToPx=(lon:number,lat:number,z:number)=>{
+    const n=2**z;
+    const x=(lon+180)/360*n*TILE;
+    const latRad=lat*Math.PI/180;
+    const y=(1-Math.log(Math.tan(latRad)+1/Math.cos(latRad))/Math.PI)/2*n*TILE;
+    return {x,y};
+  };
+  const pxToLonLat=(x:number,y:number,z:number)=>{
+    const n=2**z;
+    const lon=x/(n*TILE)*360-180;
+    const latRad=Math.atan(Math.sinh(Math.PI*(1-2*y/(n*TILE))));
+    return {lon,lat:latRad*180/Math.PI};
+  };
+
+  const centerPx=lonLatToPx(center.lng,center.lat,zoom);
+  const centerTileX=Math.floor(centerPx.x/TILE), centerTileY=Math.floor(centerPx.y/TILE);
+  const fracX=centerPx.x-centerTileX*TILE, fracY=centerPx.y-centerTileY*TILE;
+  const wrapLeft=W/2-(TILE+fracX), wrapTop=H/2-(TILE+fracY);
+  const n=2**zoom;
+  const tiles:{left:number;top:number;tx:number;ty:number}[]=[];
+  for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){
+    const ty=centerTileY+dy;
+    if(ty<0||ty>=n) continue;
+    tiles.push({left:(dx+1)*TILE,top:(dy+1)*TILE,tx:((centerTileX+dx)%n+n)%n,ty});
+  }
+
+  const onStart=(x:number,y:number)=>{ dragStart.current={x,y}; };
+  const onMove=(x:number,y:number)=>{
+    if(!dragStart.current) return;
+    setDrag({x:x-dragStart.current.x,y:y-dragStart.current.y});
+  };
+  const onEnd=()=>{
+    if(!dragStart.current) return;
+    const {lon,lat}=pxToLonLat(centerPx.x-drag.x,centerPx.y-drag.y,zoom);
+    setCenter({lat,lng:lon});
+    setDrag({x:0,y:0});
+    dragStart.current=null;
+  };
+
+  const confirm=async()=>{
+    setConfirming(true);
+    let name='地図で指定した場所';
+    try{
+      const res=await fetch(`https://mreversegeocoder.gsi.go.jp/reverse-geocoder/LonLatToAddress?lon=${center.lng}&lat=${center.lat}`);
+      const data=await res.json() as {results?:{lv01Nm?:string;muniCd?:string}};
+      if(data.results?.lv01Nm) name=data.results.lv01Nm;
+    }catch{
+      // 逆ジオコーディングに失敗しても座標だけで登録を続行
+    }
+    onConfirm({name,lat:center.lat,lng:center.lng});
+    setConfirming(false);
+  };
+
+  return (
+    <div>
+      <div className="relative rounded-xl overflow-hidden bg-gray-100 mb-3 select-none touch-none"
+        style={{width:'100%',height:H}}
+        onTouchStart={e=>onStart(e.touches[0].clientX,e.touches[0].clientY)}
+        onTouchMove={e=>onMove(e.touches[0].clientX,e.touches[0].clientY)}
+        onTouchEnd={onEnd}
+        onMouseDown={e=>onStart(e.clientX,e.clientY)}
+        onMouseMove={e=>{if(dragStart.current)onMove(e.clientX,e.clientY);}}
+        onMouseUp={onEnd}
+        onMouseLeave={()=>{if(dragStart.current)onEnd();}}
+      >
+        <div className="absolute" style={{left:wrapLeft+drag.x,top:wrapTop+drag.y,width:TILE*3,height:TILE*3}}>
+          {tiles.map((t,i)=>(
+            <img key={i} src={`https://tile.openstreetmap.org/${zoom}/${t.tx}/${t.ty}.png`} draggable={false} alt=""
+              style={{position:'absolute',left:t.left,top:t.top,width:TILE,height:TILE}}/>
+          ))}
+        </div>
+        <div className="absolute pointer-events-none" style={{left:'50%',top:'50%',transform:'translate(-50%,-100%)'}}>
+          <AppIcons.location size={32} className="text-[var(--c-primary)]"/>
+        </div>
+        <div className="absolute bottom-1 right-1.5 bg-white/80 rounded px-1 text-[9px] text-gray-500">© OpenStreetMap</div>
+        <div className="absolute top-2 right-2 flex flex-col gap-1.5">
+          <button onClick={()=>setZoom(z=>Math.min(18,z+1))} className="w-7 h-7 bg-white rounded-lg shadow text-gray-600 font-bold">+</button>
+          <button onClick={()=>setZoom(z=>Math.max(12,z-1))} className="w-7 h-7 bg-white rounded-lg shadow text-gray-600 font-bold">−</button>
+        </div>
+      </div>
+      <p className="text-xs text-gray-400 text-center mb-3">ピンの位置までドラッグして動かせます</p>
+      <div className="flex gap-2">
+        <button onClick={onCancel} className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200">
+          戻る
+        </button>
+        <button onClick={confirm} disabled={confirming}
+          className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-[var(--c-primary)] text-white active:opacity-80 disabled:opacity-50">
+          {confirming?'取得中...':'この位置に決定'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ShopLocationPanel({locations,onChange,isPremium,onProPrompt}:{
   locations:ShopLocation[];
   onChange:(l:ShopLocation[])=>void;
+  isPremium:boolean;
+  onProPrompt:(feature:string)=>void;
 }) {
   const [adding,setAdding]=useState(false);
+  const [mapMode,setMapMode]=useState(false);
   const [searchQuery,setSearchQuery]=useState('');
   const [searchResults,setSearchResults]=useState<{name:string;lat:number;lng:number}[]>([]);
   const [searching,setSearching]=useState(false);
@@ -2535,7 +2646,7 @@ function ShopLocationPanel({locations,onChange}:{
     );
   };
 
-  const cancelAdd=()=>{ setAdding(false);setPendingCoord(null);setSearchQuery('');setSearchResults([]);setRadius(300); };
+  const cancelAdd=()=>{ setAdding(false);setMapMode(false);setPendingCoord(null);setSearchQuery('');setSearchResults([]);setRadius(300); };
 
   const confirmAdd=async()=>{
     if(!pendingCoord) return;
@@ -2547,7 +2658,11 @@ function ShopLocationPanel({locations,onChange}:{
     cancelAdd();
   };
 
-  const toggle=(id:string)=>onChange(locations.map(l=>l.id===id?{...l,enabled:!l.enabled}:l));
+  const toggle=(id:string)=>{
+    const target=locations.find(l=>l.id===id);
+    if(target&&!target.enabled&&!isPremium){ onProPrompt('場所で通知'); return; }
+    onChange(locations.map(l=>l.id===id?{...l,enabled:!l.enabled}:l));
+  };
   const del=(id:string)=>onChange(locations.filter(l=>l.id!==id));
 
   const permDenied = permStatus!==null && (permStatus.location==='denied'||permStatus.notifications==='denied');
@@ -2555,8 +2670,11 @@ function ShopLocationPanel({locations,onChange}:{
   return (
     <div className="px-4 pb-6">
       <div className="flex items-center justify-between mb-3 mt-1">
-        <p className="text-sm font-semibold text-gray-700">場所で通知</p>
-        <button onClick={()=>setAdding(true)} disabled={adding}
+        <p className="text-sm font-semibold text-gray-700 flex items-center gap-1.5">
+          場所で通知
+          {!isPremium&&<span className="inline-flex items-center gap-0.5 border border-gray-300 rounded px-1.5 py-0.5 text-[10px] font-bold text-gray-400 leading-none tracking-wide">★ PRO</span>}
+        </p>
+        <button onClick={()=>{if(!isPremium){onProPrompt('場所で通知');return;}setAdding(true);}} disabled={adding}
           className="flex items-center gap-1 px-3 py-1.5 bg-[var(--c-primary)] text-white rounded-xl text-sm font-semibold disabled:opacity-40">
           <AppIcons.plus size={14}/>追加
         </button>
@@ -2590,7 +2708,12 @@ function ShopLocationPanel({locations,onChange}:{
       </div>
       {adding&&(
         <div className="mt-3 bg-white rounded-2xl shadow-sm p-4">
-          {!pendingCoord?(
+          {mapMode?(
+            <ShopMapPicker
+              initialCenter={searchResults[0]??{lat:35.681236,lng:139.767125}}
+              onConfirm={loc=>{setPendingCoord(loc);setMapMode(false);}}
+              onCancel={()=>setMapMode(false)}/>
+          ):!pendingCoord?(
             <>
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">場所を検索</p>
               <div className="flex gap-2 mb-3">
@@ -2613,6 +2736,10 @@ function ShopLocationPanel({locations,onChange}:{
                   ))}
                 </div>
               )}
+              <button onClick={()=>setMapMode(true)}
+                className="w-full py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200 mb-2">
+                地図で指定
+              </button>
               <button onClick={useCurrentLocation} disabled={locating}
                 className="w-full py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200 mb-3 disabled:opacity-40">
                 {locating?'取得中...':'現在地から登録'}
@@ -2655,7 +2782,7 @@ function ShopLocationPanel({locations,onChange}:{
 
 function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,shopPending,
   onToggle,onEdit,onAddShop,onToggleShop,onDeleteShop,onDragStart,shopNotifSettings,onShopNotifSettings,
-  shopLocations,onShopLocations,
+  shopLocations,onShopLocations,isPremium,onOpenPro,
   notificationsEnabled,onEnableNotifications
 }:{
   activeTab:'later'|'shop'; onSwitchTab:(t:'later'|'shop')=>void; onClose:()=>void;
@@ -2665,6 +2792,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
   onDragStart:(t:Task,x:number,y:number)=>void;
   shopNotifSettings:ShopNotifSetting[]; onShopNotifSettings:(s:ShopNotifSetting[])=>void;
   shopLocations:ShopLocation[]; onShopLocations:(l:ShopLocation[])=>void;
+  isPremium:boolean; onOpenPro:()=>void;
   notificationsEnabled?:boolean; onEnableNotifications?:()=>void;
 }) {
   const [shopInput,setShopInput] = useState('');
@@ -2672,6 +2800,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
   const [shopSortDir,setShopSortDir] = useState<null|'asc'|'desc'>(null);
   const [pressingId,setPressingId]= useState<string|null>(null);
   const [showShopNotif,setShowShopNotif] = useState(false);
+  const [locProPrompt,setLocProPrompt] = useState<string|null>(null);
   const lpTimer = useRef<ReturnType<typeof setTimeout>|null>(null);
   const swX=useRef(0), swY=useRef(0);
   const tabs:('later'|'shop')[]=['later','shop'];
@@ -2912,7 +3041,8 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
               {showShopNotif?(
                 <>
                   <ShopNotifPanel settings={shopNotifSettings} onChange={onShopNotifSettings} notificationsEnabled={notificationsEnabled} onEnableNotifications={onEnableNotifications}/>
-                  <ShopLocationPanel locations={shopLocations} onChange={onShopLocations}/>
+                  <ShopLocationPanel locations={shopLocations} onChange={onShopLocations} isPremium={isPremium} onProPrompt={setLocProPrompt}/>
+                  {locProPrompt&&<ProGateSheet feature={locProPrompt} onClose={()=>setLocProPrompt(null)} onView={()=>{setLocProPrompt(null);onOpenPro();}}/>}
                 </>
               ):shopItems.length===0?(
                 <div className="py-12 text-center px-4"><AppIcons.shopping size={40} className="mx-auto mb-2 text-gray-300"/><p className="text-sm text-gray-400">リストは空です</p></div>
@@ -3691,7 +3821,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           <ShopNotifPanel settings={shopNotifSettings} onChange={onShopNotifSettings}
             notificationsEnabled={settings.notificationsEnabled??true}
             onEnableNotifications={()=>onSettings({...settings,notificationsEnabled:true})}/>
-          <ShopLocationPanel locations={shopLocations} onChange={onShopLocations}/>
+          <ShopLocationPanel locations={shopLocations} onChange={onShopLocations} isPremium={isPremium} onProPrompt={setProPrompt}/>
         </div>
       </div>
     </div>
@@ -5247,6 +5377,7 @@ export default function App() {
           onDragStart={startDrag}
           shopNotifSettings={shopNotifSettings} onShopNotifSettings={setShopNotifSettings}
           shopLocations={shopLocations} onShopLocations={setShopLocations}
+          isPremium={isPremium} onOpenPro={()=>{setActiveTab(null);setSettingsInitSub('premium');setSOp(true);}}
           notificationsEnabled={settings.notificationsEnabled??true}
           onEnableNotifications={()=>setSettings(s=>({...s,notificationsEnabled:true}))}/>
       )}

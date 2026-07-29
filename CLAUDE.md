@@ -392,9 +392,13 @@ const SHOP_LOC_KEY = 'tl-shop-loc-v1';
 1. `BottomTabs` の買い物タブ内、ベルアイコンで開く `showShopNotif` パネル
 2. 設定 → 通知 → 買い物リスト（`SettingsScreen` の `sub==='notifications-shop'`）
 
-**登録フロー:** 「追加」→ 場所検索（国土地理院 [住所検索API](https://msearch.gsi.go.jp/address-search/AddressSearch) をAPIキー無しで直接fetch）または「現在地から登録」（`navigator.geolocation.getCurrentPosition`、WKWebViewの標準Web APIで完結。継続監視ではなく一度きりの位置取得なのでCapacitorプラグイン不要）→ 半径（100/300/500m）を選択→登録。登録時に `ensureGeofencePermission()` で位置情報「常に」＋通知の許可をリクエストし、拒否されている場合は許可されるまで登録しない。
+**登録フロー:** 「追加」→ 場所検索（国土地理院 [住所検索API](https://msearch.gsi.go.jp/address-search/AddressSearch) をAPIキー無しで直接fetch）／「地図で指定」／「現在地から登録」（`navigator.geolocation.getCurrentPosition`、WKWebViewの標準Web APIで完結。継続監視ではなく一度きりの位置取得なのでCapacitorプラグイン不要）→ 半径（100/300/500m）を選択→登録。登録時に `ensureGeofencePermission()` で位置情報「常に」＋通知の許可をリクエストし、拒否されている場合は許可されるまで登録しない。
 
 位置情報または通知が拒否されている場合、パネル上部に設定アプリへの案内文を表示する（`checkGeofencePermissions()` で状態確認）。
+
+**地図ピッカー（`ShopMapPicker`）:** 追加npmライブラリ無しでOpenStreetMapのタイル（`https://tile.openstreetmap.org/{z}/{x}/{y}.png`、APIキー不要）を直接fetchして3x3グリッドで描画する自前の軽量地図。ピンは画面中央に固定表示、ドラッグで地図側を動かして位置を決める（Google/Appleマップと同じUX）。座標⇔ピクセル変換は標準的なWeb Mercatorタイル計算（`lonLatToPx`/`pxToLonLat`）。確定時は国土地理院の[逆ジオコーディングAPI](https://mreversegeocoder.gsi.go.jp/reverse-geocoder/LonLatToAddress)で地名を試みに取得し、失敗時は「地図で指定した場所」にフォールバックする。OSMタイル利用ポリシー上、地図上に「© OpenStreetMap」表記を常時表示している。
+
+**PRO機能:** 「場所で通知」は課金機能。`isPremium` が false の場合、ヘッダーに ★ PRO バッジを表示し、「追加」ボタンや既存の場所を再度ONにする操作は `ProGateSheet` を表示してブロックする（OFFにする操作は常に許可）。`ShopLocationPanel` は `isPremium`/`onProPrompt` を props として受け取り、呼び出し元（`BottomTabs`・`SettingsScreen`）がそれぞれ自前の `ProGateSheet` 表示状態を持つ。ブラウザ・開発環境は `usePremium()` が常に `isPremium=true` を返すため、このゲートは実機の未購入状態でのみ確認できる。
 
 ### データの流れ（アプリ → ネイティブ：ジオフェンス登録）
 
