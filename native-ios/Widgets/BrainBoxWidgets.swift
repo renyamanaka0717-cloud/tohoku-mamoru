@@ -4,7 +4,7 @@ import WidgetKit
 import SwiftUI
 
 private let appGroupId = "group.jp.brainbox.app"
-private let accentColor = Color(red: 217/255, green: 163/255, blue: 178/255)
+private let brandColor = Color(red: 217/255, green: 163/255, blue: 178/255)
 
 struct WidgetTaskItem: Codable { let name: String; let time: String }
 struct WidgetShopItem: Codable { let name: String }
@@ -57,7 +57,7 @@ struct NextTaskWidgetView: View {
             } else {
                 ForEach(entry.tasks.prefix(3), id: \.name) { task in
                     HStack(spacing: 6) {
-                        Text(task.time).font(.caption).bold().foregroundStyle(accentColor)
+                        Text(task.time).font(.caption).bold().foregroundStyle(brandColor)
                         Text(task.name).font(.footnote).lineLimit(1)
                     }
                 }
