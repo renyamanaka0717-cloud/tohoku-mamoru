@@ -42,13 +42,14 @@ interface Task {
   category?: string;
   postponedCount?: number;
   lastPostponedDate?: string;
+  laterSince?: string;  // あとでやるに入った日時（ISO文字列）。放置通知の起点
   color?: string;
   subtasks?: {id:string;name:string;completed:boolean}[];
   userId?: string;  // future: cloud sync owner
   allDay?: boolean;
 }
 
-interface Settings { wakeTime: string; sleepTime: string; keepIncomplete?: boolean; showFreeCard?: boolean; freeCardMinMin?: number; wakeColor?:string; sleepColor?:string; theme?:string; appIcon?:string; notificationsEnabled?:boolean; }
+interface Settings { wakeTime: string; sleepTime: string; keepIncomplete?: boolean; showFreeCard?: boolean; freeCardMinMin?: number; wakeColor?:string; sleepColor?:string; theme?:string; appIcon?:string; notificationsEnabled?:boolean; laterReminderHours?: number; }
 type AuthUser = {uid:string;email?:string;displayName?:string;isPremium?:boolean};
 interface FreeSlot  { start: string; end: string; min: number; }
 interface ShopItem  { id: string; name: string; checked: boolean; purchasedAt?: string; }
@@ -78,6 +79,10 @@ const MORNING_NOTIF_KEY = 'tl-morning-notif-v1';
 const MORNING_SNOOZE_KEY = 'tl-morning-snooze-v1'; // stores snooze timestamp (ms)
 const SHOP_NOTIF_KEY    = 'tl-shop-notif-v1';
 const NOTIF_ASKED_KEY   = 'tl-notif-asked-v1';
+const WAKESLEEP_ASKED_KEY = 'tl-wakesleep-asked-v1';
+const LATER_NOTIFIED_KEY = 'tl-later-notified-v1';
+const WAKE_CHECKIN_NOTIF_KEY = 'tl-wake-checkin-notif-v1';
+const LATER_REMINDER_OPTS = [{v:0,l:'オフ'},{v:1,l:'1時間'},{v:3,l:'3時間'},{v:6,l:'6時間'},{v:12,l:'12時間'},{v:24,l:'1日'},{v:72,l:'3日'}];
 const AUTH_KEY          = 'tl-auth-v1';
 
 // テーマカラー — 将来的にここを差し替えるだけで全体の色が変わる
@@ -926,6 +931,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
     color:color||undefined, completed:task?.completed??false,
     date:(mode==='scheduled'||mode==='allday')?taskDate:(task?.date??currentDate),
     isLater:mode==='later', allDay:mode==='allday'||undefined,
+    laterSince:mode==='later'?(task?.isLater?(task?.laterSince??new Date().toISOString()):new Date().toISOString()):undefined,
     recurrence:mode==='recurring'?recur:null,
     customRec:mode==='recurring'&&recur==='custom'?customRec:undefined,
     notifications:(mode!=='later'&&mode!=='allday')?notifications:undefined,
@@ -3455,7 +3461,30 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           <div className="h-px bg-gray-100 mx-4"/>
           <SettingsRow icon={<AppIcons.shopping size={18}/>} iconBg="bg-gray-100" title="買い物リスト"
             desc={shopNotifSettings.filter(s=>s.enabled).length>0?`${shopNotifSettings.filter(s=>s.enabled).length}件の通知が有効`:'通知なし'}
-            onClick={()=>{if(!isPremium){setProPrompt('買い物リストの通知設定');return;}setSub('notifications-shop');}} isLast pro/>
+            onClick={()=>{if(!isPremium){setProPrompt('買い物リストの通知設定');return;}setSub('notifications-shop');}} pro/>
+          <div className="h-px bg-gray-100 mx-4"/>
+          <SettingsRow icon={<AppIcons.postponed size={18}/>} iconBg="bg-gray-100" title="放置タスク"
+            desc={LATER_REMINDER_OPTS.find(o=>o.v===(settings.laterReminderHours??24))?.l??'1日'}
+            onClick={()=>setSub('notifications-later')} isLast/>
+        </div>
+      </div>
+    </div>
+  );
+
+  if(sub==='notifications-later') return (
+    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
+      {subHeader('放置タスク通知')}
+      <div className="flex-1 overflow-y-auto px-4 pb-8">
+        <p className="text-xs text-gray-400 px-1 mt-4 mb-4 leading-relaxed">「あとでやる」に入れたタスクが指定した時間を過ぎても残っている場合に通知します。</p>
+        <div className="bg-white rounded-2xl shadow-sm px-4 py-4">
+          <div className="flex gap-2 flex-wrap">
+            {LATER_REMINDER_OPTS.map(o=>(
+              <button key={o.v} onClick={()=>onSettings({...settings,laterReminderHours:o.v})}
+                className={`px-3 py-1.5 rounded-xl text-sm font-medium transition-colors ${(settings.laterReminderHours??24)===o.v?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
+                {o.l}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     </div>
@@ -4356,6 +4385,9 @@ export default function App() {
   const [patternOverrides,setPatternOverrides] = useState<Record<string,string>>({});
   const [authUser,setAuthUser] = useState<AuthUser|null>(null);
   const [showNotifPrompt,setShowNotifPrompt] = useState(false);
+  const [showWakeSleepPrompt,setShowWakeSleepPrompt] = useState(false);
+  const [wsPromptWake,setWsPromptWake] = useState('07:00');
+  const [wsPromptSleep,setWsPromptSleep] = useState('23:00');
   const [appProPrompt,setAppProPrompt] = useState(false);
   const { isPremium } = usePremium();
 
@@ -4476,9 +4508,16 @@ export default function App() {
     localStorage.removeItem(AUTH_KEY);
   };
 
+  const maybeShowWakeSleepPrompt=()=>{
+    if(localStorage.getItem(WAKESLEEP_ASKED_KEY)) return;
+    setWsPromptWake(settings.wakeTime);
+    setWsPromptSleep(settings.sleepTime);
+    setShowWakeSleepPrompt(true);
+  };
   const dismissNotifPrompt=()=>{
     localStorage.setItem(NOTIF_ASKED_KEY,'1');
     setShowNotifPrompt(false);
+    maybeShowWakeSleepPrompt();
   };
   const enableNotifFromPrompt=()=>{
     if(typeof Notification!=='undefined'&&Notification.permission==='default'){
@@ -4486,6 +4525,14 @@ export default function App() {
     }
     setSettings(s=>({...s,notificationsEnabled:true}));
     dismissNotifPrompt();
+  };
+  const dismissWakeSleepPrompt=()=>{
+    localStorage.setItem(WAKESLEEP_ASKED_KEY,'1');
+    setShowWakeSleepPrompt(false);
+  };
+  const confirmWakeSleepPrompt=()=>{
+    setSettings(s=>({...s,wakeTime:wsPromptWake,sleepTime:wsPromptSleep}));
+    dismissWakeSleepPrompt();
   };
 
   // 起床時間後、初回起動時に過去の未完了タスクをポップアップで確認（スヌーズ対応）
@@ -4550,6 +4597,38 @@ export default function App() {
       }
     });
   },[loaded,now,shopNotifSettings,shopItems]);
+
+  // 起床時間にアプリを開くよう促す通知（前日タスク有無に関わらず毎朝1回）
+  useEffect(()=>{
+    if(!loaded||!(settings.notificationsEnabled??true)) return;
+    const today=todayStr();
+    if(toMin(now)!==toMin(settings.wakeTime)) return;
+    if(localStorage.getItem(WAKE_CHECKIN_NOTIF_KEY)===today) return;
+    localStorage.setItem(WAKE_CHECKIN_NOTIF_KEY,today);
+    if(typeof Notification!=='undefined'&&Notification.permission==='granted'){
+      new Notification('おはようございます',{body:'今日の予定をチェックしましょう'});
+    }
+  },[loaded,now,settings.wakeTime,settings.notificationsEnabled]);
+
+  // 「あとでやる」に長時間放置されているタスクの通知
+  useEffect(()=>{
+    if(!loaded||!(settings.notificationsEnabled??true)) return;
+    const hours=settings.laterReminderHours??24;
+    if(hours<=0) return;
+    const thresholdMs=hours*3600*1000;
+    const nowTs=Date.now();
+    let notifiedKeys:string[]=[];
+    try{ notifiedKeys=JSON.parse(localStorage.getItem(LATER_NOTIFIED_KEY)||'[]'); }catch{}
+    const stale=tasks.filter(t=>t.isLater&&!t.completed&&t.laterSince
+      &&(nowTs-new Date(t.laterSince).getTime())>=thresholdMs
+      &&!notifiedKeys.includes(`${t.id}:${t.laterSince}`));
+    if(stale.length===0) return;
+    localStorage.setItem(LATER_NOTIFIED_KEY,JSON.stringify([...notifiedKeys,...stale.map(t=>`${t.id}:${t.laterSince}`)]));
+    if(typeof Notification!=='undefined'&&Notification.permission==='granted'){
+      const names=stale.slice(0,3).map(t=>t.name).join('・')+(stale.length>3?'…':'');
+      new Notification('あとでやるが溜まっています',{body:`${stale.length}件が長時間放置されています: ${names}`});
+    }
+  },[loaded,now,tasks,settings.notificationsEnabled,settings.laterReminderHours]);
 
   const filteredTasks = useMemo(()=>{
     const base=activeCategory
@@ -4617,7 +4696,7 @@ export default function App() {
         setTasks(prev=>prev.filter(tk=>tk.id!==dragTask.id));
       } else if(isInLater(t.clientX,t.clientY)){
         setTasks(prev=>prev.map(tk=>tk.id===dragTask.id
-          ? {...tk,isLater:true,startTime:null}
+          ? {...tk,isLater:true,startTime:null,laterSince:tk.laterSince??new Date().toISOString()}
           : tk
         ));
       } else {
@@ -4626,7 +4705,7 @@ export default function App() {
           setPendingDragMove({task:dragTask,time});
         } else {
           setTasks(prev=>prev.map(tk=>tk.id===dragTask.id
-            ? dragTask.isLater ? {...tk,isLater:false,startTime:time,date} : {...tk,startTime:time}
+            ? dragTask.isLater ? {...tk,isLater:false,startTime:time,date,laterSince:undefined} : {...tk,startTime:time}
             : tk
           ));
         }
@@ -4750,7 +4829,7 @@ export default function App() {
     setTasks(prev=>prev.map(t=>{
       if(!ids.has(t.id)) return t;
       if(type==='done') return {...t,completed:true};
-      return {...t,isLater:true,startTime:null,postponedCount:(t.postponedCount??0)+1,lastPostponedDate:todayStr()};
+      return {...t,isLater:true,startTime:null,postponedCount:(t.postponedCount??0)+1,lastPostponedDate:todayStr(),laterSince:t.laterSince??new Date().toISOString()};
     }));
     const remaining=(morningTasks||[]).filter(t=>!ids.has(t.id));
     if(remaining.length===0){setMorningTasks(null);}
@@ -5213,6 +5292,33 @@ export default function App() {
               className="w-full py-3.5 rounded-2xl text-[15px] font-bold text-white mb-3"
               style={{background:'var(--c-primary)'}}>通知をオンにする</button>
             <button onClick={dismissNotifPrompt}
+              className="w-full py-2.5 text-sm font-medium text-gray-400">あとで</button>
+          </div>
+        </div>
+      )}
+
+      {showWakeSleepPrompt&&(
+        <div className="fixed inset-0 z-[210] flex items-end justify-center">
+          <div className="absolute inset-0 bg-black/40" onClick={dismissWakeSleepPrompt}/>
+          <div className="relative bg-white rounded-t-3xl w-full max-w-md px-6 pt-7 pb-10 shadow-2xl">
+            <div className="flex justify-center mb-4">
+              <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{background:'rgba(217,163,178,0.12)'}}>
+                <AppIcons.wake size={32} className="text-[var(--c-primary)]"/>
+              </div>
+            </div>
+            <p className="text-lg font-bold text-gray-900 text-center mb-2">起床・就寝時間を設定しよう</p>
+            <p className="text-sm text-gray-500 text-center mb-6 leading-relaxed">あなたの生活リズムに合わせてタイムラインを表示します。</p>
+            <div className="flex items-center justify-center gap-3 mb-7">
+              <input type="time" value={wsPromptWake} onChange={e=>setWsPromptWake(e.target.value)}
+                className="border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50"/>
+              <span className="text-gray-300 text-sm">〜</span>
+              <input type="time" value={wsPromptSleep} onChange={e=>setWsPromptSleep(e.target.value)}
+                className="border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50"/>
+            </div>
+            <button onClick={confirmWakeSleepPrompt}
+              className="w-full py-3.5 rounded-2xl text-[15px] font-bold text-white mb-3"
+              style={{background:'var(--c-primary)'}}>設定する</button>
+            <button onClick={dismissWakeSleepPrompt}
               className="w-full py-2.5 text-sm font-medium text-gray-400">あとで</button>
           </div>
         </div>
