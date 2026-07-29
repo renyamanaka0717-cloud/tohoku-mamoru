@@ -21,4 +21,16 @@ public class WidgetDataPlugin: CAPPlugin {
         WidgetCenter.shared.reloadAllTimelines()
         call.resolve()
     }
+
+    @objc func getPendingWidgetActions(_ call: CAPPluginCall) {
+        guard let defaults = UserDefaults(suiteName: WidgetDataPlugin.appGroupId) else {
+            call.resolve(["completedTaskIds": "[]", "purchasedShopItemIds": "[]"])
+            return
+        }
+        let completedTaskIds = defaults.string(forKey: "pendingCompletedTaskIds") ?? "[]"
+        let purchasedShopItemIds = defaults.string(forKey: "pendingPurchasedShopItemIds") ?? "[]"
+        defaults.removeObject(forKey: "pendingCompletedTaskIds")
+        defaults.removeObject(forKey: "pendingPurchasedShopItemIds")
+        call.resolve(["completedTaskIds": completedTaskIds, "purchasedShopItemIds": purchasedShopItemIds])
+    }
 }

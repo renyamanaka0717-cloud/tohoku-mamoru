@@ -314,16 +314,28 @@ PRO機能の1つ。設定 → PRO → アプリアイコン で選んだ色を�
 
 ---
 
-## ホーム画面ウィジェット（次の予定・買い物リスト）
+## ホーム画面ウィジェット（次の予定 & 買い物リスト・2カラム統合）
 
-iOS標準のホーム画面ウィジェット（WidgetKit）。「次の予定」（今日の未完了タスクを最大3件、時刻付きで表示）と「買い物リスト」（未購入アイテムを最大5件表示）の2種類。
+iOS標準のホーム画面ウィジェット（WidgetKit）。1つの大きいウィジェット（systemLarge）の中で左カラムに「次の予定」（最大4件、時刻付き）、右カラムに「買い物リスト」（最大6件）を表示する。**iOS 17+のインタラクティブウィジェット機能を使い、各行をタップするとその場でタスク完了／購入済みにできる。**
 
-### データの流れ
+### データの流れ（アプリ → ウィジェット）
 
-1. `src/app/page.tsx` の App コンポーネントに、`tasks`/`shopItems`/`now`/`settings.theme` が変わるたびに次の予定3件・未購入アイテム5件・現在のテーマカラーを計算して `updateWidgetData()` を呼ぶ `useEffect` がある
+1. `src/app/page.tsx` の App コンポーネントに、`tasks`/`shopItems`/`now`/`settings.theme` が変わるたびに次の予定4件・未購入アイテム6件・現在のテーマカラーを計算して `updateWidgetData()` を呼ぶ `useEffect` がある（各アイテムに `id` を含める。後述のタップ完了機能で必須）
 2. `src/app/components/WidgetData.ts` — `updateWidgetData(tasks, shopItems, themeColor)` がCapacitorカスタムプラグイン `WidgetDataPlugin` を呼ぶ（Web/開発環境では何もしない）
 3. `native-ios/WidgetDataPlugin.swift` / `.m` — JSON文字列とテーマカラー(hex文字列)をApp Group共有の `UserDefaults(suiteName: "group.jp.brainbox.app")` に書き込み、`WidgetCenter.shared.reloadAllTimelines()` でウィジェットを更新する
-4. `native-ios/Widgets/BrainBoxWidgets.swift` — 実際のウィジェット表示（Widget Extensionターゲット用）。同じApp Groupから読み取って描画する。時刻・「・」の色はアプリの現在のテーマカラーに追従する（`Color(hex:)` extensionでhex文字列から変換）
+4. `native-ios/Widgets/BrainBoxWidgets.swift` — 実際のウィジェット表示（Widget Extensionターゲット用、`CombinedWidget` 1つのみ）。同じApp Groupから読み取って描画する。時刻・チェックアイコンの色はアプリの現在のテーマカラーに追従する（`Color(hex:)` extensionでhex文字列から変換）
+
+### データの流れ（ウィジェット → アプリ、タップ完了機能）
+
+ウィジェットは別プロセス（Widget Extension）で動くため、タップしても直接 `tasks`/`shopItems` state は変更できない。「保留アクション」をApp Group経由でアプリに伝えるしくみになっている。
+
+1. `native-ios/Widgets/WidgetIntents.swift` — `CompleteTaskIntent` / `PurchaseShopItemIntent`（`AppIntent`、iOS 17+）。ウィジェットの行をタップすると実行され、そのIDを `UserDefaults` の `pendingCompletedTaskIds` / `pendingPurchasedShopItemIds`（JSON配列文字列）に追記し、`WidgetCenter.shared.reloadAllTimelines()` でウィジェットを即時更新する
+2. `BrainBoxWidgets.swift` の `loadTasks()` / `loadShopItems()` は、pending済みのIDを除外して表示する（＝タップした瞬間にウィジェット上から消える、楽観的UI）
+3. `WidgetDataPlugin.swift` の `getPendingWidgetActions()` — pending配列を読み取って返し、読み取り後は `UserDefaults` から削除する
+4. `src/app/components/WidgetData.ts` の `getPendingWidgetActions()` がこれを呼ぶ
+5. `src/app/page.tsx` の App コンポーネントに、アプリ起動時と `document.visibilitychange`（アプリが前面に戻ったタイミング）で `getPendingWidgetActions()` を呼び、返ってきたIDに対応する `tasks`/`shopItems` を `completed:true` / `checked:true` に更新する `useEffect` がある
+
+つまり、ウィジェットをタップした直後はウィジェット上でだけ消え、実際に `tasks`/`shopItems` に反映されるのはアプリを開いた時（またはvisibilitychange発火時）。若干のタイムラグがあるのは仕様。
 
 ### Xcodeでの手動セットアップ（`ios/`はgitignore対象なので毎回必要）
 
@@ -340,21 +352,25 @@ iOS標準のホーム画面ウィジェット（WidgetKit）。「次の予定�
 **③ Widget Extension ターゲットを新規作成**
 
 1. Xcodeメニュー File → New → Target → 「Widget Extension」を選択
-2. Product Name: `BrainBoxWidgets`（任意）、"Include Configuration App Intent" は**オフ**（固定表示のみで良いため）
+2. Product Name: `BrainBoxWidgets`（任意）、"Include Live Activity" と "Include Control" は**オフ**、"Include Configuration App Intent" も**オフ**
 3. 作成すると自動生成される雛形の `.swift` ファイル（サンプルWidgetコード）は削除する
-4. `native-ios/Widgets/BrainBoxWidgets.swift` をこの **Widget Extension ターゲット**に追加（Target Membership: BrainBoxWidgets。メインAppターゲットには入れない）
+4. `native-ios/Widgets/BrainBoxWidgets.swift` と `native-ios/Widgets/WidgetIntents.swift` をこの **Widget Extension ターゲット**に追加（Target Membership: BrainBoxWidgetsExtension。メインAppターゲットには入れない）
 5. Widget Extensionターゲットにも①と同じ「Signing & Capabilities」→「App Groups」→ `group.jp.brainbox.app` を追加（メインAppと共有するため両方に必要）
+6. Widget Extensionターゲットの「General」→「Minimum Deployments」を **iOS 17.0以上**に設定する（`Button(intent:)` のインタラクティブウィジェットAPIがiOS 17+のため。メインAppターゲットはiOS 15.0のままでよい）
 
 **④ ビルド・実機確認**
 
 1. メインの `App` スキームのままビルド・実行（Widget Extensionは自動的に埋め込まれる）
-2. 実機のホーム画面で長押し →「ウィジェットを追加」→「BrainBox」を検索 →「次の予定」「買い物リスト」を追加
+2. 実機のホーム画面で長押し →「ウィジェットを追加」→「BrainBox」を検索 →「次の予定 & 買い物リスト」（systemLarge）を追加
+3. 行をタップ →その場でウィジェットから消える→ アプリを開くと実際に完了/購入済みになっていることを確認
 
 ### 避けるパターン
 
 - `WidgetDataPlugin` を Widget Extension ターゲットに追加しない（メインAppターゲットのみ。データを書き込む側と読み取る側が逆）
-- `BrainBoxWidgets.swift` をメインAppターゲットに追加しない（Widget Extensionターゲットのみ）
+- `BrainBoxWidgets.swift` / `WidgetIntents.swift` をメインAppターゲットに追加しない（Widget Extensionターゲットのみ）
 - App Group ID をメインAppとWidget Extensionで一致させ忘れる（`group.jp.brainbox.app` で統一）
+- Widget Extensionターゲットの Minimum Deployment を iOS 17 未満のままにする（`Button(intent:)` がビルドエラーになる）
+- `WidgetTaskItem` / `WidgetShopItem` の `id` を JS側の送信データから外す（タップ完了機能がどのアイテムか特定できなくなる）
 
 ---
 

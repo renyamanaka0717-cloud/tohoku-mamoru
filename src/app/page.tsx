@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { AppIcons } from './components/Icons';
 import { usePremium } from './components/Premium';
 import { setNativeAppIcon } from './components/AppIcon';
-import { updateWidgetData } from './components/WidgetData';
+import { updateWidgetData, getPendingWidgetActions } from './components/WidgetData';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -4414,11 +4414,27 @@ export default function App() {
       .filter(t=>!t.completed && !t.isLater && t.date===today && t.startTime && t.startTime>=now)
       .sort((a,b)=>(a.startTime! < b.startTime! ? -1 : 1))
       .slice(0,3)
-      .map(t=>({name:t.name,time:t.startTime!}));
-    const shopList=shopItems.filter(s=>!s.checked).slice(0,5).map(s=>({name:s.name}));
+      .map(t=>({id:t.id,name:t.name,time:t.startTime!}));
+    const shopList=shopItems.filter(s=>!s.checked).slice(0,5).map(s=>({id:s.id,name:s.name}));
     const themeColor=THEMES.find(th=>th.id===(settings.theme??'mint'))?.color??'#94CFC8';
     updateWidgetData(nextTasks,shopList,themeColor);
   },[tasks,shopItems,now,loaded,settings.theme]);
+  useEffect(()=>{
+    if(!loaded) return;
+    const applyPending=async()=>{
+      const {completedTaskIds,purchasedShopItemIds}=await getPendingWidgetActions();
+      if(completedTaskIds.length>0){
+        setTasks(prev=>prev.map(t=>completedTaskIds.includes(t.id)?{...t,completed:true}:t));
+      }
+      if(purchasedShopItemIds.length>0){
+        setShopItems(prev=>prev.map(s=>purchasedShopItemIds.includes(s.id)?{...s,checked:true,purchasedAt:new Date().toISOString()}:s));
+      }
+    };
+    applyPending();
+    const onVisible=()=>{ if(document.visibilityState==='visible') applyPending(); };
+    document.addEventListener('visibilitychange',onVisible);
+    return ()=>document.removeEventListener('visibilitychange',onVisible);
+  },[loaded]);
   useEffect(()=>{ if(loaded) localStorage.setItem(TAGS_KEY,JSON.stringify(globalTags)); },[globalTags,loaded]);
   useEffect(()=>{ if(loaded) localStorage.setItem(HISTORY_KEY,JSON.stringify(moveHistory)); },[moveHistory,loaded]);
   useEffect(()=>{ if(loaded) localStorage.setItem(CUSTOM_TABS_KEY,JSON.stringify(customTabs)); },[customTabs,loaded]);

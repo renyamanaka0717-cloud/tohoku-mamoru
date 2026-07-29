@@ -6,8 +6,8 @@ import SwiftUI
 private let appGroupId = "group.jp.brainbox.app"
 private let defaultThemeColor = Color(red: 217/255, green: 163/255, blue: 178/255)
 
-struct WidgetTaskItem: Codable { let name: String; let time: String }
-struct WidgetShopItem: Codable { let name: String }
+struct WidgetTaskItem: Codable { let id: String; let name: String; let time: String }
+struct WidgetShopItem: Codable { let id: String; let name: String }
 
 extension Color {
     init(hex: String) {
@@ -22,12 +22,21 @@ extension Color {
     }
 }
 
+private func loadPendingIds(_ key: String) -> Set<String> {
+    guard let defaults = UserDefaults(suiteName: appGroupId),
+          let json = defaults.string(forKey: key),
+          let data = json.data(using: .utf8),
+          let ids = try? JSONDecoder().decode([String].self, from: data) else { return [] }
+    return Set(ids)
+}
+
 private func loadTasks() -> [WidgetTaskItem] {
     guard let defaults = UserDefaults(suiteName: appGroupId),
           let json = defaults.string(forKey: "widgetTasksJson"),
           let data = json.data(using: .utf8),
           let items = try? JSONDecoder().decode([WidgetTaskItem].self, from: data) else { return [] }
-    return items
+    let pending = loadPendingIds("pendingCompletedTaskIds")
+    return items.filter { !pending.contains($0.id) }
 }
 
 private func loadShopItems() -> [WidgetShopItem] {
@@ -35,7 +44,8 @@ private func loadShopItems() -> [WidgetShopItem] {
           let json = defaults.string(forKey: "widgetShopJson"),
           let data = json.data(using: .utf8),
           let items = try? JSONDecoder().decode([WidgetShopItem].self, from: data) else { return [] }
-    return items
+    let pending = loadPendingIds("pendingPurchasedShopItemIds")
+    return items.filter { !pending.contains($0.id) }
 }
 
 private func loadThemeColor() -> Color {
@@ -44,126 +54,117 @@ private func loadThemeColor() -> Color {
     return Color(hex: hex)
 }
 
-// MARK: - 次の予定 ウィジェット
+// MARK: - 次の予定 & 買い物リスト（2カラム統合ウィジェット）
 
-struct NextTaskEntry: TimelineEntry {
+struct CombinedEntry: TimelineEntry {
     let date: Date
     let tasks: [WidgetTaskItem]
+    let shopItems: [WidgetShopItem]
     let themeColor: Color
 }
 
-struct NextTaskProvider: TimelineProvider {
-    func placeholder(in context: Context) -> NextTaskEntry {
-        NextTaskEntry(date: Date(), tasks: [WidgetTaskItem(name: "予定を確認", time: "--:--")], themeColor: defaultThemeColor)
+struct CombinedProvider: TimelineProvider {
+    func placeholder(in context: Context) -> CombinedEntry {
+        CombinedEntry(
+            date: Date(),
+            tasks: [WidgetTaskItem(id: "1", name: "予定を確認", time: "--:--")],
+            shopItems: [WidgetShopItem(id: "1", name: "買い物リスト")],
+            themeColor: defaultThemeColor
+        )
     }
-    func getSnapshot(in context: Context, completion: @escaping (NextTaskEntry) -> Void) {
-        completion(NextTaskEntry(date: Date(), tasks: loadTasks(), themeColor: loadThemeColor()))
+    func getSnapshot(in context: Context, completion: @escaping (CombinedEntry) -> Void) {
+        completion(CombinedEntry(date: Date(), tasks: loadTasks(), shopItems: loadShopItems(), themeColor: loadThemeColor()))
     }
-    func getTimeline(in context: Context, completion: @escaping (Timeline<NextTaskEntry>) -> Void) {
-        let entry = NextTaskEntry(date: Date(), tasks: loadTasks(), themeColor: loadThemeColor())
+    func getTimeline(in context: Context, completion: @escaping (Timeline<CombinedEntry>) -> Void) {
+        let entry = CombinedEntry(date: Date(), tasks: loadTasks(), shopItems: loadShopItems(), themeColor: loadThemeColor())
         completion(Timeline(entries: [entry], policy: .after(Date().addingTimeInterval(15 * 60))))
     }
 }
 
-struct NextTaskWidgetView: View {
-    var entry: NextTaskEntry
+struct CombinedWidgetView: View {
+    var entry: CombinedEntry
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("次の予定").font(.caption).foregroundColor(.secondary)
-            if entry.tasks.isEmpty {
-                Spacer()
-                Text("今日の予定はありません").font(.footnote).foregroundColor(.secondary)
-                Spacer()
-            } else {
-                ForEach(entry.tasks.prefix(3), id: \.name) { task in
-                    HStack(spacing: 6) {
-                        Text(task.time).font(.caption).bold().foregroundStyle(entry.themeColor)
-                        Text(task.name).font(.footnote).lineLimit(1)
+        HStack(alignment: .top, spacing: 12) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("次の予定").font(.caption).foregroundColor(.secondary)
+                if entry.tasks.isEmpty {
+                    Text("予定はありません").font(.footnote).foregroundColor(.secondary)
+                } else {
+                    ForEach(entry.tasks.prefix(4), id: \.id) { task in
+                        if #available(iOS 17.0, *) {
+                            Button(intent: CompleteTaskIntent(id: task.id)) {
+                                taskRow(task)
+                            }
+                            .buttonStyle(.plain)
+                        } else {
+                            taskRow(task)
+                        }
                     }
                 }
                 Spacer()
             }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding()
-        .containerBackground(.background, for: .widget)
-    }
-}
+            .frame(maxWidth: .infinity, alignment: .leading)
 
-struct NextTaskWidget: Widget {
-    let kind: String = "NextTaskWidget"
-    var body: some WidgetConfiguration {
-        StaticConfiguration(kind: kind, provider: NextTaskProvider()) { entry in
-            NextTaskWidgetView(entry: entry)
-        }
-        .configurationDisplayName("次の予定")
-        .description("今日のこれからの予定を表示します。")
-        .supportedFamilies([.systemMedium])
-    }
-}
+            Divider()
 
-// MARK: - 買い物リスト ウィジェット
-
-struct ShopListEntry: TimelineEntry {
-    let date: Date
-    let items: [WidgetShopItem]
-    let themeColor: Color
-}
-
-struct ShopListProvider: TimelineProvider {
-    func placeholder(in context: Context) -> ShopListEntry {
-        ShopListEntry(date: Date(), items: [WidgetShopItem(name: "買い物リスト")], themeColor: defaultThemeColor)
-    }
-    func getSnapshot(in context: Context, completion: @escaping (ShopListEntry) -> Void) {
-        completion(ShopListEntry(date: Date(), items: loadShopItems(), themeColor: loadThemeColor()))
-    }
-    func getTimeline(in context: Context, completion: @escaping (Timeline<ShopListEntry>) -> Void) {
-        let entry = ShopListEntry(date: Date(), items: loadShopItems(), themeColor: loadThemeColor())
-        completion(Timeline(entries: [entry], policy: .after(Date().addingTimeInterval(15 * 60))))
-    }
-}
-
-struct ShopListWidgetView: View {
-    var entry: ShopListEntry
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("買い物リスト").font(.caption).foregroundColor(.secondary)
-            if entry.items.isEmpty {
-                Spacer()
-                Text("買うものはありません").font(.footnote).foregroundColor(.secondary)
-                Spacer()
-            } else {
-                ForEach(entry.items.prefix(5), id: \.name) { item in
-                    HStack(spacing: 4) {
-                        Text("・").font(.footnote).bold().foregroundStyle(entry.themeColor)
-                        Text(item.name).font(.footnote).lineLimit(1)
+            VStack(alignment: .leading, spacing: 8) {
+                Text("買い物リスト").font(.caption).foregroundColor(.secondary)
+                if entry.shopItems.isEmpty {
+                    Text("買うものはありません").font(.footnote).foregroundColor(.secondary)
+                } else {
+                    ForEach(entry.shopItems.prefix(6), id: \.id) { item in
+                        if #available(iOS 17.0, *) {
+                            Button(intent: PurchaseShopItemIntent(id: item.id)) {
+                                shopRow(item)
+                            }
+                            .buttonStyle(.plain)
+                        } else {
+                            shopRow(item)
+                        }
                     }
                 }
                 Spacer()
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
         .padding()
         .containerBackground(.background, for: .widget)
     }
+
+    private func taskRow(_ task: WidgetTaskItem) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: "circle").font(.footnote).foregroundStyle(entry.themeColor)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(task.time).font(.caption2).bold().foregroundStyle(entry.themeColor)
+                Text(task.name).font(.footnote).lineLimit(1)
+            }
+        }
+    }
+
+    private func shopRow(_ item: WidgetShopItem) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: "circle").font(.footnote).foregroundStyle(entry.themeColor)
+            Text(item.name).font(.footnote).lineLimit(1)
+        }
+    }
 }
 
-struct ShopListWidget: Widget {
-    let kind: String = "ShopListWidget"
+struct CombinedWidget: Widget {
+    let kind: String = "BrainBoxCombinedWidget"
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: kind, provider: ShopListProvider()) { entry in
-            ShopListWidgetView(entry: entry)
+        StaticConfiguration(kind: kind, provider: CombinedProvider()) { entry in
+            CombinedWidgetView(entry: entry)
         }
-        .configurationDisplayName("買い物リスト")
-        .description("未購入の買い物リストを表示します。")
-        .supportedFamilies([.systemMedium])
+        .configurationDisplayName("次の予定 & 買い物リスト")
+        .description("今日の予定と買い物リストをまとめて表示します。タップで完了にできます。")
+        .supportedFamilies([.systemLarge])
     }
 }
 
 @main
 struct BrainBoxWidgetBundle: WidgetBundle {
     var body: some Widget {
-        NextTaskWidget()
-        ShopListWidget()
+        CombinedWidget()
     }
 }

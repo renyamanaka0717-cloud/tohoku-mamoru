@@ -1,11 +1,13 @@
 'use client';
 import { registerPlugin } from '@capacitor/core';
 
-interface WidgetTaskEntry { name: string; time: string; }
-interface WidgetShopEntry { name: string; }
+interface WidgetTaskEntry { id: string; name: string; time: string; }
+interface WidgetShopEntry { id: string; name: string; }
+interface WidgetPendingActions { completedTaskIds: string[]; purchasedShopItemIds: string[]; }
 
 interface WidgetDataPluginType {
   updateWidgetData(options: { tasksJson: string; shopJson: string; themeColor: string }): Promise<void>;
+  getPendingWidgetActions(): Promise<{ completedTaskIds: string; purchasedShopItemIds: string }>;
 }
 
 const WidgetDataPlugin = registerPlugin<WidgetDataPluginType>('WidgetDataPlugin');
@@ -25,5 +27,18 @@ export async function updateWidgetData(tasks: WidgetTaskEntry[], shopItems: Widg
     });
   } catch {
     // ネイティブ側プラグイン未導入時はホーム画面ウィジェットの更新のみスキップ
+  }
+}
+
+export async function getPendingWidgetActions(): Promise<WidgetPendingActions> {
+  if (!isNative()) return { completedTaskIds: [], purchasedShopItemIds: [] };
+  try {
+    const res = await WidgetDataPlugin.getPendingWidgetActions();
+    return {
+      completedTaskIds: JSON.parse(res.completedTaskIds || '[]'),
+      purchasedShopItemIds: JSON.parse(res.purchasedShopItemIds || '[]'),
+    };
+  } catch {
+    return { completedTaskIds: [], purchasedShopItemIds: [] };
   }
 }
