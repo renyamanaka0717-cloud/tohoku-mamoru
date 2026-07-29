@@ -1,0 +1,19 @@
+<!--
+ios/App/App/Info.plist の <dict> 直下に追加するスニペット（買い物リストの場所通知機能用）。
+
+NSLocation*UsageDescription は「常に許可」を求める際にiOSが表示する説明文。
+ユーザーには一度「使用中のみ許可」→設定アプリで手動で「常に」に変更してもらう
+二段階ダイアログになることがある（iOS標準の挙動）。
+
+UIBackgroundModes の location は、アプリがバックグラウンド/未起動でも
+ジオフェンス（CLCircularRegion監視）のイベントを受け取るために必須。
+UIBackgroundModes キーがすでに存在する場合は配列に <string>location</string> を追記するだけでよい（キーを重複させない）。
+-->
+<key>NSLocationWhenInUseUsageDescription</key>
+<string>買い物リストに登録した場所へ近づいたときに通知するために使用します</string>
+<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+<string>買い物リストに登録した場所へ近づいたときに、アプリを開いていなくても通知するために使用します</string>
+<key>UIBackgroundModes</key>
+<array>
+  <string>location</string>
+</array>

@@ -5,6 +5,7 @@ import { AppIcons } from './components/Icons';
 import { usePremium } from './components/Premium';
 import { setNativeAppIcon } from './components/AppIcon';
 import { updateWidgetData, getPendingWidgetActions } from './components/WidgetData';
+import { setShopGeofences, checkGeofencePermissions, ensureGeofencePermission, getPendingGeofenceAction } from './components/Geofence';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -54,6 +55,7 @@ type AuthUser = {uid:string;email?:string;displayName?:string;isPremium?:boolean
 interface FreeSlot  { start: string; end: string; min: number; }
 interface ShopItem  { id: string; name: string; checked: boolean; purchasedAt?: string; }
 interface ShopNotifSetting { id: string; days: number[]; time: string; enabled: boolean; }
+interface ShopLocation { id: string; name: string; lat: number; lng: number; radius: 100|300|500; enabled: boolean; }
 interface TagDef    { name: string; color: string; }
 interface MoveHistory { id: string; date: string; taskNames: string[]; }
 interface CustomTab  { id: string; name: string; showInAll?: boolean; }
@@ -77,6 +79,7 @@ const LIFE_PATTERNS_KEY    = 'tl-life-patterns-v1';
 const PATTERN_OVERRIDES_KEY= 'tl-pattern-overrides-v1';
 const MORNING_SNOOZE_KEY = 'tl-morning-snooze-v1'; // stores snooze timestamp (ms)
 const SHOP_NOTIF_KEY    = 'tl-shop-notif-v1';
+const SHOP_LOC_KEY      = 'tl-shop-loc-v1';
 const NOTIF_ASKED_KEY   = 'tl-notif-asked-v1';
 const WAKESLEEP_ASKED_KEY = 'tl-wakesleep-asked-v1';
 const LATER_NOTIFIED_KEY = 'tl-later-notified-v1';
@@ -2491,10 +2494,168 @@ function ShopNotifPanel({settings,onChange,notificationsEnabled=true,onEnableNot
   );
 }
 
+// ── ShopLocationPanel ─────────────────────────────────────────────────────────
+
+function ShopLocationPanel({locations,onChange}:{
+  locations:ShopLocation[];
+  onChange:(l:ShopLocation[])=>void;
+}) {
+  const [adding,setAdding]=useState(false);
+  const [searchQuery,setSearchQuery]=useState('');
+  const [searchResults,setSearchResults]=useState<{name:string;lat:number;lng:number}[]>([]);
+  const [searching,setSearching]=useState(false);
+  const [pendingCoord,setPendingCoord]=useState<{name:string;lat:number;lng:number}|null>(null);
+  const [radius,setRadius]=useState<100|300|500>(300);
+  const [locating,setLocating]=useState(false);
+  const [permStatus,setPermStatus]=useState<{location:string;notifications:string}|null>(null);
+
+  useEffect(()=>{ checkGeofencePermissions().then(setPermStatus); },[]);
+
+  const doSearch=async()=>{
+    const q=searchQuery.trim();
+    if(!q) return;
+    setSearching(true);
+    try{
+      const res=await fetch(`https://msearch.gsi.go.jp/address-search/AddressSearch?q=${encodeURIComponent(q)}`);
+      const data=await res.json() as {geometry:{coordinates:[number,number]};properties:{title:string}}[];
+      setSearchResults(data.slice(0,8).map(d=>({name:d.properties.title,lat:d.geometry.coordinates[1],lng:d.geometry.coordinates[0]})));
+    }catch{
+      setSearchResults([]);
+    }
+    setSearching(false);
+  };
+
+  const useCurrentLocation=()=>{
+    if(!navigator.geolocation) return;
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      pos=>{ setPendingCoord({name:'現在地',lat:pos.coords.latitude,lng:pos.coords.longitude}); setLocating(false); },
+      ()=>{ setLocating(false); alert('現在地を取得できませんでした'); },
+      {enableHighAccuracy:true,timeout:10000}
+    );
+  };
+
+  const cancelAdd=()=>{ setAdding(false);setPendingCoord(null);setSearchQuery('');setSearchResults([]);setRadius(300); };
+
+  const confirmAdd=async()=>{
+    if(!pendingCoord) return;
+    const ok=await ensureGeofencePermission();
+    const status=await checkGeofencePermissions();
+    setPermStatus(status);
+    if(!ok) return;
+    onChange([...locations,{id:uid(),name:pendingCoord.name,lat:pendingCoord.lat,lng:pendingCoord.lng,radius,enabled:true}]);
+    cancelAdd();
+  };
+
+  const toggle=(id:string)=>onChange(locations.map(l=>l.id===id?{...l,enabled:!l.enabled}:l));
+  const del=(id:string)=>onChange(locations.filter(l=>l.id!==id));
+
+  const permDenied = permStatus!==null && (permStatus.location==='denied'||permStatus.notifications==='denied');
+
+  return (
+    <div className="px-4 pb-6">
+      <div className="flex items-center justify-between mb-3 mt-1">
+        <p className="text-sm font-semibold text-gray-700">場所で通知</p>
+        <button onClick={()=>setAdding(true)} disabled={adding}
+          className="flex items-center gap-1 px-3 py-1.5 bg-[var(--c-primary)] text-white rounded-xl text-sm font-semibold disabled:opacity-40">
+          <AppIcons.plus size={14}/>追加
+        </button>
+      </div>
+      {permDenied&&(
+        <div className="bg-amber-50 rounded-2xl px-4 py-3 mb-3 flex items-start gap-2">
+          <AppIcons.location size={16} className="text-amber-500 shrink-0 mt-0.5"/>
+          <p className="text-xs text-amber-700 leading-relaxed">位置情報または通知の許可が必要です。設定アプリ &gt; BrainBoxから「位置情報（常に）」と「通知」を許可してください。</p>
+        </div>
+      )}
+      {locations.length===0&&!adding&&(
+        <p className="text-sm text-gray-400 text-center py-4">場所が登録されていません</p>
+      )}
+      <div className="space-y-2">
+        {locations.map(l=>(
+          <div key={l.id} className="bg-white rounded-2xl shadow-sm px-4 py-3 flex items-center gap-3">
+            <AppIcons.location size={16} className={l.enabled?'text-[var(--c-primary)]':'text-gray-300'}/>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-gray-800 truncate">{l.name}</p>
+              <p className="text-xs text-gray-400">半径{l.radius}m</p>
+            </div>
+            <button onClick={()=>toggle(l.id)}
+              className={`relative w-10 h-6 rounded-full transition-colors shrink-0 ${l.enabled?'bg-[var(--c-primary)]':'bg-gray-200'}`}>
+              <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${l.enabled?'left-[18px]':'left-0.5'}`}/>
+            </button>
+            <button onClick={()=>del(l.id)} className="text-gray-300 active:text-[#D97A7A] shrink-0">
+              <AppIcons.trash size={16}/>
+            </button>
+          </div>
+        ))}
+      </div>
+      {adding&&(
+        <div className="mt-3 bg-white rounded-2xl shadow-sm p-4">
+          {!pendingCoord?(
+            <>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">場所を検索</p>
+              <div className="flex gap-2 mb-3">
+                <input value={searchQuery} onChange={e=>setSearchQuery(e.target.value)}
+                  onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();doSearch();}}}
+                  placeholder="住所や施設名を入力"
+                  className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50"/>
+                <button onClick={doSearch} disabled={searching||!searchQuery.trim()}
+                  className="px-4 py-2 bg-gray-100 rounded-xl text-sm font-semibold text-gray-700 shrink-0 disabled:opacity-40">
+                  {searching?'検索中':'検索'}
+                </button>
+              </div>
+              {searchResults.length>0&&(
+                <div className="space-y-1 mb-3 max-h-40 overflow-y-auto">
+                  {searchResults.map((r,i)=>(
+                    <button key={i} onClick={()=>setPendingCoord(r)}
+                      className="w-full text-left px-3 py-2 rounded-xl bg-gray-50 active:bg-gray-100 text-sm text-gray-700 truncate">
+                      {r.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <button onClick={useCurrentLocation} disabled={locating}
+                className="w-full py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200 mb-3 disabled:opacity-40">
+                {locating?'取得中...':'現在地から登録'}
+              </button>
+              <button onClick={cancelAdd} className="w-full py-2.5 rounded-xl text-sm font-semibold bg-gray-50 text-gray-400">
+                キャンセル
+              </button>
+            </>
+          ):(
+            <>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">通知する範囲</p>
+              <div className="flex gap-2 mb-4">
+                {([100,300,500] as const).map(r=>(
+                  <button key={r} onClick={()=>setRadius(r)}
+                    className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors ${radius===r?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
+                    {r}m
+                  </button>
+                ))}
+              </div>
+              <p className="text-sm text-gray-600 mb-4 truncate">{pendingCoord.name}</p>
+              <div className="flex gap-2">
+                <button onClick={()=>setPendingCoord(null)}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200">
+                  戻る
+                </button>
+                <button onClick={confirmAdd}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-[var(--c-primary)] text-white active:opacity-80">
+                  登録
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── BottomTabs ────────────────────────────────────────────────────────────────
 
 function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,shopPending,
   onToggle,onEdit,onAddShop,onToggleShop,onDeleteShop,onDragStart,shopNotifSettings,onShopNotifSettings,
+  shopLocations,onShopLocations,
   notificationsEnabled,onEnableNotifications
 }:{
   activeTab:'later'|'shop'; onSwitchTab:(t:'later'|'shop')=>void; onClose:()=>void;
@@ -2503,6 +2664,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
   onAddShop:(n:string)=>void; onToggleShop:(id:string)=>void; onDeleteShop:(id:string)=>void;
   onDragStart:(t:Task,x:number,y:number)=>void;
   shopNotifSettings:ShopNotifSetting[]; onShopNotifSettings:(s:ShopNotifSetting[])=>void;
+  shopLocations:ShopLocation[]; onShopLocations:(l:ShopLocation[])=>void;
   notificationsEnabled?:boolean; onEnableNotifications?:()=>void;
 }) {
   const [shopInput,setShopInput] = useState('');
@@ -2748,7 +2910,10 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
             </div>
             <div className="overflow-y-auto pb-10 flex-1">
               {showShopNotif?(
-                <ShopNotifPanel settings={shopNotifSettings} onChange={onShopNotifSettings} notificationsEnabled={notificationsEnabled} onEnableNotifications={onEnableNotifications}/>
+                <>
+                  <ShopNotifPanel settings={shopNotifSettings} onChange={onShopNotifSettings} notificationsEnabled={notificationsEnabled} onEnableNotifications={onEnableNotifications}/>
+                  <ShopLocationPanel locations={shopLocations} onChange={onShopLocations}/>
+                </>
               ):shopItems.length===0?(
                 <div className="py-12 text-center px-4"><AppIcons.shopping size={40} className="mx-auto mb-2 text-gray-300"/><p className="text-sm text-gray-400">リストは空です</p></div>
               ):(
@@ -2824,12 +2989,13 @@ function SettingsRow({icon,iconBg,title,desc,onClick,isLast=false,pro=false}:{
   );
 }
 
-function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,customTabs,onCustomTabs,onDeleteTabTasks,onDeleteTag,onRenameTag,shopNotifSettings,onShopNotifSettings,authUser,isPremium,onAppleSignIn,onSignOut,onBulkAdd,bulkHistory,onBulkHistoryDelete,onBulkHistoryEdit,lifePatterns,onLifePatterns,patternOverrides,onApplyPattern,initialSub,tasks,onEditTask}:{
+function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,customTabs,onCustomTabs,onDeleteTabTasks,onDeleteTag,onRenameTag,shopNotifSettings,onShopNotifSettings,shopLocations,onShopLocations,authUser,isPremium,onAppleSignIn,onSignOut,onBulkAdd,bulkHistory,onBulkHistoryDelete,onBulkHistoryEdit,lifePatterns,onLifePatterns,patternOverrides,onApplyPattern,initialSub,tasks,onEditTask}:{
   settings:Settings; onSettings:(s:Settings)=>void; onClose:()=>void;
   globalTags:TagDef[]; onGlobalTags:(tags:TagDef[])=>void;
   customTabs:CustomTab[]; onCustomTabs:(tabs:CustomTab[])=>void; onDeleteTabTasks:(tabId:string)=>void;
   onDeleteTag:(tagName:string)=>void; onRenameTag:(oldName:string, newName:string, newColor:string)=>void;
   shopNotifSettings:ShopNotifSetting[]; onShopNotifSettings:(s:ShopNotifSetting[])=>void;
+  shopLocations:ShopLocation[]; onShopLocations:(l:ShopLocation[])=>void;
   authUser:AuthUser|null; isPremium:boolean;
   onAppleSignIn:()=>Promise<void>; onSignOut:()=>void;
   onBulkAdd:(tasks:Omit<Task,'id'>[],endTime:string)=>void;
@@ -3459,7 +3625,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             onClick={()=>setSub('notifications-general')}/>
           <div className="h-px bg-gray-100 mx-4"/>
           <SettingsRow icon={<AppIcons.shopping size={18}/>} iconBg="bg-gray-100" title="買い物リスト"
-            desc={shopNotifSettings.filter(s=>s.enabled).length>0?`${shopNotifSettings.filter(s=>s.enabled).length}件の通知が有効`:'通知なし'}
+            desc={(()=>{const n=shopNotifSettings.filter(s=>s.enabled).length+shopLocations.filter(l=>l.enabled).length;return n>0?`${n}件の通知が有効`:'通知なし';})()}
             onClick={()=>{if(!isPremium){setProPrompt('買い物リストの通知設定');return;}setSub('notifications-shop');}} pro/>
           <div className="h-px bg-gray-100 mx-4"/>
           <SettingsRow icon={<AppIcons.postponed size={18}/>} iconBg="bg-gray-100" title="放置タスク"
@@ -3525,6 +3691,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           <ShopNotifPanel settings={shopNotifSettings} onChange={onShopNotifSettings}
             notificationsEnabled={settings.notificationsEnabled??true}
             onEnableNotifications={()=>onSettings({...settings,notificationsEnabled:true})}/>
+          <ShopLocationPanel locations={shopLocations} onChange={onShopLocations}/>
         </div>
       </div>
     </div>
@@ -4379,6 +4546,7 @@ export default function App() {
   const [morningSelected,setMorningSel] = useState<Set<string>>(new Set());
   const morningShownRef = useRef(false);
   const [shopNotifSettings,setShopNotifSettings] = useState<ShopNotifSetting[]>([]);
+  const [shopLocations,setShopLocations] = useState<ShopLocation[]>([]);
   const [bulkHistory,setBulkHistory] = useState<BulkHistoryEntry[]>([]);
   const [lifePatterns,setLifePatterns] = useState<LifePattern[]>([]);
   const [patternOverrides,setPatternOverrides] = useState<Record<string,string>>({});
@@ -4420,6 +4588,8 @@ export default function App() {
       if(ds) setDayOverrides(JSON.parse(ds) as Record<string,{wakeTime?:string;sleepTime?:string}>);
       const sn=localStorage.getItem(SHOP_NOTIF_KEY);
       if(sn) setShopNotifSettings(JSON.parse(sn) as ShopNotifSetting[]);
+      const sl=localStorage.getItem(SHOP_LOC_KEY);
+      if(sl) setShopLocations(JSON.parse(sl) as ShopLocation[]);
       const au=localStorage.getItem(AUTH_KEY);
       if(au) setAuthUser(JSON.parse(au) as AuthUser);
       const bh=localStorage.getItem(BULK_HIST_KEY);
@@ -4460,6 +4630,7 @@ export default function App() {
       if(purchasedShopItemIds.length>0){
         setShopItems(prev=>prev.map(s=>purchasedShopItemIds.includes(s.id)?{...s,checked:true,purchasedAt:new Date().toISOString()}:s));
       }
+      if(await getPendingGeofenceAction()) setActiveTab('shop');
     };
     applyPending();
     const onVisible=()=>{ if(document.visibilityState==='visible') applyPending(); };
@@ -4470,6 +4641,11 @@ export default function App() {
   useEffect(()=>{ if(loaded) localStorage.setItem(HISTORY_KEY,JSON.stringify(moveHistory)); },[moveHistory,loaded]);
   useEffect(()=>{ if(loaded) localStorage.setItem(CUSTOM_TABS_KEY,JSON.stringify(customTabs)); },[customTabs,loaded]);
   useEffect(()=>{ if(loaded) localStorage.setItem(SHOP_NOTIF_KEY,JSON.stringify(shopNotifSettings)); },[shopNotifSettings,loaded]);
+  useEffect(()=>{ if(loaded) localStorage.setItem(SHOP_LOC_KEY,JSON.stringify(shopLocations)); },[shopLocations,loaded]);
+  useEffect(()=>{
+    if(!loaded) return;
+    setShopGeofences(shopLocations.filter(l=>l.enabled).map(l=>({id:l.id,name:l.name,lat:l.lat,lng:l.lng,radius:l.radius})));
+  },[shopLocations,loaded]);
   useEffect(()=>{ if(loaded) localStorage.setItem(DAY_SETTINGS_KEY,JSON.stringify(dayOverrides)); },[dayOverrides,loaded]);
   useEffect(()=>{ if(loaded) localStorage.setItem(BULK_HIST_KEY,JSON.stringify(bulkHistory)); },[bulkHistory,loaded]);
   useEffect(()=>{ if(loaded) localStorage.setItem(LIFE_PATTERNS_KEY,JSON.stringify(lifePatterns)); },[lifePatterns,loaded]);
@@ -5070,6 +5246,7 @@ export default function App() {
           onAddShop={addShopItem} onToggleShop={toggleShop} onDeleteShop={deleteShop}
           onDragStart={startDrag}
           shopNotifSettings={shopNotifSettings} onShopNotifSettings={setShopNotifSettings}
+          shopLocations={shopLocations} onShopLocations={setShopLocations}
           notificationsEnabled={settings.notificationsEnabled??true}
           onEnableNotifications={()=>setSettings(s=>({...s,notificationsEnabled:true}))}/>
       )}
@@ -5194,7 +5371,7 @@ export default function App() {
 
       {/* ── Settings Screen ── */}
       {settingsOpen&&(
-        <SettingsScreen settings={settings} onSettings={setSettings} onClose={()=>setSOp(false)} globalTags={globalTags} onGlobalTags={setGlobalTags} customTabs={customTabs} onCustomTabs={setCustomTabs} onDeleteTabTasks={(tabId)=>setTasks(prev=>prev.filter(t=>t.category!==tabId))} onDeleteTag={(tagName)=>{setGlobalTags(prev=>prev.filter(t=>t.name!==tagName));setTasks(prev=>prev.map(t=>({...t,tags:(t.tags??[]).filter(n=>n!==tagName)})));}} onRenameTag={(oldName,newName,newColor)=>{setGlobalTags(prev=>prev.map(t=>t.name===oldName?{name:newName,color:newColor}:t));setTasks(prev=>prev.map(t=>({...t,tags:(t.tags??[]).map(n=>n===oldName?newName:n)})));}} shopNotifSettings={shopNotifSettings} onShopNotifSettings={setShopNotifSettings} authUser={authUser} isPremium={isPremium} onAppleSignIn={handleAppleSignIn} onSignOut={handleSignOut} onBulkAdd={bulkAddTasks} bulkHistory={bulkHistory} onBulkHistoryDelete={bulkHistoryDelete} onBulkHistoryEdit={bulkHistoryEdit} lifePatterns={lifePatterns} onLifePatterns={setLifePatterns} patternOverrides={patternOverrides} onApplyPattern={applyPattern} initialSub={settingsInitSub} tasks={tasks} onEditTask={(t)=>{setSOp(false);openEdit(t);}}/>
+        <SettingsScreen settings={settings} onSettings={setSettings} onClose={()=>setSOp(false)} globalTags={globalTags} onGlobalTags={setGlobalTags} customTabs={customTabs} onCustomTabs={setCustomTabs} onDeleteTabTasks={(tabId)=>setTasks(prev=>prev.filter(t=>t.category!==tabId))} onDeleteTag={(tagName)=>{setGlobalTags(prev=>prev.filter(t=>t.name!==tagName));setTasks(prev=>prev.map(t=>({...t,tags:(t.tags??[]).filter(n=>n!==tagName)})));}} onRenameTag={(oldName,newName,newColor)=>{setGlobalTags(prev=>prev.map(t=>t.name===oldName?{name:newName,color:newColor}:t));setTasks(prev=>prev.map(t=>({...t,tags:(t.tags??[]).map(n=>n===oldName?newName:n)})));}} shopNotifSettings={shopNotifSettings} onShopNotifSettings={setShopNotifSettings} shopLocations={shopLocations} onShopLocations={setShopLocations} authUser={authUser} isPremium={isPremium} onAppleSignIn={handleAppleSignIn} onSignOut={handleSignOut} onBulkAdd={bulkAddTasks} bulkHistory={bulkHistory} onBulkHistoryDelete={bulkHistoryDelete} onBulkHistoryEdit={bulkHistoryEdit} lifePatterns={lifePatterns} onLifePatterns={setLifePatterns} patternOverrides={patternOverrides} onApplyPattern={applyPattern} initialSub={settingsInitSub} tasks={tasks} onEditTask={(t)=>{setSOp(false);openEdit(t);}}/>
       )}
 
       {/* ── Tab filter bottom sheet ── */}

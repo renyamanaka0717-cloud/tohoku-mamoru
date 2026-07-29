@@ -7,5 +7,6 @@ class BridgeViewController: CAPBridgeViewController {
     override func capacitorDidLoad() {
         bridge?.registerPluginInstance(AppIconPlugin())
         bridge?.registerPluginInstance(WidgetDataPlugin())
+        bridge?.registerPluginInstance(GeofencePlugin())
     }
 }

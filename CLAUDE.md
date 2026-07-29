@@ -374,6 +374,75 @@ iOS標準のホーム画面ウィジェット（WidgetKit）。1つの大きい�
 
 ---
 
+## 買い物リストの場所通知（GeofencePlugin）
+
+登録した場所（緯度経度＋半径）に近づいたら、iOSのバックグラウンド位置情報とジオフェンス（`CLCircularRegion` monitoring）でローカル通知を出す機能。時間指定通知（`ShopNotifPanel`）とは独立した別機能で、両方同時に設定できる。
+
+### 型・保存キー
+
+```typescript
+interface ShopLocation { id: string; name: string; lat: number; lng: number; radius: 100|300|500; enabled: boolean; }
+const SHOP_LOC_KEY = 'tl-shop-loc-v1';
+```
+
+### UI
+
+`ShopLocationPanel`（`src/app/page.tsx`）— `ShopNotifPanel` のすぐ下に並べて表示する。表示箇所は2箇所（どちらも同じ props を渡す）：
+
+1. `BottomTabs` の買い物タブ内、ベルアイコンで開く `showShopNotif` パネル
+2. 設定 → 通知 → 買い物リスト（`SettingsScreen` の `sub==='notifications-shop'`）
+
+**登録フロー:** 「追加」→ 場所検索（国土地理院 [住所検索API](https://msearch.gsi.go.jp/address-search/AddressSearch) をAPIキー無しで直接fetch）または「現在地から登録」（`navigator.geolocation.getCurrentPosition`、WKWebViewの標準Web APIで完結。継続監視ではなく一度きりの位置取得なのでCapacitorプラグイン不要）→ 半径（100/300/500m）を選択→登録。登録時に `ensureGeofencePermission()` で位置情報「常に」＋通知の許可をリクエストし、拒否されている場合は許可されるまで登録しない。
+
+位置情報または通知が拒否されている場合、パネル上部に設定アプリへの案内文を表示する（`checkGeofencePermissions()` で状態確認）。
+
+### データの流れ（アプリ → ネイティブ：ジオフェンス登録）
+
+1. `src/app/page.tsx` の App コンポーネントに、`shopLocations` が変わるたびに enabled な場所だけを `setShopGeofences()` に渡す `useEffect` がある
+2. `src/app/components/Geofence.ts` — `setShopGeofences()` / `checkGeofencePermissions()` / `ensureGeofencePermission()` / `getPendingGeofenceAction()` がCapacitorカスタムプラグイン `GeofencePlugin` を呼ぶ（Web/開発環境では常に許可済み扱いで何もしない）
+3. `native-ios/GeofencePlugin.swift` — `CLLocationManager` で `CLCircularRegion`（identifier: `shop-<id>`）を監視登録する。呼ばれるたびに既存の `shop-` prefix リージョンを全解除してから登録し直す（差分更新はしない）
+
+### 通知の発火（ネイティブ側で完結、JSは介さない）
+
+バックグラウンド／未起動でも動く必要があるため、リージョン進入の検知から通知表示まで全て `GeofencePlugin.swift` 内で完結する。JS側のタスク通知（`new Notification(...)`、フォアグラウンド前提）とは別の仕組み。
+
+1. `didEnterRegion` で発火。**同じ場所への連続通知を防ぐため** `UserDefaults.standard` に `geofenceLastNotified_<id>` タイムスタンプを記録し、2時間以内の再進入は無視する
+2. 買い物リストの中身は、ウィジェット用に既に書き込まれている App Group の `widgetShopJson`（`WidgetDataPlugin` が更新）をそのまま読む。**未購入アイテムが0件なら通知しない**
+3. 場所の表示名は `setGeofences` 呼び出し時に `UserDefaults.standard` の `geofenceNames`（id→name の辞書）に保存しておいたものを使う
+4. `UNUserNotificationCenter` に直接ローカル通知を `add()` する（`UNUserNotificationCenterDelegate` は `GeofencePlugin.load()` で自身をdelegateに設定済み。AppDelegate.swiftの編集は不要）
+5. 通知タップ時（`didReceive response`）— `UserDefaults.standard` に `pendingOpenShopList=true` を立てる。JS側は `getPendingWidgetActions()` と同じ `visibilitychange`/起動時ポーリングの中で `getPendingGeofenceAction()` を呼び、trueなら `setActiveTab('shop')` で買い物リストを開く
+
+### Xcodeでの手動セットアップ（`ios/`はgitignore対象なので毎回必要）
+
+**① GeofencePlugin を追加（メインAppターゲット、WidgetDataPluginと同じ手順）**
+
+1. `native-ios/GeofencePlugin.swift` / `.m` を `ios/App/App/` に追加（Target Membership: App）
+2. `native-ios/BridgeViewController.swift` の `capacitorDidLoad()` に `bridge?.registerPluginInstance(GeofencePlugin())` があることを確認（無ければ追記。既存の `ios/App/App/BridgeViewController.swift` は `git pull` で自動反映されないので **Xcode上で直接編集**）
+3. App Group（`group.jp.brainbox.app`）はWidget機能ですでに追加済みならそのまま共用でよい（未追加なら「Signing & Capabilities」→「+ Capability」→「App Groups」→ `group.jp.brainbox.app`）
+
+**② Info.plist にキーを追加**
+
+`native-ios/GeofenceInfo.plist.snippet.xml` の内容を `ios/App/App/Info.plist` の `<dict>` 直下に追加する（位置情報の許可説明文＋ `UIBackgroundModes: location`）。`UIBackgroundModes` キーがすでに存在する場合は配列に `location` を追記するだけでよい。
+
+**③ Background Modes capability**
+
+`App` ターゲット → 「Signing & Capabilities」→「+ Capability」→「Background Modes」→ **Location updates** にチェック。
+
+**④ ビルド・実機確認**
+
+1. メインの `App` スキームでビルド・実行
+2. 設定 → 通知 → 買い物リストから場所を登録し、位置情報「常に」と通知を許可
+3. 実機を対象エリア外に持ち出してから接近させ、バックグラウンド/アプリ終了状態でも通知が来ることを確認（シミュレータではリージョン進入をXcodeのDebug → Simulate Locationで模擬できるが、実機推奨）
+
+### 避けるパターン
+
+- ジオフェンス発火時の通知処理をJS側（`new Notification(...)`）で行おうとしない（バックグラウンド/未起動では動かない。必ず `GeofencePlugin.swift` 内の `UNUserNotificationCenter` 直接呼び出しで完結させる）
+- 位置情報を通知判定以外の用途で保存・送信しない（サーバー送信や履歴保存はしない。`UserDefaults` に保存するのはクールダウン用タイムスタンプと場所名の辞書のみ）
+- `AppDelegate.swift` を編集して `UNUserNotificationCenterDelegate` を設定しようとしない（`GeofencePlugin.load()` 内で完結させる設計にしてあるため不要）
+- 「現在地から登録」のために `@revenuecat/purchases-capacitor` のような追加npmプラグイン（`@capacitor/geolocation`等）を入れない（`navigator.geolocation` で足りる。一度きりの位置取得だけであれば標準Web APIで十分）
+
+---
+
 ## 主要な型定義
 
 | 型 | 説明 |
@@ -388,6 +457,8 @@ iOS標準のホーム画面ウィジェット（WidgetKit）。1つの大きい�
 | `CustomTab` | ユーザー定義ファイルタブ（`{id:string; name:string}`） |
 | `TaskMode` | `'later'` / `'scheduled'` / `'recurring'` |
 | `TaskGroupData` | `{startTime, tasks, rows, h}` — タイムラインの時刻グループ |
+| `ShopNotifSetting` | 買い物リストの時間指定通知（曜日・時刻） |
+| `ShopLocation` | 買い物リストの場所通知（`{id, name, lat, lng, radius:100\|300\|500, enabled}`） |
 
 `Task.subtasks` は `{id:string; name:string; completed:boolean}[]` 型。  
 `Task.tags` は `string[]`（タグ名を直接格納）。  
@@ -406,6 +477,8 @@ iOS標準のホーム画面ウィジェット（WidgetKit）。1つの大きい�
 | `HISTORY_KEY` | `'tl-history-v1'` | 移動履歴 |
 | `CUSTOM_TABS_KEY` | `'tl-custom-tabs-v1'` | ユーザー定義ファイルタブ |
 | `PHOTOS_KEY` | `'tl-photos-v1'` | タスクIDをキーとした写真データ（base64） |
+| `SHOP_NOTIF_KEY` | `'tl-shop-notif-v1'` | 買い物リストの時間指定通知設定 |
+| `SHOP_LOC_KEY` | `'tl-shop-loc-v1'` | 買い物リストの場所通知設定（`ShopLocation[]`） |
 
 ---
 
