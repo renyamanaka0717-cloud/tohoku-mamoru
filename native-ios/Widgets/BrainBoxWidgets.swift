@@ -57,7 +57,7 @@ struct NextTaskWidgetView: View {
             } else {
                 ForEach(entry.tasks.prefix(3), id: \.name) { task in
                     HStack(spacing: 6) {
-                        Text(task.time).font(.caption).bold().foregroundColor(accentColor)
+                        Text(task.time).font(.caption).bold().foregroundStyle(accentColor)
                         Text(task.name).font(.footnote).lineLimit(1)
                     }
                 }
