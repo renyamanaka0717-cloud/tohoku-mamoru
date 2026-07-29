@@ -84,7 +84,7 @@ const NOTIF_ASKED_KEY   = 'tl-notif-asked-v1';
 const WAKESLEEP_ASKED_KEY = 'tl-wakesleep-asked-v1';
 const LATER_NOTIFIED_KEY = 'tl-later-notified-v1';
 const WAKE_CHECKIN_NOTIF_KEY = 'tl-wake-checkin-notif-v1';
-const LATER_REMINDER_OPTS = [{v:0,l:'オフ'},{v:1,l:'1時間'},{v:3,l:'3時間'},{v:6,l:'6時間'},{v:12,l:'12時間'},{v:24,l:'1日'},{v:72,l:'3日'}];
+const LATER_REMINDER_OPTS = [{v:0,l:'オフ'},{v:1,l:'1時間'},{v:3,l:'3時間'},{v:6,l:'6時間'},{v:12,l:'12時間'},{v:24,l:'1日'},{v:48,l:'2日'},{v:72,l:'3日'}];
 const AUTH_KEY          = 'tl-auth-v1';
 
 // テーマカラー — 将来的にここを差し替えるだけで全体の色が変わる
@@ -2477,7 +2477,7 @@ function ShopNotifPanel({settings,onChange,notificationsEnabled=true,onEnableNot
           </div>
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">時間</p>
           <input type="time" value={editing.time} onChange={e=>setEditing({...editing,time:e.target.value})}
-            className="border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50 mb-4 w-full" style={{height:'40px'}}/>
+            className="border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50 mb-4 w-full"/>
           <div className="flex gap-2">
             <button onClick={()=>{setEditing(null);setAdding(false);}}
               className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200">
@@ -5132,7 +5132,7 @@ export default function App() {
     setTasks(prev=>prev.filter(t=>t.id!==id));
   };
   const toggle   = (id:string) => setTasks(prev=>prev.map(t=>t.id===id?{...t,completed:!t.completed}:t));
-  const scheduleInSlot=(task:Task,startTime:string)=>setModal({open:true,task:{...task,isLater:false,startTime,date}});
+  const scheduleInSlot=(task:Task,startTime:string)=>setModal({open:true,task:{...task,isLater:false,startTime,date,notifications:task.notifications?.length?task.notifications:[0]}});
   const moveToTimeline=(task:Task)=>setModal({open:true,task:{...task,isLater:false}});
   const handleMorningAction=(type:'done'|'later')=>{
     const ids=morningSelected;
