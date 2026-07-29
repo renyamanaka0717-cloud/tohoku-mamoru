@@ -2509,6 +2509,11 @@ function ShopMapPicker({initialCenter,onConfirm,onCancel}:{
   const [drag,setDrag]=useState({x:0,y:0});
   const dragStart=useRef<{x:number;y:number}|null>(null);
   const [confirming,setConfirming]=useState(false);
+  const [myLocation,setMyLocation]=useState<{lat:number;lng:number}|null>(null);
+  const [locating,setLocating]=useState(false);
+  const [mapQuery,setMapQuery]=useState('');
+  const [mapResults,setMapResults]=useState<{name:string;lat:number;lng:number}[]>([]);
+  const [mapSearching,setMapSearching]=useState(false);
 
   const lonLatToPx=(lon:number,lat:number,z:number)=>{
     const n=2**z;
@@ -2563,8 +2568,66 @@ function ShopMapPicker({initialCenter,onConfirm,onCancel}:{
     setConfirming(false);
   };
 
+  const doMapSearch=async()=>{
+    const q=mapQuery.trim();
+    if(!q) return;
+    setMapSearching(true);
+    try{
+      const res=await fetch(`https://msearch.gsi.go.jp/address-search/AddressSearch?q=${encodeURIComponent(q)}`);
+      const data=await res.json() as {geometry:{coordinates:[number,number]};properties:{title:string}}[];
+      setMapResults(data.slice(0,6).map(d=>({name:d.properties.title,lat:d.geometry.coordinates[1],lng:d.geometry.coordinates[0]})));
+    }catch{
+      setMapResults([]);
+    }
+    setMapSearching(false);
+  };
+  const pickMapResult=(r:{name:string;lat:number;lng:number})=>{
+    setCenter({lat:r.lat,lng:r.lng});
+    setMapResults([]);
+    setMapQuery('');
+  };
+
+  const useMyLocation=()=>{
+    if(!navigator.geolocation) return;
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      pos=>{
+        const loc={lat:pos.coords.latitude,lng:pos.coords.longitude};
+        setMyLocation(loc);
+        setCenter(loc);
+        setLocating(false);
+      },
+      ()=>{ setLocating(false); alert('現在地を取得できませんでした'); },
+      {enableHighAccuracy:true,timeout:10000}
+    );
+  };
+
+  const myDotPx = myLocation ? lonLatToPx(myLocation.lng,myLocation.lat,zoom) : null;
+  const myDotLeft = myDotPx ? W/2+(myDotPx.x-centerPx.x)+drag.x : null;
+  const myDotTop  = myDotPx ? H/2+(myDotPx.y-centerPx.y)+drag.y : null;
+
   return (
     <div>
+      <div className="flex gap-2 mb-2">
+        <input value={mapQuery} onChange={e=>setMapQuery(e.target.value)}
+          onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();doMapSearch();}}}
+          placeholder="住所や施設名で検索"
+          className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50"/>
+        <button onClick={doMapSearch} disabled={mapSearching||!mapQuery.trim()}
+          className="px-4 py-2 bg-gray-100 rounded-xl text-sm font-semibold text-gray-700 shrink-0 disabled:opacity-40">
+          {mapSearching?'検索中':'検索'}
+        </button>
+      </div>
+      {mapResults.length>0&&(
+        <div className="space-y-1 mb-2 max-h-32 overflow-y-auto">
+          {mapResults.map((r,i)=>(
+            <button key={i} onClick={()=>pickMapResult(r)}
+              className="w-full text-left px-3 py-2 rounded-xl bg-gray-50 active:bg-gray-100 text-sm text-gray-700 truncate">
+              {r.name}
+            </button>
+          ))}
+        </div>
+      )}
       <div className="relative rounded-xl overflow-hidden bg-gray-100 mb-3 select-none touch-none"
         style={{width:'100%',height:H}}
         onTouchStart={e=>onStart(e.touches[0].clientX,e.touches[0].clientY)}
@@ -2581,6 +2644,11 @@ function ShopMapPicker({initialCenter,onConfirm,onCancel}:{
               style={{position:'absolute',left:t.left,top:t.top,width:TILE,height:TILE}}/>
           ))}
         </div>
+        {myDotLeft!==null&&myDotTop!==null&&(
+          <div className="absolute pointer-events-none" style={{left:myDotLeft,top:myDotTop,transform:'translate(-50%,-50%)'}}>
+            <div className="w-3.5 h-3.5 rounded-full bg-blue-500 border-2 border-white" style={{boxShadow:'0 0 0 4px rgba(59,130,246,0.25)'}}/>
+          </div>
+        )}
         <div className="absolute pointer-events-none" style={{left:'50%',top:'50%',transform:'translate(-50%,-100%)'}}>
           <AppIcons.location size={32} className="text-[var(--c-primary)]"/>
         </div>
@@ -2589,6 +2657,10 @@ function ShopMapPicker({initialCenter,onConfirm,onCancel}:{
           <button onClick={()=>setZoom(z=>Math.min(18,z+1))} className="w-7 h-7 bg-white rounded-lg shadow text-gray-600 font-bold">+</button>
           <button onClick={()=>setZoom(z=>Math.max(12,z-1))} className="w-7 h-7 bg-white rounded-lg shadow text-gray-600 font-bold">−</button>
         </div>
+        <button onClick={useMyLocation} disabled={locating}
+          className="absolute bottom-2 left-2 w-8 h-8 bg-white rounded-lg shadow flex items-center justify-center text-gray-600 disabled:opacity-50">
+          <AppIcons.crosshair size={16}/>
+        </button>
       </div>
       <p className="text-xs text-gray-400 text-center mb-3">ピンの位置までドラッグして動かせます</p>
       <div className="flex gap-2">
@@ -2640,7 +2712,19 @@ function ShopLocationPanel({locations,onChange,isPremium,onProPrompt}:{
     if(!navigator.geolocation) return;
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
-      pos=>{ setPendingCoord({name:'現在地',lat:pos.coords.latitude,lng:pos.coords.longitude}); setLocating(false); },
+      async pos=>{
+        const {latitude:lat,longitude:lng}=pos.coords;
+        let name='現在地';
+        try{
+          const res=await fetch(`https://mreversegeocoder.gsi.go.jp/reverse-geocoder/LonLatToAddress?lon=${lng}&lat=${lat}`);
+          const data=await res.json() as {results?:{lv01Nm?:string}};
+          if(data.results?.lv01Nm) name=data.results.lv01Nm;
+        }catch{
+          // 逆ジオコーディングに失敗しても現在地の座標だけで登録を続行
+        }
+        setPendingCoord({name,lat,lng});
+        setLocating(false);
+      },
       ()=>{ setLocating(false); alert('現在地を取得できませんでした'); },
       {enableHighAccuracy:true,timeout:10000}
     );
@@ -2664,6 +2748,15 @@ function ShopLocationPanel({locations,onChange,isPremium,onProPrompt}:{
     onChange(locations.map(l=>l.id===id?{...l,enabled:!l.enabled}:l));
   };
   const del=(id:string)=>onChange(locations.filter(l=>l.id!==id));
+
+  const [editingId,setEditingId]=useState<string|null>(null);
+  const [editingName,setEditingName]=useState('');
+  const startRename=(l:ShopLocation)=>{ setEditingId(l.id); setEditingName(l.name); };
+  const saveRename=()=>{
+    const v=editingName.trim();
+    if(v) onChange(locations.map(l=>l.id===editingId?{...l,name:v}:l));
+    setEditingId(null);
+  };
 
   const permDenied = permStatus!==null && (permStatus.location==='denied'||permStatus.notifications==='denied');
 
@@ -2693,7 +2786,17 @@ function ShopLocationPanel({locations,onChange,isPremium,onProPrompt}:{
           <div key={l.id} className="bg-white rounded-2xl shadow-sm px-4 py-3 flex items-center gap-3">
             <AppIcons.location size={16} className={l.enabled?'text-[var(--c-primary)]':'text-gray-300'}/>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-800 truncate">{l.name}</p>
+              {editingId===l.id?(
+                <input autoFocus value={editingName} onChange={e=>setEditingName(e.target.value)}
+                  onBlur={saveRename}
+                  onKeyDown={e=>{if(e.key==='Enter'){e.currentTarget.blur();}}}
+                  className="w-full text-sm font-medium text-gray-800 border-b border-gray-300 outline-none bg-transparent pb-0.5"/>
+              ):(
+                <button onClick={()=>startRename(l)} className="flex items-center gap-1 max-w-full">
+                  <p className="text-sm font-medium text-gray-800 truncate">{l.name}</p>
+                  <AppIcons.pencil size={11} className="text-gray-300 shrink-0"/>
+                </button>
+              )}
               <p className="text-xs text-gray-400">半径{l.radius}m</p>
             </div>
             <button onClick={()=>toggle(l.id)}

@@ -398,6 +398,12 @@ const SHOP_LOC_KEY = 'tl-shop-loc-v1';
 
 **地図ピッカー（`ShopMapPicker`）:** 追加npmライブラリ無しでCARTO Voyagerのラスタタイル（`https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png`、APIキー不要・Googleマップに近い見やすい配色）を直接fetchして3x3グリッドで描画する自前の軽量地図。標準のOpenStreetMapタイル（`tile.openstreetmap.org`）は見づらいとのフィードバックがあり切り替え済み。ピンは画面中央に固定表示、ドラッグで地図側を動かして位置を決める（Google/Appleマップと同じUX）。座標⇔ピクセル変換は標準的なWeb Mercatorタイル計算（`lonLatToPx`/`pxToLonLat`、CARTO Voyagerも256pxのOSM互換タイルなので変換ロジックは共通）。確定時は国土地理院の[逆ジオコーディングAPI](https://mreversegeocoder.gsi.go.jp/reverse-geocoder/LonLatToAddress)で地名を試みに取得し、失敗時は「地図で指定した場所」にフォールバックする。CARTOの利用規約上、地図上に「© CARTO © OpenStreetMap」表記を常時表示している。
 
+- **地図内検索:** 地図の上部に検索バーがあり、国土地理院の住所検索APIで結果をタップすると地図がその位置に再センタリングされる（ドラッグ不要で直接ジャンプできる）
+- **現在地表示:** 地図左下の照準アイコン（`AppIcons.crosshair`）をタップすると `navigator.geolocation` で現在地を取得し、地図を現在地に再センタリング＋青い現在地ドット（`myLocation` state）を表示する。中央固定ピンとは別レイヤーで、ドラッグしても現在地ドットの実座標は変わらず、画面内の相対位置だけが再計算される
+- 「現在地から登録」（`ShopLocationPanel`）も逆ジオコーディングを試み、成功時は住所を初期名にする（失敗時のみ「現在地」にフォールバック）。地図ピッカー経由の登録と同じ考え方で、**登録名のデフォルトは住所**にする方針
+
+**登録済み場所の名称変更:** `ShopLocationPanel` の一覧で場所名をタップするとインライン編集になる（`editingId`/`editingName` state、Enterまたはフォーカス外れで確定）。`CustomTab` のインライン名前編集と同じUXパターン。
+
 本物のGoogleマップ/Apple MapKitへの変更も可能だが、それぞれAPIキー発行・課金設定（Google）またはMapKit JS用の秘密鍵発行・JWT設定（Apple）というユーザー側の作業が必要なため、現状は無料でAPIキー不要なCARTO Voyagerを採用している。
 
 **PRO機能:** 「場所で通知」は課金機能。`isPremium` が false の場合、ヘッダーに ★ PRO バッジを表示し、「追加」ボタンや既存の場所を再度ONにする操作は `ProGateSheet` を表示してブロックする（OFFにする操作は常に許可）。`ShopLocationPanel` は `isPremium`/`onProPrompt` を props として受け取り、呼び出し元（`BottomTabs`・`SettingsScreen`）がそれぞれ自前の `ProGateSheet` 表示状態を持つ。ブラウザ・開発環境は `usePremium()` が常に `isPremium=true` を返すため、このゲートは実機の未購入状態でのみ確認できる。

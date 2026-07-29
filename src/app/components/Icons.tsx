@@ -87,6 +87,7 @@ import {
   CreditCard,
   PiggyBank,
   Lock,
+  Crosshair,
 } from '@phosphor-icons/react';
 
 type PhosphorComp = React.ComponentType<{
@@ -194,4 +195,5 @@ export const AppIcons = {
   creditcard: make(CreditCard, 18),
   piggybank:  make(PiggyBank, 18),
   lock:       make(Lock, 18),
+  crosshair:  make(Crosshair, 18),
 };
