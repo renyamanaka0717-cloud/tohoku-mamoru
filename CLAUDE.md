@@ -320,10 +320,10 @@ iOS標準のホーム画面ウィジェット（WidgetKit）。「次の予定�
 
 ### データの流れ
 
-1. `src/app/page.tsx` の App コンポーネントに、`tasks`/`shopItems`/`now` が変わるたびに次の予定3件・未購入アイテム5件を計算して `updateWidgetData()` を呼ぶ `useEffect` がある
-2. `src/app/components/WidgetData.ts` — `updateWidgetData(tasks, shopItems)` がCapacitorカスタムプラグイン `WidgetDataPlugin` を呼ぶ（Web/開発環境では何もしない）
-3. `native-ios/WidgetDataPlugin.swift` / `.m` — JSON文字列をApp Group共有の `UserDefaults(suiteName: "group.jp.brainbox.app")` に書き込み、`WidgetCenter.shared.reloadAllTimelines()` でウィジェットを更新する
-4. `native-ios/Widgets/BrainBoxWidgets.swift` — 実際のウィジェット表示（Widget Extensionターゲット用）。同じApp Groupから読み取って描画する
+1. `src/app/page.tsx` の App コンポーネントに、`tasks`/`shopItems`/`now`/`settings.theme` が変わるたびに次の予定3件・未購入アイテム5件・現在のテーマカラーを計算して `updateWidgetData()` を呼ぶ `useEffect` がある
+2. `src/app/components/WidgetData.ts` — `updateWidgetData(tasks, shopItems, themeColor)` がCapacitorカスタムプラグイン `WidgetDataPlugin` を呼ぶ（Web/開発環境では何もしない）
+3. `native-ios/WidgetDataPlugin.swift` / `.m` — JSON文字列とテーマカラー(hex文字列)をApp Group共有の `UserDefaults(suiteName: "group.jp.brainbox.app")` に書き込み、`WidgetCenter.shared.reloadAllTimelines()` でウィジェットを更新する
+4. `native-ios/Widgets/BrainBoxWidgets.swift` — 実際のウィジェット表示（Widget Extensionターゲット用）。同じApp Groupから読み取って描画する。時刻・「・」の色はアプリの現在のテーマカラーに追従する（`Color(hex:)` extensionでhex文字列から変換）
 
 ### Xcodeでの手動セットアップ（`ios/`はgitignore対象なので毎回必要）
 

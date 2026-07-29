@@ -4,10 +4,23 @@ import WidgetKit
 import SwiftUI
 
 private let appGroupId = "group.jp.brainbox.app"
-private let brandColor = Color(red: 217/255, green: 163/255, blue: 178/255)
+private let defaultThemeColor = Color(red: 217/255, green: 163/255, blue: 178/255)
 
 struct WidgetTaskItem: Codable { let name: String; let time: String }
 struct WidgetShopItem: Codable { let name: String }
+
+extension Color {
+    init(hex: String) {
+        var s = hex.trimmingCharacters(in: .whitespacesAndNewlines)
+        s.removeAll { $0 == "#" }
+        var rgb: UInt64 = 0
+        Scanner(string: s).scanHexInt64(&rgb)
+        let r = Double((rgb >> 16) & 0xFF) / 255
+        let g = Double((rgb >> 8) & 0xFF) / 255
+        let b = Double(rgb & 0xFF) / 255
+        self.init(red: r, green: g, blue: b)
+    }
+}
 
 private func loadTasks() -> [WidgetTaskItem] {
     guard let defaults = UserDefaults(suiteName: appGroupId),
@@ -25,22 +38,29 @@ private func loadShopItems() -> [WidgetShopItem] {
     return items
 }
 
+private func loadThemeColor() -> Color {
+    guard let defaults = UserDefaults(suiteName: appGroupId),
+          let hex = defaults.string(forKey: "widgetThemeColor") else { return defaultThemeColor }
+    return Color(hex: hex)
+}
+
 // MARK: - 次の予定 ウィジェット
 
 struct NextTaskEntry: TimelineEntry {
     let date: Date
     let tasks: [WidgetTaskItem]
+    let themeColor: Color
 }
 
 struct NextTaskProvider: TimelineProvider {
     func placeholder(in context: Context) -> NextTaskEntry {
-        NextTaskEntry(date: Date(), tasks: [WidgetTaskItem(name: "予定を確認", time: "--:--")])
+        NextTaskEntry(date: Date(), tasks: [WidgetTaskItem(name: "予定を確認", time: "--:--")], themeColor: defaultThemeColor)
     }
     func getSnapshot(in context: Context, completion: @escaping (NextTaskEntry) -> Void) {
-        completion(NextTaskEntry(date: Date(), tasks: loadTasks()))
+        completion(NextTaskEntry(date: Date(), tasks: loadTasks(), themeColor: loadThemeColor()))
     }
     func getTimeline(in context: Context, completion: @escaping (Timeline<NextTaskEntry>) -> Void) {
-        let entry = NextTaskEntry(date: Date(), tasks: loadTasks())
+        let entry = NextTaskEntry(date: Date(), tasks: loadTasks(), themeColor: loadThemeColor())
         completion(Timeline(entries: [entry], policy: .after(Date().addingTimeInterval(15 * 60))))
     }
 }
@@ -57,13 +77,14 @@ struct NextTaskWidgetView: View {
             } else {
                 ForEach(entry.tasks.prefix(3), id: \.name) { task in
                     HStack(spacing: 6) {
-                        Text(task.time).font(.caption).bold().foregroundStyle(brandColor)
+                        Text(task.time).font(.caption).bold().foregroundStyle(entry.themeColor)
                         Text(task.name).font(.footnote).lineLimit(1)
                     }
                 }
                 Spacer()
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding()
         .containerBackground(.background, for: .widget)
     }
@@ -86,17 +107,18 @@ struct NextTaskWidget: Widget {
 struct ShopListEntry: TimelineEntry {
     let date: Date
     let items: [WidgetShopItem]
+    let themeColor: Color
 }
 
 struct ShopListProvider: TimelineProvider {
     func placeholder(in context: Context) -> ShopListEntry {
-        ShopListEntry(date: Date(), items: [WidgetShopItem(name: "買い物リスト")])
+        ShopListEntry(date: Date(), items: [WidgetShopItem(name: "買い物リスト")], themeColor: defaultThemeColor)
     }
     func getSnapshot(in context: Context, completion: @escaping (ShopListEntry) -> Void) {
-        completion(ShopListEntry(date: Date(), items: loadShopItems()))
+        completion(ShopListEntry(date: Date(), items: loadShopItems(), themeColor: loadThemeColor()))
     }
     func getTimeline(in context: Context, completion: @escaping (Timeline<ShopListEntry>) -> Void) {
-        let entry = ShopListEntry(date: Date(), items: loadShopItems())
+        let entry = ShopListEntry(date: Date(), items: loadShopItems(), themeColor: loadThemeColor())
         completion(Timeline(entries: [entry], policy: .after(Date().addingTimeInterval(15 * 60))))
     }
 }
@@ -112,11 +134,15 @@ struct ShopListWidgetView: View {
                 Spacer()
             } else {
                 ForEach(entry.items.prefix(5), id: \.name) { item in
-                    Text("・\(item.name)").font(.footnote).lineLimit(1)
+                    HStack(spacing: 4) {
+                        Text("・").font(.footnote).bold().foregroundStyle(entry.themeColor)
+                        Text(item.name).font(.footnote).lineLimit(1)
+                    }
                 }
                 Spacer()
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding()
         .containerBackground(.background, for: .widget)
     }

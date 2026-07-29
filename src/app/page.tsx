@@ -4416,8 +4416,9 @@ export default function App() {
       .slice(0,3)
       .map(t=>({name:t.name,time:t.startTime!}));
     const shopList=shopItems.filter(s=>!s.checked).slice(0,5).map(s=>({name:s.name}));
-    updateWidgetData(nextTasks,shopList);
-  },[tasks,shopItems,now,loaded]);
+    const themeColor=THEMES.find(th=>th.id===(settings.theme??'mint'))?.color??'#94CFC8';
+    updateWidgetData(nextTasks,shopList,themeColor);
+  },[tasks,shopItems,now,loaded,settings.theme]);
   useEffect(()=>{ if(loaded) localStorage.setItem(TAGS_KEY,JSON.stringify(globalTags)); },[globalTags,loaded]);
   useEffect(()=>{ if(loaded) localStorage.setItem(HISTORY_KEY,JSON.stringify(moveHistory)); },[moveHistory,loaded]);
   useEffect(()=>{ if(loaded) localStorage.setItem(CUSTOM_TABS_KEY,JSON.stringify(customTabs)); },[customTabs,loaded]);
