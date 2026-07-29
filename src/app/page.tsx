@@ -4630,6 +4630,26 @@ export default function App() {
     }
   },[loaded,now,tasks,settings.notificationsEnabled,settings.laterReminderHours]);
 
+  // 空き時間が5分続いたら「あとでやる」タスクの消化を提案
+  useEffect(()=>{
+    if(!loaded||!(settings.notificationsEnabled??true)) return;
+    const laterPool=tasks.filter(t=>t.isLater&&!t.completed);
+    if(laterPool.length===0) return;
+    const today=todayStr();
+    const nowM=toMin(now);
+    const slots=calcFreeSlots(tasks,today,settings);
+    const activeSlot=slots.find(sl=>nowM>=toMin(sl.start)+5&&nowM<toMin(sl.end));
+    if(!activeSlot) return;
+    const key=`tl-freeslot-notif-${today}-${activeSlot.start}`;
+    if(localStorage.getItem(key)) return;
+    localStorage.setItem(key,'1');
+    if(typeof Notification!=='undefined'&&Notification.permission==='granted'){
+      const first=laterPool[0];
+      const body=laterPool.length>1?`「${first.name}」など${laterPool.length}件のタスクがあります`:`「${first.name}」をやってみませんか？`;
+      new Notification('空き時間ができました',{body});
+    }
+  },[loaded,now,tasks,settings,settings.notificationsEnabled]);
+
   const filteredTasks = useMemo(()=>{
     const base=activeCategory
       ?tasks.filter(t=>t.category===activeCategory)
