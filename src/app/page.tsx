@@ -6,6 +6,7 @@ import { usePremium } from './components/Premium';
 import { setNativeAppIcon } from './components/AppIcon';
 import { updateWidgetData, getPendingWidgetActions } from './components/WidgetData';
 import { setShopGeofences, checkGeofencePermissions, ensureGeofencePermission, getPendingGeofenceAction } from './components/Geofence';
+import { scheduleInactivityReminder, cancelInactivityReminder } from './components/Inactivity';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -50,7 +51,7 @@ interface Task {
   allDay?: boolean;
 }
 
-interface Settings { wakeTime: string; sleepTime: string; keepIncomplete?: boolean; showFreeCard?: boolean; freeCardMinMin?: number; wakeColor?:string; sleepColor?:string; theme?:string; appIcon?:string; notificationsEnabled?:boolean; laterReminderHours?: number; }
+interface Settings { wakeTime: string; sleepTime: string; keepIncomplete?: boolean; showFreeCard?: boolean; freeCardMinMin?: number; wakeColor?:string; sleepColor?:string; theme?:string; appIcon?:string; notificationsEnabled?:boolean; laterReminderHours?: number; appInactivityHours?: number; }
 type AuthUser = {uid:string;email?:string;displayName?:string;isPremium?:boolean};
 interface FreeSlot  { start: string; end: string; min: number; }
 interface ShopItem  { id: string; name: string; checked: boolean; purchasedAt?: string; }
@@ -85,6 +86,7 @@ const WAKESLEEP_ASKED_KEY = 'tl-wakesleep-asked-v1';
 const LATER_NOTIFIED_KEY = 'tl-later-notified-v1';
 const WAKE_CHECKIN_NOTIF_KEY = 'tl-wake-checkin-notif-v1';
 const LATER_REMINDER_OPTS = [{v:0,l:'オフ'},{v:1,l:'1時間'},{v:3,l:'3時間'},{v:6,l:'6時間'},{v:12,l:'12時間'},{v:24,l:'1日'},{v:48,l:'2日'},{v:72,l:'3日'}];
+const APP_INACTIVITY_OPTS = [{v:0,l:'オフ'},{v:6,l:'6時間'},{v:12,l:'12時間'},{v:24,l:'1日'},{v:48,l:'2日'},{v:72,l:'3日'}];
 const AUTH_KEY          = 'tl-auth-v1';
 
 // テーマカラー — 将来的にここを差し替えるだけで全体の色が変わる
@@ -3871,14 +3873,31 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
 
   if(sub==='notifications-later') return (
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
-      {subHeader('放置タスク通知')}
+      {subHeader('放置タスク通知')}{proSheet}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
         <p className="text-xs text-gray-400 px-1 mt-4 mb-4 leading-relaxed">「あとでやる」に入れたタスクが指定した時間を過ぎても残っている場合に通知します。</p>
         <div className="bg-white rounded-2xl shadow-sm px-4 py-4">
           <div className="flex gap-2 flex-wrap">
-            {LATER_REMINDER_OPTS.map(o=>(
-              <button key={o.v} onClick={()=>onSettings({...settings,laterReminderHours:o.v})}
-                className={`px-3 py-1.5 rounded-xl text-sm font-medium transition-colors ${(settings.laterReminderHours??72)===o.v?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
+            {LATER_REMINDER_OPTS.map(o=>{
+              const locked=o.v!==0&&o.v!==72&&!isPremium;
+              return (
+                <button key={o.v} onClick={()=>{if(locked){setProPrompt('放置タスク通知の間隔変更');return;}onSettings({...settings,laterReminderHours:o.v});}}
+                  className={`px-3 py-1.5 rounded-xl text-sm font-medium transition-colors inline-flex items-center gap-1 ${(settings.laterReminderHours??72)===o.v?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
+                  {locked&&<AppIcons.lock size={10} className="text-gray-400"/>}
+                  {o.l}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">アプリ起動リマインダー</p>
+        <p className="text-xs text-gray-400 px-1 mb-4 leading-relaxed">一定時間アプリを開いていない場合に通知します。</p>
+        <div className="bg-white rounded-2xl shadow-sm px-4 py-4">
+          <div className="flex gap-2 flex-wrap">
+            {APP_INACTIVITY_OPTS.map(o=>(
+              <button key={o.v} onClick={()=>onSettings({...settings,appInactivityHours:o.v})}
+                className={`px-3 py-1.5 rounded-xl text-sm font-medium transition-colors ${(settings.appInactivityHours??0)===o.v?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
                 {o.l}
               </button>
             ))}
@@ -4870,6 +4889,20 @@ export default function App() {
     document.addEventListener('visibilitychange',onVisible);
     return ()=>document.removeEventListener('visibilitychange',onVisible);
   },[loaded]);
+  useEffect(()=>{
+    if(!loaded) return;
+    const hours=settings.appInactivityHours??0;
+    if(hours<=0){ cancelInactivityReminder(); return; }
+    const onVisibilityChange=()=>{
+      if(document.visibilityState==='hidden'){
+        if(settings.notificationsEnabled??true) scheduleInactivityReminder(hours);
+      } else {
+        cancelInactivityReminder();
+      }
+    };
+    document.addEventListener('visibilitychange',onVisibilityChange);
+    return ()=>document.removeEventListener('visibilitychange',onVisibilityChange);
+  },[loaded,settings.appInactivityHours,settings.notificationsEnabled]);
   useEffect(()=>{ if(loaded) localStorage.setItem(TAGS_KEY,JSON.stringify(globalTags)); },[globalTags,loaded]);
   useEffect(()=>{ if(loaded) localStorage.setItem(HISTORY_KEY,JSON.stringify(moveHistory)); },[moveHistory,loaded]);
   useEffect(()=>{ if(loaded) localStorage.setItem(CUSTOM_TABS_KEY,JSON.stringify(customTabs)); },[customTabs,loaded]);

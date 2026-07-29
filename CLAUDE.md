@@ -455,6 +455,42 @@ const SHOP_LOC_KEY = 'tl-shop-loc-v1';
 
 ---
 
+## 放置タスク通知・アプリ起動リマインダー（設定 → 通知 → 放置タスク）
+
+`sub==='notifications-later'` 画面（`SettingsScreen`）に2つの独立したリマインダー設定がある。
+
+### 放置タスク通知（既存機能・一部PRO化済み）
+
+`Settings.laterReminderHours`（`LATER_REMINDER_OPTS`: オフ/1時間/3時間/6時間/12時間/1日/2日/3日）。**「オフ」と「3日」のみ無料。それ以外（1時間〜2日）はPRO。** 非PROで選ぶと `setProPrompt('放置タスク通知の間隔変更')` で `ProGateSheet` を表示し、選択中のボタンに `AppIcons.lock`（小さい鍵アイコン、テキストの左）を表示する。タスク実行判定自体は既存のJS側 `useEffect`（`now` ベースのポーリング、フォアグラウンド時のみ動作）。
+
+### アプリ起動リマインダー（新機能・無料）
+
+`Settings.appInactivityHours`（`APP_INACTIVITY_OPTS`: オフ/6時間/12時間/1日/2日/3日、デフォルト0=オフ）。「一定時間アプリを開いていない場合に通知する」機能。**放置タスク通知とは独立した別機能**（あとでやるタスクの有無に関係なく、単純にアプリを開いた/開いていない時間で判定）。PROゲートは無し（全ユーザー無料）。
+
+タスクリマインダーと違い、アプリがバックグラウンド/未起動でも数時間〜数日後に発火する必要があるため、JSのタイマーでは実現できない（プロセスが生きている保証がない）。iOSネイティブの `UNTimeIntervalNotificationTrigger` で完結させる。
+
+**データの流れ:**
+
+1. `src/app/page.tsx` の App コンポーネントに `document.visibilitychange` を監視する `useEffect` があり、
+   - **バックグラウンドに移った瞬間**（`visibilityState==='hidden'`）→ `scheduleInactivityReminder(hours)` を呼び、`hours` 時間後に発火するようネイティブ側に予約する
+   - **フォアグラウンドに戻った瞬間**（`visibilityState==='visible'`）→ `cancelInactivityReminder()` で予約済みの通知を取り消す（アプリを開いたのでタイマーをリセットする意味）
+   - `settings.appInactivityHours<=0`（オフ）の場合は常に `cancelInactivityReminder()` のみ呼ぶ
+   - `settings.notificationsEnabled` が false の場合はスケジュールしない
+2. `src/app/components/Inactivity.ts` — `scheduleInactivityReminder()`/`cancelInactivityReminder()` がCapacitorカスタムプラグイン `InactivityPlugin` を呼ぶ（Web/開発環境では何もしない）
+3. `native-ios/InactivityPlugin.swift` — `scheduleReminder(hours:)` は既存の同IDリクエストを `removePendingNotificationRequests` で必ず削除してから（重複防止・タイマーリセット）、`hours<=0` でなければ通知権限をリクエストして `UNTimeIntervalNotificationTrigger(timeInterval: hours*3600, repeats:false)` で1件だけ予約する。`cancelReminder()` は同IDの予約済みリクエストを削除するだけ
+
+### Xcodeでの手動セットアップ（`ios/`はgitignore対象なので毎回必要）
+
+`native-ios/InactivityPlugin.swift` / `.m` を `ios/App/App/` に追加（Target Membership: App）。`native-ios/BridgeViewController.swift` の `capacitorDidLoad()` に `bridge?.registerPluginInstance(InactivityPlugin())` があることを確認（無ければ追記。既存の `ios/App/App/BridgeViewController.swift` は `git pull` で自動反映されないので **Xcode上で直接編集**）。App Group・Background Modes・Info.plistの追加設定は不要（ジオフェンスと違い常にフォアグラウンド起点でスケジュールするだけなので、バックグラウンド位置情報等は使わない）。
+
+### 避けるパターン
+
+- アプリ起動リマインダーの発火判定をJS側の `setTimeout`/`setInterval` で行おうとしない（アプリがバックグラウンド/未起動になるとタイマーは動かない。必ずネイティブの `UNTimeIntervalNotificationTrigger` で完結させる）
+- フォアグラウンドに戻った時に `cancelInactivityReminder()` を呼び忘れない（呼ばないと、アプリを頻繁に開いていても毎回のバックグラウンド移行で古いタイマーが残ったまま新しい予約と重複し得る。現状は同一IDで上書きされるため実害は少ないが、意図としては「開いたらリセット」が正しい）
+- 放置タスク通知（`laterReminderHours`）とアプリ起動リマインダー（`appInactivityHours`）を同じ設定値として扱わない（別々のフィールド・別々のUI・別々のPRO方針）
+
+---
+
 ## 主要な型定義
 
 | 型 | 説明 |
