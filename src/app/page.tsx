@@ -2510,7 +2510,7 @@ function ShopMapPicker({initialCenter,onConfirm,onCancel}:{
 }) {
   const TILE=256, W=304, H=240;
   const [center,setCenter]=useState(initialCenter);
-  const [zoom,setZoom]=useState(16);
+  const [zoom,setZoom]=useState(17);
   const [drag,setDrag]=useState({x:0,y:0});
   const dragStart=useRef<{x:number;y:number}|null>(null);
   const [pinchScale,setPinchScale]=useState(1);
@@ -2582,7 +2582,7 @@ function ShopMapPicker({initialCenter,onConfirm,onCancel}:{
   const onTouchEnd=(e:React.TouchEvent)=>{
     e.stopPropagation();
     if(pinchStart.current){
-      const newZoom=Math.min(18,Math.max(12,Math.round(pinchStart.current.zoom+Math.log2(pinchScale))));
+      const newZoom=Math.min(19,Math.max(12,Math.round(pinchStart.current.zoom+Math.log2(pinchScale))));
       setZoom(newZoom);
       setPinchScale(1);
       pinchStart.current=null;
@@ -2692,7 +2692,7 @@ function ShopMapPicker({initialCenter,onConfirm,onCancel}:{
         </div>
         <div className="absolute bottom-1 right-1.5 bg-white/80 rounded px-1 text-[9px] text-gray-500">© CARTO © OpenStreetMap</div>
         <div className="absolute top-2 right-2 flex flex-col gap-1.5">
-          <button onClick={()=>setZoom(z=>Math.min(18,z+1))} className="w-7 h-7 bg-white rounded-lg shadow text-gray-600 font-bold">+</button>
+          <button onClick={()=>setZoom(z=>Math.min(19,z+1))} className="w-7 h-7 bg-white rounded-lg shadow text-gray-600 font-bold">+</button>
           <button onClick={()=>setZoom(z=>Math.max(12,z-1))} className="w-7 h-7 bg-white rounded-lg shadow text-gray-600 font-bold">−</button>
         </div>
         <button onClick={useMyLocation} disabled={locating}
