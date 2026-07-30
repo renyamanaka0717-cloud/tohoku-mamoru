@@ -3999,7 +3999,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             desc={(()=>{const n=shopNotifSettings.filter(s=>s.enabled).length+shopLocations.filter(l=>l.enabled).length;return n>0?`${n}件の通知が有効`:'通知なし';})()}
             onClick={()=>{if(!isPremium){setProPrompt('買い物リストの通知設定');return;}setSub('notifications-shop');}} pro isPremium={isPremium}/>
           <div className="h-px bg-gray-100 mx-4"/>
-          <SettingsRow icon={<AppIcons.postponed size={18}/>} iconBg="bg-gray-100" title="あとでやる"
+          <SettingsRow icon={<AppIcons.postponed size={18}/>} iconBg="bg-gray-100" title="タスク放置アラート"
             desc={LATER_REMINDER_OPTS.find(o=>o.v===(settings.laterReminderHours??72))?.l??'3日'}
             onClick={()=>setSub('notifications-later')} isLast/>
         </div>
@@ -4009,7 +4009,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
 
   if(sub==='notifications-later') return (
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
-      {subHeader('あとでやるリマインダー')}{proSheet}
+      {subHeader('タスク放置アラート')}{proSheet}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
         <p className="text-xs text-gray-400 px-1 mt-4 mb-4 leading-relaxed">「あとでやる」に追加したタスクが、設定した時間が経っても完了していないときにお知らせします。</p>
         <div className="bg-white rounded-2xl shadow-sm px-4 py-4">
@@ -4017,7 +4017,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             {LATER_REMINDER_OPTS.map(o=>{
               const locked=o.v!==0&&o.v!==72&&!isPremium;
               return (
-                <button key={o.v} onClick={()=>{if(locked){setProPrompt('あとでやるリマインダーの間隔変更');return;}onSettings({...settings,laterReminderHours:o.v});}}
+                <button key={o.v} onClick={()=>{if(locked){setProPrompt('タスク放置アラートの間隔変更');return;}onSettings({...settings,laterReminderHours:o.v});}}
                   className={`px-3 py-1.5 rounded-xl text-sm font-medium transition-colors inline-flex items-center gap-1 ${(settings.laterReminderHours??72)===o.v?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
                   {locked&&<AppIcons.lock size={10} className="text-gray-400"/>}
                   {o.l}
@@ -4027,14 +4027,14 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           </div>
         </div>
 
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">アプリ起動リマインダー</p>
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">アプリ放置アラート</p>
         <p className="text-xs text-gray-400 px-1 mb-4 leading-relaxed">一定時間アプリを開いていない場合に通知します。</p>
         <div className="bg-white rounded-2xl shadow-sm px-4 py-4">
           <div className="flex gap-2 flex-wrap">
             {APP_INACTIVITY_OPTS.map(o=>{
               const locked=o.v!==0&&o.v!==6&&!isPremium;
               return (
-                <button key={o.v} onClick={()=>{if(locked){setProPrompt('アプリ起動リマインダーの間隔変更');return;}onSettings({...settings,appInactivityHours:o.v});}}
+                <button key={o.v} onClick={()=>{if(locked){setProPrompt('アプリ放置アラートの間隔変更');return;}onSettings({...settings,appInactivityHours:o.v});}}
                   className={`px-3 py-1.5 rounded-xl text-sm font-medium transition-colors inline-flex items-center gap-1 ${(settings.appInactivityHours??6)===o.v?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
                   {locked&&<AppIcons.lock size={10} className="text-gray-400"/>}
                   {o.l}
