@@ -5407,7 +5407,9 @@ export default function App() {
     const body=laterPool.length>1?`「${first.name}」など${laterPool.length}件のタスクがあります`:`「${first.name}」をやってみませんか？`;
     const today=todayStr();
     const nowMs=Date.now();
-    const alerts=calcFreeSlots(tasks,today,settings)
+    const rawSlots=calcFreeSlots(tasks,today,settings);
+    console.log('[freeSlot] today',today,'nowMs',nowMs,'rawSlots',JSON.stringify(rawSlots));
+    const alerts=rawSlots
       .map(sl=>({
         id:`free-slot-${today}-${sl.start}`,
         title:'空き時間ができました',
@@ -5415,6 +5417,7 @@ export default function App() {
         timestamp:Math.floor((new Date(`${today}T${sl.start}:00`).getTime()+5*60000)/1000),
       }))
       .filter(a=>a.timestamp*1000>nowMs);
+    console.log('[freeSlot] alerts',JSON.stringify(alerts));
     syncFreeSlotAlerts(alerts);
   },[loaded,now,tasks,settings,settings.notificationsEnabled]);
 
