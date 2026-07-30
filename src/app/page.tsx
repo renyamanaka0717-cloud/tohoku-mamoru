@@ -5134,6 +5134,7 @@ export default function App() {
   // iOSは同時に予約できるローカル通知が最大64件までのため、直近60件に絞って予約する
   // （手前のアラートが消化されれば次回実行時に自動で繰り上がる）
   useEffect(()=>{
+    console.log('[taskAlerts] effect run',{loaded,isNative:isNative(),notificationsEnabled:settings.notificationsEnabled,taskCount:tasks.length});
     if(!loaded||!isNative()) return;
     if(!(settings.notificationsEnabled??true)){ syncTaskAlerts([]); return; }
     const nowMs=Date.now();
@@ -5154,6 +5155,7 @@ export default function App() {
       });
     });
     alerts.sort((a,b)=>a.timestamp-b.timestamp);
+    console.log('[taskAlerts] scheduling',alerts);
     syncTaskAlerts(alerts.slice(0,60));
   },[loaded,now,tasks,settings.notificationsEnabled]);
 
