@@ -7,7 +7,7 @@ import { setNativeAppIcon } from './components/AppIcon';
 import { updateWidgetData, getPendingWidgetActions } from './components/WidgetData';
 import { setShopGeofences, checkGeofencePermissions, ensureGeofencePermission, getPendingGeofenceAction } from './components/Geofence';
 import { scheduleInactivityReminder, cancelInactivityReminder } from './components/Inactivity';
-import { notify, requestNotifyPermission, syncTaskAlerts, isNative } from './components/LocalNotify';
+import { notify, requestNotifyPermission, syncTaskAlerts, syncFreeSlotAlerts, isNative } from './components/LocalNotify';
 import { getAppVersion } from './components/AppVersion';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -5181,8 +5181,10 @@ export default function App() {
   },[loaded,now,tasks,settings.notificationsEnabled,settings.laterReminderHours]);
 
   // 空き時間が5分続いたら「あとでやる」タスクの消化を提案
+  // ネイティブでは syncFreeSlotAlerts の事前予約が発火を担うため、
+  // ここは常時フォアグラウンドが前提のWeb/開発環境向けフォールバックとしてのみ動作する
   useEffect(()=>{
-    if(!loaded||!(settings.notificationsEnabled??true)) return;
+    if(!loaded||!(settings.notificationsEnabled??true)||isNative()) return;
     const laterPool=tasks.filter(t=>t.isLater&&!t.completed);
     if(laterPool.length===0) return;
     const today=todayStr();
@@ -5196,6 +5198,27 @@ export default function App() {
     const first=laterPool[0];
     const body=laterPool.length>1?`「${first.name}」など${laterPool.length}件のタスクがあります`:`「${first.name}」をやってみませんか？`;
     notify('空き時間ができました',body);
+  },[loaded,now,tasks,settings,settings.notificationsEnabled]);
+
+  // 空き時間の開始5分後をネイティブに事前スケジュール（バックグラウンド/未起動でも発火させるため）
+  useEffect(()=>{
+    if(!loaded||!isNative()) return;
+    if(!(settings.notificationsEnabled??true)){ syncFreeSlotAlerts([]); return; }
+    const laterPool=tasks.filter(t=>t.isLater&&!t.completed);
+    if(laterPool.length===0){ syncFreeSlotAlerts([]); return; }
+    const first=laterPool[0];
+    const body=laterPool.length>1?`「${first.name}」など${laterPool.length}件のタスクがあります`:`「${first.name}」をやってみませんか？`;
+    const today=todayStr();
+    const nowMs=Date.now();
+    const alerts=calcFreeSlots(tasks,today,settings)
+      .map(sl=>({
+        id:`free-slot-${today}-${sl.start}`,
+        title:'空き時間ができました',
+        body,
+        timestamp:Math.floor((new Date(`${today}T${sl.start}:00`).getTime()+5*60000)/1000),
+      }))
+      .filter(a=>a.timestamp*1000>nowMs);
+    syncFreeSlotAlerts(alerts);
   },[loaded,now,tasks,settings,settings.notificationsEnabled]);
 
   const filteredTasks = useMemo(()=>{

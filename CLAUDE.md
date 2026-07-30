@@ -334,6 +334,16 @@ notify('おはようございます', body);
 - 60件を超える分は今は予約されないが、`tasks` 変更のたびに再計算されるため、手前のアラートが消化されて `tasks` が変わればその都度自動的に繰り上がる
 - 旧来の `now` ポーリング＋即時 `notify()` の `useEffect`（`TASK_ALERT_FIRED_KEY` 使用）は削除せず残しているが、**ネイティブでは `isNative()` で早期returnし動作しない**。Web/開発環境でのみのフォールバックとして機能する（ネイティブで両方動くと同一時刻に二重発火するため）
 
+### 空き時間通知のネイティブ事前予約（`syncFreeSlotAlerts`）
+
+「空き時間が5分続いたら『あとでやる』タスクの消化を提案する」通知も、`syncTaskAlerts`と全く同じ設計で `syncFreeSlotAlerts()` によりネイティブに事前予約している。
+
+- `src/app/components/LocalNotify.ts` の `syncFreeSlotAlerts(alerts)` — ネイティブでのみ動作
+- `src/app/page.tsx` の App コンポーネントに、`tasks`/`settings` が変わるたびに当日の `calcFreeSlots()` 結果から「各空き時間の開始5分後」の時刻で予約する `useEffect` がある（あとでやるタスクが0件の場合は空配列で予約解除）
+- `LocalNotifyPlugin.swift` は `syncTaskAlerts`/`syncFreeSlotAlerts` 共通の `scheduleAlerts(prefix:call:)` を内部で使い、`free-slot-` prefixで全解除→再登録する。識別子は `free-slot-${date}-${slot.start}`
+- 通知本文はスケジュール計算時点の「あとでやる」件数から組み立てるため、実際に発火するまでの間にタスクが完了して中身が古くなる可能性はあるが、`tasks`変更のたびに再計算されるため大きくずれることはない
+- 旧来の `now` ポーリング＋即時 `notify()` の `useEffect`（`tl-freeslot-notif-`キー使用）はWeb/開発環境専用フォールバックとして残っており、ネイティブでは `isNative()` で早期returnする
+
 ### Xcodeでの手動セットアップ（`ios/`はgitignore対象なので毎回必要）
 
 1. `native-ios/LocalNotifyPlugin.swift` / `.m` を `ios/App/App/` に追加（Target Membership: App）

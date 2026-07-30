@@ -5,6 +5,7 @@ interface LocalNotifyPluginType {
   notify(options: { title: string; body: string }): Promise<void>;
   requestPermission(): Promise<void>;
   syncTaskAlerts(options: { alertsJson: string }): Promise<void>;
+  syncFreeSlotAlerts(options: { alertsJson: string }): Promise<void>;
 }
 
 const LocalNotifyPlugin = registerPlugin<LocalNotifyPluginType>('LocalNotifyPlugin');
@@ -47,6 +48,15 @@ export function requestNotifyPermission(): void {
 export function syncTaskAlerts(alerts: { id: string; title: string; body: string; timestamp: number }[]): void {
   if (!isNative()) return;
   LocalNotifyPlugin.syncTaskAlerts({ alertsJson: JSON.stringify(alerts) }).catch(() => {
+    // ネイティブ側プラグイン未導入時はスキップ
+  });
+}
+
+// 空き時間ができたことの通知をネイティブに事前予約する（syncTaskAlertsと同じ方式）。
+// Web/開発環境では何もしない（ネイティブ専用機能）。
+export function syncFreeSlotAlerts(alerts: { id: string; title: string; body: string; timestamp: number }[]): void {
+  if (!isNative()) return;
+  LocalNotifyPlugin.syncFreeSlotAlerts({ alertsJson: JSON.stringify(alerts) }).catch(() => {
     // ネイティブ側プラグイン未導入時はスキップ
   });
 }

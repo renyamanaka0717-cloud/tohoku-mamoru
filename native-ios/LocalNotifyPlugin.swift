@@ -9,6 +9,7 @@ private struct ScheduledAlert: Codable { let id: String; let title: String; let 
 @objc(LocalNotifyPlugin)
 public class LocalNotifyPlugin: CAPPlugin {
     static let taskAlertPrefix = "task-alert-"
+    static let freeSlotAlertPrefix = "free-slot-"
     // 「通知を有効にする」ボタンなど、実際の通知内容が無いタイミングでも
     // その場で許可ダイアログを出すためのメソッド（notify()内のリクエストは通知発火時まで待たされる）
     @objc func requestPermission(_ call: CAPPluginCall) {
@@ -36,6 +37,15 @@ public class LocalNotifyPlugin: CAPPlugin {
     // GeofencePlugin.setGeofences と同じく、呼ばれるたびに既存の task-alert- 予約を
     // 全解除してから渡された内容で登録し直す（差分更新はしない）。
     @objc func syncTaskAlerts(_ call: CAPPluginCall) {
+        scheduleAlerts(prefix: LocalNotifyPlugin.taskAlertPrefix, call: call)
+    }
+
+    // 空き時間ができたことの通知をまとめてネイティブに予約する（syncTaskAlertsと同じ全解除→再登録方式）。
+    @objc func syncFreeSlotAlerts(_ call: CAPPluginCall) {
+        scheduleAlerts(prefix: LocalNotifyPlugin.freeSlotAlertPrefix, call: call)
+    }
+
+    private func scheduleAlerts(prefix: String, call: CAPPluginCall) {
         let json = call.getString("alertsJson") ?? "[]"
         guard let data = json.data(using: .utf8),
               let alerts = try? JSONDecoder().decode([ScheduledAlert].self, from: data) else {
@@ -44,7 +54,7 @@ public class LocalNotifyPlugin: CAPPlugin {
         }
         let center = UNUserNotificationCenter.current()
         center.getPendingNotificationRequests { requests in
-            let staleIds = requests.map { $0.identifier }.filter { $0.hasPrefix(LocalNotifyPlugin.taskAlertPrefix) }
+            let staleIds = requests.map { $0.identifier }.filter { $0.hasPrefix(prefix) }
             center.removePendingNotificationRequests(withIdentifiers: staleIds)
             guard !alerts.isEmpty else { call.resolve(); return }
             center.requestAuthorization(options: [.alert, .sound, .badge]) { granted, _ in
