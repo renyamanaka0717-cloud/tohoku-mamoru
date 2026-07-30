@@ -9,5 +9,6 @@ class BridgeViewController: CAPBridgeViewController {
         bridge?.registerPluginInstance(WidgetDataPlugin())
         bridge?.registerPluginInstance(GeofencePlugin())
         bridge?.registerPluginInstance(InactivityPlugin())
+        bridge?.registerPluginInstance(LocalNotifyPlugin())
     }
 }

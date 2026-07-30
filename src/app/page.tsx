@@ -7,6 +7,7 @@ import { setNativeAppIcon } from './components/AppIcon';
 import { updateWidgetData, getPendingWidgetActions } from './components/WidgetData';
 import { setShopGeofences, checkGeofencePermissions, ensureGeofencePermission, getPendingGeofenceAction } from './components/Geofence';
 import { scheduleInactivityReminder, cancelInactivityReminder } from './components/Inactivity';
+import { notify, requestNotifyPermission } from './components/LocalNotify';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -4962,9 +4963,7 @@ export default function App() {
     maybeShowWakeSleepPrompt();
   };
   const enableNotifFromPrompt=()=>{
-    if(typeof Notification!=='undefined'&&Notification.permission==='default'){
-      Notification.requestPermission();
-    }
+    requestNotifyPermission();
     setSettings(s=>({...s,notificationsEnabled:true}));
     dismissNotifPrompt();
   };
@@ -4990,10 +4989,8 @@ export default function App() {
       if(Date.now()<parseInt(snoozeTs)) return;
       localStorage.removeItem(MORNING_SNOOZE_KEY);
       morningShownRef.current=false;
-      if(typeof Notification!=='undefined'&&Notification.permission==='granted'){
-        const past2=tasks.filter(t=>!t.completed&&!t.isLater&&!!t.startTime&&!t.recurrence&&t.date===shiftDate(today,-1));
-        if(past2.length>0) new Notification('昨日のタスクが残っています',{body:`昨日のタスクが${past2.length}件残っています`});
-      }
+      const past2=tasks.filter(t=>!t.completed&&!t.isLater&&!!t.startTime&&!t.recurrence&&t.date===shiftDate(today,-1));
+      if(past2.length>0) notify('昨日のタスクが残っています',`昨日のタスクが${past2.length}件残っています`);
     }
     if(morningShownRef.current) return;
     const yesterday=shiftDate(today,-1);
@@ -5016,10 +5013,8 @@ export default function App() {
       const pending=shopItems.filter(i=>!i.checked);
       if(pending.length===0) return;
       localStorage.setItem(key,'1');
-      if(typeof Notification!=='undefined'&&Notification.permission==='granted'){
-        const names=pending.slice(0,3).map(i=>i.name).join('・')+(pending.length>3?'…':'');
-        new Notification('買い物リスト',{body:`未購入 ${pending.length}件: ${names}`});
-      }
+      const names=pending.slice(0,3).map(i=>i.name).join('・')+(pending.length>3?'…':'');
+      notify('買い物リスト',`未購入 ${pending.length}件: ${names}`);
     });
   },[loaded,now,shopNotifSettings,shopItems]);
 
@@ -5031,10 +5026,8 @@ export default function App() {
     if(localStorage.getItem(WAKE_CHECKIN_NOTIF_KEY)===today) return;
     localStorage.setItem(WAKE_CHECKIN_NOTIF_KEY,today);
     const past=tasks.filter(t=>!t.completed&&!t.isLater&&!!t.startTime&&!t.recurrence&&t.date===shiftDate(today,-1));
-    if(typeof Notification!=='undefined'&&Notification.permission==='granted'){
-      const body=past.length>0?`今日の予定をチェックしましょう。昨日のタスクが${past.length}件残っています`:'今日の予定をチェックしましょう';
-      new Notification('おはようございます',{body});
-    }
+    const body=past.length>0?`今日の予定をチェックしましょう。昨日のタスクが${past.length}件残っています`:'今日の予定をチェックしましょう';
+    notify('おはようございます',body);
   },[loaded,now,tasks,settings.wakeTime,settings.notificationsEnabled]);
 
   // タスクごとのアラート（開始時・何分前・前日）
@@ -5059,12 +5052,10 @@ export default function App() {
     });
     if(toFire.length===0) return;
     localStorage.setItem(TASK_ALERT_FIRED_KEY,JSON.stringify([...firedKeys,...newFired].slice(-500)));
-    if(typeof Notification!=='undefined'&&Notification.permission==='granted'){
-      toFire.forEach(({task,offset})=>{
-        const label=NOTIF_OPTS.find(o=>o.v===offset)?.l??'';
-        new Notification(task.name,{body:offset===0?`${task.startTime}に開始します`:`${label} — ${task.startTime}開始`});
-      });
-    }
+    toFire.forEach(({task,offset})=>{
+      const label=NOTIF_OPTS.find(o=>o.v===offset)?.l??'';
+      notify(task.name,offset===0?`${task.startTime}に開始します`:`${label} — ${task.startTime}開始`);
+    });
   },[loaded,now,tasks,settings.notificationsEnabled]);
 
   // 「あとでやる」に長時間放置されているタスクの通知
@@ -5081,10 +5072,8 @@ export default function App() {
       &&!notifiedKeys.includes(`${t.id}:${t.laterSince}`));
     if(stale.length===0) return;
     localStorage.setItem(LATER_NOTIFIED_KEY,JSON.stringify([...notifiedKeys,...stale.map(t=>`${t.id}:${t.laterSince}`)]));
-    if(typeof Notification!=='undefined'&&Notification.permission==='granted'){
-      const names=stale.slice(0,3).map(t=>t.name).join('・')+(stale.length>3?'…':'');
-      new Notification('あとでやるが溜まっています',{body:`${stale.length}件が長時間放置されています: ${names}`});
-    }
+    const names=stale.slice(0,3).map(t=>t.name).join('・')+(stale.length>3?'…':'');
+    notify('あとでやるが溜まっています',`${stale.length}件が長時間放置されています: ${names}`);
   },[loaded,now,tasks,settings.notificationsEnabled,settings.laterReminderHours]);
 
   // 空き時間が5分続いたら「あとでやる」タスクの消化を提案
@@ -5100,11 +5089,9 @@ export default function App() {
     const key=`tl-freeslot-notif-${today}-${activeSlot.start}`;
     if(localStorage.getItem(key)) return;
     localStorage.setItem(key,'1');
-    if(typeof Notification!=='undefined'&&Notification.permission==='granted'){
-      const first=laterPool[0];
-      const body=laterPool.length>1?`「${first.name}」など${laterPool.length}件のタスクがあります`:`「${first.name}」をやってみませんか？`;
-      new Notification('空き時間ができました',{body});
-    }
+    const first=laterPool[0];
+    const body=laterPool.length>1?`「${first.name}」など${laterPool.length}件のタスクがあります`:`「${first.name}」をやってみませんか？`;
+    notify('空き時間ができました',body);
   },[loaded,now,tasks,settings,settings.notificationsEnabled]);
 
   const filteredTasks = useMemo(()=>{

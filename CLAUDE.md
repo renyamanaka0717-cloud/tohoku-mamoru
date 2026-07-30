@@ -297,6 +297,34 @@ const pkg = offerings.current?.monthly;
 
 ---
 
+## アプリ内通知の送信（LocalNotifyPlugin）
+
+**重要な過去の不具合:** このアプリの通知（起床チェックイン・買い物リスト・放置タスク・タスクごとのアラート・空き時間提案）は元々すべて `new Notification(...)`（Web Notifications API）で実装されていたが、**WKWebViewはこのAPIを実装しておらず、実機では常に何も起きずサイレントに失敗していた**（`typeof Notification!=='undefined'` のガードで例外は出ないため誰も気づかなかった）。実機のiOS設定アプリ → BrainBoxのページに「通知」の許可項目自体が表示されない（＝一度もネイティブの通知許可がリクエストされたことがない）ことから発覚した。
+
+この修正以降、**アプリ内の通知は必ず `src/app/components/LocalNotify.ts` の `notify(title, body)` を呼ぶこと。`new Notification(...)` を直接呼ばない。**
+
+```typescript
+import { notify } from './components/LocalNotify';
+notify('おはようございます', body);
+```
+
+- ネイティブ: `LocalNotifyPlugin.notify()` を呼び、`UNUserNotificationCenter.current().requestAuthorization(...)` してから即座に `UNNotificationRequest`（trigger: nil = 即時発火）を `add()` する
+- Web/開発環境: 従来通り `window.Notification` にフォールバック（ブラウザでの動作確認はこれで可能）
+- 各通知の発火判定自体（`now` ベースのポーリング、`useEffect` 群）は変更していないため、**アプリがフォアグラウンドで開かれている間しか動かない**のは変わらない。バックグラウンド/未起動でも発火させたい機能（場所通知・アプリ起動リマインダー）は、`GeofencePlugin`/`InactivityPlugin` のように専用のネイティブスケジューリング（`CLCircularRegion`監視や `UNTimeIntervalNotificationTrigger`）が必要
+
+### Xcodeでの手動セットアップ（`ios/`はgitignore対象なので毎回必要）
+
+1. `native-ios/LocalNotifyPlugin.swift` / `.m` を `ios/App/App/` に追加（Target Membership: App）
+2. `native-ios/BridgeViewController.swift` の `capacitorDidLoad()` に `bridge?.registerPluginInstance(LocalNotifyPlugin())` があることを確認（無ければ追記。既存の `ios/App/App/BridgeViewController.swift` は `git pull` で自動反映されないので **Xcode上で直接編集**）
+3. App Group・Info.plist・Background Modesの追加設定は不要（通知権限のリクエストはコード内で完結し、Info.plistの usage description キーも通知には不要）
+
+### 避けるパターン
+
+- `new Notification(...)` を直接呼ばない（WKWebViewでは動かない。必ず `notify()` 経由にする）
+- 新しい通知処理を追加するときに、既存の `useEffect` 群（フォアグラウンドの `now` ポーリング）だけで済むと思い込まない。バックグラウンド/未起動でも発火が必要なら、必ずネイティブスケジューリング方式（Geofence/Inactivityと同じ設計）を検討する
+
+---
+
 ## ホーム画面アイコン切り替え（AppIconPlugin）
 
 PRO機能の1つ。設定 → PRO → アプリアイコン で選んだ色をホーム画面アイコンに反映する。
@@ -962,7 +990,8 @@ const recTasks = tasks.filter((t,i,a)=>t.recurrence&&a.findIndex(x=>x.name===t.n
 - TaskModal の auto-save useEffect deps に `icon` と `color` を含めること（抜けるとアイコン変更が保存されない）
 - 空き時間カードの高さは `minHeight` で指定（`height` では内容がクリップされる）
 - `AXIS_X=72`・`CARD_LEFT=108` — ハードコードせず定数から導出すること
-- **タスクごとのアラート（`Task.notifications: number[]`、開始時・何分前・前日）は実際に発火する `useEffect` がある**（App コンポーネント、`TASK_ALERT_FIRED_KEY` で発火済みキーを重複防止）。他の通知（起床チェックイン・買い物リスト・放置タスク等）と同様、`now`（60秒ごとに更新）ベースのポーリングで `new Notification(...)` を呼ぶため、**アプリがフォアグラウンドで開かれている間しか発火しない**（バックグラウンド/未起動では動かない）。以前はUIで設定できるのに実際には何も起きないdead機能だったので、新しい通知チェックを追加する際は必ずこの `useEffect` 一覧（複数ある）を grep してから既存パターンに倣うこと
+- **タスクごとのアラート（`Task.notifications: number[]`、開始時・何分前・前日）は実際に発火する `useEffect` がある**（App コンポーネント、`TASK_ALERT_FIRED_KEY` で発火済みキーを重複防止）。以前はUIで設定できるのに実際には何も起きないdead機能だったので、新しい通知チェックを追加する際は必ずこの `useEffect` 一覧（複数ある。起床チェックイン・買い物リスト・放置タスク・空き時間提案・タスクアラート）を grep してから既存パターンに倣うこと
+- **アプリ内の全通知は `src/app/components/LocalNotify.ts` の `notify(title, body)` を呼ぶこと。`new Notification(...)` を直接呼ばない。** WKWebViewはWeb Notifications API（`window.Notification`）を実装しておらず、実機では `new Notification(...)` は何も起きずに失敗する（設定アプリのBrainBoxページに「通知」の許可項目自体が出ない＝一度もネイティブの通知許可がリクエストされていない、という形で発覚した実際の不具合）。`notify()` はネイティブでは `LocalNotifyPlugin` 経由で `UNUserNotificationCenter` に直接通知を出し、Web/開発環境では従来通り `window.Notification` にフォールバックする。ただし各通知の発火判定自体（`now` ベースのポーリング）は変わらず**アプリがフォアグラウンドで開かれている間しか動かない**（バックグラウンド/未起動では動かない。それが必要な機能は場所通知・アプリ起動リマインダーのように専用のネイティブスケジューリングが必要）
 
 ---
 
