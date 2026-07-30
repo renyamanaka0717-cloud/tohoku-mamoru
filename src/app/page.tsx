@@ -7,7 +7,7 @@ import { setNativeAppIcon } from './components/AppIcon';
 import { updateWidgetData, getPendingWidgetActions } from './components/WidgetData';
 import { setShopGeofences, checkGeofencePermissions, ensureGeofencePermission, getPendingGeofenceAction } from './components/Geofence';
 import { scheduleInactivityReminder, cancelInactivityReminder } from './components/Inactivity';
-import { notify, requestNotifyPermission } from './components/LocalNotify';
+import { notify, requestNotifyPermission, syncTaskAlerts, isNative } from './components/LocalNotify';
 import { getAppVersion } from './components/AppVersion';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -5101,9 +5101,10 @@ export default function App() {
     notify('おはようございます',body);
   },[loaded,now,tasks,settings.wakeTime,settings.notificationsEnabled]);
 
-  // タスクごとのアラート（開始時・何分前・前日）
+  // タスクごとのアラート（開始時・何分前・前日）— ネイティブでは syncTaskAlerts の事前予約が発火を担うため、
+  // ここは常時フォアグラウンドが前提のWeb/開発環境向けフォールバックとしてのみ動作する
   useEffect(()=>{
-    if(!loaded||!(settings.notificationsEnabled??true)) return;
+    if(!loaded||!(settings.notificationsEnabled??true)||isNative()) return;
     const nowMinuteMs=Math.floor(Date.now()/60000)*60000;
     let firedKeys:string[]=[];
     try{ firedKeys=JSON.parse(localStorage.getItem(TASK_ALERT_FIRED_KEY)||'[]'); }catch{}
@@ -5127,6 +5128,33 @@ export default function App() {
       const label=NOTIF_OPTS.find(o=>o.v===offset)?.l??'';
       notify(task.name,offset===0?`${task.startTime}に開始します`:`${label} — ${task.startTime}開始`);
     });
+  },[loaded,now,tasks,settings.notificationsEnabled]);
+
+  // タスクごとのアラートをネイティブに事前スケジュール（バックグラウンド/未起動でも発火させるため）。
+  // iOSは同時に予約できるローカル通知が最大64件までのため、直近60件に絞って予約する
+  // （手前のアラートが消化されれば次回実行時に自動で繰り上がる）
+  useEffect(()=>{
+    if(!loaded||!isNative()) return;
+    if(!(settings.notificationsEnabled??true)){ syncTaskAlerts([]); return; }
+    const nowMs=Date.now();
+    const alerts:{id:string;title:string;body:string;timestamp:number}[]=[];
+    tasks.forEach(t=>{
+      if(t.completed||t.isLater||!t.startTime||!t.date||!t.notifications?.length) return;
+      const startMs=new Date(`${t.date}T${t.startTime}:00`).getTime();
+      t.notifications.forEach(m=>{
+        const fireMs=startMs-m*60000;
+        if(fireMs<=nowMs) return;
+        const label=NOTIF_OPTS.find(o=>o.v===m)?.l??'';
+        alerts.push({
+          id:`task-alert-${t.id}-${m}`,
+          title:t.name,
+          body:m===0?`${t.startTime}に開始します`:`${label} — ${t.startTime}開始`,
+          timestamp:Math.floor(fireMs/1000),
+        });
+      });
+    });
+    alerts.sort((a,b)=>a.timestamp-b.timestamp);
+    syncTaskAlerts(alerts.slice(0,60));
   },[loaded,now,tasks,settings.notificationsEnabled]);
 
   // 「あとでやる」に長時間放置されているタスクの通知

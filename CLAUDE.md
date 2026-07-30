@@ -310,18 +310,30 @@ notify('おはようございます', body);
 
 - ネイティブ: `LocalNotifyPlugin.notify()` を呼び、`UNUserNotificationCenter.current().requestAuthorization(...)` してから即座に `UNNotificationRequest`（trigger: nil = 即時発火）を `add()` する
 - Web/開発環境: 従来通り `window.Notification` にフォールバック（ブラウザでの動作確認はこれで可能）
-- 各通知の発火判定自体（`now` ベースのポーリング、`useEffect` 群）は変更していないため、**アプリがフォアグラウンドで開かれている間しか動かない**のは変わらない。バックグラウンド/未起動でも発火させたい機能（場所通知・アプリ起動リマインダー）は、`GeofencePlugin`/`InactivityPlugin` のように専用のネイティブスケジューリング（`CLCircularRegion`監視や `UNTimeIntervalNotificationTrigger`）が必要
+- 各通知の発火判定自体（`now` ベースのポーリング、`useEffect` 群）は**アプリがフォアグラウンドで開かれている間しか動かない**。バックグラウンド/未起動でも発火させたい機能（場所通知・アプリ起動リマインダー・タスクごとのアラート）は、`GeofencePlugin`/`InactivityPlugin`/`LocalNotifyPlugin.syncTaskAlerts` のように専用のネイティブスケジューリング（`CLCircularRegion`監視・`UNTimeIntervalNotificationTrigger`・`UNCalendarNotificationTrigger`）が必要
+
+### タスクごとのアラートのネイティブ事前予約（`syncTaskAlerts`）
+
+**過去の不具合:** タスクごとのアラート（`Task.notifications`、開始時・何分前・前日）は当初 `now` ポーリングの `useEffect` で即時 `notify()` していたが、これは**アプリがフォアグラウンドの間しか判定が走らない**ため、バックグラウンド/未起動では一切通知が来なかった（`notify()` 自体はWKWebViewでも動くのに、呼び出し元の判定がJS実行に依存していたのが原因）。`GeofencePlugin`/`InactivityPlugin` と同じ設計思想で、`LocalNotifyPlugin.syncTaskAlerts()` により `UNCalendarNotificationTrigger`（日時指定）でネイティブに事前予約する方式に変更した。
+
+- `src/app/components/LocalNotify.ts` の `syncTaskAlerts(alerts)` — ネイティブでのみ動作（Web/開発環境は何もしない）
+- `src/app/page.tsx` の App コンポーネントに、`tasks` が変わるたびに未来の全アラート（未完了・`isLater` でない・`startTime`/`date`/`notifications` ありのタスク）を発火時刻順にソートし、**直近60件**（iOSのローカル通知同時予約上限64件に対する安全マージン）だけ `syncTaskAlerts()` に渡す `useEffect` がある
+- `LocalNotifyPlugin.swift` の `syncTaskAlerts()` は `GeofencePlugin.setGeofences` と同じく、呼ばれるたびに既存の `task-alert-` prefix の予約を全解除してから渡された内容で登録し直す（差分更新はしない）。識別子は `task-alert-${taskId}-${分オフセット}`
+- 60件を超える分は今は予約されないが、`tasks` 変更のたびに再計算されるため、手前のアラートが消化されて `tasks` が変わればその都度自動的に繰り上がる
+- 旧来の `now` ポーリング＋即時 `notify()` の `useEffect`（`TASK_ALERT_FIRED_KEY` 使用）は削除せず残しているが、**ネイティブでは `isNative()` で早期returnし動作しない**。Web/開発環境でのみのフォールバックとして機能する（ネイティブで両方動くと同一時刻に二重発火するため）
 
 ### Xcodeでの手動セットアップ（`ios/`はgitignore対象なので毎回必要）
 
 1. `native-ios/LocalNotifyPlugin.swift` / `.m` を `ios/App/App/` に追加（Target Membership: App）
 2. `native-ios/BridgeViewController.swift` の `capacitorDidLoad()` に `bridge?.registerPluginInstance(LocalNotifyPlugin())` があることを確認（無ければ追記。既存の `ios/App/App/BridgeViewController.swift` は `git pull` で自動反映されないので **Xcode上で直接編集**）
 3. App Group・Info.plist・Background Modesの追加設定は不要（通知権限のリクエストはコード内で完結し、Info.plistの usage description キーも通知には不要）
+4. **`LocalNotifyPlugin.swift`/`.m` を編集した場合、`ios/App/App/` 内の既存ファイルは `git pull` しても自動更新されない**（`ios/` はgitignore対象で、Xcodeに追加した時点でプロジェクト内に物理コピーが作られているため）。`native-ios/` の最新内容を都度 Xcode上のファイルにコピーし直す（既存ファイルを削除して `native-ios/` から追加し直すのが確実）
 
 ### 避けるパターン
 
 - `new Notification(...)` を直接呼ばない（WKWebViewでは動かない。必ず `notify()` 経由にする）
-- 新しい通知処理を追加するときに、既存の `useEffect` 群（フォアグラウンドの `now` ポーリング）だけで済むと思い込まない。バックグラウンド/未起動でも発火が必要なら、必ずネイティブスケジューリング方式（Geofence/Inactivityと同じ設計）を検討する
+- 新しい通知処理を追加するときに、既存の `useEffect` 群（フォアグラウンドの `now` ポーリング）だけで済むと思い込まない。バックグラウンド/未起動でも発火が必要なら、必ずネイティブスケジューリング方式（Geofence/Inactivity/タスクアラートと同じ設計）を検討する
+- タスクアラートの発火判定を `now` ポーリング＋即時 `notify()` だけで実装しない（ネイティブでは `syncTaskAlerts` の事前予約が必須。`now` ポーリング版はWeb/開発環境専用のフォールバックとして `isNative()` で分岐させる）
 
 ---
 
@@ -992,8 +1004,8 @@ const recTasks = tasks.filter((t,i,a)=>t.recurrence&&a.findIndex(x=>x.name===t.n
 - TaskModal の auto-save useEffect deps に `icon` と `color` を含めること（抜けるとアイコン変更が保存されない）
 - 空き時間カードの高さは `minHeight` で指定（`height` では内容がクリップされる）
 - `AXIS_X=72`・`CARD_LEFT=108` — ハードコードせず定数から導出すること
-- **タスクごとのアラート（`Task.notifications: number[]`、開始時・何分前・前日）は実際に発火する `useEffect` がある**（App コンポーネント、`TASK_ALERT_FIRED_KEY` で発火済みキーを重複防止）。以前はUIで設定できるのに実際には何も起きないdead機能だったので、新しい通知チェックを追加する際は必ずこの `useEffect` 一覧（複数ある。起床チェックイン・買い物リスト・放置タスク・空き時間提案・タスクアラート）を grep してから既存パターンに倣うこと
-- **アプリ内の全通知は `src/app/components/LocalNotify.ts` の `notify(title, body)` を呼ぶこと。`new Notification(...)` を直接呼ばない。** WKWebViewはWeb Notifications API（`window.Notification`）を実装しておらず、実機では `new Notification(...)` は何も起きずに失敗する（設定アプリのBrainBoxページに「通知」の許可項目自体が出ない＝一度もネイティブの通知許可がリクエストされていない、という形で発覚した実際の不具合）。`notify()` はネイティブでは `LocalNotifyPlugin` 経由で `UNUserNotificationCenter` に直接通知を出し、Web/開発環境では従来通り `window.Notification` にフォールバックする。ただし各通知の発火判定自体（`now` ベースのポーリング）は変わらず**アプリがフォアグラウンドで開かれている間しか動かない**（バックグラウンド/未起動では動かない。それが必要な機能は場所通知・アプリ起動リマインダーのように専用のネイティブスケジューリングが必要）
+- **タスクごとのアラート（`Task.notifications: number[]`、開始時・何分前・前日）は `syncTaskAlerts()` でネイティブに事前予約している**（App コンポーネント、`tasks` 変更のたびに未来の直近60件を計算して `LocalNotifyPlugin.syncTaskAlerts` に渡す）。バックグラウンド/未起動でも発火する。旧来の `now` ポーリング＋即時 `notify()` の `useEffect`（`TASK_ALERT_FIRED_KEY` 使用）はWeb/開発環境専用フォールバックとして残っており、ネイティブでは `isNative()` で早期returnする。新しい通知チェックを追加する際は必ずこの `useEffect` 一覧（複数ある。起床チェックイン・買い物リスト・放置タスク・空き時間提案・タスクアラート（Web fallback）・タスクアラート（ネイティブ事前予約））を grep してから既存パターンに倣うこと
+- **アプリ内の全通知は `src/app/components/LocalNotify.ts` の `notify(title, body)` を呼ぶこと。`new Notification(...)` を直接呼ばない。** WKWebViewはWeb Notifications API（`window.Notification`）を実装しておらず、実機では `new Notification(...)` は何も起きずに失敗する（設定アプリのBrainBoxページに「通知」の許可項目自体が出ない＝一度もネイティブの通知許可がリクエストされていない、という形で発覚した実際の不具合）。`notify()` はネイティブでは `LocalNotifyPlugin` 経由で `UNUserNotificationCenter` に直接通知を出し、Web/開発環境では従来通り `window.Notification` にフォールバックする。ただし `notify()` 自体は即時発火なので、呼び出し元の発火判定が `now` ベースのポーリングのままだと**アプリがフォアグラウンドで開かれている間しか動かない**（バックグラウンド/未起動では動かない。それが必要な機能は場所通知・アプリ起動リマインダー・タスクアラートのように専用のネイティブスケジューリング（`syncTaskAlerts`/`GeofencePlugin`/`InactivityPlugin`）が必要）
 
 ---
 

@@ -4,8 +4,11 @@
 import Capacitor
 import UserNotifications
 
+private struct ScheduledAlert: Codable { let id: String; let title: String; let body: String; let timestamp: Double }
+
 @objc(LocalNotifyPlugin)
 public class LocalNotifyPlugin: CAPPlugin {
+    static let taskAlertPrefix = "task-alert-"
     // 「通知を有効にする」ボタンなど、実際の通知内容が無いタイミングでも
     // その場で許可ダイアログを出すためのメソッド（notify()内のリクエストは通知発火時まで待たされる）
     @objc func requestPermission(_ call: CAPPluginCall) {
@@ -26,6 +29,39 @@ public class LocalNotifyPlugin: CAPPlugin {
             let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
             UNUserNotificationCenter.current().add(request)
             call.resolve()
+        }
+    }
+
+    // タスクのアラート（開始時・何分前など）をまとめてネイティブに予約する。
+    // GeofencePlugin.setGeofences と同じく、呼ばれるたびに既存の task-alert- 予約を
+    // 全解除してから渡された内容で登録し直す（差分更新はしない）。
+    @objc func syncTaskAlerts(_ call: CAPPluginCall) {
+        let json = call.getString("alertsJson") ?? "[]"
+        guard let data = json.data(using: .utf8),
+              let alerts = try? JSONDecoder().decode([ScheduledAlert].self, from: data) else {
+            call.reject("invalid alertsJson")
+            return
+        }
+        let center = UNUserNotificationCenter.current()
+        center.getPendingNotificationRequests { requests in
+            let staleIds = requests.map { $0.identifier }.filter { $0.hasPrefix(LocalNotifyPlugin.taskAlertPrefix) }
+            center.removePendingNotificationRequests(withIdentifiers: staleIds)
+            guard !alerts.isEmpty else { call.resolve(); return }
+            center.requestAuthorization(options: [.alert, .sound, .badge]) { granted, _ in
+                guard granted else { call.resolve(); return }
+                for alert in alerts {
+                    let content = UNMutableNotificationContent()
+                    content.title = alert.title
+                    content.body = alert.body
+                    content.sound = .default
+                    let fireDate = Date(timeIntervalSince1970: alert.timestamp)
+                    let comps = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute, .second], from: fireDate)
+                    let trigger = UNCalendarNotificationTrigger(dateMatching: comps, repeats: false)
+                    let request = UNNotificationRequest(identifier: alert.id, content: content, trigger: trigger)
+                    center.add(request)
+                }
+                call.resolve()
+            }
         }
     }
 }
