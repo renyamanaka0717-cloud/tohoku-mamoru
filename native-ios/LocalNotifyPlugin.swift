@@ -6,6 +6,14 @@ import UserNotifications
 
 @objc(LocalNotifyPlugin)
 public class LocalNotifyPlugin: CAPPlugin {
+    // 「通知を有効にする」ボタンなど、実際の通知内容が無いタイミングでも
+    // その場で許可ダイアログを出すためのメソッド（notify()内のリクエストは通知発火時まで待たされる）
+    @objc func requestPermission(_ call: CAPPluginCall) {
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { _, _ in
+            call.resolve()
+        }
+    }
+
     @objc func notify(_ call: CAPPluginCall) {
         let title = call.getString("title") ?? ""
         let body = call.getString("body") ?? ""

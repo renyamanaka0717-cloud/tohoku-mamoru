@@ -3,6 +3,7 @@ import { registerPlugin } from '@capacitor/core';
 
 interface LocalNotifyPluginType {
   notify(options: { title: string; body: string }): Promise<void>;
+  requestPermission(): Promise<void>;
 }
 
 const LocalNotifyPlugin = registerPlugin<LocalNotifyPluginType>('LocalNotifyPlugin');
@@ -29,7 +30,9 @@ export function notify(title: string, body: string): void {
 
 export function requestNotifyPermission(): void {
   if (isNative()) {
-    // ネイティブでは notify() 呼び出し時に毎回 requestAuthorization するため、ここでは何もしない
+    LocalNotifyPlugin.requestPermission().catch(() => {
+      // ネイティブ側プラグイン未導入時はリクエストのみスキップ
+    });
     return;
   }
   if (typeof Notification !== 'undefined' && Notification.permission === 'default') {

@@ -3919,7 +3919,11 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
               <p className="text-[15px] font-medium text-gray-900">通知を有効にする</p>
               <p className="text-xs text-gray-400 mt-0.5">タスクのアラートや買い物リストの通知</p>
             </div>
-            <button onClick={()=>onSettings({...settings,notificationsEnabled:!(settings.notificationsEnabled??true)})}
+            <button onClick={()=>{
+                const next=!(settings.notificationsEnabled??true);
+                if(next) requestNotifyPermission();
+                onSettings({...settings,notificationsEnabled:next});
+              }}
               className={`relative w-10 h-6 rounded-full transition-colors shrink-0 ${(settings.notificationsEnabled??true)?'bg-[var(--c-primary)]':'bg-gray-200'}`}>
               <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${(settings.notificationsEnabled??true)?'left-[18px]':'left-0.5'}`}/>
             </button>
