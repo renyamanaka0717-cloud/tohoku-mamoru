@@ -4014,35 +4014,53 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-4">タスク放置アラート</p>
         <p className="text-xs text-gray-400 px-1 mb-4 leading-relaxed">「あとでやる」に追加したタスクが、設定した時間が経っても完了していないときにお知らせします。</p>
         <div className="bg-white rounded-2xl shadow-sm px-4 py-4">
-          <div className="flex gap-2 flex-wrap">
-            {LATER_REMINDER_OPTS.map(o=>{
-              const locked=o.v!==0&&o.v!==72&&!isPremium;
-              return (
-                <button key={o.v} onClick={()=>{if(locked){setProPrompt('タスク放置アラートの間隔変更');return;}onSettings({...settings,laterReminderHours:o.v});}}
-                  className={`px-3 py-1.5 rounded-xl text-sm font-medium transition-colors inline-flex items-center gap-1 ${(settings.laterReminderHours??72)===o.v?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
-                  {locked&&<AppIcons.lock size={10} className="text-gray-400"/>}
-                  {o.l}
-                </button>
-              );
-            })}
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-sm font-medium text-gray-800">通知する</p>
+            <button onClick={()=>onSettings({...settings,laterReminderHours:(settings.laterReminderHours??72)!==0?0:72})}
+              className={`relative w-10 h-6 rounded-full transition-colors shrink-0 ${(settings.laterReminderHours??72)!==0?'bg-[var(--c-primary)]':'bg-gray-200'}`}>
+              <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${(settings.laterReminderHours??72)!==0?'left-[18px]':'left-0.5'}`}/>
+            </button>
           </div>
+          {(settings.laterReminderHours??72)!==0&&(
+            <div className="flex gap-2 flex-wrap">
+              {LATER_REMINDER_OPTS.filter(o=>o.v!==0).map(o=>{
+                const locked=o.v!==72&&!isPremium;
+                return (
+                  <button key={o.v} onClick={()=>{if(locked){setProPrompt('タスク放置アラートの間隔変更');return;}onSettings({...settings,laterReminderHours:o.v});}}
+                    className={`px-3 py-1.5 rounded-xl text-sm font-medium transition-colors inline-flex items-center gap-1 ${(settings.laterReminderHours??72)===o.v?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
+                    {locked&&<AppIcons.lock size={10} className="text-gray-400"/>}
+                    {o.l}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">アプリ放置アラート</p>
         <p className="text-xs text-gray-400 px-1 mb-4 leading-relaxed">一定時間アプリを開いていない場合に通知します。</p>
         <div className="bg-white rounded-2xl shadow-sm px-4 py-4">
-          <div className="flex gap-2 flex-wrap">
-            {APP_INACTIVITY_OPTS.map(o=>{
-              const locked=o.v!==0&&o.v!==6&&!isPremium;
-              return (
-                <button key={o.v} onClick={()=>{if(locked){setProPrompt('アプリ放置アラートの間隔変更');return;}onSettings({...settings,appInactivityHours:o.v});}}
-                  className={`px-3 py-1.5 rounded-xl text-sm font-medium transition-colors inline-flex items-center gap-1 ${(settings.appInactivityHours??6)===o.v?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
-                  {locked&&<AppIcons.lock size={10} className="text-gray-400"/>}
-                  {o.l}
-                </button>
-              );
-            })}
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-sm font-medium text-gray-800">通知する</p>
+            <button onClick={()=>onSettings({...settings,appInactivityHours:(settings.appInactivityHours??6)!==0?0:6})}
+              className={`relative w-10 h-6 rounded-full transition-colors shrink-0 ${(settings.appInactivityHours??6)!==0?'bg-[var(--c-primary)]':'bg-gray-200'}`}>
+              <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${(settings.appInactivityHours??6)!==0?'left-[18px]':'left-0.5'}`}/>
+            </button>
           </div>
+          {(settings.appInactivityHours??6)!==0&&(
+            <div className="flex gap-2 flex-wrap">
+              {APP_INACTIVITY_OPTS.filter(o=>o.v!==0).map(o=>{
+                const locked=o.v!==6&&!isPremium;
+                return (
+                  <button key={o.v} onClick={()=>{if(locked){setProPrompt('アプリ放置アラートの間隔変更');return;}onSettings({...settings,appInactivityHours:o.v});}}
+                    className={`px-3 py-1.5 rounded-xl text-sm font-medium transition-colors inline-flex items-center gap-1 ${(settings.appInactivityHours??6)===o.v?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
+                    {locked&&<AppIcons.lock size={10} className="text-gray-400"/>}
+                    {o.l}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
     </div>
