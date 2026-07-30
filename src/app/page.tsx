@@ -2633,14 +2633,19 @@ function ShopMapPicker({initialCenter,onConfirm,onCancel}:{
   const useMyLocation=()=>{
     if(!navigator.geolocation) return;
     setLocating(true);
+    // WKWebViewではgetCurrentPositionのtimeoutオプションが効かず、
+    // コールバックが一切呼ばれないまま固まることがあるため、JS側でも保険のタイムアウトを掛ける
+    let done=false;
+    const failsafe=setTimeout(()=>{ if(done) return; done=true; setLocating(false); alert('現在地を取得できませんでした'); },8000);
     navigator.geolocation.getCurrentPosition(
       pos=>{
+        if(done) return; done=true; clearTimeout(failsafe);
         const loc={lat:pos.coords.latitude,lng:pos.coords.longitude};
         setMyLocation(loc);
         setCenter(loc);
         setLocating(false);
       },
-      ()=>{ setLocating(false); alert('現在地を取得できませんでした'); },
+      ()=>{ if(done) return; done=true; clearTimeout(failsafe); setLocating(false); alert('現在地を取得できませんでした'); },
       {enableHighAccuracy:true,timeout:10000}
     );
   };
@@ -2757,13 +2762,18 @@ function ShopLocationPanel({locations,onChange,isPremium,onProPrompt}:{
   const useCurrentLocation=()=>{
     if(!navigator.geolocation) return;
     setLocating(true);
+    // WKWebViewではgetCurrentPositionのtimeoutオプションが効かず、
+    // コールバックが一切呼ばれないまま固まることがあるため、JS側でも保険のタイムアウトを掛ける
+    let done=false;
+    const failsafe=setTimeout(()=>{ if(done) return; done=true; setLocating(false); alert('現在地を取得できませんでした'); },8000);
     navigator.geolocation.getCurrentPosition(
       pos=>{
+        if(done) return; done=true; clearTimeout(failsafe);
         setMapCenter({lat:pos.coords.latitude,lng:pos.coords.longitude});
         setMapMode(true);
         setLocating(false);
       },
-      ()=>{ setLocating(false); alert('現在地を取得できませんでした'); },
+      ()=>{ if(done) return; done=true; clearTimeout(failsafe); setLocating(false); alert('現在地を取得できませんでした'); },
       {enableHighAccuracy:true,timeout:10000}
     );
   };
@@ -2772,13 +2782,16 @@ function ShopLocationPanel({locations,onChange,isPremium,onProPrompt}:{
   const openMapMode=()=>{
     if(!navigator.geolocation){ setMapMode(true); return; }
     setLocating(true);
+    let done=false;
+    const failsafe=setTimeout(()=>{ if(done) return; done=true; setMapMode(true); setLocating(false); },6000);
     navigator.geolocation.getCurrentPosition(
       pos=>{
+        if(done) return; done=true; clearTimeout(failsafe);
         setMapCenter({lat:pos.coords.latitude,lng:pos.coords.longitude});
         setMapMode(true);
         setLocating(false);
       },
-      ()=>{ setMapMode(true); setLocating(false); },
+      ()=>{ if(done) return; done=true; clearTimeout(failsafe); setMapMode(true); setLocating(false); },
       {enableHighAccuracy:true,timeout:5000}
     );
   };
@@ -3348,6 +3361,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   const [histEditColor,setHEColor] = useState('');
   const [histIconSheet,setHIconSh] = useState(false);
   const [bulkEditId,setBulkEditId] = useState<string|null>(null);
+  const [bulkDeleteId,setBulkDeleteId] = useState<string|null>(null);
   const _lpToday = todayStr();
   const _lpTodayD= new Date(_lpToday+'T12:00:00');
   const [lpVm,setLpVm]             = useState({year:_lpTodayD.getFullYear(),month:_lpTodayD.getMonth()});
@@ -3599,7 +3613,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                           setBulkEditId(entry.id);
                         }}
                         className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-[var(--c-primary)] text-white">一括編集</button>
-                      <button onClick={()=>{onBulkHistoryDelete(entry.id);setHistExp(null);}}
+                      <button onClick={()=>setBulkDeleteId(entry.id)}
                         className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-[#D97A7A] text-white">一括削除</button>
                     </div>
                   )}
@@ -3647,6 +3661,24 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                         className="flex-1 text-sm text-gray-800 bg-transparent outline-none"/>
                     </div>
                   </div>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+        {bulkDeleteId&&(()=>{
+          const dp=bulkHistory.find(e=>e.id===bulkDeleteId);
+          if(!dp) return null;
+          return (
+            <div className="fixed inset-0 z-[100] flex items-end justify-center" onClick={()=>setBulkDeleteId(null)}>
+              <div className="absolute inset-0 bg-black/40"/>
+              <div className="relative bg-white rounded-t-2xl w-full max-w-md px-6 pt-6 pb-10" onClick={e=>e.stopPropagation()}>
+                <p className="text-center text-[17px] font-semibold text-gray-900 mb-1">「{dp.name}」を削除しますか？</p>
+                <p className="text-center text-[13px] text-gray-400 mb-6">{dp.dates.length}日分すべてのタスクが削除されます</p>
+                <div className="flex flex-col gap-3">
+                  <button onClick={()=>{onBulkHistoryDelete(dp.id);setHistExp(null);setBulkDeleteId(null);}}
+                    className="w-full py-3.5 rounded-2xl bg-[#D97A7A] text-white text-[15px] font-semibold">削除する</button>
+                  <button onClick={()=>setBulkDeleteId(null)} className="w-full py-3.5 rounded-2xl bg-gray-50 text-gray-500 text-[15px] font-semibold">キャンセル</button>
                 </div>
               </div>
             </div>
