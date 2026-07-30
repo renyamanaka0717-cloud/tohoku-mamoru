@@ -5888,7 +5888,7 @@ export default function App() {
             <div style={{
               position:'absolute',
               left:`${Math.max(8,Math.min(dragPos.x-70,window.innerWidth-180))}px`,
-              top:`${(layoutYRef.current&&dropTime?layoutYRef.current(adjDropMin):dragPos.y)-60}px`,
+              top:`${dragPos.y-60}px`,
               transform:'rotate(-3deg) scale(1.05)',
             }}>
               <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 px-4 py-3 w-44">
