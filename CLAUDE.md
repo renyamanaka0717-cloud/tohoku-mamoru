@@ -22,11 +22,23 @@
 
 ```bash
 npm run dev     # 開発サーバー（http://localhost:3000）
-npm run build   # 本番ビルド
+npm run build   # 本番ビルド（Vercel/Web用。ビルド確認・コミット前の型チェックにはこれで十分）
 npm run lint    # ESLint
 ```
 
 テストフレームワークなし。
+
+### iOS実機ビルドは `npm run build` だけでは反映されない（重要）
+
+`next.config.js` は `BUILD_TARGET=ios` 環境変数がある時だけ `output:'export'`（静的書き出し、`out/`フォルダ生成）になる。**普通の `npm run build` はこの変数が無いため `out/` を更新しない**（Vercel向けの通常ビルドが動くだけ）。Capacitorの `npx cap sync ios` はこの `out/` の中身を `ios/App/App/public` にコピーするため、`npm run build` だけ実行して `npx cap sync ios` しても**実機には古いWebコンテンツのまま反映されない**（ビルド自体は成功したように見えるため気づきにくい）。
+
+iOS実機で動作確認する時は、必ず専用スクリプトを使うこと：
+
+```bash
+./build-ios.sh   # BUILD_TARGET=ios npm run build（APIルート退避込み）→ cap sync ios まで一括で行う
+```
+
+`npm run build && npx cap sync ios` を手動で実行するのは避ける（`BUILD_TARGET=ios`を付け忘れて`out/`が更新されないまま気づかず長時間デバッグする実際の事故が発生した実績あり）。
 
 ## 作業完了時の必須手順
 

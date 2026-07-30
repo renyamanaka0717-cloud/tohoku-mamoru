@@ -37,21 +37,17 @@ public class LocalNotifyPlugin: CAPPlugin {
     // 全解除してから渡された内容で登録し直す（差分更新はしない）。
     @objc func syncTaskAlerts(_ call: CAPPluginCall) {
         let json = call.getString("alertsJson") ?? "[]"
-        print("[LocalNotifyPlugin] syncTaskAlerts called, json=\(json)")
         guard let data = json.data(using: .utf8),
               let alerts = try? JSONDecoder().decode([ScheduledAlert].self, from: data) else {
-            print("[LocalNotifyPlugin] syncTaskAlerts decode failed")
             call.reject("invalid alertsJson")
             return
         }
-        print("[LocalNotifyPlugin] syncTaskAlerts decoded \(alerts.count) alerts")
         let center = UNUserNotificationCenter.current()
         center.getPendingNotificationRequests { requests in
             let staleIds = requests.map { $0.identifier }.filter { $0.hasPrefix(LocalNotifyPlugin.taskAlertPrefix) }
             center.removePendingNotificationRequests(withIdentifiers: staleIds)
             guard !alerts.isEmpty else { call.resolve(); return }
             center.requestAuthorization(options: [.alert, .sound, .badge]) { granted, _ in
-                print("[LocalNotifyPlugin] syncTaskAlerts authorization granted=\(granted)")
                 guard granted else { call.resolve(); return }
                 for alert in alerts {
                     let content = UNMutableNotificationContent()
@@ -62,13 +58,7 @@ public class LocalNotifyPlugin: CAPPlugin {
                     let comps = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute, .second], from: fireDate)
                     let trigger = UNCalendarNotificationTrigger(dateMatching: comps, repeats: false)
                     let request = UNNotificationRequest(identifier: alert.id, content: content, trigger: trigger)
-                    center.add(request) { error in
-                        if let error = error {
-                            print("[LocalNotifyPlugin] add request \(alert.id) failed: \(error)")
-                        } else {
-                            print("[LocalNotifyPlugin] add request \(alert.id) fireDate=\(fireDate)")
-                        }
-                    }
+                    center.add(request)
                 }
                 call.resolve()
             }
