@@ -3999,7 +3999,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             desc={(()=>{const n=shopNotifSettings.filter(s=>s.enabled).length+shopLocations.filter(l=>l.enabled).length;return n>0?`${n}件の通知が有効`:'通知なし';})()}
             onClick={()=>{if(!isPremium){setProPrompt('買い物リストの通知設定');return;}setSub('notifications-shop');}} pro isPremium={isPremium}/>
           <div className="h-px bg-gray-100 mx-4"/>
-          <SettingsRow icon={<AppIcons.postponed size={18}/>} iconBg="bg-gray-100" title="タスク放置アラート"
+          <SettingsRow icon={<AppIcons.postponed size={18}/>} iconBg="bg-gray-100" title="放置アラート"
             desc={LATER_REMINDER_OPTS.find(o=>o.v===(settings.laterReminderHours??72))?.l??'3日'}
             onClick={()=>setSub('notifications-later')} isLast/>
         </div>
