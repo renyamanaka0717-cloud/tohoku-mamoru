@@ -132,6 +132,13 @@ const taskAlertBody = (startTime: string, offset: number): string => {
 // ── Utils ─────────────────────────────────────────────────────────────────────
 
 const toMin       = (t: string) => { const [h,m]=t.split(':').map(Number); return h*60+m; };
+
+// 就寝〜起床の時間帯かどうか（就寝時刻が起床時刻より遅い＝日をまたぐケースを考慮）
+const inSleepWindow = (nowM: number, wakeM: number, sleepM: number): boolean => {
+  if(sleepM===wakeM) return false;
+  if(sleepM>wakeM) return nowM>=sleepM||nowM<wakeM;
+  return nowM>=sleepM&&nowM<wakeM;
+};
 const fromMin     = (m: number) => `${String(Math.floor(m/60)%24).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`;
 const dateToStr   = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 const todayStr    = () => dateToStr(new Date());
@@ -5075,14 +5082,27 @@ export default function App() {
     if(hours<=0){ cancelInactivityReminder(); return; }
     const onVisibilityChange=()=>{
       if(document.visibilityState==='hidden'){
-        if(settings.notificationsEnabled??true) scheduleInactivityReminder(hours);
+        if(settings.notificationsEnabled??true){
+          // 発火予定時刻が就寝時間帯に重なる場合は、起床時刻まで後ろ倒しにする
+          const targetDate=new Date(Date.now()+hours*3600*1000);
+          const targetM=targetDate.getHours()*60+targetDate.getMinutes();
+          const wakeM=toMin(settings.wakeTime), sleepM=toMin(settings.sleepTime);
+          let adjustedHours=hours;
+          if(inSleepWindow(targetM,wakeM,sleepM)){
+            const wakeDate=new Date(targetDate);
+            wakeDate.setHours(Math.floor(wakeM/60),wakeM%60,0,0);
+            if(wakeDate.getTime()<=targetDate.getTime()) wakeDate.setDate(wakeDate.getDate()+1);
+            adjustedHours=(wakeDate.getTime()-Date.now())/3600000;
+          }
+          scheduleInactivityReminder(adjustedHours);
+        }
       } else {
         cancelInactivityReminder();
       }
     };
     document.addEventListener('visibilitychange',onVisibilityChange);
     return ()=>document.removeEventListener('visibilitychange',onVisibilityChange);
-  },[loaded,settings.appInactivityHours,settings.notificationsEnabled]);
+  },[loaded,settings.appInactivityHours,settings.notificationsEnabled,settings.wakeTime,settings.sleepTime]);
   useEffect(()=>{ if(loaded) localStorage.setItem(TAGS_KEY,JSON.stringify(globalTags)); },[globalTags,loaded]);
   useEffect(()=>{ if(loaded) localStorage.setItem(HISTORY_KEY,JSON.stringify(moveHistory)); },[moveHistory,loaded]);
   useEffect(()=>{ if(loaded) localStorage.setItem(CUSTOM_TABS_KEY,JSON.stringify(customTabs)); },[customTabs,loaded]);
@@ -5294,6 +5314,7 @@ export default function App() {
     if(!loaded||!(settings.notificationsEnabled??true)) return;
     const hours=settings.laterReminderHours??72;
     if(hours<=0) return;
+    if(inSleepWindow(toMin(now),toMin(settings.wakeTime),toMin(settings.sleepTime))) return;
     const thresholdMs=hours*3600*1000;
     const nowTs=Date.now();
     let notifiedKeys:string[]=[];
@@ -5305,7 +5326,7 @@ export default function App() {
     localStorage.setItem(LATER_NOTIFIED_KEY,JSON.stringify([...notifiedKeys,...stale.map(t=>`${t.id}:${t.laterSince}`)]));
     const names=stale.slice(0,3).map(t=>t.name).join('・')+(stale.length>3?'…':'');
     notify('あとでやるが溜まっています',`${stale.length}件が長時間放置されています: ${names}`);
-  },[loaded,now,tasks,settings.notificationsEnabled,settings.laterReminderHours]);
+  },[loaded,now,tasks,settings.notificationsEnabled,settings.laterReminderHours,settings.wakeTime,settings.sleepTime]);
 
   // 空き時間が5分続いたら「あとでやる」タスクの消化を提案
   // ネイティブでは syncFreeSlotAlerts の事前予約が発火を担うため、

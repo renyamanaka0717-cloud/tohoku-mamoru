@@ -535,13 +535,15 @@ const SHOP_LOC_KEY = 'tl-shop-loc-v1';
 
 ### 放置タスク通知（既存機能・一部PRO化済み）
 
-`Settings.laterReminderHours`（`LATER_REMINDER_OPTS`: オフ/1時間/3時間/6時間/12時間/1日/2日/3日）。**「オフ」と「3日」のみ無料。それ以外（1時間〜2日）はPRO。** 非PROで選ぶと `setProPrompt('放置タスク通知の間隔変更')` で `ProGateSheet` を表示し、選択中のボタンに `AppIcons.lock`（小さい鍵アイコン、テキストの左）を表示する。タスク実行判定自体は既存のJS側 `useEffect`（`now` ベースのポーリング、フォアグラウンド時のみ動作）。
+`Settings.laterReminderHours`（`LATER_REMINDER_OPTS`: オフ/1時間/3時間/6時間/12時間/1日/2日/3日）。**「オフ」と「3日」のみ無料。それ以外（1時間〜2日）はPRO。** 非PROで選ぶと `setProPrompt('放置タスク通知の間隔変更')` で `ProGateSheet` を表示し、選択中のボタンに `AppIcons.lock`（小さい鍵アイコン、テキストの左）を表示する。タスク実行判定自体は既存のJS側 `useEffect`（`now` ベースのポーリング、フォアグラウンド時のみ動作）。**就寝〜起床の時間帯（`inSleepWindow()`）は通知しない**（判定タイミングがたまたま就寝時間中だった場合はスキップされ、次に起きている時間帯にポーリングが走った時に改めて判定される）。
 
 ### アプリ起動リマインダー（一部PRO化済み）
 
 `Settings.appInactivityHours`（`APP_INACTIVITY_OPTS`: オフ/6時間/12時間/1日/2日/3日、デフォルト6時間）。「一定時間アプリを開いていない場合に通知する」機能。**放置タスク通知とは独立した別機能**（あとでやるタスクの有無に関係なく、単純にアプリを開いた/開いていない時間で判定）。**「オフ」とデフォルト値の「6時間」のみ無料。それ以外（12時間〜3日）はPRO。** 非PROで選ぶと `setProPrompt('アプリ起動リマインダーの間隔変更')` で `ProGateSheet` を表示し、選択中のボタンに `AppIcons.lock` を表示する（放置タスク通知と同じパターン）。
 
 タスクリマインダーと違い、アプリがバックグラウンド/未起動でも数時間〜数日後に発火する必要があるため、JSのタイマーでは実現できない（プロセスが生きている保証がない）。iOSネイティブの `UNTimeIntervalNotificationTrigger` で完結させる。
+
+**就寝時間帯を避ける調整:** バックグラウンドに移る瞬間（`document.visibilitychange`）に `Date.now()+hours*3600*1000` で発火予定時刻を計算し、`inSleepWindow()` でその時刻が就寝〜起床の時間帯に重なるか判定する。重なる場合は起床時刻まで後ろ倒しした時間差を計算し直し、`scheduleInactivityReminder()` にはその調整後の時間数を渡す（ネイティブ側の `UNTimeIntervalNotificationTrigger` は相対時間しか扱えないため、時刻の調整はJS側で行う）。
 
 **データの流れ:**
 
