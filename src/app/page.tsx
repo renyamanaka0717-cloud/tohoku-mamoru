@@ -4724,12 +4724,6 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
       <div className="flex-1 overflow-y-auto px-4 pb-10">
 
 
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">一般</p>
-        <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
-          <SettingsRow icon={<AppIcons.bell/>} iconBg="bg-gray-100" title="通知" desc="通知設定" onClick={()=>setSub('notifications')}/>
-          <SettingsRow icon={<AppIcons.palette/>} iconBg="bg-gray-100" title="表示設定" desc="外観、言語など" onClick={()=>setSub('display')} isLast/>
-        </div>
-
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">機能</p>
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
           <SettingsRow icon={<AppIcons.tag/>} iconBg="bg-gray-100" title="タグ" desc="タスクにラベルを付けて整理・検索" onClick={()=>setSub('tags')} pro isPremium={isPremium}/>
@@ -4744,6 +4738,12 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           <SettingsRow icon={<AppIcons.postponed size={18}/>} iconBg="bg-gray-100" title="放置アラート"
             desc="タスクやアプリの放置を通知"
             onClick={()=>setSub('notifications-later')} isLast/>
+        </div>
+
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">一般</p>
+        <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
+          <SettingsRow icon={<AppIcons.bell/>} iconBg="bg-gray-100" title="通知" desc="通知設定" onClick={()=>setSub('notifications')}/>
+          <SettingsRow icon={<AppIcons.palette/>} iconBg="bg-gray-100" title="表示設定" desc="外観、言語など" onClick={()=>setSub('display')} isLast/>
         </div>
 
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">連携</p>
