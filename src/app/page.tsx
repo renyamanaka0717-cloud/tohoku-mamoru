@@ -2609,9 +2609,9 @@ function ShopMapPicker({initialCenter,onConfirm,onCancel}:{
     if(!q) return;
     setMapSearching(true);
     try{
-      const res=await fetch(`https://msearch.gsi.go.jp/address-search/AddressSearch?q=${encodeURIComponent(q)}`);
-      const data=await res.json() as {geometry:{coordinates:[number,number]};properties:{title:string}}[];
-      setMapResults(data.slice(0,6).map(d=>({name:d.properties.title,lat:d.geometry.coordinates[1],lng:d.geometry.coordinates[0]})));
+      const res=await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&countrycodes=jp&limit=6&accept-language=ja`);
+      const data=await res.json() as {display_name:string;lat:string;lon:string}[];
+      setMapResults(data.map(d=>({name:d.display_name,lat:parseFloat(d.lat),lng:parseFloat(d.lon)})));
     }catch{
       setMapResults([]);
     }
@@ -2738,9 +2738,9 @@ function ShopLocationPanel({locations,onChange,isPremium,onProPrompt}:{
     if(!q) return;
     setSearching(true);
     try{
-      const res=await fetch(`https://msearch.gsi.go.jp/address-search/AddressSearch?q=${encodeURIComponent(q)}`);
-      const data=await res.json() as {geometry:{coordinates:[number,number]};properties:{title:string}}[];
-      setSearchResults(data.slice(0,8).map(d=>({name:d.properties.title,lat:d.geometry.coordinates[1],lng:d.geometry.coordinates[0]})));
+      const res=await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&countrycodes=jp&limit=8&accept-language=ja`);
+      const data=await res.json() as {display_name:string;lat:string;lon:string}[];
+      setSearchResults(data.map(d=>({name:d.display_name,lat:parseFloat(d.lat),lng:parseFloat(d.lon)})));
     }catch{
       setSearchResults([]);
     }

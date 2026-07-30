@@ -420,15 +420,17 @@ const SHOP_LOC_KEY = 'tl-shop-loc-v1';
 1. `BottomTabs` の買い物タブ内、ベルアイコンで開く `showShopNotif` パネル
 2. 設定 → 通知 → 買い物リスト（`SettingsScreen` の `sub==='notifications-shop'`）
 
-**登録フロー:** 「追加」→ 場所検索（国土地理院 [住所検索API](https://msearch.gsi.go.jp/address-search/AddressSearch) をAPIキー無しで直接fetch）／「地図で指定」／「現在地から登録」（`navigator.geolocation.getCurrentPosition`、WKWebViewの標準Web APIで完結。継続監視ではなく一度きりの位置取得なのでCapacitorプラグイン不要）→ 半径（100/300/500m）を選択→登録。登録時に `ensureGeofencePermission()` で位置情報「常に」＋通知の許可をリクエストし、拒否されている場合は許可されるまで登録しない。
+**登録フロー:** 「追加」→ 場所検索（[Nominatim](https://nominatim.openstreetmap.org/search)をAPIキー無しで直接fetch）／「地図で指定」／「現在地から登録」（`navigator.geolocation.getCurrentPosition`、WKWebViewの標準Web APIで完結。継続監視ではなく一度きりの位置取得なのでCapacitorプラグイン不要）→ 半径（100/300/500m）を選択→登録。登録時に `ensureGeofencePermission()` で位置情報「常に」＋通知の許可をリクエストし、拒否されている場合は許可されるまで登録しない。「地図で指定」「現在地から登録」はどちらも先に現在地の取得を試み、取得できればそこを中心に地図を開く（失敗時のみ東京駅付近の既定値にフォールバック）。
+
+**検索API: Nominatim（住所検索APIから切り替え済み）** 国土地理院の住所検索APIは正式な住所（町名・字名）専用で、「イオンモール福岡」のような施設名・ランドマーク名を検索すると無関係な住所がヒットすることがあった（例: クエリ中の「イ」だけが千葉県のある地区の字名と偶然一致してしまう）。Nominatim（OpenStreetMapのジオコーダー）はPOI・施設データも持っているため施設名検索の精度が高い。`https://nominatim.openstreetmap.org/search?format=json&q=...&countrycodes=jp&limit=8&accept-language=ja` を直接fetchし、`display_name`/`lat`/`lon`（lat/lonは文字列なのでparseFloat）を使う。CORSキー不要・ブラウザの`Referer`ヘッダーで利用規約上の送信元識別要件を満たす。逆ジオコーディング（座標→住所名）は引き続き国土地理院の[逆ジオコーディングAPI](https://mreversegeocoder.gsi.go.jp/reverse-geocoder/LonLatToAddress)を使用（こちらは正式住所を返す用途なので問題ない）。
 
 位置情報または通知が拒否されている場合、パネル上部に設定アプリへの案内文を表示する（`checkGeofencePermissions()` で状態確認）。
 
-**地図ピッカー（`ShopMapPicker`）:** 追加npmライブラリ無しでCARTO Voyagerのラスタタイル（`https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png`、APIキー不要・Googleマップに近い見やすい配色）を直接fetchして3x3グリッドで描画する自前の軽量地図。標準のOpenStreetMapタイル（`tile.openstreetmap.org`）は見づらいとのフィードバックがあり切り替え済み。ピンは画面中央に固定表示、ドラッグで地図側を動かして位置を決める（Google/Appleマップと同じUX）。座標⇔ピクセル変換は標準的なWeb Mercatorタイル計算（`lonLatToPx`/`pxToLonLat`、CARTO Voyagerも256pxのOSM互換タイルなので変換ロジックは共通）。確定時は国土地理院の[逆ジオコーディングAPI](https://mreversegeocoder.gsi.go.jp/reverse-geocoder/LonLatToAddress)で地名を試みに取得し、失敗時は「地図で指定した場所」にフォールバックする。CARTOの利用規約上、地図上に「© CARTO © OpenStreetMap」表記を常時表示している。
+**地図ピッカー（`ShopMapPicker`）:** 追加npmライブラリ無しでCARTO Voyagerのラスタタイル（`https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png`、APIキー不要・Googleマップに近い見やすい配色）を直接fetchして3x3グリッドで描画する自前の軽量地図。標準のOpenStreetMapタイル（`tile.openstreetmap.org`）は見づらいとのフィードバックがあり切り替え済み。ピンは画面中央に固定表示、ドラッグで地図側を動かして位置を決める（Google/Appleマップと同じUX）。2本指ピンチで拡大縮小もできる（`pinchScale`でタイル層のみを視覚的にscale()し、指を離した時点で最も近い整数ズームに丸めてタイルを再取得。タッチイベントは`e.stopPropagation()`でボトムシートのタブ切り替えスワイプに伝播しないようにしている）。座標⇔ピクセル変換は標準的なWeb Mercatorタイル計算（`lonLatToPx`/`pxToLonLat`、CARTO Voyagerも256pxのOSM互換タイルなので変換ロジックは共通）。確定時は国土地理院の逆ジオコーディングAPIで地名を試みに取得し、失敗時は「地図で指定した場所」にフォールバックする。CARTOの利用規約上、地図上に「© CARTO © OpenStreetMap」表記を常時表示している。
 
-- **地図内検索:** 地図の上部に検索バーがあり、国土地理院の住所検索APIで結果をタップすると地図がその位置に再センタリングされる（ドラッグ不要で直接ジャンプできる）
+- **地図内検索:** 地図の上部に検索バーがあり、Nominatimでの検索結果をタップすると地図がその位置に再センタリングされる（ドラッグ不要で直接ジャンプできる）
 - **現在地表示:** 地図左下の照準アイコン（`AppIcons.crosshair`）をタップすると `navigator.geolocation` で現在地を取得し、地図を現在地に再センタリング＋青い現在地ドット（`myLocation` state）を表示する。中央固定ピンとは別レイヤーで、ドラッグしても現在地ドットの実座標は変わらず、画面内の相対位置だけが再計算される
-- 「現在地から登録」（`ShopLocationPanel`）も逆ジオコーディングを試み、成功時は住所を初期名にする（失敗時のみ「現在地」にフォールバック）。地図ピッカー経由の登録と同じ考え方で、**登録名のデフォルトは住所**にする方針
+- 確認ステップ（半径選択画面）の場所名は編集可能な入力欄になっている（検索結果や逆ジオコーディングの結果を初期値にしつつ、登録前に自由に書き換えられる）
 
 **登録済み場所の名称変更:** `ShopLocationPanel` の一覧で場所名をタップするとインライン編集になる（`editingId`/`editingName` state、Enterまたはフォーカス外れで確定）。`CustomTab` のインライン名前編集と同じUXパターン。
 
