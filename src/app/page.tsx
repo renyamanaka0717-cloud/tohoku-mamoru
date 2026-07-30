@@ -3290,8 +3290,8 @@ function ProGateSheet({onClose,onView,feature}:{onClose:()=>void;onView?:()=>voi
   );
 }
 
-function SettingsRow({icon,iconBg,title,desc,onClick,isLast=false,pro=false}:{
-  icon:React.ReactNode; iconBg:string; title:string; desc?:string; onClick?:()=>void; isLast?:boolean; pro?:boolean;
+function SettingsRow({icon,iconBg,title,desc,onClick,isLast=false,pro=false,isPremium=false}:{
+  icon:React.ReactNode; iconBg:string; title:string; desc?:string; onClick?:()=>void; isLast?:boolean; pro?:boolean; isPremium?:boolean;
 }) {
   return (
     <button
@@ -3303,7 +3303,7 @@ function SettingsRow({icon,iconBg,title,desc,onClick,isLast=false,pro=false}:{
         {icon}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-[15px] font-medium text-gray-900 leading-tight flex items-center gap-1.5">{title}{pro&&<span className="inline-flex items-center gap-0.5 border border-gray-300 rounded px-1.5 py-0.5 text-[10px] font-bold text-gray-400 leading-none tracking-wide">★ PRO</span>}</p>
+        <p className="text-[15px] font-medium text-gray-900 leading-tight flex items-center gap-1.5">{title}{pro&&!isPremium&&<span className="inline-flex items-center gap-0.5 border border-gray-300 rounded px-1.5 py-0.5 text-[10px] font-bold text-gray-400 leading-none tracking-wide">★ PRO</span>}</p>
         {desc&&<p className="text-xs text-gray-400 mt-0.5">{desc}</p>}
       </div>
       <AppIcons.caretRight className="text-gray-300 shrink-0"/>
@@ -3997,7 +3997,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           <div className="h-px bg-gray-100 mx-4"/>
           <SettingsRow icon={<AppIcons.shopping size={18}/>} iconBg="bg-gray-100" title="買い物リスト"
             desc={(()=>{const n=shopNotifSettings.filter(s=>s.enabled).length+shopLocations.filter(l=>l.enabled).length;return n>0?`${n}件の通知が有効`:'通知なし';})()}
-            onClick={()=>{if(!isPremium){setProPrompt('買い物リストの通知設定');return;}setSub('notifications-shop');}} pro/>
+            onClick={()=>{if(!isPremium){setProPrompt('買い物リストの通知設定');return;}setSub('notifications-shop');}} pro isPremium={isPremium}/>
           <div className="h-px bg-gray-100 mx-4"/>
           <SettingsRow icon={<AppIcons.postponed size={18}/>} iconBg="bg-gray-100" title="あとでやる"
             desc={LATER_REMINDER_OPTS.find(o=>o.v===(settings.laterReminderHours??72))?.l??'3日'}
@@ -4727,10 +4727,10 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
 
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">機能</p>
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
-          <SettingsRow icon={<AppIcons.tag/>} iconBg="bg-gray-100" title="タグ" desc="タスクにラベルを付けて整理・検索" onClick={()=>setSub('tags')} pro/>
-          <SettingsRow icon={<AppIcons.caretRight/>} iconBg="bg-gray-100" title="ファイルタブ" desc="タスクをフォルダ別に管理" onClick={()=>setSub('tabs')} pro/>
-          <SettingsRow icon={<AppIcons.pencil size={18}/>} iconBg="bg-gray-100" title="タスク一括入力" desc="まとめてタスクを登録" onClick={()=>setSub('bulkInput')} pro/>
-          <SettingsRow icon={<AppIcons.calendar size={18}/>} iconBg="bg-gray-100" title="生活パターン" desc="シフトや休日で起床・就寝時間を切り替え" onClick={()=>setSub('lifePatterns')} pro/>
+          <SettingsRow icon={<AppIcons.tag/>} iconBg="bg-gray-100" title="タグ" desc="タスクにラベルを付けて整理・検索" onClick={()=>setSub('tags')} pro isPremium={isPremium}/>
+          <SettingsRow icon={<AppIcons.caretRight/>} iconBg="bg-gray-100" title="ファイルタブ" desc="タスクをフォルダ別に管理" onClick={()=>setSub('tabs')} pro isPremium={isPremium}/>
+          <SettingsRow icon={<AppIcons.pencil size={18}/>} iconBg="bg-gray-100" title="タスク一括入力" desc="まとめてタスクを登録" onClick={()=>setSub('bulkInput')} pro isPremium={isPremium}/>
+          <SettingsRow icon={<AppIcons.calendar size={18}/>} iconBg="bg-gray-100" title="生活パターン" desc="シフトや休日で起床・就寝時間を切り替え" onClick={()=>setSub('lifePatterns')} pro isPremium={isPremium}/>
           <SettingsRow icon={<AppIcons.repeat size={18}/>} iconBg="bg-gray-100" title="繰り返しタスク" desc="繰り返しタスクを管理" onClick={()=>setSub('recurring')}/>
           <SettingsRow icon={<AppIcons.wake size={18}/>} iconBg="bg-gray-100" title="起床・就寝" desc="起床時間、就寝時間を設定" onClick={()=>setSub('wakeSleep')} isLast/>
         </div>
