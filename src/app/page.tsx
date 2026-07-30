@@ -4031,12 +4031,16 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
         <p className="text-xs text-gray-400 px-1 mb-4 leading-relaxed">一定時間アプリを開いていない場合に通知します。</p>
         <div className="bg-white rounded-2xl shadow-sm px-4 py-4">
           <div className="flex gap-2 flex-wrap">
-            {APP_INACTIVITY_OPTS.map(o=>(
-              <button key={o.v} onClick={()=>onSettings({...settings,appInactivityHours:o.v})}
-                className={`px-3 py-1.5 rounded-xl text-sm font-medium transition-colors ${(settings.appInactivityHours??6)===o.v?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
-                {o.l}
-              </button>
-            ))}
+            {APP_INACTIVITY_OPTS.map(o=>{
+              const locked=o.v!==0&&o.v!==6&&!isPremium;
+              return (
+                <button key={o.v} onClick={()=>{if(locked){setProPrompt('アプリ起動リマインダーの間隔変更');return;}onSettings({...settings,appInactivityHours:o.v});}}
+                  className={`px-3 py-1.5 rounded-xl text-sm font-medium transition-colors inline-flex items-center gap-1 ${(settings.appInactivityHours??6)===o.v?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
+                  {locked&&<AppIcons.lock size={10} className="text-gray-400"/>}
+                  {o.l}
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
