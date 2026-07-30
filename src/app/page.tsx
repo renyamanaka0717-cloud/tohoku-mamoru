@@ -2776,7 +2776,16 @@ function ShopLocationPanel({locations,onChange,isPremium,onProPrompt}:{
     );
   };
 
-  const cancelAdd=()=>{ setAdding(false);setMapMode(false);setMapCenter(null);setPendingCoord(null);setSearchQuery('');setSearchResults([]);setRadius(300); };
+  const [editLocId,setEditLocId]=useState<string|null>(null);
+
+  const cancelAdd=()=>{ setAdding(false);setMapMode(false);setMapCenter(null);setPendingCoord(null);setSearchQuery('');setSearchResults([]);setRadius(300);setEditLocId(null); };
+
+  const startEditLocation=(l:ShopLocation)=>{
+    setEditLocId(l.id);
+    setPendingCoord({name:l.name,lat:l.lat,lng:l.lng});
+    setRadius(l.radius);
+    setAdding(true);
+  };
 
   const confirmAdd=async()=>{
     if(!pendingCoord) return;
@@ -2784,7 +2793,11 @@ function ShopLocationPanel({locations,onChange,isPremium,onProPrompt}:{
     const status=await checkGeofencePermissions();
     setPermStatus(status);
     if(!ok) return;
-    onChange([...locations,{id:uid(),name:pendingCoord.name,lat:pendingCoord.lat,lng:pendingCoord.lng,radius,enabled:true}]);
+    if(editLocId){
+      onChange(locations.map(l=>l.id===editLocId?{...l,name:pendingCoord.name,lat:pendingCoord.lat,lng:pendingCoord.lng,radius}:l));
+    }else{
+      onChange([...locations,{id:uid(),name:pendingCoord.name,lat:pendingCoord.lat,lng:pendingCoord.lng,radius,enabled:true}]);
+    }
     cancelAdd();
   };
 
@@ -2843,7 +2856,10 @@ function ShopLocationPanel({locations,onChange,isPremium,onProPrompt}:{
                   <AppIcons.pencil size={15} className="text-gray-400 shrink-0"/>
                 </button>
               )}
-              <p className="text-xs text-gray-400">半径{l.radius}m</p>
+              <button onClick={()=>startEditLocation(l)} className="flex items-center gap-1 py-0.5 -my-0.5">
+                <p className="text-xs text-gray-400">半径{l.radius}m・場所を変更</p>
+                <AppIcons.pencil size={11} className="text-gray-300"/>
+              </button>
             </div>
             <button onClick={()=>toggle(l.id)}
               className={`relative w-10 h-6 rounded-full transition-colors shrink-0 ${l.enabled?'bg-[var(--c-primary)]':'bg-gray-200'}`}>
@@ -2860,7 +2876,7 @@ function ShopLocationPanel({locations,onChange,isPremium,onProPrompt}:{
           {mapMode?(
             <ShopMapPicker
               initialCenter={mapCenter??searchResults[0]??{lat:35.681236,lng:139.767125}}
-              onConfirm={loc=>{setPendingCoord(loc);setMapMode(false);setMapCenter(null);}}
+              onConfirm={loc=>{setPendingCoord(prev=>editLocId&&prev?{...loc,name:prev.name}:loc);setMapMode(false);setMapCenter(null);}}
               onCancel={()=>{setMapMode(false);setMapCenter(null);}}/>
           ):!pendingCoord?(
             <>
@@ -2912,14 +2928,18 @@ function ShopLocationPanel({locations,onChange,isPremium,onProPrompt}:{
               <input value={pendingCoord.name} onChange={e=>setPendingCoord({...pendingCoord,name:e.target.value})}
                 placeholder="場所の名前"
                 className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50 mb-4"/>
+              <button onClick={()=>{setMapCenter({lat:pendingCoord.lat,lng:pendingCoord.lng});setMapMode(true);}}
+                className="w-full py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200 mb-4">
+                地図で場所を変更
+              </button>
               <div className="flex gap-2">
-                <button onClick={()=>setPendingCoord(null)}
+                <button onClick={()=>{editLocId?cancelAdd():setPendingCoord(null);}}
                   className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200">
-                  戻る
+                  {editLocId?'キャンセル':'戻る'}
                 </button>
                 <button onClick={confirmAdd}
                   className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-[var(--c-primary)] text-white active:opacity-80">
-                  登録
+                  {editLocId?'保存':'登録'}
                 </button>
               </div>
             </>
