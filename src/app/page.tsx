@@ -2761,6 +2761,21 @@ function ShopLocationPanel({locations,onChange,isPremium,onProPrompt}:{
     );
   };
 
+  // 地図を開く時のデフォルト中心は現在地にする（取得できなければTokyoの既定値のまま開く）
+  const openMapMode=()=>{
+    if(!navigator.geolocation){ setMapMode(true); return; }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      pos=>{
+        setMapCenter({lat:pos.coords.latitude,lng:pos.coords.longitude});
+        setMapMode(true);
+        setLocating(false);
+      },
+      ()=>{ setMapMode(true); setLocating(false); },
+      {enableHighAccuracy:true,timeout:5000}
+    );
+  };
+
   const cancelAdd=()=>{ setAdding(false);setMapMode(false);setMapCenter(null);setPendingCoord(null);setSearchQuery('');setSearchResults([]);setRadius(300); };
 
   const confirmAdd=async()=>{
@@ -2870,9 +2885,9 @@ function ShopLocationPanel({locations,onChange,isPremium,onProPrompt}:{
                   ))}
                 </div>
               )}
-              <button onClick={()=>setMapMode(true)}
-                className="w-full py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200 mb-2">
-                地図で指定
+              <button onClick={openMapMode} disabled={locating}
+                className="w-full py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200 mb-2 disabled:opacity-40">
+                {locating?'取得中...':'地図で指定'}
               </button>
               <button onClick={useCurrentLocation} disabled={locating}
                 className="w-full py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200 mb-3 disabled:opacity-40">
