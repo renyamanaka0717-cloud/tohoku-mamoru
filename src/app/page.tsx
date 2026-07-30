@@ -4009,9 +4009,10 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
 
   if(sub==='notifications-later') return (
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
-      {subHeader('タスク放置アラート')}{proSheet}
+      {subHeader('放置アラート')}{proSheet}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
-        <p className="text-xs text-gray-400 px-1 mt-4 mb-4 leading-relaxed">「あとでやる」に追加したタスクが、設定した時間が経っても完了していないときにお知らせします。</p>
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-4">タスク放置アラート</p>
+        <p className="text-xs text-gray-400 px-1 mb-4 leading-relaxed">「あとでやる」に追加したタスクが、設定した時間が経っても完了していないときにお知らせします。</p>
         <div className="bg-white rounded-2xl shadow-sm px-4 py-4">
           <div className="flex gap-2 flex-wrap">
             {LATER_REMINDER_OPTS.map(o=>{
