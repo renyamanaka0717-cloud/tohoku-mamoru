@@ -3946,7 +3946,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           <div className="flex gap-2 flex-wrap">
             {APP_INACTIVITY_OPTS.map(o=>(
               <button key={o.v} onClick={()=>onSettings({...settings,appInactivityHours:o.v})}
-                className={`px-3 py-1.5 rounded-xl text-sm font-medium transition-colors ${(settings.appInactivityHours??0)===o.v?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
+                className={`px-3 py-1.5 rounded-xl text-sm font-medium transition-colors ${(settings.appInactivityHours??6)===o.v?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
                 {o.l}
               </button>
             ))}
@@ -4944,7 +4944,7 @@ export default function App() {
   },[loaded]);
   useEffect(()=>{
     if(!loaded) return;
-    const hours=settings.appInactivityHours??0;
+    const hours=settings.appInactivityHours??6;
     if(hours<=0){ cancelInactivityReminder(); return; }
     const onVisibilityChange=()=>{
       if(document.visibilityState==='hidden'){
