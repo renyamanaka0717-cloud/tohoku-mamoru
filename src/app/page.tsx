@@ -3912,7 +3912,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             desc={(()=>{const n=shopNotifSettings.filter(s=>s.enabled).length+shopLocations.filter(l=>l.enabled).length;return n>0?`${n}件の通知が有効`:'通知なし';})()}
             onClick={()=>{if(!isPremium){setProPrompt('買い物リストの通知設定');return;}setSub('notifications-shop');}} pro/>
           <div className="h-px bg-gray-100 mx-4"/>
-          <SettingsRow icon={<AppIcons.postponed size={18}/>} iconBg="bg-gray-100" title="放置タスク"
+          <SettingsRow icon={<AppIcons.postponed size={18}/>} iconBg="bg-gray-100" title="あとでやる"
             desc={LATER_REMINDER_OPTS.find(o=>o.v===(settings.laterReminderHours??72))?.l??'3日'}
             onClick={()=>setSub('notifications-later')} isLast/>
         </div>
@@ -3922,15 +3922,15 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
 
   if(sub==='notifications-later') return (
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
-      {subHeader('放置タスク通知')}{proSheet}
+      {subHeader('あとでやるリマインダー')}{proSheet}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
-        <p className="text-xs text-gray-400 px-1 mt-4 mb-4 leading-relaxed">「あとでやる」に入れたタスクが指定した時間を過ぎても残っている場合に通知します。</p>
+        <p className="text-xs text-gray-400 px-1 mt-4 mb-4 leading-relaxed">「あとでやる」に追加したタスクが、設定した時間が経っても完了していないときにお知らせします。</p>
         <div className="bg-white rounded-2xl shadow-sm px-4 py-4">
           <div className="flex gap-2 flex-wrap">
             {LATER_REMINDER_OPTS.map(o=>{
               const locked=o.v!==0&&o.v!==72&&!isPremium;
               return (
-                <button key={o.v} onClick={()=>{if(locked){setProPrompt('放置タスク通知の間隔変更');return;}onSettings({...settings,laterReminderHours:o.v});}}
+                <button key={o.v} onClick={()=>{if(locked){setProPrompt('あとでやるリマインダーの間隔変更');return;}onSettings({...settings,laterReminderHours:o.v});}}
                   className={`px-3 py-1.5 rounded-xl text-sm font-medium transition-colors inline-flex items-center gap-1 ${(settings.laterReminderHours??72)===o.v?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
                   {locked&&<AppIcons.lock size={10} className="text-gray-400"/>}
                   {o.l}
