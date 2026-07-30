@@ -2512,6 +2512,8 @@ function ShopMapPicker({initialCenter,onConfirm,onCancel}:{
   const [zoom,setZoom]=useState(16);
   const [drag,setDrag]=useState({x:0,y:0});
   const dragStart=useRef<{x:number;y:number}|null>(null);
+  const [pinchScale,setPinchScale]=useState(1);
+  const pinchStart=useRef<{dist:number;zoom:number}|null>(null);
   const [confirming,setConfirming]=useState(false);
   const [myLocation,setMyLocation]=useState<{lat:number;lng:number}|null>(null);
   const [locating,setLocating]=useState(false);
@@ -2556,6 +2558,35 @@ function ShopMapPicker({initialCenter,onConfirm,onCancel}:{
     setCenter({lat,lng:lon});
     setDrag({x:0,y:0});
     dragStart.current=null;
+  };
+
+  const touchDist=(a:React.Touch,b:React.Touch)=>Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY);
+  const onTouchStart=(e:React.TouchEvent)=>{
+    e.stopPropagation();
+    if(e.touches.length===2){
+      dragStart.current=null;
+      pinchStart.current={dist:touchDist(e.touches[0],e.touches[1]),zoom};
+    } else if(e.touches.length===1){
+      onStart(e.touches[0].clientX,e.touches[0].clientY);
+    }
+  };
+  const onTouchMove=(e:React.TouchEvent)=>{
+    e.stopPropagation();
+    if(e.touches.length===2&&pinchStart.current){
+      setPinchScale(touchDist(e.touches[0],e.touches[1])/pinchStart.current.dist);
+    } else if(e.touches.length===1){
+      onMove(e.touches[0].clientX,e.touches[0].clientY);
+    }
+  };
+  const onTouchEnd=(e:React.TouchEvent)=>{
+    e.stopPropagation();
+    if(pinchStart.current){
+      const newZoom=Math.min(18,Math.max(12,Math.round(pinchStart.current.zoom+Math.log2(pinchScale))));
+      setZoom(newZoom);
+      setPinchScale(1);
+      pinchStart.current=null;
+    }
+    if(e.touches.length===0) onEnd();
   };
 
   const confirm=async()=>{
@@ -2634,19 +2665,21 @@ function ShopMapPicker({initialCenter,onConfirm,onCancel}:{
       )}
       <div className="relative rounded-xl overflow-hidden bg-gray-100 mb-3 select-none touch-none"
         style={{width:'100%',height:H}}
-        onTouchStart={e=>onStart(e.touches[0].clientX,e.touches[0].clientY)}
-        onTouchMove={e=>onMove(e.touches[0].clientX,e.touches[0].clientY)}
-        onTouchEnd={onEnd}
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
         onMouseDown={e=>onStart(e.clientX,e.clientY)}
         onMouseMove={e=>{if(dragStart.current)onMove(e.clientX,e.clientY);}}
         onMouseUp={onEnd}
         onMouseLeave={()=>{if(dragStart.current)onEnd();}}
       >
-        <div className="absolute" style={{left:wrapLeft+drag.x,top:wrapTop+drag.y,width:TILE*3,height:TILE*3}}>
-          {tiles.map((t,i)=>(
-            <img key={i} src={`https://basemaps.cartocdn.com/rastertiles/voyager/${zoom}/${t.tx}/${t.ty}.png`} draggable={false} alt=""
-              style={{position:'absolute',left:t.left,top:t.top,width:TILE,height:TILE}}/>
-          ))}
+        <div className="absolute" style={{inset:0,transform:`scale(${pinchScale})`,transformOrigin:'center center'}}>
+          <div className="absolute" style={{left:wrapLeft+drag.x,top:wrapTop+drag.y,width:TILE*3,height:TILE*3}}>
+            {tiles.map((t,i)=>(
+              <img key={i} src={`https://basemaps.cartocdn.com/rastertiles/voyager/${zoom}/${t.tx}/${t.ty}.png`} draggable={false} alt=""
+                style={{position:'absolute',left:t.left,top:t.top,width:TILE,height:TILE}}/>
+            ))}
+          </div>
         </div>
         {myDotLeft!==null&&myDotTop!==null&&(
           <div className="absolute pointer-events-none" style={{left:myDotLeft,top:myDotTop,transform:'translate(-50%,-50%)'}}>
@@ -2666,7 +2699,7 @@ function ShopMapPicker({initialCenter,onConfirm,onCancel}:{
           <AppIcons.crosshair size={16}/>
         </button>
       </div>
-      <p className="text-xs text-gray-400 text-center mb-3">ピンの位置までドラッグして動かせます</p>
+      <p className="text-xs text-gray-400 text-center mb-3">ドラッグで移動、ピンチで拡大縮小できます</p>
       <div className="flex gap-2">
         <button onClick={onCancel} className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200">
           戻る
@@ -2688,6 +2721,7 @@ function ShopLocationPanel({locations,onChange,isPremium,onProPrompt}:{
 }) {
   const [adding,setAdding]=useState(false);
   const [mapMode,setMapMode]=useState(false);
+  const [mapCenter,setMapCenter]=useState<{lat:number;lng:number}|null>(null);
   const [searchQuery,setSearchQuery]=useState('');
   const [searchResults,setSearchResults]=useState<{name:string;lat:number;lng:number}[]>([]);
   const [searching,setSearching]=useState(false);
@@ -2716,17 +2750,9 @@ function ShopLocationPanel({locations,onChange,isPremium,onProPrompt}:{
     if(!navigator.geolocation) return;
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
-      async pos=>{
-        const {latitude:lat,longitude:lng}=pos.coords;
-        let name='現在地';
-        try{
-          const res=await fetch(`https://mreversegeocoder.gsi.go.jp/reverse-geocoder/LonLatToAddress?lon=${lng}&lat=${lat}`);
-          const data=await res.json() as {results?:{lv01Nm?:string}};
-          if(data.results?.lv01Nm) name=data.results.lv01Nm;
-        }catch{
-          // 逆ジオコーディングに失敗しても現在地の座標だけで登録を続行
-        }
-        setPendingCoord({name,lat,lng});
+      pos=>{
+        setMapCenter({lat:pos.coords.latitude,lng:pos.coords.longitude});
+        setMapMode(true);
         setLocating(false);
       },
       ()=>{ setLocating(false); alert('現在地を取得できませんでした'); },
@@ -2734,7 +2760,7 @@ function ShopLocationPanel({locations,onChange,isPremium,onProPrompt}:{
     );
   };
 
-  const cancelAdd=()=>{ setAdding(false);setMapMode(false);setPendingCoord(null);setSearchQuery('');setSearchResults([]);setRadius(300); };
+  const cancelAdd=()=>{ setAdding(false);setMapMode(false);setMapCenter(null);setPendingCoord(null);setSearchQuery('');setSearchResults([]);setRadius(300); };
 
   const confirmAdd=async()=>{
     if(!pendingCoord) return;
@@ -2796,9 +2822,9 @@ function ShopLocationPanel({locations,onChange,isPremium,onProPrompt}:{
                   onKeyDown={e=>{if(e.key==='Enter'){e.currentTarget.blur();}}}
                   className="w-full text-sm font-medium text-gray-800 border-b border-gray-300 outline-none bg-transparent pb-0.5"/>
               ):(
-                <button onClick={()=>startRename(l)} className="flex items-center gap-1 max-w-full">
+                <button onClick={()=>startRename(l)} className="flex items-center gap-1.5 max-w-full py-1 -my-1">
                   <p className="text-sm font-medium text-gray-800 truncate">{l.name}</p>
-                  <AppIcons.pencil size={11} className="text-gray-300 shrink-0"/>
+                  <AppIcons.pencil size={15} className="text-gray-400 shrink-0"/>
                 </button>
               )}
               <p className="text-xs text-gray-400">半径{l.radius}m</p>
@@ -2817,9 +2843,9 @@ function ShopLocationPanel({locations,onChange,isPremium,onProPrompt}:{
         <div className="mt-3 bg-white rounded-2xl shadow-sm p-4">
           {mapMode?(
             <ShopMapPicker
-              initialCenter={searchResults[0]??{lat:35.681236,lng:139.767125}}
-              onConfirm={loc=>{setPendingCoord(loc);setMapMode(false);}}
-              onCancel={()=>setMapMode(false)}/>
+              initialCenter={mapCenter??searchResults[0]??{lat:35.681236,lng:139.767125}}
+              onConfirm={loc=>{setPendingCoord(loc);setMapMode(false);setMapCenter(null);}}
+              onCancel={()=>{setMapMode(false);setMapCenter(null);}}/>
           ):!pendingCoord?(
             <>
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">場所を検索</p>
@@ -2866,7 +2892,10 @@ function ShopLocationPanel({locations,onChange,isPremium,onProPrompt}:{
                   </button>
                 ))}
               </div>
-              <p className="text-sm text-gray-600 mb-4 truncate">{pendingCoord.name}</p>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">名前</p>
+              <input value={pendingCoord.name} onChange={e=>setPendingCoord({...pendingCoord,name:e.target.value})}
+                placeholder="場所の名前"
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50 mb-4"/>
               <div className="flex gap-2">
                 <button onClick={()=>setPendingCoord(null)}
                   className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200">
