@@ -4085,14 +4085,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
 
   if(sub==='notifications-shop') return (
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
-      <div className="bg-white border-b border-gray-200 px-4 flex items-center shrink-0" style={{paddingTop:'calc(0.875rem + env(safe-area-inset-top))',paddingBottom:'0.875rem'}}>
-        <button onClick={()=>setSub('notifications')} className="flex items-center gap-0.5 text-gray-900 min-w-[80px]">
-          <AppIcons.caretLeft size={20}/>
-          <span className="text-[15px]">通知</span>
-        </button>
-        <h2 className="flex-1 text-center text-[17px] font-semibold text-gray-900 -mx-4">買い物リスト</h2>
-        <div className="min-w-[80px]"/>
-      </div>
+      {subHeader('買い物リスト通知')}
       <div className="flex-1 overflow-y-auto pb-8">
         <div className="mt-6">
           <ShopNotifPanel settings={shopNotifSettings} onChange={onShopNotifSettings}
@@ -4746,10 +4739,10 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           <SettingsRow icon={<AppIcons.repeat size={18}/>} iconBg="bg-gray-100" title="繰り返しタスク" desc="繰り返しタスクを管理" onClick={()=>setSub('recurring')}/>
           <SettingsRow icon={<AppIcons.wake size={18}/>} iconBg="bg-gray-100" title="起床・就寝" desc="起床時間、就寝時間を設定" onClick={()=>setSub('wakeSleep')}/>
           <SettingsRow icon={<AppIcons.shopping size={18}/>} iconBg="bg-gray-100" title="買い物リスト通知"
-            desc={(()=>{const n=shopNotifSettings.filter(s=>s.enabled).length+shopLocations.filter(l=>l.enabled).length;return n>0?`${n}件の通知が有効`:'通知なし';})()}
+            desc="時間や場所で買い物リストを通知"
             onClick={()=>{if(!isPremium){setProPrompt('買い物リストの通知設定');return;}setSub('notifications-shop');}} pro isPremium={isPremium}/>
           <SettingsRow icon={<AppIcons.postponed size={18}/>} iconBg="bg-gray-100" title="放置アラート"
-            desc={LATER_REMINDER_OPTS.find(o=>o.v===(settings.laterReminderHours??72))?.l??'3日'}
+            desc="タスクやアプリの放置を通知"
             onClick={()=>setSub('notifications-later')} isLast/>
         </div>
 
