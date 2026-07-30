@@ -3993,15 +3993,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm mt-6">
           <SettingsRow icon={<AppIcons.bell size={18}/>} iconBg="bg-gray-100" title="通知設定"
             desc={(settings.notificationsEnabled??true)?'オン':'オフ'}
-            onClick={()=>setSub('notifications-general')}/>
-          <div className="h-px bg-gray-100 mx-4"/>
-          <SettingsRow icon={<AppIcons.shopping size={18}/>} iconBg="bg-gray-100" title="買い物リスト"
-            desc={(()=>{const n=shopNotifSettings.filter(s=>s.enabled).length+shopLocations.filter(l=>l.enabled).length;return n>0?`${n}件の通知が有効`:'通知なし';})()}
-            onClick={()=>{if(!isPremium){setProPrompt('買い物リストの通知設定');return;}setSub('notifications-shop');}} pro isPremium={isPremium}/>
-          <div className="h-px bg-gray-100 mx-4"/>
-          <SettingsRow icon={<AppIcons.postponed size={18}/>} iconBg="bg-gray-100" title="放置アラート"
-            desc={LATER_REMINDER_OPTS.find(o=>o.v===(settings.laterReminderHours??72))?.l??'3日'}
-            onClick={()=>setSub('notifications-later')} isLast/>
+            onClick={()=>setSub('notifications-general')} isLast/>
         </div>
       </div>
     </div>
@@ -4752,7 +4744,13 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           <SettingsRow icon={<AppIcons.pencil size={18}/>} iconBg="bg-gray-100" title="タスク一括入力" desc="まとめてタスクを登録" onClick={()=>setSub('bulkInput')} pro isPremium={isPremium}/>
           <SettingsRow icon={<AppIcons.calendar size={18}/>} iconBg="bg-gray-100" title="生活パターン" desc="シフトや休日で起床・就寝時間を切り替え" onClick={()=>setSub('lifePatterns')} pro isPremium={isPremium}/>
           <SettingsRow icon={<AppIcons.repeat size={18}/>} iconBg="bg-gray-100" title="繰り返しタスク" desc="繰り返しタスクを管理" onClick={()=>setSub('recurring')}/>
-          <SettingsRow icon={<AppIcons.wake size={18}/>} iconBg="bg-gray-100" title="起床・就寝" desc="起床時間、就寝時間を設定" onClick={()=>setSub('wakeSleep')} isLast/>
+          <SettingsRow icon={<AppIcons.wake size={18}/>} iconBg="bg-gray-100" title="起床・就寝" desc="起床時間、就寝時間を設定" onClick={()=>setSub('wakeSleep')}/>
+          <SettingsRow icon={<AppIcons.shopping size={18}/>} iconBg="bg-gray-100" title="買い物リスト"
+            desc={(()=>{const n=shopNotifSettings.filter(s=>s.enabled).length+shopLocations.filter(l=>l.enabled).length;return n>0?`${n}件の通知が有効`:'通知なし';})()}
+            onClick={()=>{if(!isPremium){setProPrompt('買い物リストの通知設定');return;}setSub('notifications-shop');}} pro isPremium={isPremium}/>
+          <SettingsRow icon={<AppIcons.postponed size={18}/>} iconBg="bg-gray-100" title="放置アラート"
+            desc={LATER_REMINDER_OPTS.find(o=>o.v===(settings.laterReminderHours??72))?.l??'3日'}
+            onClick={()=>setSub('notifications-later')} isLast/>
         </div>
 
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">連携</p>
