@@ -4,7 +4,7 @@
 import Capacitor
 import UserNotifications
 
-private struct ScheduledAlert: Codable { let id: String; let title: String; let body: String; let timestamp: Double }
+private struct ScheduledAlert: Codable { let id: String; let title: String; let body: String; let timestamp: Double; let openShop: Bool? }
 
 @objc(LocalNotifyPlugin)
 public class LocalNotifyPlugin: CAPPlugin {
@@ -82,6 +82,11 @@ public class LocalNotifyPlugin: CAPPlugin {
                     content.title = alert.title
                     content.body = alert.body
                     content.sound = .default
+                    // GeofencePlugin側のUNUserNotificationCenterDelegateが同じキーを見て
+                    // タップ時に買い物リストを開くようにする（openShop相当のプラグイン間共通の仕組み）
+                    if alert.openShop == true {
+                        content.userInfo = ["openShop": true]
+                    }
                     let fireDate = Date(timeIntervalSince1970: alert.timestamp)
                     let comps = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute, .second], from: fireDate)
                     let trigger = UNCalendarNotificationTrigger(dateMatching: comps, repeats: false)

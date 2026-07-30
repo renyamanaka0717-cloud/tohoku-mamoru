@@ -517,6 +517,8 @@ const SHOP_LOC_KEY = 'tl-shop-loc-v1';
 4. `UNUserNotificationCenter` に直接ローカル通知を `add()` する（`UNUserNotificationCenterDelegate` は `GeofencePlugin.load()` で自身をdelegateに設定済み。AppDelegate.swiftの編集は不要）
 5. 通知タップ時（`didReceive response`）— `UserDefaults.standard` に `pendingOpenShopList=true` を立てる。JS側は `getPendingWidgetActions()` と同じ `visibilitychange`/起動時ポーリングの中で `getPendingGeofenceAction()` を呼び、trueなら `setActiveTab('shop')` で買い物リストを開く
 
+この`didReceive`ハンドラは`UNUserNotificationCenterDelegate`としてアプリ全体で1つしか存在しない（`GeofencePlugin.load()`で設定）ため、**他のプラグインが作った通知でも`userInfo["openShop"]==true`さえ立てておけば同じタップ処理が効く**。`LocalNotifyPlugin.swift`の`syncShopNotifs()`（買い物リストの時間指定通知）はこの仕組みを使って、JS側で`openShop:true`を付けたアラートだけ`content.userInfo=["openShop":true]`を設定している（`scheduleAlerts()`内、`ScheduledAlert.openShop`）。
+
 ### Xcodeでの手動セットアップ（`ios/`はgitignore対象なので毎回必要）
 
 **① GeofencePlugin を追加（メインAppターゲット、WidgetDataPluginと同じ手順）**

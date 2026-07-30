@@ -5231,7 +5231,7 @@ export default function App() {
     const names=pending.slice(0,3).map(i=>i.name).join('・')+(pending.length>3?'…':'');
     const body=`未購入 ${pending.length}件: ${names}`;
     const nowMs=Date.now();
-    const alerts:{id:string;title:string;body:string;timestamp:number}[]=[];
+    const alerts:{id:string;title:string;body:string;timestamp:number;openShop?:boolean}[]=[];
     shopNotifSettings.forEach(s=>{
       if(!s.enabled) return;
       for(let d=0;d<7;d++){
@@ -5241,7 +5241,7 @@ export default function App() {
         const [hh,mm]=s.time.split(':').map(Number);
         dt.setHours(hh,mm,0,0);
         if(dt.getTime()<=nowMs) continue;
-        alerts.push({id:`shop-notif-${s.id}-${d}`,title:'買い物リスト',body,timestamp:Math.floor(dt.getTime()/1000)});
+        alerts.push({id:`shop-notif-${s.id}-${d}`,title:'買い物リスト',body,timestamp:Math.floor(dt.getTime()/1000),openShop:true});
       }
     });
     syncShopNotifs(alerts);
