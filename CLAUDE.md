@@ -344,6 +344,16 @@ notify('おはようございます', body);
 - 通知本文はスケジュール計算時点の「あとでやる」件数から組み立てるため、実際に発火するまでの間にタスクが完了して中身が古くなる可能性はあるが、`tasks`変更のたびに再計算されるため大きくずれることはない
 - 旧来の `now` ポーリング＋即時 `notify()` の `useEffect`（`tl-freeslot-notif-`キー使用）はWeb/開発環境専用フォールバックとして残っており、ネイティブでは `isNative()` で早期returnする
 
+### 買い物リスト時間指定通知のネイティブ事前予約（`syncShopNotifs`）
+
+`ShopNotifSetting`（曜日＋時刻の時間指定通知）も同じ設計で `syncShopNotifs()` によりネイティブに事前予約している。
+
+- `src/app/components/LocalNotify.ts` の `syncShopNotifs(alerts)` — ネイティブでのみ動作
+- `src/app/page.tsx` の App コンポーネントに、`shopNotifSettings`/`shopItems` が変わるたびに**直近7日分**の該当曜日をまとめて計算して予約する `useEffect` がある（未購入アイテムが0件の場合は空配列で予約解除）。識別子は `shop-notif-${settingId}-${日数オフセット}`
+- `LocalNotifyPlugin.swift` は共通の `scheduleAlerts(prefix:call:)` を使い、`shop-notif-` prefixで全解除→再登録する
+- 通知本文はスケジュール計算時点の未購入件数から組み立てるため、`shopItems`/`shopNotifSettings`変更のたびに再計算され、直近7日分を毎回スケジュールし直すことで曜日が一巡してもズレない
+- 旧来の `now` ポーリング＋即時 `notify()` の `useEffect`（`tl-shop-notif-fired-`キー使用）はWeb/開発環境専用フォールバックとして残っており、ネイティブでは `isNative()` で早期returnする
+
 ### Xcodeでの手動セットアップ（`ios/`はgitignore対象なので毎回必要）
 
 1. `native-ios/LocalNotifyPlugin.swift` / `.m` を `ios/App/App/` に追加（Target Membership: App）

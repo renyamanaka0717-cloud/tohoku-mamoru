@@ -7,7 +7,7 @@ import { setNativeAppIcon } from './components/AppIcon';
 import { updateWidgetData, getPendingWidgetActions } from './components/WidgetData';
 import { setShopGeofences, checkGeofencePermissions, ensureGeofencePermission, getPendingGeofenceAction } from './components/Geofence';
 import { scheduleInactivityReminder, cancelInactivityReminder } from './components/Inactivity';
-import { notify, requestNotifyPermission, syncTaskAlerts, syncFreeSlotAlerts, isNative } from './components/LocalNotify';
+import { notify, requestNotifyPermission, syncTaskAlerts, syncFreeSlotAlerts, syncShopNotifs, isNative } from './components/LocalNotify';
 import { getAppVersion } from './components/AppVersion';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -5179,9 +5179,10 @@ export default function App() {
     setMorningSel(new Set());
   },[loaded,tasks,settings.wakeTime,now]);
 
-  // 買い物リスト通知
+  // 買い物リスト通知 — ネイティブでは syncShopNotifs の事前予約が発火を担うため、
+  // ここは常時フォアグラウンドが前提のWeb/開発環境向けフォールバックとしてのみ動作する
   useEffect(()=>{
-    if(!loaded||shopNotifSettings.length===0) return;
+    if(!loaded||shopNotifSettings.length===0||isNative()) return;
     const dow=new Date().getDay();
     const nowM=toMin(now);
     shopNotifSettings.forEach(s=>{
@@ -5194,6 +5195,32 @@ export default function App() {
       const names=pending.slice(0,3).map(i=>i.name).join('・')+(pending.length>3?'…':'');
       notify('買い物リスト',`未購入 ${pending.length}件: ${names}`);
     });
+  },[loaded,now,shopNotifSettings,shopItems]);
+
+  // 買い物リストの時間指定通知をネイティブに事前スケジュール（バックグラウンド/未起動でも発火させるため）。
+  // 直近7日分の該当曜日をまとめて予約する（tasks/shopItems変更のたびに現在の未購入内容で再計算される）
+  useEffect(()=>{
+    if(!loaded||!isNative()) return;
+    if(shopNotifSettings.length===0){ syncShopNotifs([]); return; }
+    const pending=shopItems.filter(i=>!i.checked);
+    if(pending.length===0){ syncShopNotifs([]); return; }
+    const names=pending.slice(0,3).map(i=>i.name).join('・')+(pending.length>3?'…':'');
+    const body=`未購入 ${pending.length}件: ${names}`;
+    const nowMs=Date.now();
+    const alerts:{id:string;title:string;body:string;timestamp:number}[]=[];
+    shopNotifSettings.forEach(s=>{
+      if(!s.enabled) return;
+      for(let d=0;d<7;d++){
+        const dt=new Date();
+        dt.setDate(dt.getDate()+d);
+        if(!s.days.includes(dt.getDay())) continue;
+        const [hh,mm]=s.time.split(':').map(Number);
+        dt.setHours(hh,mm,0,0);
+        if(dt.getTime()<=nowMs) continue;
+        alerts.push({id:`shop-notif-${s.id}-${d}`,title:'買い物リスト',body,timestamp:Math.floor(dt.getTime()/1000)});
+      }
+    });
+    syncShopNotifs(alerts);
   },[loaded,now,shopNotifSettings,shopItems]);
 
   // 起床時間にアプリを開くよう促す通知（前日の未完了タスクがあれば1つにまとめる）

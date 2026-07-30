@@ -6,6 +6,7 @@ interface LocalNotifyPluginType {
   requestPermission(): Promise<void>;
   syncTaskAlerts(options: { alertsJson: string }): Promise<void>;
   syncFreeSlotAlerts(options: { alertsJson: string }): Promise<void>;
+  syncShopNotifs(options: { alertsJson: string }): Promise<void>;
 }
 
 const LocalNotifyPlugin = registerPlugin<LocalNotifyPluginType>('LocalNotifyPlugin');
@@ -57,6 +58,15 @@ export function syncTaskAlerts(alerts: { id: string; title: string; body: string
 export function syncFreeSlotAlerts(alerts: { id: string; title: string; body: string; timestamp: number }[]): void {
   if (!isNative()) return;
   LocalNotifyPlugin.syncFreeSlotAlerts({ alertsJson: JSON.stringify(alerts) }).catch(() => {
+    // ネイティブ側プラグイン未導入時はスキップ
+  });
+}
+
+// 買い物リストの時間指定通知をネイティブに事前予約する（syncTaskAlertsと同じ方式）。
+// Web/開発環境では何もしない（ネイティブ専用機能）。
+export function syncShopNotifs(alerts: { id: string; title: string; body: string; timestamp: number }[]): void {
+  if (!isNative()) return;
+  LocalNotifyPlugin.syncShopNotifs({ alertsJson: JSON.stringify(alerts) }).catch(() => {
     // ネイティブ側プラグイン未導入時はスキップ
   });
 }

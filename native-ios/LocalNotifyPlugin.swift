@@ -10,6 +10,7 @@ private struct ScheduledAlert: Codable { let id: String; let title: String; let 
 public class LocalNotifyPlugin: CAPPlugin {
     static let taskAlertPrefix = "task-alert-"
     static let freeSlotAlertPrefix = "free-slot-"
+    static let shopNotifPrefix = "shop-notif-"
     // 「通知を有効にする」ボタンなど、実際の通知内容が無いタイミングでも
     // その場で許可ダイアログを出すためのメソッド（notify()内のリクエストは通知発火時まで待たされる）
     @objc func requestPermission(_ call: CAPPluginCall) {
@@ -43,6 +44,11 @@ public class LocalNotifyPlugin: CAPPlugin {
     // 空き時間ができたことの通知をまとめてネイティブに予約する（syncTaskAlertsと同じ全解除→再登録方式）。
     @objc func syncFreeSlotAlerts(_ call: CAPPluginCall) {
         scheduleAlerts(prefix: LocalNotifyPlugin.freeSlotAlertPrefix, call: call)
+    }
+
+    // 買い物リストの時間指定通知をまとめてネイティブに予約する（syncTaskAlertsと同じ全解除→再登録方式）。
+    @objc func syncShopNotifs(_ call: CAPPluginCall) {
+        scheduleAlerts(prefix: LocalNotifyPlugin.shopNotifPrefix, call: call)
     }
 
     private func scheduleAlerts(prefix: String, call: CAPPluginCall) {
