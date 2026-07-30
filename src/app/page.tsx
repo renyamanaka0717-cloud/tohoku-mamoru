@@ -5,7 +5,7 @@ import { AppIcons } from './components/Icons';
 import { usePremium } from './components/Premium';
 import { setNativeAppIcon } from './components/AppIcon';
 import { updateWidgetData, getPendingWidgetActions } from './components/WidgetData';
-import { setShopGeofences, checkGeofencePermissions, ensureGeofencePermission, getPendingGeofenceAction } from './components/Geofence';
+import { setShopGeofences, checkGeofencePermissions, ensureGeofencePermission, getPendingGeofenceAction, getNativeCurrentLocation } from './components/Geofence';
 import { scheduleInactivityReminder, cancelInactivityReminder } from './components/Inactivity';
 import { notify, requestNotifyPermission, syncTaskAlerts, syncFreeSlotAlerts, syncShopNotifs, syncLaterStaleAlerts, syncWakeCheckins, isNative } from './components/LocalNotify';
 import { getAppVersion } from './components/AppVersion';
@@ -150,6 +150,24 @@ const adjustFireForSleep = (fireMs: number, wakeTime: string, sleepTime: string)
   wakeDate.setHours(Math.floor(wakeM/60),wakeM%60,0,0);
   if(wakeDate.getTime()<=fireMs) wakeDate.setDate(wakeDate.getDate()+1);
   return wakeDate.getTime();
+};
+
+// navigator.geolocation（WKWebView標準API）は実機で権限許可済みでもコールバックが
+// 一切呼ばれずに固まることがある実際の不具合を確認したため、ネイティブでは
+// CLLocationManager.requestLocation() を直接使うGeofencePluginのgetCurrentLocationを使う。
+// Web/開発環境ではnavigator.geolocationにフォールバックする
+const getCurrentCoords = (timeoutMs=10000): Promise<{lat:number;lng:number}|null> => {
+  if(isNative()) return getNativeCurrentLocation();
+  if(!navigator.geolocation) return Promise.resolve(null);
+  return new Promise(resolve=>{
+    let done=false;
+    const failsafe=setTimeout(()=>{ if(done) return; done=true; resolve(null); },timeoutMs+2000);
+    navigator.geolocation.getCurrentPosition(
+      pos=>{ if(done) return; done=true; clearTimeout(failsafe); resolve({lat:pos.coords.latitude,lng:pos.coords.longitude}); },
+      ()=>{ if(done) return; done=true; clearTimeout(failsafe); resolve(null); },
+      {enableHighAccuracy:false,timeout:timeoutMs}
+    );
+  });
 };
 const fromMin     = (m: number) => `${String(Math.floor(m/60)%24).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`;
 const dateToStr   = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -2650,45 +2668,26 @@ function ShopMapPicker({initialCenter,onConfirm,onCancel}:{
   };
 
   const useMyLocation=()=>{
-    if(!navigator.geolocation) return;
     setLocating(true);
-    // WKWebViewではgetCurrentPositionのtimeoutオプションが効かず、
-    // コールバックが一切呼ばれないまま固まることがあるため、JS側でも保険のタイムアウトを掛ける
-    let done=false;
-    // enableHighAccuracy:trueはGPSの正確な測位を待つため屋内などで失敗しやすい。
-    // 場所の登録用途では精度より速さ・成功率を優先し、Wi-Fi/セルベースの測位にする
-    const failsafe=setTimeout(()=>{ if(done) return; done=true; setLocating(false); alert('現在地を取得できませんでした'); },12000);
-    navigator.geolocation.getCurrentPosition(
-      pos=>{
-        if(done) return; done=true; clearTimeout(failsafe);
-        const loc={lat:pos.coords.latitude,lng:pos.coords.longitude};
-        setMyLocation(loc);
-        setCenter(loc);
-        setLocating(false);
-      },
-      ()=>{ if(done) return; done=true; clearTimeout(failsafe); setLocating(false); alert('現在地を取得できませんでした'); },
-      {enableHighAccuracy:false,timeout:10000}
-    );
+    getCurrentCoords(10000).then(loc=>{
+      setLocating(false);
+      if(!loc){ alert('現在地を取得できませんでした'); return; }
+      setMyLocation(loc);
+      setCenter(loc);
+    });
   };
 
   // 地図を開いた瞬間に画面をブロックせず表示し、裏で現在地取得を試みて
   // 取れたらピンを自動的に現在地へ寄せる（ユーザーがまだ地図を操作していない場合のみ）。
   // 失敗してもアラートは出さず、既定の中心のまま静かにフォールバックする。
   useEffect(()=>{
-    if(!navigator.geolocation) return;
-    let done=false;
-    const failsafe=setTimeout(()=>{ done=true; },8000);
-    navigator.geolocation.getCurrentPosition(
-      pos=>{
-        if(done) return; done=true; clearTimeout(failsafe);
-        const loc={lat:pos.coords.latitude,lng:pos.coords.longitude};
-        setMyLocation(loc);
-        if(!dragStart.current) setCenter(loc);
-      },
-      ()=>{ if(done) return; done=true; clearTimeout(failsafe); },
-      {enableHighAccuracy:false,timeout:7000}
-    );
-    return ()=>clearTimeout(failsafe);
+    let cancelled=false;
+    getCurrentCoords(7000).then(loc=>{
+      if(cancelled||!loc) return;
+      setMyLocation(loc);
+      if(!dragStart.current) setCenter(loc);
+    });
+    return ()=>{ cancelled=true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   },[]);
 
@@ -2802,22 +2801,13 @@ function ShopLocationPanel({locations,onChange,isPremium,onProPrompt}:{
   };
 
   const useCurrentLocation=()=>{
-    if(!navigator.geolocation) return;
     setLocating(true);
-    // WKWebViewではgetCurrentPositionのtimeoutオプションが効かず、
-    // コールバックが一切呼ばれないまま固まることがあるため、JS側でも保険のタイムアウトを掛ける
-    let done=false;
-    const failsafe=setTimeout(()=>{ if(done) return; done=true; setLocating(false); alert('現在地を取得できませんでした'); },12000);
-    navigator.geolocation.getCurrentPosition(
-      pos=>{
-        if(done) return; done=true; clearTimeout(failsafe);
-        setMapCenter({lat:pos.coords.latitude,lng:pos.coords.longitude});
-        setMapMode(true);
-        setLocating(false);
-      },
-      ()=>{ if(done) return; done=true; clearTimeout(failsafe); setLocating(false); alert('現在地を取得できませんでした'); },
-      {enableHighAccuracy:false,timeout:10000}
-    );
+    getCurrentCoords(10000).then(loc=>{
+      setLocating(false);
+      if(!loc){ alert('現在地を取得できませんでした'); return; }
+      setMapCenter(loc);
+      setMapMode(true);
+    });
   };
 
   // 地図はすぐに表示し、現在地への自動センタリングは ShopMapPicker 内部で

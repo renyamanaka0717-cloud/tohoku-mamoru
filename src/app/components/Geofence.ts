@@ -9,6 +9,7 @@ interface GeofencePluginType {
   requestPermissions(): Promise<GeofencePermissionStatus>;
   checkPermissions(): Promise<GeofencePermissionStatus>;
   getPendingGeofenceAction(): Promise<{ shouldOpenShop: boolean }>;
+  getCurrentLocation(): Promise<{ lat: number; lng: number }>;
 }
 
 const GeofencePlugin = registerPlugin<GeofencePluginType>('GeofencePlugin');
@@ -54,5 +55,18 @@ export async function getPendingGeofenceAction(): Promise<boolean> {
     return !!res.shouldOpenShop;
   } catch {
     return false;
+  }
+}
+
+// navigator.geolocation（WKWebView標準API）は権限が許可済みでもコールバックが
+// 一切呼ばれずに固まることがある実際の不具合を確認したため、ネイティブでは
+// CLLocationManager.requestLocation() を直接使うこちらを使う。Web/開発環境ではnullを返す
+// （呼び出し元がnavigator.geolocationにフォールバックする）
+export async function getNativeCurrentLocation(): Promise<{ lat: number; lng: number } | null> {
+  if (!isNative()) return null;
+  try {
+    return await GeofencePlugin.getCurrentLocation();
+  } catch {
+    return null;
   }
 }

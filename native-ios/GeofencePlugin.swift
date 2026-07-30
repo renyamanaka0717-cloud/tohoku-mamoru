@@ -15,10 +15,27 @@ public class GeofencePlugin: CAPPlugin, CLLocationManagerDelegate, UNUserNotific
     static let notifyCooldown: TimeInterval = 2 * 60 * 60
 
     private let locationManager = CLLocationManager()
+    // getCurrentLocation() 呼び出し中の CAPPluginCall（requestLocation() の結果は
+    // delegate の didUpdateLocations/didFailWithError で非同期に返ってくるため保持しておく）
+    private var pendingLocationCalls: [CAPPluginCall] = []
 
     public override func load() {
         locationManager.delegate = self
         UNUserNotificationCenter.current().delegate = self
+    }
+
+    // navigator.geolocation（WKWebView標準API）はWKWebView環境下では権限が許可済みでも
+    // コールバックが一切呼ばれずに固まることがある実際の不具合を確認したため、
+    // CLLocationManager.requestLocation() を直接使うネイティブ実装に切り替えた
+    @objc func getCurrentLocation(_ call: CAPPluginCall) {
+        let status = locationManager.authorizationStatus
+        guard status == .authorizedAlways || status == .authorizedWhenInUse else {
+            call.reject("location permission not granted")
+            return
+        }
+        pendingLocationCalls.append(call)
+        locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters
+        locationManager.requestLocation()
     }
 
     @objc public override func requestPermissions(_ call: CAPPluginCall) {
@@ -86,6 +103,24 @@ public class GeofencePlugin: CAPPlugin, CLLocationManagerDelegate, UNUserNotific
     }
 
     // MARK: - CLLocationManagerDelegate
+
+    public func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        guard let loc = locations.last, !pendingLocationCalls.isEmpty else { return }
+        let calls = pendingLocationCalls
+        pendingLocationCalls = []
+        for call in calls {
+            call.resolve(["lat": loc.coordinate.latitude, "lng": loc.coordinate.longitude])
+        }
+    }
+
+    public func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        guard !pendingLocationCalls.isEmpty else { return }
+        let calls = pendingLocationCalls
+        pendingLocationCalls = []
+        for call in calls {
+            call.reject("failed to get location: \(error.localizedDescription)")
+        }
+    }
 
     public func locationManager(_ manager: CLLocationManager, didEnterRegion region: CLRegion) {
         guard region.identifier.hasPrefix(GeofencePlugin.regionPrefix) else { return }

@@ -483,7 +483,9 @@ const SHOP_LOC_KEY = 'tl-shop-loc-v1';
 1. `BottomTabs` の買い物タブ内、ベルアイコンで開く `showShopNotif` パネル
 2. 設定 → 通知 → 買い物リスト（`SettingsScreen` の `sub==='notifications-shop'`）
 
-**登録フロー:** 「追加」→ 場所検索（[Nominatim](https://nominatim.openstreetmap.org/search)をAPIキー無しで直接fetch）／「地図で指定」／「現在地から登録」（`navigator.geolocation.getCurrentPosition`、WKWebViewの標準Web APIで完結。継続監視ではなく一度きりの位置取得なのでCapacitorプラグイン不要）→ 半径（100/300/500m）を選択→登録。登録時に `ensureGeofencePermission()` で位置情報「常に」＋通知の許可をリクエストし、拒否されている場合は許可されるまで登録しない。「地図で指定」「現在地から登録」はどちらも先に現在地の取得を試み、取得できればそこを中心に地図を開く（失敗時のみ東京駅付近の既定値にフォールバック）。
+**登録フロー:** 「追加」→ 場所検索（[Nominatim](https://nominatim.openstreetmap.org/search)をAPIキー無しで直接fetch）／「地図で指定」／「現在地から登録」（現在地取得は後述の `getCurrentCoords()` 経由）→ 半径（100/300/500m）を選択→登録。登録時に `ensureGeofencePermission()` で位置情報「常に」＋通知の許可をリクエストし、拒否されている場合は許可されるまで登録しない。「地図で指定」は地図をブロックせず即座に表示し、裏で現在地取得を試みてピンを自動的に現在地へ寄せる（失敗時は東京駅付近の既定値のまま静かにフォールバック）。「現在地から登録」は取得完了を待ってから地図を現在地中心で開く。
+
+**現在地取得は `navigator.geolocation` を使わない（重要・過去の不具合）:** 当初 `navigator.geolocation.getCurrentPosition`（WKWebView標準Web API）で実装していたが、**実機で位置情報の許可（「共有時」）が下りている状態でも、成功・失敗どちらのコールバックも一切呼ばれずに永久に固まる**という不具合が実際に発生した（ブラウザ版では同じコードで問題なく動作するため、Capacitorが独自スキーム`capacitor://localhost`でコンテンツを配信するWKWebView環境特有の問題と判明。`@capacitor/geolocation`という専用npmプラグインが存在するのもこの信頼性問題が理由）。この修正以降、現在地取得は `src/app/page.tsx` の `getCurrentCoords(timeoutMs)` を経由すること。ネイティブでは `GeofencePlugin.getCurrentLocation()`（`CLLocationManager.requestLocation()` を直接呼ぶ）を使い、Web/開発環境のみ `navigator.geolocation` にフォールバックする。`useMyLocation`（`ShopMapPicker`のクロスヘアボタン）・地図オープン時の自動現在地寄せ・`useCurrentLocation`（「現在地から登録」）はすべてこの関数経由。
 
 **検索API: Nominatim（住所検索APIから切り替え済み）** 国土地理院の住所検索APIは正式な住所（町名・字名）専用で、「イオンモール福岡」のような施設名・ランドマーク名を検索すると無関係な住所がヒットすることがあった（例: クエリ中の「イ」だけが千葉県のある地区の字名と偶然一致してしまう）。Nominatim（OpenStreetMapのジオコーダー）はPOI・施設データも持っているため施設名検索の精度が高い。`https://nominatim.openstreetmap.org/search?format=json&q=...&countrycodes=jp&limit=8&accept-language=ja` を直接fetchし、`display_name`/`lat`/`lon`（lat/lonは文字列なのでparseFloat）を使う。CORSキー不要・ブラウザの`Referer`ヘッダーで利用規約上の送信元識別要件を満たす。逆ジオコーディング（座標→住所名）は引き続き国土地理院の[逆ジオコーディングAPI](https://mreversegeocoder.gsi.go.jp/reverse-geocoder/LonLatToAddress)を使用（こちらは正式住所を返す用途なので問題ない）。
 
@@ -492,7 +494,7 @@ const SHOP_LOC_KEY = 'tl-shop-loc-v1';
 **地図ピッカー（`ShopMapPicker`）:** 追加npmライブラリ無しでCARTO Voyagerのラスタタイル（`https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png`、APIキー不要・Googleマップに近い見やすい配色）を直接fetchして3x3グリッドで描画する自前の軽量地図。標準のOpenStreetMapタイル（`tile.openstreetmap.org`）は見づらいとのフィードバックがあり切り替え済み。ピンは画面中央に固定表示、ドラッグで地図側を動かして位置を決める（Google/Appleマップと同じUX）。2本指ピンチで拡大縮小もできる（`pinchScale`でタイル層のみを視覚的にscale()し、指を離した時点で最も近い整数ズームに丸めてタイルを再取得。タッチイベントは`e.stopPropagation()`でボトムシートのタブ切り替えスワイプに伝播しないようにしている）。座標⇔ピクセル変換は標準的なWeb Mercatorタイル計算（`lonLatToPx`/`pxToLonLat`、CARTO Voyagerも256pxのOSM互換タイルなので変換ロジックは共通）。確定時は国土地理院の逆ジオコーディングAPIで地名を試みに取得し、失敗時は「地図で指定した場所」にフォールバックする。CARTOの利用規約上、地図上に「© CARTO © OpenStreetMap」表記を常時表示している。
 
 - **地図内検索:** 地図の上部に検索バーがあり、Nominatimでの検索結果をタップすると地図がその位置に再センタリングされる（ドラッグ不要で直接ジャンプできる）
-- **現在地表示:** 地図左下の照準アイコン（`AppIcons.crosshair`）をタップすると `navigator.geolocation` で現在地を取得し、地図を現在地に再センタリング＋青い現在地ドット（`myLocation` state）を表示する。中央固定ピンとは別レイヤーで、ドラッグしても現在地ドットの実座標は変わらず、画面内の相対位置だけが再計算される
+- **現在地表示:** 地図左下の照準アイコン（`AppIcons.crosshair`）をタップすると `getCurrentCoords()` で現在地を取得し、地図を現在地に再センタリング＋青い現在地ドット（`myLocation` state）を表示する。中央固定ピンとは別レイヤーで、ドラッグしても現在地ドットの実座標は変わらず、画面内の相対位置だけが再計算される
 - 確認ステップ（半径選択画面）の場所名は編集可能な入力欄になっている（検索結果や逆ジオコーディングの結果を初期値にしつつ、登録前に自由に書き換えられる）
 
 **登録済み場所の名称変更:** `ShopLocationPanel` の一覧で場所名をタップするとインライン編集になる（`editingId`/`editingName` state、Enterまたはフォーカス外れで確定）。`CustomTab` のインライン名前編集と同じUXパターン。
@@ -527,6 +529,8 @@ const SHOP_LOC_KEY = 'tl-shop-loc-v1';
 2. `native-ios/BridgeViewController.swift` の `capacitorDidLoad()` に `bridge?.registerPluginInstance(GeofencePlugin())` があることを確認（無ければ追記。既存の `ios/App/App/BridgeViewController.swift` は `git pull` で自動反映されないので **Xcode上で直接編集**）
 3. App Group（`group.jp.brainbox.app`）はWidget機能ですでに追加済みならそのまま共用でよい（未追加なら「Signing & Capabilities」→「+ Capability」→「App Groups」→ `group.jp.brainbox.app`）
 
+> `GeofencePlugin.swift`/`.m` を編集した場合、既存の `ios/App/App/` 内のファイルは `git pull` しても自動更新されない（`ios/` はgitignore対象で、Xcodeに追加した時点でプロジェクト内に物理コピーが作られているため）。`getCurrentLocation` 追加時のように内容を変更した際は、`native-ios/` の最新内容を都度Xcode上のファイルにコピーし直す（既存ファイルを削除して `native-ios/` から追加し直すのが確実）。
+
 **② Info.plist にキーを追加**
 
 `native-ios/GeofenceInfo.plist.snippet.xml` の内容を `ios/App/App/Info.plist` の `<dict>` 直下に追加する（位置情報の許可説明文＋ `UIBackgroundModes: location`）。`UIBackgroundModes` キーがすでに存在する場合は配列に `location` を追記するだけでよい。
@@ -546,7 +550,7 @@ const SHOP_LOC_KEY = 'tl-shop-loc-v1';
 - ジオフェンス発火時の通知処理をJS側（`new Notification(...)`）で行おうとしない（バックグラウンド/未起動では動かない。必ず `GeofencePlugin.swift` 内の `UNUserNotificationCenter` 直接呼び出しで完結させる）
 - 位置情報を通知判定以外の用途で保存・送信しない（サーバー送信や履歴保存はしない。`UserDefaults` に保存するのはクールダウン用タイムスタンプと場所名の辞書のみ）
 - `AppDelegate.swift` を編集して `UNUserNotificationCenterDelegate` を設定しようとしない（`GeofencePlugin.load()` 内で完結させる設計にしてあるため不要）
-- 「現在地から登録」のために `@revenuecat/purchases-capacitor` のような追加npmプラグイン（`@capacitor/geolocation`等）を入れない（`navigator.geolocation` で足りる。一度きりの位置取得だけであれば標準Web APIで十分）
+- 現在地の一度きりの取得に `navigator.geolocation` を直接使わない（実機でコールバックが一切呼ばれず固まる不具合の実績あり。`GeofencePlugin.getCurrentLocation()` を使う `getCurrentCoords()` 経由にすること）
 
 ---
 
