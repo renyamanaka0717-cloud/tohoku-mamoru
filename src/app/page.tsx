@@ -122,6 +122,13 @@ const DUR_OPTS     = [
 ];
 const NOTIF_OPTS   = [{v:0,l:'開始時'},{v:5,l:'5分前'},{v:10,l:'10分前'},{v:15,l:'15分前'},{v:30,l:'30分前'},{v:60,l:'1時間前'},{v:1440,l:'前日'}];
 
+const taskAlertBody = (startTime: string, offset: number): string => {
+  if(offset===0) return `そろそろ始めましょう（${startTime}〜）`;
+  if(offset===1440) return `明日${startTime}から予定があります`;
+  if(offset===60) return `あと1時間で始まります（${startTime}〜）`;
+  return `あと${offset}分で始まります（${startTime}〜）`;
+};
+
 // ── Utils ─────────────────────────────────────────────────────────────────────
 
 const toMin       = (t: string) => { const [h,m]=t.split(':').map(Number); return h*60+m; };
@@ -5125,8 +5132,7 @@ export default function App() {
     if(toFire.length===0) return;
     localStorage.setItem(TASK_ALERT_FIRED_KEY,JSON.stringify([...firedKeys,...newFired].slice(-500)));
     toFire.forEach(({task,offset})=>{
-      const label=NOTIF_OPTS.find(o=>o.v===offset)?.l??'';
-      notify(task.name,offset===0?`${task.startTime}に開始します`:`${label} — ${task.startTime}開始`);
+      notify(task.name,taskAlertBody(task.startTime!,offset));
     });
   },[loaded,now,tasks,settings.notificationsEnabled]);
 
@@ -5144,11 +5150,10 @@ export default function App() {
       t.notifications.forEach(m=>{
         const fireMs=startMs-m*60000;
         if(fireMs<=nowMs) return;
-        const label=NOTIF_OPTS.find(o=>o.v===m)?.l??'';
         alerts.push({
           id:`task-alert-${t.id}-${m}`,
           title:t.name,
-          body:m===0?`${t.startTime}に開始します`:`${label} — ${t.startTime}開始`,
+          body:taskAlertBody(t.startTime!,m),
           timestamp:Math.floor(fireMs/1000),
         });
       });
