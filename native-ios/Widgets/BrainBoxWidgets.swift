@@ -2,6 +2,7 @@
 // （メインの App ターゲットではなく、Widget Extension ターゲットの Target Membership にすること）
 import WidgetKit
 import SwiftUI
+import AppIntents
 
 private let appGroupId = "group.jp.brainbox.app"
 private let defaultThemeColor = Color(red: 217/255, green: 163/255, blue: 178/255)
