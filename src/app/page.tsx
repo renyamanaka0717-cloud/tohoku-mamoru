@@ -3360,6 +3360,11 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   const [lpNewColor,setLpNewColor] = useState('#94CFC8');
   const [lpEditId,setLpEditId]     = useState<string|null>(null);
   const [lpDeleteId,setLpDeleteId] = useState<string|null>(null);
+  const [lpEditName,setLpEditName] = useState('');
+  const [lpEditWake,setLpEditWake] = useState('');
+  const [lpEditSleep,setLpEditSleep] = useState('');
+  const [lpEditColor,setLpEditColor] = useState('');
+  const [lpEditConfirmId,setLpEditConfirmId] = useState<string|null>(null);
   const [colorPicking,setColorPicking] = useState<'wake'|'sleep'|null>(null);
   const { purchase, restore, isPurchasing } = usePremium();
   const [proPrompt,setProPrompt] = useState<string|null>(null);
@@ -3444,7 +3449,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
       <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
         {subHeader('タスク一括入力')}{proSheet}
         <div className="flex-1 overflow-y-auto px-4 pb-10">
-          <p className="text-xs text-gray-400 px-1 mt-4 mb-4">月1回まで無料・2回目からPro（現在：無料開放中）</p>
+          <p className="text-xs text-gray-400 px-1 mt-4 mb-4">月1回まで無料・2回目からPro</p>
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2">タスク情報</p>
           <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
             <div className="flex items-center gap-3 px-4 py-3.5 border-b border-gray-100">
@@ -3704,7 +3709,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
       {subHeader('ファイルタブ')}{proSheet}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
-        <p className="text-xs text-gray-400 px-1 mt-4 mb-4">1個まで無料・2個目からPro（現在：無料開放中）</p>
+        <p className="text-xs text-gray-400 px-1 mt-4 mb-4">1個まで無料・2個目からPro</p>
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2">新しいタブ</p>
         <div className="bg-white rounded-2xl shadow-sm px-4 py-3">
           <div className="flex gap-2 items-center">
@@ -3797,7 +3802,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
       {subHeader('タグ')}{proSheet}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
-        <p className="text-xs text-gray-400 px-1 mt-4">2個まで無料・3個目からPro（現在：無料開放中）</p>
+        <p className="text-xs text-gray-400 px-1 mt-4">2個まで無料・3個目からPro</p>
 
         {/* New tag */}
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-4">新しいタグ</p>
@@ -4206,7 +4211,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
       <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
         {subHeader('生活パターン')}{proSheet}
         <div className="flex-1 overflow-y-auto px-4 pb-10">
-          <p className="text-xs text-gray-400 px-1 mt-4 mb-2">1個まで無料・2個目からPro（現在：無料開放中）</p>
+          <p className="text-xs text-gray-400 px-1 mt-4 mb-2">1個まで無料・2個目からPro</p>
           <p className="text-xs text-gray-400 px-1 mb-1 mt-6">シフトや予定に合わせて、日ごとの起床・就寝時間を変更できます</p>
           <p className="text-xs text-gray-400 px-1 mb-2">パターンを追加・選択して日付をタップ</p>
           <div className="bg-white rounded-2xl overflow-hidden shadow-sm mb-1">
@@ -4217,31 +4222,33 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
               <div key={pat.id} className={`px-4 py-3 flex items-center gap-3${i<lifePatterns.length-1||lpAddMode?' border-b border-gray-100':''}`}>
                 {lpEditId===pat.id ? (
                   <div className="flex-1 flex flex-col gap-2">
-                    <input autoFocus value={pat.name}
-                      onChange={e=>onLifePatterns(lifePatterns.map(p=>p.id===pat.id?{...p,name:e.target.value}:p))}
+                    <input autoFocus value={lpEditName}
+                      onChange={e=>setLpEditName(e.target.value)}
                       className="text-[15px] border-b border-gray-200 outline-none bg-transparent text-gray-900 py-0.5"/>
                     <div className="flex gap-3 items-center">
-                      <input type="time" value={pat.wakeTime}
-                        onChange={e=>onLifePatterns(lifePatterns.map(p=>p.id===pat.id?{...p,wakeTime:e.target.value}:p))}
+                      <input type="time" value={lpEditWake}
+                        onChange={e=>setLpEditWake(e.target.value)}
                         className="border border-gray-200 rounded-xl px-2 py-1 text-xs bg-gray-50"/>
                       <span className="text-xs text-gray-400">〜</span>
-                      <input type="time" value={pat.sleepTime}
-                        onChange={e=>onLifePatterns(lifePatterns.map(p=>p.id===pat.id?{...p,sleepTime:e.target.value}:p))}
+                      <input type="time" value={lpEditSleep}
+                        onChange={e=>setLpEditSleep(e.target.value)}
                         className="border border-gray-200 rounded-xl px-2 py-1 text-xs bg-gray-50"/>
                     </div>
                     <div className="flex gap-1.5 flex-wrap">
                       {PATTERN_COLORS.map(c=>(
-                        <button key={c} onClick={()=>onLifePatterns(lifePatterns.map(p=>p.id===pat.id?{...p,color:c}:p))}
+                        <button key={c} onClick={()=>setLpEditColor(c)}
                           style={{background:c}}
-                          className={`w-6 h-6 rounded-full border-2 ${pat.color===c?'border-gray-700':'border-transparent'}`}/>
+                          className={`w-6 h-6 rounded-full border-2 ${lpEditColor===c?'border-gray-700':'border-transparent'}`}/>
                       ))}
                     </div>
                     <div className="flex gap-2">
-                      <button onClick={()=>setLpEditId(null)}
+                      <button onClick={()=>setLpEditConfirmId(pat.id)}
                         className="flex-1 py-2 rounded-xl text-xs font-semibold bg-[var(--c-primary)] text-white">確定</button>
-                      <button onClick={()=>setLpDeleteId(pat.id)}
-                        className="flex-1 py-2 rounded-xl text-xs font-semibold bg-gray-100 text-[#D97A7A]">削除</button>
+                      <button onClick={()=>setLpEditId(null)}
+                        className="flex-1 py-2 rounded-xl text-xs font-semibold bg-gray-100 text-gray-500">キャンセル</button>
                     </div>
+                    <button onClick={()=>setLpDeleteId(pat.id)}
+                      className="text-xs font-semibold text-[#D97A7A] text-center py-1">このパターンを削除</button>
                   </div>
                 ) : (
                   <>
@@ -4253,7 +4260,8 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                         <p className="text-xs text-gray-400">{pat.wakeTime} 起床 / {pat.sleepTime} 就寝</p>
                       </div>
                     </button>
-                    <button onClick={()=>setLpEditId(pat.id)} className="text-xs text-gray-400 font-medium px-2 py-1 shrink-0">編集</button>
+                    <button onClick={()=>{setLpEditId(pat.id);setLpEditName(pat.name);setLpEditWake(pat.wakeTime);setLpEditSleep(pat.sleepTime);setLpEditColor(pat.color);}}
+                      className="text-xs text-gray-400 font-medium px-2 py-1 shrink-0">編集</button>
                   </>
                 )}
               </div>
@@ -4354,6 +4362,25 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                   setLpDeleteId(null);
                 }} className="w-full py-3.5 rounded-2xl bg-[#D97A7A] text-white text-[15px] font-semibold">削除する</button>
                 <button onClick={()=>setLpDeleteId(null)} className="w-full py-3.5 rounded-2xl bg-gray-50 text-gray-500 text-[15px] font-semibold">キャンセル</button>
+              </div>
+            </div>
+          </div>
+        );})()}
+        {lpEditConfirmId&&(()=>{const dp=lifePatterns.find(p=>p.id===lpEditConfirmId);const affectedDates=Object.keys(patternOverrides).filter(d=>patternOverrides[d]===lpEditConfirmId);return(
+          <div className="fixed inset-0 z-[100] flex items-end justify-center" onClick={()=>setLpEditConfirmId(null)}>
+            <div className="absolute inset-0 bg-black/40"/>
+            <div className="relative bg-white rounded-t-2xl w-full max-w-md px-6 pt-6 pb-10" onClick={e=>e.stopPropagation()}>
+              <p className="text-center text-[17px] font-semibold text-gray-900 mb-1">「{dp?.name}」の内容を変更しますか？</p>
+              <p className="text-center text-[13px] text-gray-400 mb-6">
+                {affectedDates.length>0?`このパターンを設定した${affectedDates.length}日分にも反映されます`:'この内容で保存します'}
+              </p>
+              <div className="flex flex-col gap-3">
+                <button onClick={()=>{
+                  onLifePatterns(lifePatterns.map(p=>p.id===lpEditConfirmId?{...p,name:lpEditName.trim()||p.name,wakeTime:lpEditWake,sleepTime:lpEditSleep,color:lpEditColor}:p));
+                  setLpEditConfirmId(null);
+                  setLpEditId(null);
+                }} className="w-full py-3.5 rounded-2xl bg-[var(--c-primary)] text-white text-[15px] font-semibold">変更する</button>
+                <button onClick={()=>setLpEditConfirmId(null)} className="w-full py-3.5 rounded-2xl bg-gray-50 text-gray-500 text-[15px] font-semibold">キャンセル</button>
               </div>
             </div>
           </div>
@@ -4689,7 +4716,8 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           <SettingsRow icon={<AppIcons.question size={18}/>} iconBg="bg-gray-100" title="よくある質問" onClick={()=>setSub('support')}/>
           <SettingsRow icon={<AppIcons.mail size={18}/>} iconBg="bg-gray-100" title="お問い合わせ" onClick={()=>setSub('contact')}/>
           <div className="w-full flex items-center gap-3 px-4 py-3.5">
-            <div className="w-[30px] h-[30px] rounded-[8px] flex items-center justify-center shrink-0 text-gray-700 bg-gray-100">
+            <div className="w-[30px] h-[30px] rounded-[8px] flex items-center justify-center shrink-0"
+              style={{background:'color-mix(in srgb, var(--c-primary) 15%, white)', color:'var(--c-primary)'}}>
               <AppIcons.sparkle size={18}/>
             </div>
             <p className="flex-1 text-[15px] font-medium text-gray-900">アプリバージョン</p>
