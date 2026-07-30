@@ -354,6 +354,25 @@ notify('おはようございます', body);
 - 通知本文はスケジュール計算時点の未購入件数から組み立てるため、`shopItems`/`shopNotifSettings`変更のたびに再計算され、直近7日分を毎回スケジュールし直すことで曜日が一巡してもズレない
 - 旧来の `now` ポーリング＋即時 `notify()` の `useEffect`（`tl-shop-notif-fired-`キー使用）はWeb/開発環境専用フォールバックとして残っており、ネイティブでは `isNative()` で早期returnする
 
+### 「あとでやる」放置タスク通知のネイティブ事前予約（`syncLaterStaleAlerts`）
+
+放置タスク通知（`laterReminderHours`）も同じ設計で `syncLaterStaleAlerts()` によりネイティブに事前予約している。
+
+- `src/app/components/LocalNotify.ts` の `syncLaterStaleAlerts(alerts)` — ネイティブでのみ動作
+- `src/app/page.tsx` の App コンポーネントに、`tasks`/`laterReminderHours` が変わるたびに、`isLater`かつ未完了の各タスクについて `laterSince + 設定時間` の絶対時刻で予約する `useEffect` がある。識別子は `later-stale-${taskId}`
+- 発火予定時刻が就寝時間帯に重なる場合は `adjustFireForSleep()` で起床時刻まで後ろ倒しする
+- タスク単位で個別に通知する設計に変更した（旧JS版は複数の放置タスクを1通知にまとめていたが、ネイティブ事前予約では内容を後から動的に合成できないため）
+- 旧来の `now` ポーリング＋即時 `notify()` の `useEffect`（`LATER_NOTIFIED_KEY`使用）はWeb/開発環境専用フォールバックとして残っており、ネイティブでは `isNative()` で早期returnする
+
+### 起床時チェックイン通知のネイティブ事前予約（`syncWakeCheckins`）
+
+起床時刻に「今日の予定をチェックしましょう」を出す通知も同じ設計で `syncWakeCheckins()` によりネイティブに事前予約している。
+
+- `src/app/components/LocalNotify.ts` の `syncWakeCheckins(alerts)` — ネイティブでのみ動作
+- `src/app/page.tsx` の App コンポーネントに、**直近7日分**の起床時刻をまとめて予約する `useEffect` がある。識別子は `wake-checkin-${日数オフセット}`
+- 当日分（オフセット0）のみ「昨日の未完了タスク件数」を本文に反映する。翌日以降は未来の状態が分からないため一般的な文言（「今日の予定をチェックしましょう」）にする
+- 旧来の `now` ポーリング＋即時 `notify()` の `useEffect`（`WAKE_CHECKIN_NOTIF_KEY`使用）はWeb/開発環境専用フォールバックとして残っており、ネイティブでは `isNative()` で早期returnする
+
 ### Xcodeでの手動セットアップ（`ios/`はgitignore対象なので毎回必要）
 
 1. `native-ios/LocalNotifyPlugin.swift` / `.m` を `ios/App/App/` に追加（Target Membership: App）

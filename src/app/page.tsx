@@ -7,7 +7,7 @@ import { setNativeAppIcon } from './components/AppIcon';
 import { updateWidgetData, getPendingWidgetActions } from './components/WidgetData';
 import { setShopGeofences, checkGeofencePermissions, ensureGeofencePermission, getPendingGeofenceAction } from './components/Geofence';
 import { scheduleInactivityReminder, cancelInactivityReminder } from './components/Inactivity';
-import { notify, requestNotifyPermission, syncTaskAlerts, syncFreeSlotAlerts, syncShopNotifs, isNative } from './components/LocalNotify';
+import { notify, requestNotifyPermission, syncTaskAlerts, syncFreeSlotAlerts, syncShopNotifs, syncLaterStaleAlerts, syncWakeCheckins, isNative } from './components/LocalNotify';
 import { getAppVersion } from './components/AppVersion';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -138,6 +138,18 @@ const inSleepWindow = (nowM: number, wakeM: number, sleepM: number): boolean => 
   if(sleepM===wakeM) return false;
   if(sleepM>wakeM) return nowM>=sleepM||nowM<wakeM;
   return nowM>=sleepM&&nowM<wakeM;
+};
+
+// 発火予定時刻(ms)が就寝時間帯に重なる場合、起床時刻まで後ろ倒しする
+const adjustFireForSleep = (fireMs: number, wakeTime: string, sleepTime: string): number => {
+  const d=new Date(fireMs);
+  const m=d.getHours()*60+d.getMinutes();
+  const wakeM=toMin(wakeTime), sleepM=toMin(sleepTime);
+  if(!inSleepWindow(m,wakeM,sleepM)) return fireMs;
+  const wakeDate=new Date(d);
+  wakeDate.setHours(Math.floor(wakeM/60),wakeM%60,0,0);
+  if(wakeDate.getTime()<=fireMs) wakeDate.setDate(wakeDate.getDate()+1);
+  return wakeDate.getTime();
 };
 const fromMin     = (m: number) => `${String(Math.floor(m/60)%24).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`;
 const dateToStr   = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -5084,17 +5096,9 @@ export default function App() {
       if(document.visibilityState==='hidden'){
         if(settings.notificationsEnabled??true){
           // 発火予定時刻が就寝時間帯に重なる場合は、起床時刻まで後ろ倒しにする
-          const targetDate=new Date(Date.now()+hours*3600*1000);
-          const targetM=targetDate.getHours()*60+targetDate.getMinutes();
-          const wakeM=toMin(settings.wakeTime), sleepM=toMin(settings.sleepTime);
-          let adjustedHours=hours;
-          if(inSleepWindow(targetM,wakeM,sleepM)){
-            const wakeDate=new Date(targetDate);
-            wakeDate.setHours(Math.floor(wakeM/60),wakeM%60,0,0);
-            if(wakeDate.getTime()<=targetDate.getTime()) wakeDate.setDate(wakeDate.getDate()+1);
-            adjustedHours=(wakeDate.getTime()-Date.now())/3600000;
-          }
-          scheduleInactivityReminder(adjustedHours);
+          const rawFireMs=Date.now()+hours*3600*1000;
+          const fireMs=adjustFireForSleep(rawFireMs,settings.wakeTime,settings.sleepTime);
+          scheduleInactivityReminder((fireMs-Date.now())/3600000);
         }
       } else {
         cancelInactivityReminder();
@@ -5243,9 +5247,10 @@ export default function App() {
     syncShopNotifs(alerts);
   },[loaded,now,shopNotifSettings,shopItems]);
 
-  // 起床時間にアプリを開くよう促す通知（前日の未完了タスクがあれば1つにまとめる）
+  // 起床時間にアプリを開くよう促す通知（前日の未完了タスクがあれば1つにまとめる）— ネイティブでは
+  // syncWakeCheckins の事前予約が発火を担うため、ここは常時フォアグラウンドが前提のWeb/開発環境向けフォールバックとしてのみ動作する
   useEffect(()=>{
-    if(!loaded||!(settings.notificationsEnabled??true)) return;
+    if(!loaded||!(settings.notificationsEnabled??true)||isNative()) return;
     const today=todayStr();
     if(toMin(now)!==toMin(settings.wakeTime)) return;
     if(localStorage.getItem(WAKE_CHECKIN_NOTIF_KEY)===today) return;
@@ -5253,6 +5258,31 @@ export default function App() {
     const past=tasks.filter(t=>!t.completed&&!t.isLater&&!!t.startTime&&!t.recurrence&&t.date===shiftDate(today,-1));
     const body=past.length>0?`今日の予定をチェックしましょう。昨日のタスクが${past.length}件残っています`:'今日の予定をチェックしましょう';
     notify('おはようございます',body);
+  },[loaded,now,tasks,settings.wakeTime,settings.notificationsEnabled]);
+
+  // 起床時チェックイン通知をネイティブに事前スケジュール（バックグラウンド/未起動でも発火させるため）。
+  // 直近7日分の起床時刻をまとめて予約する。当日分のみ「昨日の未完了タスク件数」を反映し、
+  // それ以降の日は未来の状態が分からないため一般的な文言にする
+  useEffect(()=>{
+    if(!loaded||!isNative()) return;
+    if(!(settings.notificationsEnabled??true)){ syncWakeCheckins([]); return; }
+    const wakeM=toMin(settings.wakeTime);
+    const nowMs=Date.now();
+    const alerts:{id:string;title:string;body:string;timestamp:number}[]=[];
+    for(let d=0;d<7;d++){
+      const dt=new Date();
+      dt.setDate(dt.getDate()+d);
+      dt.setHours(Math.floor(wakeM/60),wakeM%60,0,0);
+      if(dt.getTime()<=nowMs) continue;
+      let body='今日の予定をチェックしましょう';
+      if(d===0){
+        const yesterday=shiftDate(todayStr(),-1);
+        const past=tasks.filter(t=>!t.completed&&!t.isLater&&!!t.startTime&&!t.recurrence&&t.date===yesterday);
+        if(past.length>0) body=`今日の予定をチェックしましょう。昨日のタスクが${past.length}件残っています`;
+      }
+      alerts.push({id:`wake-checkin-${d}`,title:'おはようございます',body,timestamp:Math.floor(dt.getTime()/1000)});
+    }
+    syncWakeCheckins(alerts);
   },[loaded,now,tasks,settings.wakeTime,settings.notificationsEnabled]);
 
   // タスクごとのアラート（開始時・何分前・前日）— ネイティブでは syncTaskAlerts の事前予約が発火を担うため、
@@ -5309,9 +5339,10 @@ export default function App() {
     syncTaskAlerts(alerts.slice(0,60));
   },[loaded,now,tasks,settings.notificationsEnabled]);
 
-  // 「あとでやる」に長時間放置されているタスクの通知
+  // 「あとでやる」に長時間放置されているタスクの通知 — ネイティブでは syncLaterStaleAlerts の
+  // 事前予約が発火を担うため、ここは常時フォアグラウンドが前提のWeb/開発環境向けフォールバックとしてのみ動作する
   useEffect(()=>{
-    if(!loaded||!(settings.notificationsEnabled??true)) return;
+    if(!loaded||!(settings.notificationsEnabled??true)||isNative()) return;
     const hours=settings.laterReminderHours??72;
     if(hours<=0) return;
     if(inSleepWindow(toMin(now),toMin(settings.wakeTime),toMin(settings.sleepTime))) return;
@@ -5327,6 +5358,24 @@ export default function App() {
     const names=stale.slice(0,3).map(t=>t.name).join('・')+(stale.length>3?'…':'');
     notify('あとでやるが溜まっています',`${stale.length}件が長時間放置されています: ${names}`);
   },[loaded,now,tasks,settings.notificationsEnabled,settings.laterReminderHours,settings.wakeTime,settings.sleepTime]);
+
+  // 「あとでやる」放置タスクの通知をネイティブに事前スケジュール（バックグラウンド/未起動でも発火させるため）。
+  // タスクごとにlaterSince+設定時間の絶対時刻で予約し、就寝時間帯に重なる場合は起床時刻まで後ろ倒しする
+  useEffect(()=>{
+    if(!loaded||!isNative()) return;
+    const hours=settings.laterReminderHours??72;
+    if(!(settings.notificationsEnabled??true)||hours<=0){ syncLaterStaleAlerts([]); return; }
+    const nowMs=Date.now();
+    const alerts:{id:string;title:string;body:string;timestamp:number}[]=[];
+    tasks.forEach(t=>{
+      if(!t.isLater||t.completed||!t.laterSince) return;
+      const rawFireMs=new Date(t.laterSince).getTime()+hours*3600*1000;
+      if(rawFireMs<=nowMs) return;
+      const fireMs=adjustFireForSleep(rawFireMs,settings.wakeTime,settings.sleepTime);
+      alerts.push({id:`later-stale-${t.id}`,title:'あとでやるが溜まっています',body:`「${t.name}」が長時間放置されています`,timestamp:Math.floor(fireMs/1000)});
+    });
+    syncLaterStaleAlerts(alerts.slice(0,60));
+  },[loaded,tasks,settings.laterReminderHours,settings.notificationsEnabled,settings.wakeTime,settings.sleepTime]);
 
   // 空き時間が5分続いたら「あとでやる」タスクの消化を提案
   // ネイティブでは syncFreeSlotAlerts の事前予約が発火を担うため、

@@ -7,6 +7,8 @@ interface LocalNotifyPluginType {
   syncTaskAlerts(options: { alertsJson: string }): Promise<void>;
   syncFreeSlotAlerts(options: { alertsJson: string }): Promise<void>;
   syncShopNotifs(options: { alertsJson: string }): Promise<void>;
+  syncLaterStaleAlerts(options: { alertsJson: string }): Promise<void>;
+  syncWakeCheckins(options: { alertsJson: string }): Promise<void>;
 }
 
 const LocalNotifyPlugin = registerPlugin<LocalNotifyPluginType>('LocalNotifyPlugin');
@@ -67,6 +69,24 @@ export function syncFreeSlotAlerts(alerts: { id: string; title: string; body: st
 export function syncShopNotifs(alerts: { id: string; title: string; body: string; timestamp: number }[]): void {
   if (!isNative()) return;
   LocalNotifyPlugin.syncShopNotifs({ alertsJson: JSON.stringify(alerts) }).catch(() => {
+    // ネイティブ側プラグイン未導入時はスキップ
+  });
+}
+
+// 「あとでやる」放置タスクの通知をネイティブに事前予約する（syncTaskAlertsと同じ方式）。
+// Web/開発環境では何もしない（ネイティブ専用機能）。
+export function syncLaterStaleAlerts(alerts: { id: string; title: string; body: string; timestamp: number }[]): void {
+  if (!isNative()) return;
+  LocalNotifyPlugin.syncLaterStaleAlerts({ alertsJson: JSON.stringify(alerts) }).catch(() => {
+    // ネイティブ側プラグイン未導入時はスキップ
+  });
+}
+
+// 起床時チェックイン通知をネイティブに事前予約する（syncTaskAlertsと同じ方式）。
+// Web/開発環境では何もしない（ネイティブ専用機能）。
+export function syncWakeCheckins(alerts: { id: string; title: string; body: string; timestamp: number }[]): void {
+  if (!isNative()) return;
+  LocalNotifyPlugin.syncWakeCheckins({ alertsJson: JSON.stringify(alerts) }).catch(() => {
     // ネイティブ側プラグイン未導入時はスキップ
   });
 }

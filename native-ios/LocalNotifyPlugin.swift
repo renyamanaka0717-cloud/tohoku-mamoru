@@ -11,6 +11,8 @@ public class LocalNotifyPlugin: CAPPlugin {
     static let taskAlertPrefix = "task-alert-"
     static let freeSlotAlertPrefix = "free-slot-"
     static let shopNotifPrefix = "shop-notif-"
+    static let laterStalePrefix = "later-stale-"
+    static let wakeCheckinPrefix = "wake-checkin-"
     // 「通知を有効にする」ボタンなど、実際の通知内容が無いタイミングでも
     // その場で許可ダイアログを出すためのメソッド（notify()内のリクエストは通知発火時まで待たされる）
     @objc func requestPermission(_ call: CAPPluginCall) {
@@ -49,6 +51,16 @@ public class LocalNotifyPlugin: CAPPlugin {
     // 買い物リストの時間指定通知をまとめてネイティブに予約する（syncTaskAlertsと同じ全解除→再登録方式）。
     @objc func syncShopNotifs(_ call: CAPPluginCall) {
         scheduleAlerts(prefix: LocalNotifyPlugin.shopNotifPrefix, call: call)
+    }
+
+    // 「あとでやる」放置タスクの通知をまとめてネイティブに予約する（syncTaskAlertsと同じ全解除→再登録方式）。
+    @objc func syncLaterStaleAlerts(_ call: CAPPluginCall) {
+        scheduleAlerts(prefix: LocalNotifyPlugin.laterStalePrefix, call: call)
+    }
+
+    // 起床時チェックイン通知をまとめてネイティブに予約する（syncTaskAlertsと同じ全解除→再登録方式）。
+    @objc func syncWakeCheckins(_ call: CAPPluginCall) {
+        scheduleAlerts(prefix: LocalNotifyPlugin.wakeCheckinPrefix, call: call)
     }
 
     private func scheduleAlerts(prefix: String, call: CAPPluginCall) {
