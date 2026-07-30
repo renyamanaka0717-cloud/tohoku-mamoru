@@ -28,14 +28,34 @@ public class GeofencePlugin: CAPPlugin, CLLocationManagerDelegate, UNUserNotific
     // コールバックが一切呼ばれずに固まることがある実際の不具合を確認したため、
     // CLLocationManager.requestLocation() を直接使うネイティブ実装に切り替えた
     @objc func getCurrentLocation(_ call: CAPPluginCall) {
-        let status = locationManager.authorizationStatus
-        guard status == .authorizedAlways || status == .authorizedWhenInUse else {
+        switch locationManager.authorizationStatus {
+        case .authorizedAlways, .authorizedWhenInUse:
+            pendingLocationCalls.append(call)
+            locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters
+            locationManager.requestLocation()
+        case .notDetermined:
+            // まだ一度も許可をリクエストしていない場合はここでリクエストし、
+            // 結果はlocationManagerDidChangeAuthorizationで受け取ってから位置取得を続行する
+            pendingLocationCalls.append(call)
+            locationManager.requestWhenInUseAuthorization()
+        default:
             call.reject("location permission not granted")
-            return
         }
-        pendingLocationCalls.append(call)
-        locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters
-        locationManager.requestLocation()
+    }
+
+    public func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        guard !pendingLocationCalls.isEmpty else { return }
+        switch manager.authorizationStatus {
+        case .authorizedAlways, .authorizedWhenInUse:
+            manager.desiredAccuracy = kCLLocationAccuracyHundredMeters
+            manager.requestLocation()
+        case .denied, .restricted:
+            let calls = pendingLocationCalls
+            pendingLocationCalls = []
+            for call in calls { call.reject("location permission not granted") }
+        default:
+            break
+        }
     }
 
     @objc public override func requestPermissions(_ call: CAPPluginCall) {
