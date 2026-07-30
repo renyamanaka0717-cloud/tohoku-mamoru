@@ -8,6 +8,7 @@ import { updateWidgetData, getPendingWidgetActions } from './components/WidgetDa
 import { setShopGeofences, checkGeofencePermissions, ensureGeofencePermission, getPendingGeofenceAction } from './components/Geofence';
 import { scheduleInactivityReminder, cancelInactivityReminder } from './components/Inactivity';
 import { notify, requestNotifyPermission } from './components/LocalNotify';
+import { getAppVersion } from './components/AppVersion';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -3274,6 +3275,8 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   tasks:Task[]; onEditTask:(t:Task)=>void;
 }) {
   const [sub,setSub]           = useState<string|null>(initialSub??null);
+  const [appVersion,setAppVersion] = useState<string|null>(null);
+  useEffect(()=>{ getAppVersion().then(setAppVersion); },[]);
   const [tagInput,setTagInput] = useState('');
   const [newTagColor,setNewTagColor] = useState(TAG_COLORS[0].bg);
   const [editIdx,setEditIdx]   = useState<number|null>(null);
@@ -4625,7 +4628,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
               <AppIcons.sparkle size={18}/>
             </div>
             <p className="flex-1 text-[15px] font-medium text-gray-900">アプリバージョン</p>
-            <span className="text-sm text-gray-400">1.0.0</span>
+            <span className="text-sm text-gray-400">{appVersion??'—'}</span>
           </div>
         </div>
 
