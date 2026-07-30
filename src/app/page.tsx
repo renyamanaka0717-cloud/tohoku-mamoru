@@ -3347,6 +3347,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   const [histEditIcon,setHEIcon]   = useState('task');
   const [histEditColor,setHEColor] = useState('');
   const [histIconSheet,setHIconSh] = useState(false);
+  const [bulkEditId,setBulkEditId] = useState<string|null>(null);
   const _lpToday = todayStr();
   const _lpTodayD= new Date(_lpToday+'T12:00:00');
   const [lpVm,setLpVm]             = useState({year:_lpTodayD.getFullYear(),month:_lpTodayD.getMonth()});
@@ -3578,10 +3579,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
               const dateLabel=`${dt.getMonth()+1}/${dt.getDate()}`;
               return (
                 <div key={entry.id} className="bg-white rounded-2xl overflow-hidden shadow-sm">
-                  <button className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50" onClick={()=>{
-                    if(isExp){setHistExp(null);}
-                    else{setHistExp(entry.id);setHEN(entry.name);setHES(entry.startTime);setHEE(entry.endTime);setHEIcon(entry.icon??defaultIconKey(entry.name));setHEColor(entry.color??'');}
-                  }}>
+                  <button className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50" onClick={()=>setHistExp(isExp?null:entry.id)}>
                     <div className="flex-1 min-w-0 text-left">
                       <p className="text-sm font-semibold text-gray-800">{entry.name}</p>
                       <p className="text-xs text-gray-400 mt-0.5">{entry.startTime}〜{entry.endTime} · {entry.dates.length}日 · {dateLabel}登録</p>
@@ -3589,34 +3587,15 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                     <AppIcons.caretDown size={14} className={`text-gray-400 shrink-0 transition-transform ${isExp?'rotate-180':''}`}/>
                   </button>
                   {isExp&&(
-                    <div className="border-t border-gray-100 px-4 py-3 flex flex-col gap-3">
-                      <div className="bg-gray-50 rounded-xl px-3 py-2.5 flex flex-col gap-2.5">
-                        <div className="flex items-center gap-2">
-                          <button onClick={()=>setHIconSh(true)}
-                            className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 active:opacity-80"
-                            style={{background:histEditColor||'var(--c-primary)'}}>
-                            {(()=>{const Ic=getTaskIcon(histEditIcon);return <Ic size={16} className="text-white"/>;})()}
-                          </button>
-                          <input value={histEditName} onChange={e=>setHEN(e.target.value)}
-                            className="flex-1 text-sm text-gray-800 bg-transparent outline-none border-b border-gray-200 pb-0.5"/>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-gray-500 w-14 shrink-0">開始時刻</span>
-                          <input type="time" value={histEditStart} onChange={e=>setHES(e.target.value)}
-                            className="flex-1 text-sm text-gray-800 bg-transparent outline-none"/>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-gray-500 w-14 shrink-0">終了時刻</span>
-                          <input type="time" value={histEditEnd} onChange={e=>setHEE(e.target.value)}
-                            className="flex-1 text-sm text-gray-800 bg-transparent outline-none"/>
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <button onClick={()=>{onBulkHistoryEdit(entry.id,histEditName.trim()||entry.name,histEditStart,histEditEnd,histEditIcon,histEditColor);setHistExp(null);}}
-                          className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-[var(--c-primary)] text-white">一括編集</button>
-                        <button onClick={()=>{onBulkHistoryDelete(entry.id);setHistExp(null);}}
-                          className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-[#D97A7A] text-white">一括削除</button>
-                      </div>
+                    <div className="border-t border-gray-100 px-4 py-3 flex gap-2">
+                      <button onClick={()=>{
+                          setHEN(entry.name);setHES(entry.startTime);setHEE(entry.endTime);
+                          setHEIcon(entry.icon??defaultIconKey(entry.name));setHEColor(entry.color??'');
+                          setBulkEditId(entry.id);
+                        }}
+                        className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-[var(--c-primary)] text-white">一括編集</button>
+                      <button onClick={()=>{onBulkHistoryDelete(entry.id);setHistExp(null);}}
+                        className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-[#D97A7A] text-white">一括削除</button>
                     </div>
                   )}
                 </div>
@@ -3624,8 +3603,52 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             })}
           </div>
         </div>
+        {bulkEditId&&(()=>{
+          const entry=bulkHistory.find(e=>e.id===bulkEditId);
+          if(!entry) return null;
+          return (
+            <div className="fixed inset-0 z-[90] bg-black/40 flex flex-col justify-end" onClick={()=>setBulkEditId(null)}>
+              <div className="bg-white rounded-t-3xl flex flex-col w-full max-w-md mx-auto" onClick={e=>e.stopPropagation()}>
+                <div className="flex justify-center pt-3 shrink-0"><div className="w-10 h-1 bg-gray-200 rounded-full"/></div>
+                <div className="flex items-center justify-between px-5 pt-3 pb-2 shrink-0">
+                  <button onClick={()=>setBulkEditId(null)} className="text-sm text-gray-400 font-medium">キャンセル</button>
+                  <span className="text-base font-bold text-gray-900">一括編集</span>
+                  <button onClick={()=>{
+                      onBulkHistoryEdit(entry.id,histEditName.trim()||entry.name,histEditStart,histEditEnd,histEditIcon,histEditColor);
+                      setBulkEditId(null);setHistExp(null);
+                    }}
+                    className="text-sm font-semibold text-[var(--c-primary)]">保存</button>
+                </div>
+                <div className="px-5 pb-8">
+                  <p className="text-xs text-gray-400 mb-4">{entry.dates.length}日分すべてに反映されます</p>
+                  <div className="bg-gray-50 rounded-xl px-3 py-2.5 flex flex-col gap-2.5">
+                    <div className="flex items-center gap-2">
+                      <button onClick={()=>setHIconSh(true)}
+                        className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 active:opacity-80"
+                        style={{background:histEditColor||'var(--c-primary)'}}>
+                        {(()=>{const Ic=getTaskIcon(histEditIcon);return <Ic size={16} className="text-white"/>;})()}
+                      </button>
+                      <input value={histEditName} onChange={e=>setHEN(e.target.value)}
+                        className="flex-1 text-sm text-gray-800 bg-transparent outline-none border-b border-gray-200 pb-0.5"/>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-gray-500 w-14 shrink-0">開始時刻</span>
+                      <input type="time" value={histEditStart} onChange={e=>setHES(e.target.value)}
+                        className="flex-1 text-sm text-gray-800 bg-transparent outline-none"/>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-gray-500 w-14 shrink-0">終了時刻</span>
+                      <input type="time" value={histEditEnd} onChange={e=>setHEE(e.target.value)}
+                        className="flex-1 text-sm text-gray-800 bg-transparent outline-none"/>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
         {histIconSheet&&(
-          <div className="fixed inset-0 z-[90] bg-black/40 flex flex-col justify-end" onClick={()=>setHIconSh(false)}>
+          <div className="fixed inset-0 z-[95] bg-black/40 flex flex-col justify-end" onClick={()=>setHIconSh(false)}>
             <div className="bg-white rounded-t-3xl max-h-[78vh] flex flex-col w-full max-w-md mx-auto" onClick={e=>e.stopPropagation()}>
               <div className="flex justify-center pt-3 shrink-0"><div className="w-10 h-1 bg-gray-200 rounded-full"/></div>
               <div className="flex items-center justify-between px-5 pt-3 pb-2 shrink-0">
