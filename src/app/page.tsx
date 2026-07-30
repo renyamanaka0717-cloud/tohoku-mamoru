@@ -4568,7 +4568,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             {label:'アプリアイコン変更',   free:'×',         pro:'対応'},
             {label:'起床・就寝アイコン色変更', free:'×',      pro:'対応'},
             {label:'場所で通知',           free:'×',         pro:'対応'},
-            {label:'放置アラート',         free:'オフ・既定のみ', pro:'全間隔選択'},
+            {label:'放置アラート',         free:'既定のみ',  pro:'完全対応'},
           ].map(({label,free,pro},i,arr)=>(
             <div key={i} className={`grid items-center px-4 py-3${i<arr.length-1?' border-b border-gray-100':''}`} style={{gridTemplateColumns:'1fr 72px 64px'}}>
               <p className="text-sm text-gray-800">{label}</p>
