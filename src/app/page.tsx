@@ -2636,7 +2636,9 @@ function ShopMapPicker({initialCenter,onConfirm,onCancel}:{
     // WKWebViewではgetCurrentPositionのtimeoutオプションが効かず、
     // コールバックが一切呼ばれないまま固まることがあるため、JS側でも保険のタイムアウトを掛ける
     let done=false;
-    const failsafe=setTimeout(()=>{ if(done) return; done=true; setLocating(false); alert('現在地を取得できませんでした'); },8000);
+    // enableHighAccuracy:trueはGPSの正確な測位を待つため屋内などで失敗しやすい。
+    // 場所の登録用途では精度より速さ・成功率を優先し、Wi-Fi/セルベースの測位にする
+    const failsafe=setTimeout(()=>{ if(done) return; done=true; setLocating(false); alert('現在地を取得できませんでした'); },12000);
     navigator.geolocation.getCurrentPosition(
       pos=>{
         if(done) return; done=true; clearTimeout(failsafe);
@@ -2646,7 +2648,7 @@ function ShopMapPicker({initialCenter,onConfirm,onCancel}:{
         setLocating(false);
       },
       ()=>{ if(done) return; done=true; clearTimeout(failsafe); setLocating(false); alert('現在地を取得できませんでした'); },
-      {enableHighAccuracy:true,timeout:10000}
+      {enableHighAccuracy:false,timeout:10000}
     );
   };
 
@@ -2765,7 +2767,7 @@ function ShopLocationPanel({locations,onChange,isPremium,onProPrompt}:{
     // WKWebViewではgetCurrentPositionのtimeoutオプションが効かず、
     // コールバックが一切呼ばれないまま固まることがあるため、JS側でも保険のタイムアウトを掛ける
     let done=false;
-    const failsafe=setTimeout(()=>{ if(done) return; done=true; setLocating(false); alert('現在地を取得できませんでした'); },8000);
+    const failsafe=setTimeout(()=>{ if(done) return; done=true; setLocating(false); alert('現在地を取得できませんでした'); },12000);
     navigator.geolocation.getCurrentPosition(
       pos=>{
         if(done) return; done=true; clearTimeout(failsafe);
@@ -2774,7 +2776,7 @@ function ShopLocationPanel({locations,onChange,isPremium,onProPrompt}:{
         setLocating(false);
       },
       ()=>{ if(done) return; done=true; clearTimeout(failsafe); setLocating(false); alert('現在地を取得できませんでした'); },
-      {enableHighAccuracy:true,timeout:10000}
+      {enableHighAccuracy:false,timeout:10000}
     );
   };
 
@@ -2783,7 +2785,7 @@ function ShopLocationPanel({locations,onChange,isPremium,onProPrompt}:{
     if(!navigator.geolocation){ setMapMode(true); return; }
     setLocating(true);
     let done=false;
-    const failsafe=setTimeout(()=>{ if(done) return; done=true; setMapMode(true); setLocating(false); },6000);
+    const failsafe=setTimeout(()=>{ if(done) return; done=true; setMapMode(true); setLocating(false); },9000);
     navigator.geolocation.getCurrentPosition(
       pos=>{
         if(done) return; done=true; clearTimeout(failsafe);
@@ -2792,7 +2794,7 @@ function ShopLocationPanel({locations,onChange,isPremium,onProPrompt}:{
         setLocating(false);
       },
       ()=>{ if(done) return; done=true; clearTimeout(failsafe); setMapMode(true); setLocating(false); },
-      {enableHighAccuracy:true,timeout:5000}
+      {enableHighAccuracy:false,timeout:7000}
     );
   };
 
