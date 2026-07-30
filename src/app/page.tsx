@@ -84,6 +84,7 @@ const SHOP_LOC_KEY      = 'tl-shop-loc-v1';
 const NOTIF_ASKED_KEY   = 'tl-notif-asked-v1';
 const WAKESLEEP_ASKED_KEY = 'tl-wakesleep-asked-v1';
 const LATER_NOTIFIED_KEY = 'tl-later-notified-v1';
+const TASK_ALERT_FIRED_KEY = 'tl-task-alert-fired-v1';
 const WAKE_CHECKIN_NOTIF_KEY = 'tl-wake-checkin-notif-v1';
 const LATER_REMINDER_OPTS = [{v:0,l:'オフ'},{v:1,l:'1時間'},{v:3,l:'3時間'},{v:6,l:'6時間'},{v:12,l:'12時間'},{v:24,l:'1日'},{v:48,l:'2日'},{v:72,l:'3日'}];
 const APP_INACTIVITY_OPTS = [{v:0,l:'オフ'},{v:6,l:'6時間'},{v:12,l:'12時間'},{v:24,l:'1日'},{v:48,l:'2日'},{v:72,l:'3日'}];
@@ -5035,6 +5036,36 @@ export default function App() {
       new Notification('おはようございます',{body});
     }
   },[loaded,now,tasks,settings.wakeTime,settings.notificationsEnabled]);
+
+  // タスクごとのアラート（開始時・何分前・前日）
+  useEffect(()=>{
+    if(!loaded||!(settings.notificationsEnabled??true)) return;
+    const nowMinuteMs=Math.floor(Date.now()/60000)*60000;
+    let firedKeys:string[]=[];
+    try{ firedKeys=JSON.parse(localStorage.getItem(TASK_ALERT_FIRED_KEY)||'[]'); }catch{}
+    const newFired:string[]=[];
+    const toFire:{task:Task;offset:number}[]=[];
+    tasks.forEach(t=>{
+      if(t.completed||t.isLater||!t.startTime||!t.date||!t.notifications?.length) return;
+      const startMs=new Date(`${t.date}T${t.startTime}:00`).getTime();
+      t.notifications.forEach(m=>{
+        const alertMinuteMs=Math.floor((startMs-m*60000)/60000)*60000;
+        if(alertMinuteMs!==nowMinuteMs) return;
+        const key=`${t.id}:${m}:${t.date}`;
+        if(firedKeys.includes(key)) return;
+        toFire.push({task:t,offset:m});
+        newFired.push(key);
+      });
+    });
+    if(toFire.length===0) return;
+    localStorage.setItem(TASK_ALERT_FIRED_KEY,JSON.stringify([...firedKeys,...newFired].slice(-500)));
+    if(typeof Notification!=='undefined'&&Notification.permission==='granted'){
+      toFire.forEach(({task,offset})=>{
+        const label=NOTIF_OPTS.find(o=>o.v===offset)?.l??'';
+        new Notification(task.name,{body:offset===0?`${task.startTime}に開始します`:`${label} — ${task.startTime}開始`});
+      });
+    }
+  },[loaded,now,tasks,settings.notificationsEnabled]);
 
   // 「あとでやる」に長時間放置されているタスクの通知
   useEffect(()=>{

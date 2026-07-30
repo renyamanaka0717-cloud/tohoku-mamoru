@@ -962,6 +962,7 @@ const recTasks = tasks.filter((t,i,a)=>t.recurrence&&a.findIndex(x=>x.name===t.n
 - TaskModal の auto-save useEffect deps に `icon` と `color` を含めること（抜けるとアイコン変更が保存されない）
 - 空き時間カードの高さは `minHeight` で指定（`height` では内容がクリップされる）
 - `AXIS_X=72`・`CARD_LEFT=108` — ハードコードせず定数から導出すること
+- **タスクごとのアラート（`Task.notifications: number[]`、開始時・何分前・前日）は実際に発火する `useEffect` がある**（App コンポーネント、`TASK_ALERT_FIRED_KEY` で発火済みキーを重複防止）。他の通知（起床チェックイン・買い物リスト・放置タスク等）と同様、`now`（60秒ごとに更新）ベースのポーリングで `new Notification(...)` を呼ぶため、**アプリがフォアグラウンドで開かれている間しか発火しない**（バックグラウンド/未起動では動かない）。以前はUIで設定できるのに実際には何も起きないdead機能だったので、新しい通知チェックを追加する際は必ずこの `useEffect` 一覧（複数ある）を grep してから既存パターンに倣うこと
 
 ---
 
