@@ -28,28 +28,35 @@ public class GeofencePlugin: CAPPlugin, CLLocationManagerDelegate, UNUserNotific
     // コールバックが一切呼ばれずに固まることがある実際の不具合を確認したため、
     // CLLocationManager.requestLocation() を直接使うネイティブ実装に切り替えた
     @objc func getCurrentLocation(_ call: CAPPluginCall) {
+        NSLog("[BB-LOC] getCurrentLocation called, status=\(locationManager.authorizationStatus.rawValue)")
         switch locationManager.authorizationStatus {
         case .authorizedAlways, .authorizedWhenInUse:
             pendingLocationCalls.append(call)
             locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters
+            NSLog("[BB-LOC] calling requestLocation()")
             locationManager.requestLocation()
         case .notDetermined:
             // まだ一度も許可をリクエストしていない場合はここでリクエストし、
             // 結果はlocationManagerDidChangeAuthorizationで受け取ってから位置取得を続行する
             pendingLocationCalls.append(call)
+            NSLog("[BB-LOC] calling requestWhenInUseAuthorization()")
             locationManager.requestWhenInUseAuthorization()
         default:
+            NSLog("[BB-LOC] rejected immediately, status not authorized")
             call.reject("location permission not granted")
         }
     }
 
     public func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        NSLog("[BB-LOC] locationManagerDidChangeAuthorization, status=\(manager.authorizationStatus.rawValue), pendingCount=\(pendingLocationCalls.count)")
         guard !pendingLocationCalls.isEmpty else { return }
         switch manager.authorizationStatus {
         case .authorizedAlways, .authorizedWhenInUse:
             manager.desiredAccuracy = kCLLocationAccuracyHundredMeters
+            NSLog("[BB-LOC] calling requestLocation() from authorization change")
             manager.requestLocation()
         case .denied, .restricted:
+            NSLog("[BB-LOC] permission denied after prompt")
             let calls = pendingLocationCalls
             pendingLocationCalls = []
             for call in calls { call.reject("location permission not granted") }
@@ -125,6 +132,7 @@ public class GeofencePlugin: CAPPlugin, CLLocationManagerDelegate, UNUserNotific
     // MARK: - CLLocationManagerDelegate
 
     public func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        NSLog("[BB-LOC] didUpdateLocations, count=\(locations.count), pendingCount=\(pendingLocationCalls.count)")
         guard let loc = locations.last, !pendingLocationCalls.isEmpty else { return }
         let calls = pendingLocationCalls
         pendingLocationCalls = []
@@ -134,6 +142,7 @@ public class GeofencePlugin: CAPPlugin, CLLocationManagerDelegate, UNUserNotific
     }
 
     public func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        NSLog("[BB-LOC] didFailWithError: \(error.localizedDescription), pendingCount=\(pendingLocationCalls.count)")
         guard !pendingLocationCalls.isEmpty else { return }
         let calls = pendingLocationCalls
         pendingLocationCalls = []

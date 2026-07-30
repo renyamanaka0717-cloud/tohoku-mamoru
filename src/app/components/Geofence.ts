@@ -66,7 +66,8 @@ export async function getNativeCurrentLocation(): Promise<{ lat: number; lng: nu
   if (!isNative()) return null;
   try {
     return await GeofencePlugin.getCurrentLocation();
-  } catch {
+  } catch (e) {
+    console.error('[getNativeCurrentLocation] failed', e); // デバッグ用（原因切り分け後に削除）
     return null;
   }
 }
