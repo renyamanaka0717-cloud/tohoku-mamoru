@@ -2671,6 +2671,27 @@ function ShopMapPicker({initialCenter,onConfirm,onCancel}:{
     );
   };
 
+  // 地図を開いた瞬間に画面をブロックせず表示し、裏で現在地取得を試みて
+  // 取れたらピンを自動的に現在地へ寄せる（ユーザーがまだ地図を操作していない場合のみ）。
+  // 失敗してもアラートは出さず、既定の中心のまま静かにフォールバックする。
+  useEffect(()=>{
+    if(!navigator.geolocation) return;
+    let done=false;
+    const failsafe=setTimeout(()=>{ done=true; },8000);
+    navigator.geolocation.getCurrentPosition(
+      pos=>{
+        if(done) return; done=true; clearTimeout(failsafe);
+        const loc={lat:pos.coords.latitude,lng:pos.coords.longitude};
+        setMyLocation(loc);
+        if(!dragStart.current) setCenter(loc);
+      },
+      ()=>{ if(done) return; done=true; clearTimeout(failsafe); },
+      {enableHighAccuracy:false,timeout:7000}
+    );
+    return ()=>clearTimeout(failsafe);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[]);
+
   const myDotPx = myLocation ? lonLatToPx(myLocation.lng,myLocation.lat,zoom) : null;
   const myDotLeft = myDotPx ? W/2+(myDotPx.x-centerPx.x)+drag.x : null;
   const myDotTop  = myDotPx ? H/2+(myDotPx.y-centerPx.y)+drag.y : null;
@@ -2799,22 +2820,11 @@ function ShopLocationPanel({locations,onChange,isPremium,onProPrompt}:{
     );
   };
 
-  // 地図を開く時のデフォルト中心は現在地にする（取得できなければTokyoの既定値のまま開く）
+  // 地図はすぐに表示し、現在地への自動センタリングは ShopMapPicker 内部で
+  // 裏側で試みる（ここで待ってから開くと表示までのラグが大きくなるため）
   const openMapMode=()=>{
-    if(!navigator.geolocation){ setMapMode(true); return; }
-    setLocating(true);
-    let done=false;
-    const failsafe=setTimeout(()=>{ if(done) return; done=true; setMapMode(true); setLocating(false); },9000);
-    navigator.geolocation.getCurrentPosition(
-      pos=>{
-        if(done) return; done=true; clearTimeout(failsafe);
-        setMapCenter({lat:pos.coords.latitude,lng:pos.coords.longitude});
-        setMapMode(true);
-        setLocating(false);
-      },
-      ()=>{ if(done) return; done=true; clearTimeout(failsafe); setMapMode(true); setLocating(false); },
-      {enableHighAccuracy:false,timeout:7000}
-    );
+    setMapCenter(null);
+    setMapMode(true);
   };
 
   const [editLocId,setEditLocId]=useState<string|null>(null);
@@ -5407,9 +5417,7 @@ export default function App() {
     const body=laterPool.length>1?`「${first.name}」など${laterPool.length}件のタスクがあります`:`「${first.name}」をやってみませんか？`;
     const today=todayStr();
     const nowMs=Date.now();
-    const rawSlots=calcFreeSlots(tasks,today,settings);
-    console.log('[freeSlot] today',today,'nowMs',nowMs,'rawSlots',JSON.stringify(rawSlots));
-    const alerts=rawSlots
+    const alerts=calcFreeSlots(tasks,today,settings)
       .map(sl=>({
         id:`free-slot-${today}-${sl.start}`,
         title:'空き時間ができました',
@@ -5417,7 +5425,6 @@ export default function App() {
         timestamp:Math.floor((new Date(`${today}T${sl.start}:00`).getTime()+5*60000)/1000),
       }))
       .filter(a=>a.timestamp*1000>nowMs);
-    console.log('[freeSlot] alerts',JSON.stringify(alerts));
     syncFreeSlotAlerts(alerts);
   },[loaded,now,tasks,settings,settings.notificationsEnabled]);
 
