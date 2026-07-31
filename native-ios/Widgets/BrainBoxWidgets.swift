@@ -159,15 +159,15 @@ struct CombinedWidgetView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding()
-        .containerBackground(.background, for: .widget)
+        .containerBackground(Color.white.opacity(0.85), for: .widget)
     }
 
     private func taskRow(_ task: WidgetTaskItem, isLast: Bool) -> some View {
         HStack(alignment: .top, spacing: 8) {
             VStack(spacing: 0) {
                 ZStack {
-                    Circle().fill(Color(.systemGray5)).frame(width: 26, height: 26)
-                    Image(systemName: sfSymbol(for: task.icon)).font(.system(size: 12)).foregroundStyle(.secondary)
+                    Circle().fill(entry.themeColor.opacity(0.18)).frame(width: 26, height: 26)
+                    Image(systemName: sfSymbol(for: task.icon)).font(.system(size: 12)).foregroundStyle(entry.themeColor)
                 }
                 if !isLast {
                     Rectangle().fill(Color(.systemGray4)).frame(width: 2).frame(maxHeight: .infinity)
