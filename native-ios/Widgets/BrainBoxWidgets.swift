@@ -95,6 +95,24 @@ private func loadThemeColor() -> Color {
     return Color(hex: hex)
 }
 
+private func loadFreeSlotStart() -> String {
+    guard let defaults = UserDefaults(suiteName: appGroupId) else { return "" }
+    return defaults.string(forKey: "widgetFreeSlotStart") ?? ""
+}
+
+private func loadFreeSlotMinutes() -> Int {
+    guard let defaults = UserDefaults(suiteName: appGroupId) else { return 0 }
+    return defaults.integer(forKey: "widgetFreeSlotMinutes")
+}
+
+private func formatDuration(_ minutes: Int) -> String {
+    if minutes <= 0 { return "" }
+    let h = minutes / 60, m = minutes % 60
+    if h > 0 && m > 0 { return "\(h)時間\(m)分" }
+    if h > 0 { return "\(h)時間" }
+    return "\(m)分"
+}
+
 // MARK: - 次の予定 & 買い物リスト（2カラム統合ウィジェット）
 
 struct CombinedEntry: TimelineEntry {
@@ -103,6 +121,8 @@ struct CombinedEntry: TimelineEntry {
     let shopItems: [WidgetShopItem]
     let laterItems: [WidgetLaterItem]
     let themeColor: Color
+    let freeSlotStart: String
+    let freeSlotMinutes: Int
 }
 
 struct CombinedProvider: TimelineProvider {
@@ -112,14 +132,16 @@ struct CombinedProvider: TimelineProvider {
             tasks: [WidgetTaskItem(id: "1", name: "予定を確認", time: "--:--", icon: "task")],
             shopItems: [WidgetShopItem(id: "1", name: "買い物リスト")],
             laterItems: [WidgetLaterItem(id: "1", name: "あとでやる", icon: "task")],
-            themeColor: defaultThemeColor
+            themeColor: defaultThemeColor,
+            freeSlotStart: "",
+            freeSlotMinutes: 0
         )
     }
     func getSnapshot(in context: Context, completion: @escaping (CombinedEntry) -> Void) {
-        completion(CombinedEntry(date: Date(), tasks: loadTasks(), shopItems: loadShopItems(), laterItems: loadLaterTasks(), themeColor: loadThemeColor()))
+        completion(CombinedEntry(date: Date(), tasks: loadTasks(), shopItems: loadShopItems(), laterItems: loadLaterTasks(), themeColor: loadThemeColor(), freeSlotStart: loadFreeSlotStart(), freeSlotMinutes: loadFreeSlotMinutes()))
     }
     func getTimeline(in context: Context, completion: @escaping (Timeline<CombinedEntry>) -> Void) {
-        let entry = CombinedEntry(date: Date(), tasks: loadTasks(), shopItems: loadShopItems(), laterItems: loadLaterTasks(), themeColor: loadThemeColor())
+        let entry = CombinedEntry(date: Date(), tasks: loadTasks(), shopItems: loadShopItems(), laterItems: loadLaterTasks(), themeColor: loadThemeColor(), freeSlotStart: loadFreeSlotStart(), freeSlotMinutes: loadFreeSlotMinutes())
         completion(Timeline(entries: [entry], policy: .after(Date().addingTimeInterval(15 * 60))))
     }
 }
@@ -224,72 +246,74 @@ struct QuadWidgetView: View {
     var entry: CombinedEntry
 
     var body: some View {
-        VStack(spacing: 10) {
-            HStack(alignment: .top, spacing: 10) {
-                quadColumn(title: "次の予定") {
-                    if entry.tasks.isEmpty {
-                        Text("予定はありません").font(.caption2).foregroundColor(.secondary)
-                    } else {
-                        ForEach(entry.tasks.prefix(3), id: \.id) { task in
-                            if #available(iOS 17.0, *) {
-                                Button(intent: CompleteTaskIntent(id: task.id)) { miniTaskRow(task) }.buttonStyle(.plain)
-                            } else {
-                                miniTaskRow(task)
+        ZStack {
+            VStack(spacing: 10) {
+                HStack(alignment: .top, spacing: 10) {
+                    quadColumn(title: "次の予定") {
+                        if entry.tasks.isEmpty {
+                            Text("予定はありません").font(.caption2).foregroundColor(.secondary)
+                        } else {
+                            ForEach(entry.tasks.prefix(3), id: \.id) { task in
+                                if #available(iOS 17.0, *) {
+                                    Button(intent: CompleteTaskIntent(id: task.id)) { miniTaskRow(task) }.buttonStyle(.plain)
+                                } else {
+                                    miniTaskRow(task)
+                                }
+                            }
+                        }
+                    }
+                    Divider()
+                    quadColumn(title: "買い物リスト") {
+                        if entry.shopItems.isEmpty {
+                            Text("買うものはありません").font(.caption2).foregroundColor(.secondary)
+                        } else {
+                            ForEach(entry.shopItems.prefix(4), id: \.id) { item in
+                                if #available(iOS 17.0, *) {
+                                    Button(intent: PurchaseShopItemIntent(id: item.id)) { miniShopRow(item) }.buttonStyle(.plain)
+                                } else {
+                                    miniShopRow(item)
+                                }
                             }
                         }
                     }
                 }
                 Divider()
-                quadColumn(title: "買い物リスト") {
-                    if entry.shopItems.isEmpty {
-                        Text("買うものはありません").font(.caption2).foregroundColor(.secondary)
-                    } else {
-                        ForEach(entry.shopItems.prefix(4), id: \.id) { item in
-                            if #available(iOS 17.0, *) {
-                                Button(intent: PurchaseShopItemIntent(id: item.id)) { miniShopRow(item) }.buttonStyle(.plain)
-                            } else {
-                                miniShopRow(item)
+                HStack(alignment: .top, spacing: 10) {
+                    quadColumn(title: "あとでやる") {
+                        if entry.laterItems.isEmpty {
+                            Text("ありません").font(.caption2).foregroundColor(.secondary)
+                        } else {
+                            ForEach(entry.laterItems.prefix(3), id: \.id) { item in
+                                if #available(iOS 17.0, *) {
+                                    Button(intent: CompleteTaskIntent(id: item.id)) { miniLaterRow(item) }.buttonStyle(.plain)
+                                } else {
+                                    miniLaterRow(item)
+                                }
                             }
+                        }
+                    }
+                    Divider()
+                    quadColumn(title: "次の空き時間") {
+                        if entry.freeSlotStart.isEmpty {
+                            Text("空き時間はありません").font(.caption2).foregroundColor(.secondary)
+                        } else {
+                            Text("\(entry.freeSlotStart)〜").font(.footnote).bold().foregroundStyle(entry.themeColor)
+                            Text(formatDuration(entry.freeSlotMinutes)).font(.caption2).foregroundColor(.secondary)
                         }
                     }
                 }
             }
-            Divider()
-            HStack(alignment: .top, spacing: 10) {
-                quadColumn(title: "あとでやる") {
-                    if entry.laterItems.isEmpty {
-                        Text("ありません").font(.caption2).foregroundColor(.secondary)
-                    } else {
-                        ForEach(entry.laterItems.prefix(3), id: \.id) { item in
-                            if #available(iOS 17.0, *) {
-                                Button(intent: CompleteTaskIntent(id: item.id)) { miniLaterRow(item) }.buttonStyle(.plain)
-                            } else {
-                                miniLaterRow(item)
-                            }
-                        }
-                    }
-                }
-                Divider()
-                VStack {
-                    Spacer(minLength: 0)
-                    Link(destination: URL(string: "brainbox://addLater")!) { addButton }
-                    Spacer(minLength: 0)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            }
-        }
-        .padding()
-        .containerBackground(adaptiveWidgetBackground, for: .widget)
-    }
+            .padding()
 
-    private var addButton: some View {
-        VStack(spacing: 4) {
-            ZStack {
-                Circle().fill(entry.themeColor.opacity(0.18)).frame(width: 44, height: 44)
-                Image(systemName: "plus").font(.system(size: 18, weight: .bold)).foregroundStyle(entry.themeColor)
+            Link(destination: URL(string: "brainbox://addLater")!) {
+                ZStack {
+                    Circle().fill(entry.themeColor).frame(width: 46, height: 46)
+                        .shadow(color: .black.opacity(0.18), radius: 3, y: 1)
+                    Image(systemName: "plus").font(.system(size: 19, weight: .bold)).foregroundStyle(.white)
+                }
             }
-            Text("あとでやるを追加").font(.caption2).foregroundColor(.secondary)
         }
+        .containerBackground(adaptiveWidgetBackground, for: .widget)
     }
 
     private func quadColumn<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {

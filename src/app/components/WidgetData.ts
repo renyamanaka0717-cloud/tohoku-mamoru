@@ -4,10 +4,11 @@ import { registerPlugin } from '@capacitor/core';
 interface WidgetTaskEntry { id: string; name: string; time: string; icon: string; }
 interface WidgetShopEntry { id: string; name: string; }
 interface WidgetLaterEntry { id: string; name: string; icon: string; }
+interface WidgetFreeSlot { start: string; minutes: number; }
 interface WidgetPendingActions { completedTaskIds: string[]; purchasedShopItemIds: string[]; }
 
 interface WidgetDataPluginType {
-  updateWidgetData(options: { tasksJson: string; shopJson: string; laterJson: string; themeColor: string }): Promise<void>;
+  updateWidgetData(options: { tasksJson: string; shopJson: string; laterJson: string; themeColor: string; freeSlotStart: string; freeSlotMinutes: number }): Promise<void>;
   getPendingWidgetActions(): Promise<{ completedTaskIds: string; purchasedShopItemIds: string }>;
 }
 
@@ -18,7 +19,7 @@ function isNative(): boolean {
   return !!(window as {Capacitor?: {isNativePlatform?: () => boolean}}).Capacitor?.isNativePlatform?.();
 }
 
-export async function updateWidgetData(tasks: WidgetTaskEntry[], shopItems: WidgetShopEntry[], laterItems: WidgetLaterEntry[], themeColor: string): Promise<void> {
+export async function updateWidgetData(tasks: WidgetTaskEntry[], shopItems: WidgetShopEntry[], laterItems: WidgetLaterEntry[], themeColor: string, freeSlot: WidgetFreeSlot | null): Promise<void> {
   if (!isNative()) return;
   try {
     await WidgetDataPlugin.updateWidgetData({
@@ -26,6 +27,8 @@ export async function updateWidgetData(tasks: WidgetTaskEntry[], shopItems: Widg
       shopJson: JSON.stringify(shopItems),
       laterJson: JSON.stringify(laterItems),
       themeColor,
+      freeSlotStart: freeSlot?.start ?? '',
+      freeSlotMinutes: freeSlot?.minutes ?? 0,
     });
   } catch {
     // ネイティブ側プラグイン未導入時はホーム画面ウィジェットの更新のみスキップ

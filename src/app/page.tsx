@@ -5077,7 +5077,9 @@ export default function App() {
     const shopList=shopItems.filter(s=>!s.checked).slice(0,5).map(s=>({id:s.id,name:s.name}));
     const laterList=tasks.filter(t=>t.isLater&&!t.completed).slice(0,4).map(t=>({id:t.id,name:t.name,icon:t.icon||defaultIconKey(t.name)}));
     const themeColor=THEMES.find(th=>th.id===(settings.theme??'mint'))?.color??'#94CFC8';
-    updateWidgetData(nextTasks,shopList,laterList,themeColor);
+    const nowM=toMin(now);
+    const freeSlot=calcFreeSlots(tasks,today,settings).find(sl=>toMin(sl.end)>nowM)??null;
+    updateWidgetData(nextTasks,shopList,laterList,themeColor,freeSlot?{start:freeSlot.start,minutes:freeSlot.min}:null);
   },[tasks,shopItems,now,loaded,settings.theme]);
   useEffect(()=>{
     if(!loaded) return;
