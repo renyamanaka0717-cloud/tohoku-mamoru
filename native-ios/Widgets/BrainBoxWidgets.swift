@@ -96,7 +96,7 @@ struct CombinedProvider: TimelineProvider {
     func placeholder(in context: Context) -> CombinedEntry {
         CombinedEntry(
             date: Date(),
-            tasks: [WidgetTaskItem(id: "1", name: "予定を確認", time: "--:--")],
+            tasks: [WidgetTaskItem(id: "1", name: "予定を確認", time: "--:--", icon: "task")],
             shopItems: [WidgetShopItem(id: "1", name: "買い物リスト")],
             themeColor: defaultThemeColor
         )
