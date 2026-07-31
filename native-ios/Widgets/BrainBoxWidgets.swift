@@ -363,7 +363,7 @@ struct AddLaterWidget: Widget {
         }
         .configurationDisplayName("あとでやるを追加")
         .description("タップするだけで「あとでやる」タスクの追加画面を開けます。")
-        .supportedFamilies([.systemMedium])
+        .supportedFamilies([.systemSmall])
     }
 }
 
