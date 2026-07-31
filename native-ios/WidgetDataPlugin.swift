@@ -12,8 +12,6 @@ public class WidgetDataPlugin: CAPPlugin {
         let shopJson = call.getString("shopJson") ?? "[]"
         let laterJson = call.getString("laterJson") ?? "[]"
         let themeColor = call.getString("themeColor") ?? "#D9A3B2"
-        let freeSlotStart = call.getString("freeSlotStart") ?? ""
-        let freeSlotMinutes = call.getInt("freeSlotMinutes") ?? 0
         guard let defaults = UserDefaults(suiteName: WidgetDataPlugin.appGroupId) else {
             call.reject("App Group not configured")
             return
@@ -22,8 +20,6 @@ public class WidgetDataPlugin: CAPPlugin {
         defaults.set(shopJson, forKey: "widgetShopJson")
         defaults.set(laterJson, forKey: "widgetLaterJson")
         defaults.set(themeColor, forKey: "widgetThemeColor")
-        defaults.set(freeSlotStart, forKey: "widgetFreeSlotStart")
-        defaults.set(freeSlotMinutes, forKey: "widgetFreeSlotMinutes")
         WidgetCenter.shared.reloadAllTimelines()
         call.resolve()
     }
