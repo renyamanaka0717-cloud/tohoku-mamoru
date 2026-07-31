@@ -1,7 +1,7 @@
 'use client';
 import { registerPlugin } from '@capacitor/core';
 
-interface WidgetTaskEntry { id: string; name: string; time: string; }
+interface WidgetTaskEntry { id: string; name: string; time: string; icon: string; }
 interface WidgetShopEntry { id: string; name: string; }
 interface WidgetPendingActions { completedTaskIds: string[]; purchasedShopItemIds: string[]; }
 

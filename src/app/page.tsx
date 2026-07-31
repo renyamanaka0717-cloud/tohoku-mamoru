@@ -5072,7 +5072,7 @@ export default function App() {
       .filter(t=>!t.completed && !t.isLater && t.date===today && t.startTime && t.startTime>=now)
       .sort((a,b)=>(a.startTime! < b.startTime! ? -1 : 1))
       .slice(0,3)
-      .map(t=>({id:t.id,name:t.name,time:t.startTime!}));
+      .map(t=>({id:t.id,name:t.name,time:t.startTime!,icon:t.icon||defaultIconKey(t.name)}));
     const shopList=shopItems.filter(s=>!s.checked).slice(0,5).map(s=>({id:s.id,name:s.name}));
     const themeColor=THEMES.find(th=>th.id===(settings.theme??'mint'))?.color??'#94CFC8';
     updateWidgetData(nextTasks,shopList,themeColor);

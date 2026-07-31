@@ -7,8 +7,36 @@ import AppIntents
 private let appGroupId = "group.jp.brainbox.app"
 private let defaultThemeColor = Color(red: 217/255, green: 163/255, blue: 178/255)
 
-struct WidgetTaskItem: Codable { let id: String; let name: String; let time: String }
+struct WidgetTaskItem: Codable { let id: String; let name: String; let time: String; let icon: String }
 struct WidgetShopItem: Codable { let id: String; let name: String }
+
+// アプリ本体（Icons.tsx の AppIcons、Phosphor Icons）のアイコンキーを
+// ウィジェットで使えるSF Symbolsにマッピングする（近いものが無ければ note.text にフォールバック）
+private func sfSymbol(for iconKey: String) -> String {
+    let m: [String: String] = [
+        "task": "note.text", "shopping": "cart", "food": "fork.knife",
+        "clean": "sparkles", "work": "briefcase", "travel": "car",
+        "rest": "cup.and.saucer", "sleep": "moon.zzz", "calendar": "calendar",
+        "question": "questionmark.circle", "music": "music.note", "book": "book",
+        "exercise": "figure.strengthtraining.traditional", "health": "heart", "phone": "phone",
+        "home": "house", "study": "graduationcap", "money": "yensign.circle",
+        "game": "gamecontroller", "camera": "camera",
+        "washing": "washer", "cooking": "flame", "paw": "pawprint",
+        "medicine": "pills", "hospital": "cross.case", "payment": "creditcard",
+        "document": "doc.text", "mail": "envelope", "meeting": "person.2",
+        "train": "tram", "gift": "gift", "scissors": "scissors",
+        "running": "figure.run", "yoga": "figure.mind.and.body", "bicycle": "bicycle",
+        "guitar": "guitars", "basketball": "basketball", "soccer": "soccerball",
+        "volleyball": "sportscourt", "paint": "paintbrush", "rocket": "paperplane.fill",
+        "cat": "cat", "dog": "dog", "bird": "bird", "fish": "fish",
+        "rabbit": "hare", "flower": "leaf", "tree": "tree", "sun": "sun.max",
+        "airplane": "airplane", "bus": "bus", "boat": "sailboat",
+        "backpack": "backpack", "suitcase": "suitcase", "location": "mappin.and.ellipse",
+        "tent": "tent", "campfire": "flame.fill", "cake": "birthday.cake", "pizza": "fork.knife.circle",
+        "bathtub": "bathtub", "bed": "bed.double", "creditcard": "creditcard", "piggybank": "banknote",
+    ]
+    return m[iconKey] ?? "note.text"
+}
 
 extension Color {
     init(hex: String) {
@@ -92,14 +120,15 @@ struct CombinedWidgetView: View {
                 if entry.tasks.isEmpty {
                     Text("予定はありません").font(.footnote).foregroundColor(.secondary)
                 } else {
-                    ForEach(entry.tasks.prefix(4), id: \.id) { task in
+                    let visibleTasks = Array(entry.tasks.prefix(4))
+                    ForEach(Array(visibleTasks.enumerated()), id: \.element.id) { index, task in
                         if #available(iOS 17.0, *) {
                             Button(intent: CompleteTaskIntent(id: task.id)) {
-                                taskRow(task)
+                                taskRow(task, isLast: index == visibleTasks.count - 1)
                             }
                             .buttonStyle(.plain)
                         } else {
-                            taskRow(task)
+                            taskRow(task, isLast: index == visibleTasks.count - 1)
                         }
                     }
                 }
@@ -133,13 +162,25 @@ struct CombinedWidgetView: View {
         .containerBackground(.background, for: .widget)
     }
 
-    private func taskRow(_ task: WidgetTaskItem) -> some View {
-        HStack(spacing: 6) {
-            Image(systemName: "circle").font(.footnote).foregroundStyle(entry.themeColor)
+    private func taskRow(_ task: WidgetTaskItem, isLast: Bool) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            VStack(spacing: 0) {
+                ZStack {
+                    Circle().fill(Color(.systemGray5)).frame(width: 26, height: 26)
+                    Image(systemName: sfSymbol(for: task.icon)).font(.system(size: 12)).foregroundStyle(.secondary)
+                }
+                if !isLast {
+                    Rectangle().fill(Color(.systemGray4)).frame(width: 2).frame(maxHeight: .infinity)
+                }
+            }
             VStack(alignment: .leading, spacing: 1) {
                 Text(task.time).font(.caption2).bold().foregroundStyle(entry.themeColor)
                 Text(task.name).font(.footnote).lineLimit(1)
             }
+            .padding(.top, 3)
+            Spacer(minLength: 4)
+            Image(systemName: "circle").font(.footnote).foregroundStyle(.secondary)
+                .padding(.top, 5)
         }
     }
 
