@@ -3,6 +3,7 @@
 import Capacitor
 import CoreLocation
 import UserNotifications
+import UIKit
 
 private struct GeofenceLocationEntry: Codable { let id: String; let name: String; let lat: Double; let lng: Double; let radius: Double }
 private struct WidgetShopEntry: Codable { let id: String; let name: String }
@@ -127,6 +128,17 @@ public class GeofencePlugin: CAPPlugin, CLLocationManagerDelegate, UNUserNotific
         let shouldOpen = UserDefaults.standard.bool(forKey: "pendingOpenShopList")
         UserDefaults.standard.removeObject(forKey: "pendingOpenShopList")
         call.resolve(["shouldOpenShop": shouldOpen])
+    }
+
+    // iOSは位置情報・通知の許可をアプリから直接ONにするAPIを提供していないため、
+    // 「設定アプリ > このアプリ」のページを直接開くところまでをワンタップで行う
+    @objc func openAppSettings(_ call: CAPPluginCall) {
+        DispatchQueue.main.async {
+            if let url = URL(string: UIApplication.openSettingsURLString) {
+                UIApplication.shared.open(url)
+            }
+        }
+        call.resolve()
     }
 
     // MARK: - CLLocationManagerDelegate

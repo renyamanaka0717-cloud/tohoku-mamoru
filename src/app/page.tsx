@@ -5,7 +5,7 @@ import { AppIcons } from './components/Icons';
 import { usePremium } from './components/Premium';
 import { setNativeAppIcon } from './components/AppIcon';
 import { updateWidgetData, getPendingWidgetActions } from './components/WidgetData';
-import { setShopGeofences, checkGeofencePermissions, ensureGeofencePermission, getPendingGeofenceAction, getNativeCurrentLocation } from './components/Geofence';
+import { setShopGeofences, checkGeofencePermissions, ensureGeofencePermission, getPendingGeofenceAction, getNativeCurrentLocation, openAppSettings } from './components/Geofence';
 import { scheduleInactivityReminder, cancelInactivityReminder } from './components/Inactivity';
 import { notify, requestNotifyPermission, syncTaskAlerts, syncFreeSlotAlerts, syncShopNotifs, syncLaterStaleAlerts, syncWakeCheckins, isNative } from './components/LocalNotify';
 import { getAppVersion } from './components/AppVersion';
@@ -2875,7 +2875,13 @@ function ShopLocationPanel({locations,onChange,isPremium,onProPrompt}:{
       {permDenied&&(
         <div className="bg-amber-50 rounded-2xl px-4 py-3 mb-3 flex items-start gap-2">
           <AppIcons.location size={16} className="text-amber-500 shrink-0 mt-0.5"/>
-          <p className="text-xs text-amber-700 leading-relaxed">位置情報または通知の許可が必要です。設定アプリ &gt; BrainBoxから「位置情報（常に）」と「通知」を許可してください。</p>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-amber-700 leading-relaxed mb-2">位置情報または通知の許可が必要です。設定アプリ &gt; BrainBoxから「位置情報（常に）」と「通知」を許可してください。</p>
+            <button onClick={()=>openAppSettings()}
+              className="px-3 py-1.5 bg-amber-100 text-amber-800 rounded-lg text-xs font-semibold active:bg-amber-200">
+              設定アプリを開く
+            </button>
+          </div>
         </div>
       )}
       {locations.length===0&&!adding&&(

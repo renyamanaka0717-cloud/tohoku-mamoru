@@ -10,6 +10,7 @@ interface GeofencePluginType {
   checkPermissions(): Promise<GeofencePermissionStatus>;
   getPendingGeofenceAction(): Promise<{ shouldOpenShop: boolean }>;
   getCurrentLocation(): Promise<{ lat: number; lng: number }>;
+  openAppSettings(): Promise<void>;
 }
 
 const GeofencePlugin = registerPlugin<GeofencePluginType>('GeofencePlugin');
@@ -62,6 +63,17 @@ export async function getPendingGeofenceAction(): Promise<boolean> {
 // 一切呼ばれずに固まることがある実際の不具合を確認したため、ネイティブでは
 // CLLocationManager.requestLocation() を直接使うこちらを使う。Web/開発環境ではnullを返す
 // （呼び出し元がnavigator.geolocationにフォールバックする）
+// iOSは位置情報・通知の許可をアプリから直接ONにするAPIを提供していないため、
+// 「設定アプリ > このアプリ」のページを直接開くところまでをワンタップで行う
+export async function openAppSettings(): Promise<void> {
+  if (!isNative()) return;
+  try {
+    await GeofencePlugin.openAppSettings();
+  } catch {
+    // ネイティブ側プラグイン未導入時はスキップ
+  }
+}
+
 export async function getNativeCurrentLocation(): Promise<{ lat: number; lng: number } | null> {
   if (!isNative()) return null;
   try {
