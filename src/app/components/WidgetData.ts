@@ -4,11 +4,11 @@ import { registerPlugin } from '@capacitor/core';
 interface WidgetTaskEntry { id: string; name: string; time: string; icon: string; }
 interface WidgetShopEntry { id: string; name: string; }
 interface WidgetLaterEntry { id: string; name: string; icon: string; }
-interface WidgetPendingActions { completedTaskIds: string[]; purchasedShopItemIds: string[]; openAddLater: boolean; }
+interface WidgetPendingActions { completedTaskIds: string[]; purchasedShopItemIds: string[]; }
 
 interface WidgetDataPluginType {
   updateWidgetData(options: { tasksJson: string; shopJson: string; laterJson: string; themeColor: string }): Promise<void>;
-  getPendingWidgetActions(): Promise<{ completedTaskIds: string; purchasedShopItemIds: string; openAddLater: boolean }>;
+  getPendingWidgetActions(): Promise<{ completedTaskIds: string; purchasedShopItemIds: string }>;
 }
 
 const WidgetDataPlugin = registerPlugin<WidgetDataPluginType>('WidgetDataPlugin');
@@ -33,15 +33,14 @@ export async function updateWidgetData(tasks: WidgetTaskEntry[], shopItems: Widg
 }
 
 export async function getPendingWidgetActions(): Promise<WidgetPendingActions> {
-  if (!isNative()) return { completedTaskIds: [], purchasedShopItemIds: [], openAddLater: false };
+  if (!isNative()) return { completedTaskIds: [], purchasedShopItemIds: [] };
   try {
     const res = await WidgetDataPlugin.getPendingWidgetActions();
     return {
       completedTaskIds: JSON.parse(res.completedTaskIds || '[]'),
       purchasedShopItemIds: JSON.parse(res.purchasedShopItemIds || '[]'),
-      openAddLater: !!res.openAddLater,
     };
   } catch {
-    return { completedTaskIds: [], purchasedShopItemIds: [], openAddLater: false };
+    return { completedTaskIds: [], purchasedShopItemIds: [] };
   }
 }

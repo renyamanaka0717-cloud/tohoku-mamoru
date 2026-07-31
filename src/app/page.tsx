@@ -9,6 +9,7 @@ import { setShopGeofences, checkGeofencePermissions, ensureGeofencePermission, g
 import { scheduleInactivityReminder, cancelInactivityReminder } from './components/Inactivity';
 import { notify, requestNotifyPermission, syncTaskAlerts, syncFreeSlotAlerts, syncShopNotifs, syncLaterStaleAlerts, syncWakeCheckins, isNative } from './components/LocalNotify';
 import { getAppVersion } from './components/AppVersion';
+import { App as CapApp } from '@capacitor/app';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -5081,20 +5082,28 @@ export default function App() {
   useEffect(()=>{
     if(!loaded) return;
     const applyPending=async()=>{
-      const {completedTaskIds,purchasedShopItemIds,openAddLater}=await getPendingWidgetActions();
+      const {completedTaskIds,purchasedShopItemIds}=await getPendingWidgetActions();
       if(completedTaskIds.length>0){
         setTasks(prev=>prev.map(t=>completedTaskIds.includes(t.id)?{...t,completed:true}:t));
       }
       if(purchasedShopItemIds.length>0){
         setShopItems(prev=>prev.map(s=>purchasedShopItemIds.includes(s.id)?{...s,checked:true,purchasedAt:new Date().toISOString()}:s));
       }
-      if(openAddLater){ setActiveTab('later'); openAdd(); }
       if(await getPendingGeofenceAction()) setActiveTab('shop');
     };
     applyPending();
     const onVisible=()=>{ if(document.visibilityState==='visible') applyPending(); };
     document.addEventListener('visibilitychange',onVisible);
     return ()=>document.removeEventListener('visibilitychange',onVisible);
+  },[loaded]);
+  useEffect(()=>{
+    if(!loaded||!isNative()) return;
+    // ウィジェットの「あとでやるを追加」ボタン（brainbox://addLater というLink）から
+    // アプリが開かれた時に、あとでやるタブ＋新規作成モーダルを自動で開く
+    const handle=CapApp.addListener('appUrlOpen',data=>{
+      if(data.url.includes('addLater')){ setActiveTab('later'); openAdd(); }
+    });
+    return ()=>{ handle.then(h=>h.remove()); };
   },[loaded]);
   useEffect(()=>{
     if(!loaded) return;

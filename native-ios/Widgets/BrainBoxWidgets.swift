@@ -272,11 +272,7 @@ struct QuadWidgetView: View {
                 Divider()
                 VStack {
                     Spacer(minLength: 0)
-                    if #available(iOS 17.0, *) {
-                        Button(intent: OpenAddLaterIntent()) { addButton }.buttonStyle(.plain)
-                    } else {
-                        addButton
-                    }
+                    Link(destination: URL(string: "brainbox://addLater")!) { addButton }
                     Spacer(minLength: 0)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -348,15 +344,9 @@ struct AddLaterWidgetView: View {
     var entry: CombinedEntry
 
     var body: some View {
-        Group {
-            if #available(iOS 17.0, *) {
-                Button(intent: OpenAddLaterIntent()) { content }.buttonStyle(.plain)
-            } else {
-                content
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .containerBackground(adaptiveWidgetBackground, for: .widget)
+        Link(destination: URL(string: "brainbox://addLater")!) { content }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .containerBackground(adaptiveWidgetBackground, for: .widget)
     }
 
     private var content: some View {

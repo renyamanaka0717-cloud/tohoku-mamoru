@@ -1,0 +1,16 @@
+<!--
+ios/App/App/Info.plist の <dict> 直下に追加するスニペット（ウィジェットの「あとでやるを追加」ボタン用）。
+
+ウィジェット側は AppIntent の openAppWhenRun ではなく、この brainbox:// カスタムURLスキームを
+Link(destination:) で開く方式で実装している（openAppWhenRunはIntentがメインAppターゲット側にも
+存在しないと動かず、Widget Extension限定で完結できないため）。
+-->
+<key>CFBundleURLTypes</key>
+<array>
+  <dict>
+    <key>CFBundleURLSchemes</key>
+    <array>
+      <string>brainbox</string>
+    </array>
+  </dict>
+</array>

@@ -26,15 +26,13 @@ public class WidgetDataPlugin: CAPPlugin {
 
     @objc func getPendingWidgetActions(_ call: CAPPluginCall) {
         guard let defaults = UserDefaults(suiteName: WidgetDataPlugin.appGroupId) else {
-            call.resolve(["completedTaskIds": "[]", "purchasedShopItemIds": "[]", "openAddLater": false])
+            call.resolve(["completedTaskIds": "[]", "purchasedShopItemIds": "[]"])
             return
         }
         let completedTaskIds = defaults.string(forKey: "pendingCompletedTaskIds") ?? "[]"
         let purchasedShopItemIds = defaults.string(forKey: "pendingPurchasedShopItemIds") ?? "[]"
-        let openAddLater = defaults.bool(forKey: "pendingOpenAddLater")
         defaults.removeObject(forKey: "pendingCompletedTaskIds")
         defaults.removeObject(forKey: "pendingPurchasedShopItemIds")
-        defaults.removeObject(forKey: "pendingOpenAddLater")
-        call.resolve(["completedTaskIds": completedTaskIds, "purchasedShopItemIds": purchasedShopItemIds, "openAddLater": openAddLater])
+        call.resolve(["completedTaskIds": completedTaskIds, "purchasedShopItemIds": purchasedShopItemIds])
     }
 }

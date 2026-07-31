@@ -13,10 +13,6 @@ enum WidgetPendingActions {
     static func addPurchasedShopItem(_ id: String) {
         appendId(id, key: "pendingPurchasedShopItemIds")
     }
-    static func setOpenAddLater() {
-        guard let defaults = UserDefaults(suiteName: widgetIntentsAppGroupId) else { return }
-        defaults.set(true, forKey: "pendingOpenAddLater")
-    }
     private static func appendId(_ id: String, key: String) {
         guard let defaults = UserDefaults(suiteName: widgetIntentsAppGroupId) else { return }
         var ids: [String] = []
@@ -58,19 +54,6 @@ struct PurchaseShopItemIntent: AppIntent {
     func perform() async throws -> some IntentResult {
         WidgetPendingActions.addPurchasedShopItem(id)
         WidgetCenter.shared.reloadAllTimelines()
-        return .result()
-    }
-}
-
-// ＋タップ時、アプリを開いて「あとでやる」タブ＋新規作成モーダルを自動で開かせる
-// （他のIntentと違いウィジェット内では完結せずアプリを開く必要があるため openAppWhenRun=true にする）
-@available(iOS 17.0, *)
-struct OpenAddLaterIntent: AppIntent {
-    static var title: LocalizedStringResource = "あとでやるタスクを追加"
-    static var openAppWhenRun: Bool = true
-
-    func perform() async throws -> some IntentResult {
-        WidgetPendingActions.setOpenAddLater()
         return .result()
     }
 }
