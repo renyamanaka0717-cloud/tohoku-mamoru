@@ -153,6 +153,10 @@ const adjustFireForSleep = (fireMs: number, wakeTime: string, sleepTime: string)
   return wakeDate.getTime();
 };
 
+// 放置アラート（タスク放置・アプリ放置 共通）: 未解決なら何時間おきに再通知するか、最大何回まで予約するか
+const STALE_REPEAT_HOURS = 6;
+const STALE_MAX_REPEATS = 5;
+
 // navigator.geolocation（WKWebView標準API）は実機で権限許可済みでもコールバックが
 // 一切呼ばれずに固まることがある実際の不具合を確認したため、ネイティブでは
 // CLLocationManager.requestLocation() を直接使うGeofencePluginのgetCurrentLocationを使う。
@@ -5112,10 +5116,16 @@ export default function App() {
     const onVisibilityChange=()=>{
       if(document.visibilityState==='hidden'){
         if(settings.notificationsEnabled??true){
-          // 発火予定時刻が就寝時間帯に重なる場合は、起床時刻まで後ろ倒しにする
-          const rawFireMs=Date.now()+hours*3600*1000;
-          const fireMs=adjustFireForSleep(rawFireMs,settings.wakeTime,settings.sleepTime);
-          scheduleInactivityReminder((fireMs-Date.now())/3600000);
+          // 発火予定時刻が就寝時間帯に重なる場合は、起床時刻まで後ろ倒しにする。
+          // アプリが開かれなければSTALE_REPEAT_HOURSごとに最大STALE_MAX_REPEATS回まで再通知する
+          const nowMs=Date.now();
+          const hoursList:number[]=[];
+          for(let i=0;i<STALE_MAX_REPEATS;i++){
+            const rawFireMs=nowMs+(hours+i*STALE_REPEAT_HOURS)*3600*1000;
+            const fireMs=adjustFireForSleep(rawFireMs,settings.wakeTime,settings.sleepTime);
+            hoursList.push((fireMs-nowMs)/3600000);
+          }
+          scheduleInactivityReminder(hoursList);
         }
       } else {
         cancelInactivityReminder();
@@ -5377,7 +5387,8 @@ export default function App() {
   },[loaded,now,tasks,settings.notificationsEnabled,settings.laterReminderHours,settings.wakeTime,settings.sleepTime]);
 
   // 「あとでやる」放置タスクの通知をネイティブに事前スケジュール（バックグラウンド/未起動でも発火させるため）。
-  // タスクごとにlaterSince+設定時間の絶対時刻で予約し、就寝時間帯に重なる場合は起床時刻まで後ろ倒しする
+  // タスクごとにlaterSince+設定時間の絶対時刻で予約し、就寝時間帯に重なる場合は起床時刻まで後ろ倒しする。
+  // タスクが完了していなければSTALE_REPEAT_HOURSごとに最大STALE_MAX_REPEATS回まで再通知する
   useEffect(()=>{
     if(!loaded||!isNative()) return;
     const hours=settings.laterReminderHours??72;
@@ -5386,10 +5397,13 @@ export default function App() {
     const alerts:{id:string;title:string;body:string;timestamp:number}[]=[];
     tasks.forEach(t=>{
       if(!t.isLater||t.completed||!t.laterSince) return;
-      const rawFireMs=new Date(t.laterSince).getTime()+hours*3600*1000;
-      if(rawFireMs<=nowMs) return;
-      const fireMs=adjustFireForSleep(rawFireMs,settings.wakeTime,settings.sleepTime);
-      alerts.push({id:`later-stale-${t.id}`,title:'あとでやるが溜まっています',body:`「${t.name}」が長時間放置されています`,timestamp:Math.floor(fireMs/1000)});
+      const baseMs=new Date(t.laterSince).getTime()+hours*3600*1000;
+      for(let i=0;i<STALE_MAX_REPEATS;i++){
+        const rawFireMs=baseMs+i*STALE_REPEAT_HOURS*3600000;
+        if(rawFireMs<=nowMs) continue;
+        const fireMs=adjustFireForSleep(rawFireMs,settings.wakeTime,settings.sleepTime);
+        alerts.push({id:`later-stale-${t.id}-${i}`,title:'あとでやるが溜まっています',body:`「${t.name}」が長時間放置されています`,timestamp:Math.floor(fireMs/1000)});
+      }
     });
     syncLaterStaleAlerts(alerts.slice(0,60));
   },[loaded,tasks,settings.laterReminderHours,settings.notificationsEnabled,settings.wakeTime,settings.sleepTime]);

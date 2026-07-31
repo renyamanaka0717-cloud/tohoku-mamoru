@@ -359,9 +359,10 @@ notify('おはようございます', body);
 放置タスク通知（`laterReminderHours`）も同じ設計で `syncLaterStaleAlerts()` によりネイティブに事前予約している。
 
 - `src/app/components/LocalNotify.ts` の `syncLaterStaleAlerts(alerts)` — ネイティブでのみ動作
-- `src/app/page.tsx` の App コンポーネントに、`tasks`/`laterReminderHours` が変わるたびに、`isLater`かつ未完了の各タスクについて `laterSince + 設定時間` の絶対時刻で予約する `useEffect` がある。識別子は `later-stale-${taskId}`
+- `src/app/page.tsx` の App コンポーネントに、`tasks`/`laterReminderHours` が変わるたびに、`isLater`かつ未完了の各タスクについて `laterSince + 設定時間` の絶対時刻で予約する `useEffect` がある。識別子は `later-stale-${taskId}-${repeatIndex}`
 - 発火予定時刻が就寝時間帯に重なる場合は `adjustFireForSleep()` で起床時刻まで後ろ倒しする
 - タスク単位で個別に通知する設計に変更した（旧JS版は複数の放置タスクを1通知にまとめていたが、ネイティブ事前予約では内容を後から動的に合成できないため）
+- **未解決なら再通知する（`STALE_REPEAT_HOURS`/`STALE_MAX_REPEATS`）:** タスクが完了しないままだと、最初の通知に加えて `STALE_REPEAT_HOURS`（6時間）おきに最大 `STALE_MAX_REPEATS`（5回）まで追加の通知を事前予約する（`later-stale-${taskId}-0`が最初の通知、`-1`以降が再通知）。タスクが完了すれば次回の`tasks`変更時にまとめて全解除されるため、それ以上再通知されない。バックグラウンド/未起動のままアプリが開かれなくても、事前予約した分は届く（未来永劫ではなく `STALE_MAX_REPEATS` 回で打ち止め）
 - 旧来の `now` ポーリング＋即時 `notify()` の `useEffect`（`LATER_NOTIFIED_KEY`使用）はWeb/開発環境専用フォールバックとして残っており、ネイティブでは `isNative()` で早期returnする
 
 ### 起床時チェックイン通知のネイティブ事前予約（`syncWakeCheckins`）
@@ -568,17 +569,19 @@ const SHOP_LOC_KEY = 'tl-shop-loc-v1';
 
 タスクリマインダーと違い、アプリがバックグラウンド/未起動でも数時間〜数日後に発火する必要があるため、JSのタイマーでは実現できない（プロセスが生きている保証がない）。iOSネイティブの `UNTimeIntervalNotificationTrigger` で完結させる。
 
-**就寝時間帯を避ける調整:** バックグラウンドに移る瞬間（`document.visibilitychange`）に `Date.now()+hours*3600*1000` で発火予定時刻を計算し、`inSleepWindow()` でその時刻が就寝〜起床の時間帯に重なるか判定する。重なる場合は起床時刻まで後ろ倒しした時間差を計算し直し、`scheduleInactivityReminder()` にはその調整後の時間数を渡す（ネイティブ側の `UNTimeIntervalNotificationTrigger` は相対時間しか扱えないため、時刻の調整はJS側で行う）。
+**就寝時間帯を避ける調整:** バックグラウンドに移る瞬間（`document.visibilitychange`）に `Date.now()+hours*3600*1000` で発火予定時刻を計算し、`inSleepWindow()` でその時刻が就寝〜起床の時間帯に重なるか判定する。重なる場合は起床時刻まで後ろ倒しした時間差を計算し直す（ネイティブ側の `UNTimeIntervalNotificationTrigger` は相対時間しか扱えないため、時刻の調整はJS側で行う）。
+
+**未解決なら再通知する（`STALE_REPEAT_HOURS`/`STALE_MAX_REPEATS`、放置タスク通知と共通の定数）:** アプリが開かれないままだと、最初の通知（`hours`時間後）に加えて `STALE_REPEAT_HOURS`（6時間）おきに最大 `STALE_MAX_REPEATS`（5回）ぶんの通知をまとめて事前予約する。`scheduleInactivityReminder()` には単一の`hours`ではなく、この一連の時間数（`hoursList: number[]`）を渡す。アプリを開けば`cancelInactivityReminder()`で全件まとめて取り消される。
 
 **データの流れ:**
 
 1. `src/app/page.tsx` の App コンポーネントに `document.visibilitychange` を監視する `useEffect` があり、
-   - **バックグラウンドに移った瞬間**（`visibilityState==='hidden'`）→ `scheduleInactivityReminder(hours)` を呼び、`hours` 時間後に発火するようネイティブ側に予約する
-   - **フォアグラウンドに戻った瞬間**（`visibilityState==='visible'`）→ `cancelInactivityReminder()` で予約済みの通知を取り消す（アプリを開いたのでタイマーをリセットする意味）
+   - **バックグラウンドに移った瞬間**（`visibilityState==='hidden'`）→ 最初の通知＋再通知ぶんの時間数配列（`hoursList`）を計算して `scheduleInactivityReminder(hoursList)` を呼ぶ
+   - **フォアグラウンドに戻った瞬間**（`visibilityState==='visible'`）→ `cancelInactivityReminder()` で予約済みの通知を全て取り消す（アプリを開いたのでタイマーをリセットする意味）
    - `settings.appInactivityHours<=0`（オフ）の場合は常に `cancelInactivityReminder()` のみ呼ぶ
    - `settings.notificationsEnabled` が false の場合はスケジュールしない
-2. `src/app/components/Inactivity.ts` — `scheduleInactivityReminder()`/`cancelInactivityReminder()` がCapacitorカスタムプラグイン `InactivityPlugin` を呼ぶ（Web/開発環境では何もしない）
-3. `native-ios/InactivityPlugin.swift` — `scheduleReminder(hours:)` は既存の同IDリクエストを `removePendingNotificationRequests` で必ず削除してから（重複防止・タイマーリセット）、`hours<=0` でなければ通知権限をリクエストして `UNTimeIntervalNotificationTrigger(timeInterval: hours*3600, repeats:false)` で1件だけ予約する。`cancelReminder()` は同IDの予約済みリクエストを削除するだけ
+2. `src/app/components/Inactivity.ts` — `scheduleInactivityReminder(hoursList)`/`cancelInactivityReminder()` がCapacitorカスタムプラグイン `InactivityPlugin` を呼ぶ（Web/開発環境では何もしない）
+3. `native-ios/InactivityPlugin.swift` — `scheduleReminder()` は既存の `app-inactivity-reminder-` prefixの予約を全解除してから（重複防止・タイマーリセット）、`hoursList`の各要素ごとに `UNTimeIntervalNotificationTrigger(timeInterval: hours*3600, repeats:false)` で1件ずつ（識別子 `app-inactivity-reminder-${index}`）予約し直す。`cancelReminder()` は同prefixの予約済みリクエストを全て削除するだけ
 
 ### Xcodeでの手動セットアップ（`ios/`はgitignore対象なので毎回必要）
 
