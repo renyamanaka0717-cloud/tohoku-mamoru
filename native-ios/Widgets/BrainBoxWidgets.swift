@@ -247,13 +247,13 @@ struct QuadWidgetView: View {
 
     var body: some View {
         ZStack {
-            VStack(spacing: 10) {
-                HStack(alignment: .top, spacing: 10) {
+            VStack(spacing: 6) {
+                HStack(alignment: .top, spacing: 8) {
                     quadColumn(title: "次の予定") {
                         if entry.tasks.isEmpty {
                             Text("予定はありません").font(.caption2).foregroundColor(.secondary)
                         } else {
-                            ForEach(entry.tasks.prefix(3), id: \.id) { task in
+                            ForEach(entry.tasks.prefix(2), id: \.id) { task in
                                 if #available(iOS 17.0, *) {
                                     Button(intent: CompleteTaskIntent(id: task.id)) { miniTaskRow(task) }.buttonStyle(.plain)
                                 } else {
@@ -267,7 +267,7 @@ struct QuadWidgetView: View {
                         if entry.shopItems.isEmpty {
                             Text("買うものはありません").font(.caption2).foregroundColor(.secondary)
                         } else {
-                            ForEach(entry.shopItems.prefix(4), id: \.id) { item in
+                            ForEach(entry.shopItems.prefix(2), id: \.id) { item in
                                 if #available(iOS 17.0, *) {
                                     Button(intent: PurchaseShopItemIntent(id: item.id)) { miniShopRow(item) }.buttonStyle(.plain)
                                 } else {
@@ -278,12 +278,12 @@ struct QuadWidgetView: View {
                     }
                 }
                 Divider()
-                HStack(alignment: .top, spacing: 10) {
+                HStack(alignment: .top, spacing: 8) {
                     quadColumn(title: "あとでやる") {
                         if entry.laterItems.isEmpty {
                             Text("ありません").font(.caption2).foregroundColor(.secondary)
                         } else {
-                            ForEach(entry.laterItems.prefix(3), id: \.id) { item in
+                            ForEach(entry.laterItems.prefix(2), id: \.id) { item in
                                 if #available(iOS 17.0, *) {
                                     Button(intent: CompleteTaskIntent(id: item.id)) { miniLaterRow(item) }.buttonStyle(.plain)
                                 } else {
@@ -303,13 +303,13 @@ struct QuadWidgetView: View {
                     }
                 }
             }
-            .padding()
+            .padding(10)
 
             Link(destination: URL(string: "brainbox://addLater")!) {
                 ZStack {
-                    Circle().fill(entry.themeColor).frame(width: 46, height: 46)
-                        .shadow(color: .black.opacity(0.18), radius: 3, y: 1)
-                    Image(systemName: "plus").font(.system(size: 19, weight: .bold)).foregroundStyle(.white)
+                    Circle().fill(entry.themeColor).frame(width: 34, height: 34)
+                        .shadow(color: .black.opacity(0.18), radius: 2, y: 1)
+                    Image(systemName: "plus").font(.system(size: 15, weight: .bold)).foregroundStyle(.white)
                 }
             }
         }
@@ -317,7 +317,7 @@ struct QuadWidgetView: View {
     }
 
     private func quadColumn<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 3) {
             Text(title).font(.caption2).foregroundColor(.secondary)
             content()
             Spacer(minLength: 0)
@@ -358,7 +358,7 @@ struct QuadWidget: Widget {
         }
         .configurationDisplayName("4分割（予定・買い物・あとでやる・追加）")
         .description("次の予定・買い物リスト・あとでやるタスクを4分割で表示し、＋タップで新規タスクを追加できます。")
-        .supportedFamilies([.systemLarge])
+        .supportedFamilies([.systemMedium])
     }
 }
 
