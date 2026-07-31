@@ -6,6 +6,8 @@ import AppIntents
 
 private let appGroupId = "group.jp.brainbox.app"
 private let defaultThemeColor = Color(red: 217/255, green: 163/255, blue: 178/255)
+// 昼は白の半透明、夜（ダークモード）は黒の半透明に自動で切り替わる背景
+private let adaptiveWidgetBackground = Color(.systemBackground).opacity(0.85)
 
 struct WidgetTaskItem: Codable { let id: String; let name: String; let time: String; let icon: String }
 struct WidgetShopItem: Codable { let id: String; let name: String }
@@ -171,7 +173,7 @@ struct CombinedWidgetView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding()
-        .containerBackground(Color.white.opacity(0.85), for: .widget)
+        .containerBackground(adaptiveWidgetBackground, for: .widget)
     }
 
     private func taskRow(_ task: WidgetTaskItem, isLast: Bool) -> some View {
@@ -281,7 +283,7 @@ struct QuadWidgetView: View {
             }
         }
         .padding()
-        .containerBackground(Color.white.opacity(0.85), for: .widget)
+        .containerBackground(adaptiveWidgetBackground, for: .widget)
     }
 
     private var addButton: some View {
@@ -340,10 +342,51 @@ struct QuadWidget: Widget {
     }
 }
 
+// MARK: - あとでやる追加ウィジェット（systemLargeの半分の面積・ワンタップで追加画面を開く）
+
+struct AddLaterWidgetView: View {
+    var entry: CombinedEntry
+
+    var body: some View {
+        Group {
+            if #available(iOS 17.0, *) {
+                Button(intent: OpenAddLaterIntent()) { content }.buttonStyle(.plain)
+            } else {
+                content
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .containerBackground(adaptiveWidgetBackground, for: .widget)
+    }
+
+    private var content: some View {
+        VStack(spacing: 8) {
+            ZStack {
+                Circle().fill(entry.themeColor.opacity(0.18)).frame(width: 52, height: 52)
+                Image(systemName: "plus").font(.system(size: 22, weight: .bold)).foregroundStyle(entry.themeColor)
+            }
+            Text("あとでやるを追加").font(.footnote).bold().foregroundStyle(.primary)
+        }
+    }
+}
+
+struct AddLaterWidget: Widget {
+    let kind: String = "BrainBoxAddLaterWidget"
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: kind, provider: CombinedProvider()) { entry in
+            AddLaterWidgetView(entry: entry)
+        }
+        .configurationDisplayName("あとでやるを追加")
+        .description("タップするだけで「あとでやる」タスクの追加画面を開けます。")
+        .supportedFamilies([.systemMedium])
+    }
+}
+
 @main
 struct BrainBoxWidgetBundle: WidgetBundle {
     var body: some Widget {
         CombinedWidget()
         QuadWidget()
+        AddLaterWidget()
     }
 }
