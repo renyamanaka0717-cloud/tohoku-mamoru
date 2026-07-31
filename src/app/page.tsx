@@ -5074,8 +5074,8 @@ export default function App() {
       .sort((a,b)=>(a.startTime! < b.startTime! ? -1 : 1))
       .slice(0,6)
       .map(t=>({id:t.id,name:t.name,time:t.startTime!,icon:t.icon||defaultIconKey(t.name)}));
-    const shopList=shopItems.filter(s=>!s.checked).slice(0,8).map(s=>({id:s.id,name:s.name}));
-    const laterList=tasks.filter(t=>t.isLater&&!t.completed).slice(0,6).map(t=>({id:t.id,name:t.name,icon:t.icon||defaultIconKey(t.name)}));
+    const shopList=shopItems.filter(s=>!s.checked).slice(0,10).map(s=>({id:s.id,name:s.name}));
+    const laterList=tasks.filter(t=>t.isLater&&!t.completed).slice(0,7).map(t=>({id:t.id,name:t.name,icon:t.icon||defaultIconKey(t.name)}));
     const themeColor=THEMES.find(th=>th.id===(settings.theme??'mint'))?.color??'#94CFC8';
     updateWidgetData(nextTasks,shopList,laterList,themeColor);
   },[tasks,shopItems,now,loaded,settings.theme]);

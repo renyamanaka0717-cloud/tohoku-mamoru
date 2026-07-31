@@ -230,7 +230,7 @@ struct QuadWidgetView: View {
                     if entry.tasks.isEmpty {
                         Text("予定はありません").font(.caption2).foregroundColor(.secondary)
                     } else {
-                        ForEach(entry.tasks.prefix(5), id: \.id) { task in
+                        ForEach(entry.tasks.prefix(6), id: \.id) { task in
                             if #available(iOS 17.0, *) {
                                 Button(intent: CompleteTaskIntent(id: task.id)) { miniTaskRow(task) }.buttonStyle(.plain)
                             } else {
@@ -244,7 +244,7 @@ struct QuadWidgetView: View {
                     if entry.shopItems.isEmpty {
                         Text("買うものはありません").font(.caption2).foregroundColor(.secondary)
                     } else {
-                        ForEach(entry.shopItems.prefix(6), id: \.id) { item in
+                        ForEach(entry.shopItems.prefix(10), id: \.id) { item in
                             if #available(iOS 17.0, *) {
                                 Button(intent: PurchaseShopItemIntent(id: item.id)) { miniShopRow(item) }.buttonStyle(.plain)
                             } else {
@@ -260,7 +260,7 @@ struct QuadWidgetView: View {
                     if entry.laterItems.isEmpty {
                         Text("ありません").font(.caption2).foregroundColor(.secondary)
                     } else {
-                        ForEach(entry.laterItems.prefix(5), id: \.id) { item in
+                        ForEach(entry.laterItems.prefix(7), id: \.id) { item in
                             if #available(iOS 17.0, *) {
                                 Button(intent: CompleteTaskIntent(id: item.id)) { miniLaterRow(item) }.buttonStyle(.plain)
                             } else {
@@ -273,9 +273,12 @@ struct QuadWidgetView: View {
                 VStack {
                     Spacer(minLength: 0)
                     Link(destination: URL(string: "brainbox://addLater")!) {
-                        ZStack {
-                            Circle().fill(entry.themeColor.opacity(0.18)).frame(width: 40, height: 40)
-                            Image(systemName: "plus").font(.system(size: 16, weight: .bold)).foregroundStyle(entry.themeColor)
+                        VStack(spacing: 4) {
+                            ZStack {
+                                Circle().fill(entry.themeColor.opacity(0.18)).frame(width: 40, height: 40)
+                                Image(systemName: "plus").font(.system(size: 16, weight: .bold)).foregroundStyle(entry.themeColor)
+                            }
+                            Text("あとでやるタスクを追加").font(.caption2).foregroundColor(.secondary).multilineTextAlignment(.center)
                         }
                     }
                     Spacer(minLength: 0)
