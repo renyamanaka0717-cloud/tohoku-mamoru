@@ -10,6 +10,7 @@ public class WidgetDataPlugin: CAPPlugin {
     @objc func updateWidgetData(_ call: CAPPluginCall) {
         let tasksJson = call.getString("tasksJson") ?? "[]"
         let shopJson = call.getString("shopJson") ?? "[]"
+        let laterJson = call.getString("laterJson") ?? "[]"
         let themeColor = call.getString("themeColor") ?? "#D9A3B2"
         guard let defaults = UserDefaults(suiteName: WidgetDataPlugin.appGroupId) else {
             call.reject("App Group not configured")
@@ -17,6 +18,7 @@ public class WidgetDataPlugin: CAPPlugin {
         }
         defaults.set(tasksJson, forKey: "widgetTasksJson")
         defaults.set(shopJson, forKey: "widgetShopJson")
+        defaults.set(laterJson, forKey: "widgetLaterJson")
         defaults.set(themeColor, forKey: "widgetThemeColor")
         WidgetCenter.shared.reloadAllTimelines()
         call.resolve()
@@ -24,13 +26,15 @@ public class WidgetDataPlugin: CAPPlugin {
 
     @objc func getPendingWidgetActions(_ call: CAPPluginCall) {
         guard let defaults = UserDefaults(suiteName: WidgetDataPlugin.appGroupId) else {
-            call.resolve(["completedTaskIds": "[]", "purchasedShopItemIds": "[]"])
+            call.resolve(["completedTaskIds": "[]", "purchasedShopItemIds": "[]", "openAddLater": false])
             return
         }
         let completedTaskIds = defaults.string(forKey: "pendingCompletedTaskIds") ?? "[]"
         let purchasedShopItemIds = defaults.string(forKey: "pendingPurchasedShopItemIds") ?? "[]"
+        let openAddLater = defaults.bool(forKey: "pendingOpenAddLater")
         defaults.removeObject(forKey: "pendingCompletedTaskIds")
         defaults.removeObject(forKey: "pendingPurchasedShopItemIds")
-        call.resolve(["completedTaskIds": completedTaskIds, "purchasedShopItemIds": purchasedShopItemIds])
+        defaults.removeObject(forKey: "pendingOpenAddLater")
+        call.resolve(["completedTaskIds": completedTaskIds, "purchasedShopItemIds": purchasedShopItemIds, "openAddLater": openAddLater])
     }
 }

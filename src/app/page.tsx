@@ -5074,19 +5074,21 @@ export default function App() {
       .slice(0,3)
       .map(t=>({id:t.id,name:t.name,time:t.startTime!,icon:t.icon||defaultIconKey(t.name)}));
     const shopList=shopItems.filter(s=>!s.checked).slice(0,5).map(s=>({id:s.id,name:s.name}));
+    const laterList=tasks.filter(t=>t.isLater&&!t.completed).slice(0,4).map(t=>({id:t.id,name:t.name,icon:t.icon||defaultIconKey(t.name)}));
     const themeColor=THEMES.find(th=>th.id===(settings.theme??'mint'))?.color??'#94CFC8';
-    updateWidgetData(nextTasks,shopList,themeColor);
+    updateWidgetData(nextTasks,shopList,laterList,themeColor);
   },[tasks,shopItems,now,loaded,settings.theme]);
   useEffect(()=>{
     if(!loaded) return;
     const applyPending=async()=>{
-      const {completedTaskIds,purchasedShopItemIds}=await getPendingWidgetActions();
+      const {completedTaskIds,purchasedShopItemIds,openAddLater}=await getPendingWidgetActions();
       if(completedTaskIds.length>0){
         setTasks(prev=>prev.map(t=>completedTaskIds.includes(t.id)?{...t,completed:true}:t));
       }
       if(purchasedShopItemIds.length>0){
         setShopItems(prev=>prev.map(s=>purchasedShopItemIds.includes(s.id)?{...s,checked:true,purchasedAt:new Date().toISOString()}:s));
       }
+      if(openAddLater){ setActiveTab('later'); openAdd(); }
       if(await getPendingGeofenceAction()) setActiveTab('shop');
     };
     applyPending();
