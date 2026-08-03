@@ -56,6 +56,29 @@ interface Task {
 }
 
 interface Settings { wakeTime: string; sleepTime: string; keepIncomplete?: boolean; showFreeCard?: boolean; freeCardMinMin?: number; wakeColor?:string; sleepColor?:string; theme?:string; appIcon?:string; notificationsEnabled?:boolean; laterReminderHours?: number; appInactivityHours?: number; }
+// 「おすすめ機能」表示の判定に使う端末内の利用履歴（未使用の機能を段階的に紹介するため）
+interface FeatureUsage {
+  installedAt: string;
+  shoppingListUsedAt?: string;
+  locationReminderUsedAt?: string;
+  repeatTaskUsedAt?: string;
+  lastRecommendationShownAt?: string;
+}
+interface RecommendationState { shownCount: number; lastShownAt?: string; dismissedAt?: string; }
+type RecommendationId = 'shoppingList'|'locationReminder'|'repeatTask';
+interface RecommendationDef {
+  id: RecommendationId;
+  usedKey: keyof Omit<FeatureUsage,'installedAt'|'lastRecommendationShownAt'>;
+  title: string; body: string; cta: string;
+  requiresLocationPermission?: boolean;
+}
+// 対象機能を増やす時はここに追記するだけでよい（優先順位はこの並び順）
+const RECOMMENDATION_DEFS: RecommendationDef[] = [
+  { id:'shoppingList', usedKey:'shoppingListUsedAt', title:'買い物リスト、使ってみませんか？', body:'買うものをまとめておくと、必要なときにすぐ確認できます。', cta:'使ってみる' },
+  { id:'locationReminder', usedKey:'locationReminderUsedAt', title:'場所で通知、使ってみませんか？', body:'よく行く場所に近づいたら、買い物リストを知らせてくれます。', cta:'使ってみる', requiresLocationPermission:true },
+  { id:'repeatTask', usedKey:'repeatTaskUsedAt', title:'繰り返しタスク、使ってみませんか？', body:'毎日・毎週のタスクは繰り返し設定にしておくと登録の手間が省けます。', cta:'使ってみる' },
+];
+const daysBetween=(fromMs:number,toMs:number):number=>(toMs-fromMs)/86400000;
 type AuthUser = {uid:string;email?:string;displayName?:string;isPremium?:boolean};
 interface FreeSlot  { start: string; end: string; min: number; }
 interface ShopItem  { id: string; name: string; checked: boolean; purchasedAt?: string; }
@@ -88,6 +111,8 @@ const SHOP_LOC_KEY      = 'tl-shop-loc-v1';
 const NOTIF_ASKED_KEY   = 'tl-notif-asked-v1';
 const WAKESLEEP_ASKED_KEY = 'tl-wakesleep-asked-v1';
 const ONBOARDING_KEY = 'tl-onboarding-completed-v1';
+const FEATURE_USAGE_KEY = 'tl-feature-usage-v1';
+const RECOMMEND_STATE_KEY = 'tl-recommend-state-v1';
 const LATER_NOTIFIED_KEY = 'tl-later-notified-v1';
 const TASK_ALERT_FIRED_KEY = 'tl-task-alert-fired-v1';
 const WAKE_CHECKIN_NOTIF_KEY = 'tl-wake-checkin-notif-v1';
@@ -5021,6 +5046,12 @@ export default function App() {
   const [wsPromptWake,setWsPromptWake] = useState('07:00');
   const [wsPromptSleep,setWsPromptSleep] = useState('23:00');
   const [appProPrompt,setAppProPrompt] = useState(false);
+  const [featureUsage,setFeatureUsage] = useState<FeatureUsage|null>(null);
+  const [recommendState,setRecommendState] = useState<Partial<Record<RecommendationId,RecommendationState>>>({});
+  const [activeRecommendation,setActiveRecommendation] = useState<RecommendationId|null>(null);
+  const featureUsageRef = useRef<FeatureUsage|null>(null);
+  const recommendStateRef = useRef<Partial<Record<RecommendationId,RecommendationState>>>({});
+  const recommendPickedRef = useRef(false);
   const { isPremium } = usePremium();
 
   useEffect(()=>{
@@ -5063,6 +5094,10 @@ export default function App() {
       if(lp) setLifePatterns(JSON.parse(lp) as LifePattern[]);
       const po=localStorage.getItem(PATTERN_OVERRIDES_KEY);
       if(po) setPatternOverrides(JSON.parse(po) as Record<string,string>);
+      const fu=localStorage.getItem(FEATURE_USAGE_KEY);
+      setFeatureUsage(fu?JSON.parse(fu) as FeatureUsage:{installedAt:new Date().toISOString()});
+      const rs=localStorage.getItem(RECOMMEND_STATE_KEY);
+      if(rs) setRecommendState(JSON.parse(rs) as Partial<Record<RecommendationId,RecommendationState>>);
     }catch{}
     setLoaded(true);
     if(!localStorage.getItem(ONBOARDING_KEY)){
@@ -5152,6 +5187,24 @@ export default function App() {
   useEffect(()=>{ if(loaded) localStorage.setItem(BULK_HIST_KEY,JSON.stringify(bulkHistory)); },[bulkHistory,loaded]);
   useEffect(()=>{ if(loaded) localStorage.setItem(LIFE_PATTERNS_KEY,JSON.stringify(lifePatterns)); },[lifePatterns,loaded]);
   useEffect(()=>{ if(loaded) localStorage.setItem(PATTERN_OVERRIDES_KEY,JSON.stringify(patternOverrides)); },[patternOverrides,loaded]);
+  useEffect(()=>{ if(loaded&&featureUsage) localStorage.setItem(FEATURE_USAGE_KEY,JSON.stringify(featureUsage)); },[featureUsage,loaded]);
+  useEffect(()=>{ if(loaded) localStorage.setItem(RECOMMEND_STATE_KEY,JSON.stringify(recommendState)); },[recommendState,loaded]);
+  useEffect(()=>{ featureUsageRef.current=featureUsage; },[featureUsage]);
+  useEffect(()=>{ recommendStateRef.current=recommendState; },[recommendState]);
+  // 未使用の機能を検知して featureUsage に記録する（一度記録したら上書きしない）
+  useEffect(()=>{
+    if(!loaded||!featureUsage) return;
+    const nowIso=new Date().toISOString();
+    setFeatureUsage(prev=>{
+      if(!prev) return prev;
+      let changed=false;
+      const next={...prev};
+      if(!next.shoppingListUsedAt&&shopItems.length>0){ next.shoppingListUsedAt=nowIso; changed=true; }
+      if(!next.locationReminderUsedAt&&shopLocations.length>0){ next.locationReminderUsedAt=nowIso; changed=true; }
+      if(!next.repeatTaskUsedAt&&tasks.some(t=>t.recurrence)){ next.repeatTaskUsedAt=nowIso; changed=true; }
+      return changed?next:prev;
+    });
+  },[loaded,featureUsage,shopItems,shopLocations,tasks]);
   useEffect(()=>{ const iv=setInterval(()=>setNow(nowStr()),60000); return ()=>clearInterval(iv); },[]);
   useEffect(()=>{
     const t=THEMES.find(th=>th.id===(settings.theme??'mint'));
@@ -5217,6 +5270,65 @@ export default function App() {
     setSettings(s=>({...s,wakeTime:wsPromptWake,sleepTime:wsPromptSleep}));
     dismissWakeSleepPrompt();
   };
+
+  const showRecommendation=(id:RecommendationId)=>{
+    const nowIso=new Date().toISOString();
+    setFeatureUsage(prev=>prev?{...prev,lastRecommendationShownAt:nowIso}:prev);
+    setRecommendState(prev=>{
+      const cur=prev[id]??{shownCount:0};
+      return {...prev,[id]:{...cur,shownCount:cur.shownCount+1,lastShownAt:nowIso}};
+    });
+    setActiveRecommendation(id);
+  };
+  const dismissRecommendation=()=>{
+    if(activeRecommendation){
+      const id=activeRecommendation;
+      const nowIso=new Date().toISOString();
+      setRecommendState(prev=>{
+        const cur=prev[id]??{shownCount:1};
+        return {...prev,[id]:{...cur,dismissedAt:nowIso}};
+      });
+    }
+    setActiveRecommendation(null);
+  };
+  const useRecommendation=()=>{
+    const id=activeRecommendation;
+    setActiveRecommendation(null);
+    if(id==='shoppingList'){ setActiveTab('shop'); }
+    else if(id==='locationReminder'){ setSettingsInitSub('notifications-shop'); setSOp(true); }
+    else if(id==='repeatTask'){ openAdd(); }
+  };
+
+  // オンボーディング完了から一定時間が経ったタイミングで、未使用の機能を1つだけ提案する
+  // （インストールから3日以上・前回のおすすめ表示から2日以上・却下から7日以上・表示は最大2回まで）
+  useEffect(()=>{
+    if(!loaded||showOnboarding||!featureUsage||recommendPickedRef.current) return;
+    const timer=setTimeout(async()=>{
+      if(recommendPickedRef.current) return;
+      const fu=featureUsageRef.current;
+      if(!fu) return;
+      const nowMs=Date.now();
+      if(daysBetween(new Date(fu.installedAt).getTime(),nowMs)<3) return;
+      if(fu.lastRecommendationShownAt&&daysBetween(new Date(fu.lastRecommendationShownAt).getTime(),nowMs)<2) return;
+      const rs=recommendStateRef.current;
+      for(const def of RECOMMENDATION_DEFS){
+        if(fu[def.usedKey]) continue;
+        const state=rs[def.id];
+        if(state){
+          if(state.shownCount>=2) continue;
+          if(state.dismissedAt&&daysBetween(new Date(state.dismissedAt).getTime(),nowMs)<7) continue;
+        }
+        if(def.requiresLocationPermission){
+          const status=await checkGeofencePermissions();
+          if(status.location==='denied') continue;
+        }
+        recommendPickedRef.current=true;
+        showRecommendation(def.id);
+        return;
+      }
+    },6000);
+    return ()=>clearTimeout(timer);
+  },[loaded,showOnboarding,featureUsage]);
 
   // 起床時間後、初回起動時に過去の未完了タスクをポップアップで確認（スヌーズ対応）
   useEffect(()=>{
@@ -6158,6 +6270,31 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* ── おすすめ機能カード ── */}
+      {activeRecommendation&&!modal.open&&!settingsOpen&&!calendarOpen&&!searchOpen&&(()=>{
+        const def=RECOMMENDATION_DEFS.find(d=>d.id===activeRecommendation);
+        if(!def) return null;
+        return (
+          <div className="fixed left-0 right-0 z-40 max-w-md mx-auto px-4" style={{bottom:'calc(7.5rem + env(safe-area-inset-bottom))'}}>
+            <div className="bg-white rounded-2xl px-4 py-3.5 flex items-start gap-3" style={{boxShadow:'0 8px 24px rgba(0,0,0,0.14)',border:'1px solid rgba(0,0,0,0.05)'}}>
+              <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0" style={{background:'rgba(217,163,178,0.14)'}}>
+                <AppIcons.sparkle size={18} className="text-[var(--c-primary)]"/>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-gray-800">{def.title}</p>
+                <p className="text-xs text-gray-400 mt-0.5 leading-relaxed">{def.body}</p>
+                <div className="flex items-center gap-3 mt-2.5">
+                  <button onClick={useRecommendation}
+                    className="text-xs font-bold text-white px-3.5 py-1.5 rounded-xl"
+                    style={{background:'var(--c-primary)'}}>{def.cta}</button>
+                  <button onClick={dismissRecommendation} className="text-xs font-medium text-gray-400">今はしない</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── Morning check popup ── */}
       {morningTasks&&(
