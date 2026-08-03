@@ -120,7 +120,6 @@ const TOUR_COMPLETED_KEY = 'tl-product-tour-completed-v1';
 const LATER_NOTIFIED_KEY = 'tl-later-notified-v1';
 const TASK_ALERT_FIRED_KEY = 'tl-task-alert-fired-v1';
 const DEADLINE_ALERT_FIRED_KEY = 'tl-deadline-alert-fired-v1';
-const DEADLINE_AUTO_INTRO_KEY = 'tl-deadline-auto-intro-shown-v1';
 const WAKE_CHECKIN_NOTIF_KEY = 'tl-wake-checkin-notif-v1';
 const LATER_REMINDER_OPTS = [{v:0,l:'オフ'},{v:1,l:'1時間'},{v:3,l:'3時間'},{v:6,l:'6時間'},{v:12,l:'12時間'},{v:24,l:'1日'},{v:48,l:'2日'},{v:72,l:'3日'}];
 const APP_INACTIVITY_OPTS = [{v:0,l:'オフ'},{v:6,l:'6時間'},{v:12,l:'12時間'},{v:24,l:'1日'},{v:48,l:'2日'},{v:72,l:'3日'}];
@@ -1020,7 +1019,6 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
   const [deadlineTime,setDeadlineTime] = useState(task?.deadlineAt?task.deadlineAt.slice(11,16):'18:00');
   const [deadlineNotify,setDeadlineNotify] = useState<DeadlineNotifyOpt>(task?.deadlineNotify??'dayBefore');
   const [deadlineOpen,setDeadlineOpen] = useState(false);
-  const [showAutoIntro,setShowAutoIntro] = useState(false);
   const [modalProPrompt,setModalProPrompt] = useState<string|null>(null);
   const modalSwX=useRef(0), modalSwY=useRef(0);
   const modeOrder:TaskMode[]=['later','scheduled','recurring','allday'];
@@ -1637,17 +1635,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
               <>
                 <div className="h-px bg-gray-100 mx-4"/>
                 <button className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50"
-                  onClick={()=>{
-                    if(!isPremium){setModalProPrompt('締切管理');return;}
-                    setDeadlineOpen(o=>{
-                      const next=!o;
-                      if(next&&!localStorage.getItem(DEADLINE_AUTO_INTRO_KEY)){
-                        setShowAutoIntro(true);
-                        localStorage.setItem(DEADLINE_AUTO_INTRO_KEY,'1');
-                      }
-                      return next;
-                    });
-                  }}>
+                  onClick={()=>{ if(!isPremium){setModalProPrompt('締切管理');return;} setDeadlineOpen(o=>!o); }}>
                   <AppIcons.deadline size={18} className="text-gray-400 shrink-0"/>
                   <span className="flex-1 text-left text-sm font-medium text-gray-800 flex items-center gap-1.5">
                     締切
@@ -1921,25 +1909,6 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
         </div>
       )}
       {modalProPrompt&&<ProGateSheet onClose={()=>setModalProPrompt(null)} feature={modalProPrompt}/>}
-      {showAutoIntro&&(
-        <div className="fixed inset-0 z-[200] bg-black/40 flex items-end justify-center" onClick={()=>setShowAutoIntro(false)}>
-          <div className="bg-white w-full max-w-md rounded-t-3xl px-5 pt-5 pb-10 shadow-2xl" onClick={e=>e.stopPropagation()}>
-            <div className="flex justify-center mb-4"><div className="w-10 h-1 bg-gray-200 rounded-full"/></div>
-            <div className="flex flex-col items-center gap-3 mb-5">
-              <div className="w-14 h-14 rounded-full flex items-center justify-center" style={{background:'var(--c-primary)'}}>
-                <AppIcons.deadline size={26} className="text-white"/>
-              </div>
-              <p className="text-[17px] font-bold text-gray-900">「おまかせ」について</p>
-              <p className="text-sm text-gray-500 text-center leading-relaxed">
-                おまかせを選ぶと、1週間前・3日前・前日・当日・5時間前・3時間前・1時間前・締切ちょうど、の8回に分けて通知が届きます。<br/>
-                期限を忘れないよう、自動でちょうどいいタイミングにお知らせします。
-              </p>
-            </div>
-            <button onClick={()=>setShowAutoIntro(false)}
-              className="w-full py-3.5 rounded-2xl text-[15px] font-semibold text-white" style={{background:'var(--c-primary)'}}>わかった</button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
