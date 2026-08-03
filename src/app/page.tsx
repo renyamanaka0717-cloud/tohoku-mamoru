@@ -7,7 +7,7 @@ import { setNativeAppIcon } from './components/AppIcon';
 import { updateWidgetData, getPendingWidgetActions } from './components/WidgetData';
 import { setShopGeofences, checkGeofencePermissions, ensureGeofencePermission, getPendingGeofenceAction, getNativeCurrentLocation, openAppSettings } from './components/Geofence';
 import { scheduleInactivityReminder, cancelInactivityReminder } from './components/Inactivity';
-import { notify, requestNotifyPermission, syncTaskAlerts, syncFreeSlotAlerts, syncShopNotifs, syncLaterStaleAlerts, syncWakeCheckins, isNative } from './components/LocalNotify';
+import { notify, requestNotifyPermission, syncTaskAlerts, syncFreeSlotAlerts, syncShopNotifs, syncLaterStaleAlerts, syncWakeCheckins, syncDeadlineAlerts, isNative } from './components/LocalNotify';
 import { getAppVersion } from './components/AppVersion';
 import { App as CapApp } from '@capacitor/app';
 import Onboarding from './components/Onboarding';
@@ -54,6 +54,8 @@ interface Task {
   subtasks?: {id:string;name:string;completed:boolean}[];
   userId?: string;  // future: cloud sync owner
   allDay?: boolean;
+  deadlineAt?: string;   // 締切日時（ISO文字列 "YYYY-MM-DDTHH:mm"）。PRO機能
+  deadlineNotify?: 'week'|'3days'|'dayBefore'|'sameDay'|'auto';
 }
 
 interface Settings { wakeTime: string; sleepTime: string; keepIncomplete?: boolean; showFreeCard?: boolean; freeCardMinMin?: number; wakeColor?:string; sleepColor?:string; theme?:string; appIcon?:string; notificationsEnabled?:boolean; laterReminderHours?: number; appInactivityHours?: number; }
@@ -117,6 +119,7 @@ const RECOMMEND_STATE_KEY = 'tl-recommend-state-v1';
 const TOUR_COMPLETED_KEY = 'tl-product-tour-completed-v1';
 const LATER_NOTIFIED_KEY = 'tl-later-notified-v1';
 const TASK_ALERT_FIRED_KEY = 'tl-task-alert-fired-v1';
+const DEADLINE_ALERT_FIRED_KEY = 'tl-deadline-alert-fired-v1';
 const WAKE_CHECKIN_NOTIF_KEY = 'tl-wake-checkin-notif-v1';
 const LATER_REMINDER_OPTS = [{v:0,l:'オフ'},{v:1,l:'1時間'},{v:3,l:'3時間'},{v:6,l:'6時間'},{v:12,l:'12時間'},{v:24,l:'1日'},{v:48,l:'2日'},{v:72,l:'3日'}];
 const APP_INACTIVITY_OPTS = [{v:0,l:'オフ'},{v:6,l:'6時間'},{v:12,l:'12時間'},{v:24,l:'1日'},{v:48,l:'2日'},{v:72,l:'3日'}];
@@ -157,6 +160,48 @@ const taskAlertBody = (startTime: string, offset: number): string => {
   if(offset===1440) return `明日${startTime}から予定があります`;
   if(offset===60) return `あと1時間で始まります（${startTime}〜）`;
   return `あと${offset}分で始まります（${startTime}〜）`;
+};
+
+// ── 締切管理（PRO機能）─────────────────────────────────────────────────────────
+type DeadlineNotifyOpt = NonNullable<Task['deadlineNotify']>;
+const DEADLINE_NOTIFY_OPTS: {v:DeadlineNotifyOpt;l:string}[] = [
+  {v:'week',l:'1週間前'},{v:'3days',l:'3日前'},{v:'dayBefore',l:'前日'},{v:'sameDay',l:'当日'},{v:'auto',l:'おまかせ'},
+];
+// 「当日」通知を出す時刻（締切当日の朝）
+const DEADLINE_SAMEDAY_HOUR = 9;
+
+interface DeadlineFire { key:string; fireMs:number; kind:'days'|'hours'|'today'|'exact'; amount:number; }
+// deadlineNotify設定から、実際に発火させる時刻の一覧を計算する。
+// 「おまかせ」は1週間前・3日前・前日・当日・5時間前・3時間前・1時間前・締切の8件をまとめて予約する
+const computeDeadlineFires = (deadlineAt: string, opt: DeadlineNotifyOpt): DeadlineFire[] => {
+  const deadlineMs = new Date(deadlineAt).getTime();
+  const dateStr = deadlineAt.slice(0,10);
+  const sameDayMs = new Date(`${dateStr}T${String(DEADLINE_SAMEDAY_HOUR).padStart(2,'0')}:00:00`).getTime();
+  const fires: DeadlineFire[] = [];
+  const addDays = (days:number,key:string)=>fires.push({key,fireMs:deadlineMs-days*86400000,kind:'days',amount:days});
+  const addHours = (hours:number,key:string)=>fires.push({key,fireMs:deadlineMs-hours*3600000,kind:'hours',amount:hours});
+  const addToday = ()=>fires.push({key:'sameDay',fireMs:sameDayMs,kind:'today',amount:0});
+  const addExact = ()=>fires.push({key:'exact',fireMs:deadlineMs,kind:'exact',amount:0});
+  if(opt==='week') addDays(7,'week');
+  else if(opt==='3days') addDays(3,'3days');
+  else if(opt==='dayBefore') addDays(1,'dayBefore');
+  else if(opt==='sameDay') addToday();
+  else if(opt==='auto'){ addDays(7,'week'); addDays(3,'3days'); addDays(1,'dayBefore'); addToday(); addHours(5,'5h'); addHours(3,'3h'); addHours(1,'1h'); addExact(); }
+  return fires;
+};
+const deadlineAlertBody = (taskName:string, fire:DeadlineFire): string => {
+  if(fire.kind==='days') return `${taskName}期限まで、あと${fire.amount}日です。`;
+  if(fire.kind==='hours') return `${taskName}期限まで、あと${fire.amount}時間です。`;
+  if(fire.kind==='today') return `${taskName}期限は今日です。`;
+  return `${taskName}の期限になりました。`;
+};
+// タイムライン等での「締切まであとN日」表示用（時刻は無視し、カレンダー日数だけで計算する）
+const deadlineRemainLabel = (deadlineAt:string): string => {
+  const deadlineDay = deadlineAt.slice(0,10);
+  const diff = Math.round((new Date(deadlineDay+'T00:00:00').getTime()-new Date(todayStr()+'T00:00:00').getTime())/86400000);
+  if(diff<0) return `締切から${-diff}日超過`;
+  if(diff===0) return '締切は今日';
+  return `締切まであと${diff}日`;
 };
 
 // ── Utils ─────────────────────────────────────────────────────────────────────
@@ -970,6 +1015,10 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
   const [custDurOpen,setCDurOpen] = useState(false);
   const [custDurMin,setCDurMin]  = useState(duration>0&&!DUR_OPTS.find(o=>o.v===duration)?duration:90);
   const [notifications,setNotifs]  = useState<number[]>(task?.notifications??((!task||task.isLater)?[0]:[]));
+  const [deadlineDate,setDeadlineDate] = useState(task?.deadlineAt?task.deadlineAt.slice(0,10):'');
+  const [deadlineTime,setDeadlineTime] = useState(task?.deadlineAt?task.deadlineAt.slice(11,16):'18:00');
+  const [deadlineNotify,setDeadlineNotify] = useState<DeadlineNotifyOpt>(task?.deadlineNotify??'dayBefore');
+  const [deadlineOpen,setDeadlineOpen] = useState(false);
   const [modalProPrompt,setModalProPrompt] = useState<string|null>(null);
   const modalSwX=useRef(0), modalSwY=useRef(0);
   const modeOrder:TaskMode[]=['later','scheduled','recurring','allday'];
@@ -1023,6 +1072,8 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
     incompleteReminder:(mode!=='later'&&mode!=='allday')?incompleteRem:false,
     category:category??undefined, pinned, tags,
     subtasks:subtasks.length>0?subtasks:undefined,
+    deadlineAt:(mode!=='recurring'&&deadlineDate)?`${deadlineDate}T${deadlineTime||'18:00'}`:undefined,
+    deadlineNotify:(mode!=='recurring'&&deadlineDate)?deadlineNotify:undefined,
   });
 
   const doSave = (data: Omit<Task,'id'>) => {
@@ -1052,7 +1103,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
     },400);
     return ()=>{if(autoSaveTimer.current) clearTimeout(autoSaveTimer.current);};
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[name,taskDate,startTime,duration,mode,recur,customRec,tags,subtasks,memo,category,notifications,incompleteRem,icon,color]);
+  },[name,taskDate,startTime,duration,mode,recur,customRec,tags,subtasks,memo,category,notifications,incompleteRem,icon,color,deadlineDate,deadlineTime,deadlineNotify]);
 
   const flushAndClose = () => {
     if(autoSaveTimer.current){
@@ -1114,6 +1165,8 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
       pinned,
       tags,
       subtasks:subtasks.length>0?subtasks:undefined,
+      deadlineAt:(mode!=='recurring'&&deadlineDate)?`${deadlineDate}T${deadlineTime||'18:00'}`:undefined,
+      deadlineNotify:(mode!=='recurring'&&deadlineDate)?deadlineNotify:undefined,
     };
     if(mode==='recurring'&&!task){
       const instances:Omit<Task,'id'>[]=[];
@@ -1567,6 +1620,47 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
               </>
             )}
 
+            {/* 締切（PRO機能） */}
+            {mode!=='recurring'&&(
+              <>
+                <div className="h-px bg-gray-100 mx-4"/>
+                <button className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50"
+                  onClick={()=>{ if(!isPremium){setModalProPrompt('締切管理');return;} setDeadlineOpen(o=>!o); }}>
+                  <AppIcons.deadline size={18} className="text-gray-400 shrink-0"/>
+                  <span className="flex-1 text-left text-sm font-medium text-gray-800 flex items-center gap-1.5">
+                    締切
+                    {!isPremium&&<AppIcons.lock size={11} className="text-gray-300"/>}
+                  </span>
+                  {deadlineDate&&<span className="text-xs text-gray-400">{deadlineDate.slice(5).replace('-','/')} {deadlineTime}</span>}
+                  <AppIcons.caretRight size={14} className="text-gray-300"/>
+                </button>
+                {deadlineOpen&&isPremium&&(
+                  <div className="border-t border-gray-100 px-4 pb-3">
+                    <div className="flex items-center gap-2 py-3">
+                      <input type="date" value={deadlineDate} onChange={e=>setDeadlineDate(e.target.value)}
+                        className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50 outline-none"/>
+                      <input type="time" value={deadlineTime} onChange={e=>setDeadlineTime(e.target.value)}
+                        className="border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50 outline-none"/>
+                      {deadlineDate&&(
+                        <button onClick={()=>setDeadlineDate('')} className="text-xs text-gray-400 px-2 shrink-0">解除</button>
+                      )}
+                    </div>
+                    {deadlineDate&&(
+                      <>
+                        <p className="text-xs text-gray-400 mb-1.5">通知タイミング</p>
+                        <div className="flex flex-wrap gap-1.5 pb-1">
+                          {DEADLINE_NOTIFY_OPTS.map(({v,l})=>(
+                            <button key={v} onClick={()=>setDeadlineNotify(v)}
+                              className={`px-3 py-1 rounded-full text-xs font-semibold ${deadlineNotify===v?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>{l}</button>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+
             {/* タグ */}
             <div className="h-px bg-gray-100 mx-4"/>
             <button className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50" onClick={()=>setTagOpen(o=>!o)}>
@@ -1800,6 +1894,11 @@ function TaskCard({task,onToggle,onEdit,globalTags,onSubtaskToggle,tabName}:{tas
             </p>
           )}
           <p className={`text-[15px] font-semibold leading-snug ${task.completed?'line-through text-gray-400':'text-gray-900'}`}>{task.name}</p>
+          {task.deadlineAt&&!task.completed&&(
+            <p className={`text-[11px] font-semibold mt-1 flex items-center gap-1 ${deadlineRemainLabel(task.deadlineAt).includes('超過')||deadlineRemainLabel(task.deadlineAt)==='締切は今日'?'text-[#D97A7A]':'text-gray-400'}`}>
+              <AppIcons.deadline size={10}/>{deadlineRemainLabel(task.deadlineAt)}
+            </p>
+          )}
           {(task.tags??[]).length>0&&(
             <div className="flex flex-wrap gap-1 mt-1">
               {(task.tags??[]).map(tag=>{
@@ -3176,6 +3275,11 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
                       <div className="flex-1 min-w-0" onClick={()=>onEdit(t)}>
                         {(t.duration??0)>0&&<p className="text-xs text-gray-400">{durLabel(t.duration??0)}</p>}
                         <p className="text-sm font-semibold text-gray-900">{t.name}</p>
+                        {t.deadlineAt&&(
+                          <p className={`text-[11px] font-semibold mt-0.5 flex items-center gap-1 ${deadlineRemainLabel(t.deadlineAt).includes('超過')||deadlineRemainLabel(t.deadlineAt)==='締切は今日'?'text-[#D97A7A]':'text-gray-400'}`}>
+                            <AppIcons.deadline size={10}/>{deadlineRemainLabel(t.deadlineAt)}
+                          </p>
+                        )}
                       </div>
                       {(t.postponedCount??0)>0&&(
                         <span className="flex items-center gap-0.5 text-xs text-gray-400 font-semibold shrink-0"><AppIcons.postponed size={11}/>{t.postponedCount}</span>
@@ -4617,6 +4721,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             {label:'起床・就寝アイコン色変更', free:'×',      pro:'対応'},
             {label:'場所で通知',           free:'×',         pro:'対応'},
             {label:'放置アラート',         free:'既定のみ',  pro:'完全対応'},
+            {label:'締切管理',             free:'×',         pro:'対応'},
           ].map(({label,free,pro},i,arr)=>(
             <div key={i} className={`grid items-center px-4 py-3${i<arr.length-1?' border-b border-gray-100':''}`} style={{gridTemplateColumns:'1fr 72px 64px'}}>
               <p className="text-sm text-gray-800">{label}</p>
@@ -5504,6 +5609,55 @@ export default function App() {
     });
     alerts.sort((a,b)=>a.timestamp-b.timestamp);
     syncTaskAlerts(alerts.slice(0,60));
+  },[loaded,now,tasks,settings.notificationsEnabled]);
+
+  // 締切管理（PRO機能）の通知 — ネイティブでは syncDeadlineAlerts の事前予約が発火を担うため、
+  // ここは常時フォアグラウンドが前提のWeb/開発環境向けフォールバックとしてのみ動作する
+  useEffect(()=>{
+    if(!loaded||!(settings.notificationsEnabled??true)||isNative()) return;
+    const nowMinuteMs=Math.floor(Date.now()/60000)*60000;
+    let firedKeys:string[]=[];
+    try{ firedKeys=JSON.parse(localStorage.getItem(DEADLINE_ALERT_FIRED_KEY)||'[]'); }catch{}
+    const newFired:string[]=[];
+    const toFire:{task:Task;fire:DeadlineFire}[]=[];
+    tasks.forEach(t=>{
+      if(t.completed||!t.deadlineAt||!t.deadlineNotify) return;
+      computeDeadlineFires(t.deadlineAt,t.deadlineNotify).forEach(fire=>{
+        const fireMinuteMs=Math.floor(fire.fireMs/60000)*60000;
+        if(fireMinuteMs!==nowMinuteMs) return;
+        const key=`${t.id}:${fire.key}`;
+        if(firedKeys.includes(key)) return;
+        toFire.push({task:t,fire});
+        newFired.push(key);
+      });
+    });
+    if(toFire.length===0) return;
+    localStorage.setItem(DEADLINE_ALERT_FIRED_KEY,JSON.stringify([...firedKeys,...newFired].slice(-500)));
+    toFire.forEach(({task,fire})=>{
+      notify(task.name,deadlineAlertBody(task.name,fire));
+    });
+  },[loaded,now,tasks,settings.notificationsEnabled]);
+
+  // 締切管理（PRO機能）の通知をネイティブに事前スケジュール（バックグラウンド/未起動でも発火させるため）
+  useEffect(()=>{
+    if(!loaded||!isNative()) return;
+    if(!(settings.notificationsEnabled??true)){ syncDeadlineAlerts([]); return; }
+    const nowMs=Date.now();
+    const alerts:{id:string;title:string;body:string;timestamp:number}[]=[];
+    tasks.forEach(t=>{
+      if(t.completed||!t.deadlineAt||!t.deadlineNotify) return;
+      computeDeadlineFires(t.deadlineAt,t.deadlineNotify).forEach(fire=>{
+        if(fire.fireMs<=nowMs) return;
+        alerts.push({
+          id:`deadline-${t.id}-${fire.key}`,
+          title:t.name,
+          body:deadlineAlertBody(t.name,fire),
+          timestamp:Math.floor(fire.fireMs/1000),
+        });
+      });
+    });
+    alerts.sort((a,b)=>a.timestamp-b.timestamp);
+    syncDeadlineAlerts(alerts.slice(0,60));
   },[loaded,now,tasks,settings.notificationsEnabled]);
 
   // 「あとでやる」に長時間放置されているタスクの通知 — ネイティブでは syncLaterStaleAlerts の

@@ -13,6 +13,7 @@ public class LocalNotifyPlugin: CAPPlugin {
     static let shopNotifPrefix = "shop-notif-"
     static let laterStalePrefix = "later-stale-"
     static let wakeCheckinPrefix = "wake-checkin-"
+    static let deadlinePrefix = "deadline-"
     // 「通知を有効にする」ボタンなど、実際の通知内容が無いタイミングでも
     // その場で許可ダイアログを出すためのメソッド（notify()内のリクエストは通知発火時まで待たされる）
     @objc func requestPermission(_ call: CAPPluginCall) {
@@ -61,6 +62,11 @@ public class LocalNotifyPlugin: CAPPlugin {
     // 起床時チェックイン通知をまとめてネイティブに予約する（syncTaskAlertsと同じ全解除→再登録方式）。
     @objc func syncWakeCheckins(_ call: CAPPluginCall) {
         scheduleAlerts(prefix: LocalNotifyPlugin.wakeCheckinPrefix, call: call)
+    }
+
+    // 締切管理（PRO機能）の通知をまとめてネイティブに予約する（syncTaskAlertsと同じ全解除→再登録方式）。
+    @objc func syncDeadlineAlerts(_ call: CAPPluginCall) {
+        scheduleAlerts(prefix: LocalNotifyPlugin.deadlinePrefix, call: call)
     }
 
     private func scheduleAlerts(prefix: String, call: CAPPluginCall) {

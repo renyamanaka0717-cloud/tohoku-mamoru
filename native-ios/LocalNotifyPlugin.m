@@ -9,4 +9,5 @@ CAP_PLUGIN(LocalNotifyPlugin, "LocalNotifyPlugin",
   CAP_PLUGIN_METHOD(syncShopNotifs, CAPPluginReturnPromise);
   CAP_PLUGIN_METHOD(syncLaterStaleAlerts, CAPPluginReturnPromise);
   CAP_PLUGIN_METHOD(syncWakeCheckins, CAPPluginReturnPromise);
+  CAP_PLUGIN_METHOD(syncDeadlineAlerts, CAPPluginReturnPromise);
 )

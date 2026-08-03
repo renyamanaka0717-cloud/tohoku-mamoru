@@ -11,6 +11,7 @@ interface LocalNotifyPluginType {
   syncShopNotifs(options: { alertsJson: string }): Promise<void>;
   syncLaterStaleAlerts(options: { alertsJson: string }): Promise<void>;
   syncWakeCheckins(options: { alertsJson: string }): Promise<void>;
+  syncDeadlineAlerts(options: { alertsJson: string }): Promise<void>;
 }
 
 const LocalNotifyPlugin = registerPlugin<LocalNotifyPluginType>('LocalNotifyPlugin');
@@ -89,6 +90,15 @@ export function syncLaterStaleAlerts(alerts: ScheduledAlert[]): void {
 export function syncWakeCheckins(alerts: ScheduledAlert[]): void {
   if (!isNative()) return;
   LocalNotifyPlugin.syncWakeCheckins({ alertsJson: JSON.stringify(alerts) }).catch(() => {
+    // ネイティブ側プラグイン未導入時はスキップ
+  });
+}
+
+// 締切管理（PRO機能）の通知をネイティブに事前予約する（syncTaskAlertsと同じ方式）。
+// Web/開発環境では何もしない（ネイティブ専用機能）。
+export function syncDeadlineAlerts(alerts: ScheduledAlert[]): void {
+  if (!isNative()) return;
+  LocalNotifyPlugin.syncDeadlineAlerts({ alertsJson: JSON.stringify(alerts) }).catch(() => {
     // ネイティブ側プラグイン未導入時はスキップ
   });
 }

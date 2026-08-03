@@ -374,6 +374,20 @@ notify('おはようございます', body);
 - 当日分（オフセット0）のみ「昨日の未完了タスク件数」を本文に反映する。翌日以降は未来の状態が分からないため一般的な文言（「今日の予定をチェックしましょう」）にする
 - 旧来の `now` ポーリング＋即時 `notify()` の `useEffect`（`WAKE_CHECKIN_NOTIF_KEY`使用）はWeb/開発環境専用フォールバックとして残っており、ネイティブでは `isNative()` で早期returnする
 
+### 締切管理のネイティブ事前予約（`syncDeadlineAlerts`、PRO機能）
+
+「単なるリマインダーではなく期限を忘れないための仕組み」として、タスクに任意で締切日時（`Task.deadlineAt`、ISO文字列 `"YYYY-MM-DDTHH:mm"`）と通知タイミング（`Task.deadlineNotify`: `'week'|'3days'|'dayBefore'|'sameDay'|'auto'`）を設定できる。**PRO専用機能**（TaskModalの締切行タップ時に非PROなら`ProGateSheet`を表示しブロックする）。他の通知機能と同じ設計で `syncDeadlineAlerts()` によりネイティブに事前予約している。
+
+- `page.tsx` の `computeDeadlineFires(deadlineAt, opt)` が通知タイミング設定から実際の発火時刻一覧（`DeadlineFire[]`）を計算する。`week`/`3days`/`dayBefore`は締切のN日前、`sameDay`は締切当日の朝9時（`DEADLINE_SAMEDAY_HOUR`）、`auto`（おまかせ）は1週間前・3日前・前日・当日・5時間前・3時間前・1時間前・締切ちょうど、の8件をまとめて予約する
+- `deadlineAlertBody(taskName, fire)` が通知本文を組み立てる（例:「運転免許の更新期限まで、あと3日です。」「住民税の支払い期限は今日です。」）
+- `deadlineRemainLabel(deadlineAt)` がタイムライン・あとでやるリストでの表示用ラベル（「締切まであと14日」「締切は今日」「締切から3日超過」）を計算する。時刻は無視しカレンダー日数だけで計算する
+- `src/app/components/LocalNotify.ts` の `syncDeadlineAlerts(alerts)` — ネイティブでのみ動作
+- `src/app/page.tsx` の App コンポーネントに、`tasks` が変わるたびに未完了かつ`deadlineAt`/`deadlineNotify`があるタスクの未来のfireをすべて計算し、直近60件を`syncDeadlineAlerts()`に渡す `useEffect` がある。識別子は `deadline-${taskId}-${fireKey}`（`fireKey`は`week`/`3days`/`dayBefore`/`sameDay`/`5h`/`3h`/`1h`/`exact`）
+- `LocalNotifyPlugin.swift` は他の通知と共通の `scheduleAlerts(prefix:call:)` を使い、`deadline-` prefixで全解除→再登録する
+- Web/開発環境専用フォールバック（`now`ポーリング＋即時`notify()`、`DEADLINE_ALERT_FIRED_KEY`使用）も用意しており、ネイティブでは`isNative()`で早期returnする
+- 表示: `TaskCard`とBottomTabsの「あとでやる」リスト行に、締切がある場合は🚩アイコン付きで`deadlineRemainLabel()`のラベルを表示する（超過・当日は`#D97A7A`、それ以外はグレー）
+- PRO比較表（設定 → PRO）に「締切管理」の行を追加済み
+
 ### Xcodeでの手動セットアップ（`ios/`はgitignore対象なので毎回必要）
 
 1. `native-ios/LocalNotifyPlugin.swift` / `.m` を `ios/App/App/` に追加（Target Membership: App）
@@ -599,7 +613,7 @@ const SHOP_LOC_KEY = 'tl-shop-loc-v1';
 
 | 型 | 説明 |
 |---|---|
-| `Task` | id, name, startTime, duration, memo, icon, completed, date, isLater, recurrence, customRec, pinned, tags, notifications, incompleteReminder, category, postponedCount, color, subtasks, photoCount |
+| `Task` | id, name, startTime, duration, memo, icon, completed, date, isLater, recurrence, customRec, pinned, tags, notifications, incompleteReminder, category, postponedCount, color, subtasks, photoCount, **deadlineAt?:string, deadlineNotify?:'week'\|'3days'\|'dayBefore'\|'sameDay'\|'auto'（PRO）** |
 | `Settings` | wakeTime, sleepTime, **keepIncomplete?:boolean** |
 | `FreeSlot` | タイムライン上の空き時間スロット |
 | `ShopItem` | 買い物リストのアイテム（7日後に自動削除） |
