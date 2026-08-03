@@ -942,11 +942,11 @@ function PickerCol({items,value,onChange}:{items:string[];value:string;onChange:
 
 // ── TaskModal ─────────────────────────────────────────────────────────────────
 
-function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:initIconSheet,onSave,onUpdate,onDelete,onClose,onBulkInput,globalTags,customTabs,notificationsEnabled,onEnableNotifications,isPremium=true}:{
+function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:initIconSheet,onSave,onUpdate,onDelete,onClose,onBulkInput,globalTags,onGlobalTags,customTabs,notificationsEnabled,onEnableNotifications,isPremium=true}:{
   task:Task|null; currentDate:string; prefillTime?:string; prefillCategory?:string; openIconSheet?:boolean;
   onSave:(tasks:Omit<Task,'id'>[])=>void; onUpdate?:(data:Omit<Task,'id'>)=>void; onDelete?:()=>void; onClose:()=>void; onBulkInput?:()=>void;
   isPremium?:boolean;
-  globalTags:TagDef[]; customTabs:CustomTab[];
+  globalTags:TagDef[]; onGlobalTags:(tags:TagDef[])=>void; customTabs:CustomTab[];
   notificationsEnabled?:boolean; onEnableNotifications?:()=>void;
 }) {
   const initMode=():TaskMode=>{
@@ -1044,6 +1044,16 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
   const [timePickerOpen,setTPOpen]= useState(false);
   const [alertOpen,setAlertOpen]= useState(false);
   const [tagOpen,setTagOpen]   = useState(false);
+  const [newTagInput,setNewTagInput] = useState('');
+  const [newTagColor,setNewTagColor] = useState(TAG_COLORS[0].bg);
+  const addNewTag = () => {
+    const t = newTagInput.trim();
+    if(!t || globalTags.some(td=>td.name===t)) return;
+    if(!isPremium && globalTags.length >= 2) { setModalProPrompt('タグを3個以上作成'); return; }
+    onGlobalTags([...globalTags, {name:t, color:newTagColor}]);
+    setTags(prev=>[...prev, t]);
+    setNewTagInput('');
+  };
   const [subtasksOpen,setSubtasksOpen] = useState(false);
   const [subtaskInput,setSubtaskInput] = useState('');
   const [subtasks,setSubtasks] = useState<{id:string;name:string;completed:boolean}[]>(task?.subtasks??[]);
@@ -1712,10 +1722,8 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
             </button>
             {tagOpen&&(
               <div className="border-t border-gray-100 px-4 pt-3 pb-4">
-                {globalTags.length===0?(
-                  <p className="text-xs text-gray-400">設定画面でタグを追加できます</p>
-                ):(
-                  <div className="flex flex-wrap gap-2">
+                {globalTags.length>0&&(
+                  <div className="flex flex-wrap gap-2 mb-3">
                     {globalTags.map(td=>{
                       const active=tags.includes(td.name);
                       return (
@@ -1728,6 +1736,21 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                     })}
                   </div>
                 )}
+                <div className="flex gap-1.5 mb-2 flex-wrap">
+                  {TAG_COLORS.map(c=>(
+                    <button key={c.bg} onClick={()=>setNewTagColor(c.bg)}
+                      style={{backgroundColor:c.bg}}
+                      className={`w-6 h-6 rounded-full border border-gray-200 transition-all ${newTagColor===c.bg?'ring-2 ring-[var(--c-primary)] ring-offset-1 scale-110':''}`}/>
+                  ))}
+                </div>
+                <div className="flex gap-2 items-center">
+                  <input value={newTagInput} onChange={e=>setNewTagInput(e.target.value)}
+                    onKeyDown={e=>e.key==='Enter'&&addNewTag()}
+                    placeholder="タグ名を入力"
+                    className="flex-1 text-sm bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 outline-none text-gray-900 placeholder-gray-400"/>
+                  <button onClick={addNewTag} disabled={!newTagInput.trim()}
+                    className="px-4 py-2 bg-[var(--c-primary)] text-white text-sm font-semibold rounded-xl shrink-0 disabled:opacity-40">追加</button>
+                </div>
               </div>
             )}
 
@@ -6348,7 +6371,7 @@ export default function App() {
         <TaskModal task={modal.task} currentDate={date} prefillTime={modal.prefillTime} prefillCategory={modal.prefillCategory} openIconSheet={!!modal.iconSheet}
           onSave={saveTasks} onUpdate={modal.task?updateTask:undefined}
           onDelete={modal.task?()=>delTask(modal.task!.id):undefined}
-          onClose={closeModal} onBulkInput={()=>{closeModal();setSettingsInitSub('bulkInput');setSOp(true);}} globalTags={globalTags} customTabs={customTabs}
+          onClose={closeModal} onBulkInput={()=>{closeModal();setSettingsInitSub('bulkInput');setSOp(true);}} globalTags={globalTags} onGlobalTags={setGlobalTags} customTabs={customTabs}
           notificationsEnabled={settings.notificationsEnabled??true}
           onEnableNotifications={()=>setSettings(s=>({...s,notificationsEnabled:true}))}
           isPremium={isPremium}/>
