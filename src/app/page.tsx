@@ -1209,6 +1209,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
   };
 
   const [showDiscard,setShowDiscard] = useState(false);
+  const [tagNavConfirm,setTagNavConfirm] = useState(false);
   const hasChanges =
     name!==(task?.name??'') ||
     duration!==(task?.duration??0) ||
@@ -1715,7 +1716,11 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                     })}
                   </div>
                 )}
-                <button onClick={onOpenTagSettings}
+                <button onClick={()=>{
+                    if(task){ flushAndClose(); onOpenTagSettings?.(); return; }
+                    if(hasChanges){ setTagNavConfirm(true); return; }
+                    onOpenTagSettings?.();
+                  }}
                   className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--c-primary)] px-3 py-1.5 rounded-full bg-gray-50">
                   <AppIcons.plus size={12}/>タグを追加
                 </button>
@@ -1884,6 +1889,22 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                 className="flex-1 py-2.5 bg-gray-100 text-gray-900 rounded-xl text-sm font-semibold">キャンセル</button>
               <button onClick={()=>{setShowDiscard(false);onClose();}}
                 className="flex-1 py-2.5 bg-[#D97A7A] text-white rounded-xl text-sm font-semibold">破棄する</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {tagNavConfirm&&(
+        <div className="absolute inset-0 z-[110] flex items-center justify-center px-6" onClick={e=>e.stopPropagation()}>
+          <div className="bg-white rounded-2xl p-5 shadow-xl w-full max-w-xs">
+            <h3 className="text-base font-bold text-gray-900 mb-1">入力内容を保存しますか？</h3>
+            <p className="text-sm text-gray-500 mb-5">タグ設定画面に移動する前に、入力中の内容を保存するか選んでください。</p>
+            <div className="flex flex-col gap-2">
+              <button onClick={()=>{setTagNavConfirm(false);save();onOpenTagSettings?.();}} disabled={!name.trim()}
+                className={`py-2.5 rounded-xl text-sm font-semibold ${name.trim()?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-300 cursor-not-allowed'}`}>保存して移動</button>
+              <button onClick={()=>{setTagNavConfirm(false);onOpenTagSettings?.();}}
+                className="py-2.5 bg-[#D97A7A] text-white rounded-xl text-sm font-semibold">破棄して移動</button>
+              <button onClick={()=>setTagNavConfirm(false)}
+                className="py-2.5 bg-gray-100 text-gray-900 rounded-xl text-sm font-semibold">キャンセル</button>
             </div>
           </div>
         </div>
