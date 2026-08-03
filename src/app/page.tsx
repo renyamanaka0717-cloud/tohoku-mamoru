@@ -10,6 +10,7 @@ import { scheduleInactivityReminder, cancelInactivityReminder } from './componen
 import { notify, requestNotifyPermission, syncTaskAlerts, syncFreeSlotAlerts, syncShopNotifs, syncLaterStaleAlerts, syncWakeCheckins, isNative } from './components/LocalNotify';
 import { getAppVersion } from './components/AppVersion';
 import { App as CapApp } from '@capacitor/app';
+import Onboarding from './components/Onboarding';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -86,6 +87,7 @@ const SHOP_NOTIF_KEY    = 'tl-shop-notif-v1';
 const SHOP_LOC_KEY      = 'tl-shop-loc-v1';
 const NOTIF_ASKED_KEY   = 'tl-notif-asked-v1';
 const WAKESLEEP_ASKED_KEY = 'tl-wakesleep-asked-v1';
+const ONBOARDING_KEY = 'tl-onboarding-completed-v1';
 const LATER_NOTIFIED_KEY = 'tl-later-notified-v1';
 const TASK_ALERT_FIRED_KEY = 'tl-task-alert-fired-v1';
 const WAKE_CHECKIN_NOTIF_KEY = 'tl-wake-checkin-notif-v1';
@@ -5014,6 +5016,7 @@ export default function App() {
   const [patternOverrides,setPatternOverrides] = useState<Record<string,string>>({});
   const [authUser,setAuthUser] = useState<AuthUser|null>(null);
   const [showNotifPrompt,setShowNotifPrompt] = useState(false);
+  const [showOnboarding,setShowOnboarding] = useState(false);
   const [showWakeSleepPrompt,setShowWakeSleepPrompt] = useState(false);
   const [wsPromptWake,setWsPromptWake] = useState('07:00');
   const [wsPromptSleep,setWsPromptSleep] = useState('23:00');
@@ -5062,7 +5065,9 @@ export default function App() {
       if(po) setPatternOverrides(JSON.parse(po) as Record<string,string>);
     }catch{}
     setLoaded(true);
-    if(!localStorage.getItem(NOTIF_ASKED_KEY)){
+    if(!localStorage.getItem(ONBOARDING_KEY)){
+      setShowOnboarding(true);
+    } else if(!localStorage.getItem(NOTIF_ASKED_KEY)){
       setShowNotifPrompt(true);
     }
   },[]);
@@ -5185,6 +5190,14 @@ export default function App() {
     setWsPromptWake(settings.wakeTime);
     setWsPromptSleep(settings.sleepTime);
     setShowWakeSleepPrompt(true);
+  };
+  // オンボーディング内で通知の案内は済んでいるので、旧来の通知プロンプトはスキップして
+  // 起床・就寝プロンプトへそのままつなげる
+  const completeOnboarding=()=>{
+    localStorage.setItem(ONBOARDING_KEY,'1');
+    localStorage.setItem(NOTIF_ASKED_KEY,'1');
+    setShowOnboarding(false);
+    maybeShowWakeSleepPrompt();
   };
   const dismissNotifPrompt=()=>{
     localStorage.setItem(NOTIF_ASKED_KEY,'1');
@@ -5673,6 +5686,7 @@ export default function App() {
   };
 
   if(!loaded) return <div className="flex h-screen items-center justify-center text-gray-400">読み込み中…</div>;
+  if(showOnboarding) return <Onboarding onComplete={completeOnboarding}/>;
 
   return (
     <div className="max-w-md mx-auto bg-white font-sans flex flex-col" style={{height:'100%'}}>
