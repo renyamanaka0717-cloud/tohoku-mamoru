@@ -23,6 +23,16 @@ body {
   font-size: 17px;
   height: 100%;
   overflow: hidden;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* 入力欄だけはテキスト選択・長押しメニューを許可する（タスク名・メモの編集に必要） */
+input, textarea, [contenteditable="true"] {
+  -webkit-touch-callout: default;
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 input[type="time"]::-webkit-calendar-picker-indicator {
