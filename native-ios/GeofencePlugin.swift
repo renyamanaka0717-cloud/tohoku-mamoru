@@ -7,14 +7,19 @@ import UIKit
 
 private struct GeofenceLocationEntry: Codable { let id: String; let name: String; let lat: Double; let lng: Double; let radius: Double }
 private struct WidgetShopEntry: Codable { let id: String; let name: String }
+// 忘れ物防止アラート（退出トリガー）。weekdaysは0=日〜6=土、timeStart/timeEndは"HH:mm"（空文字なら終日対象）
+private struct ForgetAlertEntry: Codable { let id: String; let name: String; let lat: Double; let lng: Double; let radius: Double; let weekdays: [Int]; let timeStart: String; let timeEnd: String; let items: [String] }
 
 @objc(GeofencePlugin)
 public class GeofencePlugin: CAPPlugin, CLLocationManagerDelegate, UNUserNotificationCenterDelegate {
     static let appGroupId = "group.jp.brainbox.app"
     static let regionPrefix = "shop-"
     static let taskLocPrefix = "task-loc-"
+    static let forgetPrefix = "forget-"
     // 同じ場所への接近で通知を連発しないためのクールダウン（秒）
     static let notifyCooldown: TimeInterval = 2 * 60 * 60
+    // 忘れ物防止アラートは境界付近でのGPSジッターによる連続発火を防ぐための短いクールダウン（秒）
+    static let forgetCooldown: TimeInterval = 10 * 60
 
     private let locationManager = CLLocationManager()
     // getCurrentLocation() 呼び出し中の CAPPluginCall（requestLocation() の結果は
@@ -175,6 +180,36 @@ public class GeofencePlugin: CAPPlugin, CLLocationManagerDelegate, UNUserNotific
         call.resolve(["ids": idList])
     }
 
+    // 忘れ物防止アラート。「あとでやる」とは独立した機能で、"forget-" prefixで別管理する。
+    // setGeofences/setTaskLocationGeofencesと同じ全解除→再登録方式だが、退出(Exit)をトリガーにする点が異なる
+    @objc func setForgetAlerts(_ call: CAPPluginCall) {
+        let json = call.getString("alertsJson") ?? "[]"
+        guard let data = json.data(using: .utf8),
+              let entries = try? JSONDecoder().decode([ForgetAlertEntry].self, from: data) else {
+            call.reject("invalid alertsJson")
+            return
+        }
+        for region in locationManager.monitoredRegions where region.identifier.hasPrefix(GeofencePlugin.forgetPrefix) {
+            locationManager.stopMonitoring(for: region)
+        }
+        var dataDict: [String: ForgetAlertEntry] = [:]
+        for entry in entries {
+            let region = CLCircularRegion(
+                center: CLLocationCoordinate2D(latitude: entry.lat, longitude: entry.lng),
+                radius: entry.radius,
+                identifier: GeofencePlugin.forgetPrefix + entry.id
+            )
+            region.notifyOnEntry = false
+            region.notifyOnExit = true
+            locationManager.startMonitoring(for: region)
+            dataDict[entry.id] = entry
+        }
+        if let encoded = try? JSONEncoder().encode(dataDict), let json = String(data: encoded, encoding: .utf8) {
+            UserDefaults.standard.set(json, forKey: "forgetAlertData")
+        }
+        call.resolve()
+    }
+
     @objc func getPendingGeofenceAction(_ call: CAPPluginCall) {
         let shouldOpenShop = UserDefaults.standard.bool(forKey: "pendingOpenShopList")
         let shouldOpenLater = UserDefaults.standard.bool(forKey: "pendingOpenLaterList")
@@ -312,6 +347,64 @@ public class GeofencePlugin: CAPPlugin, CLLocationManagerDelegate, UNUserNotific
                 center.removePendingNotificationRequests(withIdentifiers: staleIds)
             }
         }
+    }
+
+    public func locationManager(_ manager: CLLocationManager, didExitRegion region: CLRegion) {
+        guard region.identifier.hasPrefix(GeofencePlugin.forgetPrefix) else { return }
+        handleForgetAlertExit(region)
+    }
+
+    // 忘れ物防止アラート。退出のたびに毎回発火し得る（タスクの場所通知と違い1回きりではない）ため、
+    // GPS境界付近でのジッターによる連続発火だけをクールダウンで防ぐ。曜日・時間帯は発火時点の現在時刻で判定する
+    private func handleForgetAlertExit(_ region: CLRegion) {
+        let alertId = String(region.identifier.dropFirst(GeofencePlugin.forgetPrefix.count))
+        let defaults = UserDefaults.standard
+        let cooldownKey = "forgetAlertLastNotified_\(alertId)"
+        let now = Date().timeIntervalSince1970
+        if let last = defaults.object(forKey: cooldownKey) as? Double, now - last < GeofencePlugin.forgetCooldown {
+            return
+        }
+
+        guard let dataJson = defaults.string(forKey: "forgetAlertData"),
+              let dataData = dataJson.data(using: .utf8),
+              let dict = try? JSONDecoder().decode([String: ForgetAlertEntry].self, from: dataData),
+              let entry = dict[alertId] else { return }
+
+        let calendar = Calendar.current
+        let nowDate = Date()
+        // CalendarのweekdayはSunday=1...Saturday=7。JS側は0=日...6=土なので-1でそろえる
+        let weekdayIdx = calendar.component(.weekday, from: nowDate) - 1
+        guard entry.weekdays.contains(weekdayIdx) else { return }
+
+        if !entry.timeStart.isEmpty && !entry.timeEnd.isEmpty {
+            let comps = calendar.dateComponents([.hour, .minute], from: nowDate)
+            let nowMinutes = (comps.hour ?? 0) * 60 + (comps.minute ?? 0)
+            guard let startMinutes = minutesFromTimeString(entry.timeStart),
+                  let endMinutes = minutesFromTimeString(entry.timeEnd) else { return }
+            let inWindow: Bool
+            if startMinutes <= endMinutes {
+                inWindow = nowMinutes >= startMinutes && nowMinutes < endMinutes
+            } else {
+                // 日をまたぐ時間帯（例: 22:00〜2:00）
+                inWindow = nowMinutes >= startMinutes || nowMinutes < endMinutes
+            }
+            guard inWindow else { return }
+        }
+
+        defaults.set(now, forKey: cooldownKey)
+
+        let content = UNMutableNotificationContent()
+        content.title = "\(entry.name)を出ました"
+        content.body = entry.items.isEmpty ? "忘れ物はありませんか？" : "\(entry.items.joined(separator: "、"))を持ちましたか？"
+        content.sound = .default
+        let request = UNNotificationRequest(identifier: "forget-fire-\(alertId)-\(Int(now))", content: content, trigger: nil)
+        UNUserNotificationCenter.current().add(request)
+    }
+
+    private func minutesFromTimeString(_ s: String) -> Int? {
+        let parts = s.split(separator: ":")
+        guard parts.count == 2, let h = Int(parts[0]), let m = Int(parts[1]) else { return nil }
+        return h * 60 + m
     }
 
     // MARK: - UNUserNotificationCenterDelegate

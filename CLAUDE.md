@@ -628,6 +628,51 @@ const SHOP_LOC_KEY = 'tl-shop-loc-v1';
 
 ---
 
+## 忘れ物防止アラート（設定 → 忘れ物防止アラート、PRO機能）
+
+「あとでやる」とは完全に独立した機能。「何をするか」ではなく「何を持っていくか」を管理する（例: 自宅を出るときに財布・鍵・社員証を確認）。買い物リスト・タスクの場所通知と同じ`GeofencePlugin`/`CLLocationManager`を共有するが、`"forget-"` prefixで別管理し、**到着(Enter)ではなく退出(Exit)をトリガーにする点が他の場所通知と異なる**（初回実装ではExitのみ対応、Enter/滞在通知は将来拡張）。
+
+### 型・保存
+
+```typescript
+interface ForgetAlert {
+  id: string; name: string; location: { name:string; lat:number; lng:number };
+  weekdays: number[]; timeStart?: string; timeEnd?: string; enabled: boolean; items: string[];
+}
+```
+`FORGET_ALERTS_KEY='tl-forget-alerts-v1'`に配列で保存。`weekdays`は`0=日〜6=土`。`timeStart`/`timeEnd`は両方空なら終日対象。半径は他の場所通知と同じ`TASK_LOCATION_RADIUS_M=200`固定（設定項目に無いため）。
+
+### 管理画面（`ForgetAlertsPanel`、設定 → 忘れ物防止アラート）
+
+専用のフルスクリーン画面ではなく設定画面のサブ画面（`sub==='forgetAlerts'`）として実装（初回実装の方針通り）。一覧はカード形式で「{name}を出るとき」＋曜日・時間帯のサマリ＋確認する持ち物のチップ＋ON/OFFトグル＋削除ボタン。追加/編集フォームは`ShopLocationPanel`と同じ場所検索（Nominatim）・地図で指定（`ShopMapPicker`再利用）・現在地から、のパターンに加えて曜日選択（`ShopNotifPanel`と同じ7つの丸ボタン）・時間帯（開始/終了の`<input type="time">`、任意）・持ち物チップ入力（追加・×で削除）を持つ。保存時に`ensureGeofencePermission()`で位置情報・通知の許可を確認し、拒否時は登録しない。
+
+**バリデーション:** 名前・場所・曜日1つ以上・持ち物1つ以上が揃うまで「登録」ボタンは無効。
+
+### 登録上限の共有
+
+買い物リストの場所通知・タスクの場所通知と同じ`CLLocationManager`の20リージョン上限を共有する。`App`コンポーネントの同期エフェクトが、それぞれ他の2つのカテゴリの現在の有効数を差し引いた予算内に収まるよう`slice()`する（`MAX_MONITORED_REGIONS=19`）。
+
+### ネイティブ実装（`GeofencePlugin.swift`）
+
+- `setForgetAlerts()` — 他の`set*Geofences`系と同じ全解除→再登録方式。`region.notifyOnExit=true, notifyOnEntry=false`で登録する点が唯一の違い。曜日・持ち物等のメタデータは`UserDefaults`の`forgetAlertData`（id→`ForgetAlertEntry`の辞書）に保存する
+- `didExitRegion`（このプラグインで新規追加したデリゲートメソッド。他の場所通知は全てEnterトリガーのため今まで実装していなかった）→ `handleForgetAlertExit()`が本体
+- **曜日・時間帯の判定は発火時点（=退出した瞬間）の現在時刻でネイティブ側が行う**（JS側で事前計算はできない。時間指定通知や締切通知と違い、いつ退出するか分からないため）。`Calendar.current.component(.weekday:)`はSunday=1〜Saturday=7なので、JS側の`0=日〜6=土`に合わせるため`-1`する
+- 時間帯が日をまたぐ場合（例: 22:00〜2:00）は`inSleepWindow`と同様の判定ロジックを踏襲
+- **1回きりの通知ではなく、条件を満たすたびに毎回発火する**（タスクの場所通知の「1回のみ・発火後はfired flagで再武装しない」という設計とは異なる。習慣的なリマインダーなのでOFFにしない限り繰り返し届くのが正しい仕様）
+- GPS境界付近でのジッターによる連続発火だけを防ぐため、`forgetAlertLastNotified_<id>`による短いクールダウン（`forgetCooldown=10分`。買い物リストの場所通知の2時間クールダウンより大幅に短い）を設ける
+
+### Xcodeでの手動セットアップ
+
+`GeofencePlugin.swift`/`.m`は新規ファイルではなく**既存ファイルの更新**なので、Xcode上の同名ファイルの中身をこの変更後の内容に差し替える。App Group・Info.plist・Background Modesは買い物リストの場所通知ですでに設定済みならそのまま流用でき、追加設定は不要。
+
+### 避けるパターン
+
+- 忘れ物防止アラートの発火判定（曜日・時間帯チェック）をJS側で事前計算しようとしない（退出タイミングが予測できないため、`didExitRegion`内で発火時点の現在時刻を見て判定する必要がある）
+- 忘れ物防止アラートに「1タスク1回のみ」の発火済みフラグ（タスクの場所通知と同じ仕組み）を導入しない（習慣リマインダーなので毎回の退出で繰り返し通知するのが正しい仕様。短いクールダウンでのGPSジッター対策のみ行う）
+- 「あとでやる」のUI・データ構造（`Task.locationNotify`）を流用しない（`ForgetAlert`という独立した型・保存キー・ネイティブprefixを持つ別機能として実装済み）
+
+---
+
 ## 放置タスク通知・アプリ起動リマインダー（設定 → 通知 → 放置タスク）
 
 `sub==='notifications-later'` 画面（`SettingsScreen`）に2つの独立したリマインダー設定がある。
@@ -684,6 +729,7 @@ const SHOP_LOC_KEY = 'tl-shop-loc-v1';
 | `TaskGroupData` | `{startTime, tasks, rows, h}` — タイムラインの時刻グループ |
 | `ShopNotifSetting` | 買い物リストの時間指定通知（曜日・時刻） |
 | `ShopLocation` | 買い物リストの場所通知（`{id, name, lat, lng, radius:100\|300\|500, enabled}`） |
+| `ForgetAlert` | 忘れ物防止アラート（`{id, name, location, weekdays, timeStart?, timeEnd?, enabled, items}`、PRO） |
 
 `Task.subtasks` は `{id:string; name:string; completed:boolean}[]` 型。  
 `Task.tags` は `string[]`（タグ名を直接格納）。  
@@ -704,6 +750,7 @@ const SHOP_LOC_KEY = 'tl-shop-loc-v1';
 | `PHOTOS_KEY` | `'tl-photos-v1'` | タスクIDをキーとした写真データ（base64） |
 | `SHOP_NOTIF_KEY` | `'tl-shop-notif-v1'` | 買い物リストの時間指定通知設定 |
 | `SHOP_LOC_KEY` | `'tl-shop-loc-v1'` | 買い物リストの場所通知設定（`ShopLocation[]`） |
+| `FORGET_ALERTS_KEY` | `'tl-forget-alerts-v1'` | 忘れ物防止アラート設定（`ForgetAlert[]`） |
 | `ONBOARDING_KEY` | `'tl-onboarding-completed-v1'` | 初回起動オンボーディング完了フラグ |
 | `FEATURE_USAGE_KEY` | `'tl-feature-usage-v1'` | 「おすすめ機能」判定用の機能利用履歴（`FeatureUsage`） |
 | `RECOMMEND_STATE_KEY` | `'tl-recommend-state-v1'` | 「おすすめ機能」の表示・却下状態（`RecommendationState`） |

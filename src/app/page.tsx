@@ -5,7 +5,7 @@ import { AppIcons } from './components/Icons';
 import { usePremium } from './components/Premium';
 import { setNativeAppIcon } from './components/AppIcon';
 import { updateWidgetData, getPendingWidgetActions } from './components/WidgetData';
-import { setShopGeofences, setTaskLocationGeofences, checkGeofencePermissions, ensureGeofencePermission, getPendingGeofenceAction, getFiredTaskLocationIds, getNativeCurrentLocation, openAppSettings } from './components/Geofence';
+import { setShopGeofences, setTaskLocationGeofences, setForgetAlertGeofences, checkGeofencePermissions, ensureGeofencePermission, getPendingGeofenceAction, getFiredTaskLocationIds, getNativeCurrentLocation, openAppSettings } from './components/Geofence';
 import { scheduleInactivityReminder, cancelInactivityReminder } from './components/Inactivity';
 import { notify, requestNotifyPermission, syncTaskAlerts, syncFreeSlotAlerts, syncShopNotifs, syncLaterStaleAlerts, syncWakeCheckins, syncDeadlineAlerts, isNative } from './components/LocalNotify';
 import { getAppVersion } from './components/AppVersion';
@@ -89,6 +89,12 @@ interface FreeSlot  { start: string; end: string; min: number; }
 interface ShopItem  { id: string; name: string; checked: boolean; purchasedAt?: string; }
 interface ShopNotifSetting { id: string; days: number[]; time: string; enabled: boolean; }
 interface ShopLocation { id: string; name: string; lat: number; lng: number; radius: 100|300|500; enabled: boolean; }
+// 忘れ物防止アラート（PRO機能）。「あとでやる」とは独立した機能。weekdaysは0=日〜6=土、
+// timeStart/timeEndは省略可（両方空なら終日対象）。初回実装では退出(Exit)トリガーのみ対応
+interface ForgetAlert {
+  id: string; name: string; location: { name:string; lat:number; lng:number };
+  weekdays: number[]; timeStart?: string; timeEnd?: string; enabled: boolean; items: string[];
+}
 interface TagDef    { name: string; color: string; }
 interface MoveHistory { id: string; date: string; taskNames: string[]; }
 interface CustomTab  { id: string; name: string; showInAll?: boolean; }
@@ -113,6 +119,7 @@ const PATTERN_OVERRIDES_KEY= 'tl-pattern-overrides-v1';
 const MORNING_SNOOZE_KEY = 'tl-morning-snooze-v1'; // stores snooze timestamp (ms)
 const SHOP_NOTIF_KEY    = 'tl-shop-notif-v1';
 const SHOP_LOC_KEY      = 'tl-shop-loc-v1';
+const FORGET_ALERTS_KEY = 'tl-forget-alerts-v1';
 const NOTIF_ASKED_KEY   = 'tl-notif-asked-v1';
 const WAKESLEEP_ASKED_KEY = 'tl-wakesleep-asked-v1';
 const ONBOARDING_KEY = 'tl-onboarding-completed-v1';
@@ -3348,6 +3355,261 @@ function ShopLocationPanel({locations,onChange,isPremium,onProPrompt}:{
   );
 }
 
+// ── ForgetAlertsPanel（忘れ物防止アラート・PRO機能）────────────────────────────────
+
+type ForgetAlertDraft = Omit<ForgetAlert,'location'> & { location: {name:string;lat:number;lng:number}|null };
+
+function ForgetAlertsPanel({alerts,onChange,isPremium,onProPrompt}:{
+  alerts:ForgetAlert[];
+  onChange:(a:ForgetAlert[])=>void;
+  isPremium:boolean;
+  onProPrompt:(feature:string)=>void;
+}) {
+  const DOW=['日','月','火','水','木','金','土'];
+  const NAME_PRESETS=['自宅','職場','学校','スーパー'];
+  const [editing,setEditing]=useState<ForgetAlertDraft|null>(null);
+  const [adding,setAdding]=useState(false);
+  const [mapMode,setMapMode]=useState(false);
+  const [mapCenter,setMapCenter]=useState<{lat:number;lng:number}|null>(null);
+  const [searchQuery,setSearchQuery]=useState('');
+  const [searchResults,setSearchResults]=useState<{name:string;lat:number;lng:number}[]>([]);
+  const [searching,setSearching]=useState(false);
+  const [locating,setLocating]=useState(false);
+  const [itemInput,setItemInput]=useState('');
+  const [permError,setPermError]=useState<string|null>(null);
+
+  const fmtDays=(days:number[])=>{
+    if(days.length===7) return '毎日';
+    if(days.length===2&&days.includes(0)&&days.includes(6)) return '週末';
+    if(days.length===5&&!days.includes(0)&&!days.includes(6)) return '平日';
+    return [...days].sort((a,b)=>a-b).map(d=>DOW[d]).join('・');
+  };
+
+  const cancelEdit=()=>{
+    setEditing(null);setAdding(false);setMapMode(false);setMapCenter(null);
+    setSearchQuery('');setSearchResults([]);setPermError(null);setItemInput('');
+  };
+  const startAdd=()=>{
+    if(!isPremium){ onProPrompt('忘れ物防止アラート'); return; }
+    setEditing({id:uid(),name:'',location:null,weekdays:[1,2,3,4,5],timeStart:'',timeEnd:'',enabled:true,items:[]});
+    setAdding(true);
+    setItemInput('');setPermError(null);
+  };
+  const startEdit=(a:ForgetAlert)=>{ setEditing(a); setAdding(false); setItemInput(''); setPermError(null); };
+
+  const doSearch=async()=>{
+    const q=searchQuery.trim();
+    if(!q) return;
+    setSearching(true);
+    try{
+      const res=await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&countrycodes=jp&limit=8&accept-language=ja`);
+      const data=await res.json() as {display_name:string;lat:string;lon:string}[];
+      setSearchResults(data.map(d=>({name:d.display_name,lat:parseFloat(d.lat),lng:parseFloat(d.lon)})));
+    }catch{
+      setSearchResults([]);
+    }
+    setSearching(false);
+  };
+  const useCurrentLocation=()=>{
+    setLocating(true);
+    getCurrentCoords(10000).then(loc=>{
+      setLocating(false);
+      if(!loc){ setPermError('現在地を取得できませんでした'); return; }
+      setMapCenter(loc);
+      setMapMode(true);
+    });
+  };
+  const pickLocation=(loc:{name:string;lat:number;lng:number})=>{
+    if(!editing) return;
+    setEditing({...editing, location:loc, name:editing.name||loc.name});
+    setSearchQuery('');setSearchResults([]);
+  };
+  const toggleDay=(i:number)=>{
+    if(!editing) return;
+    setEditing({...editing,weekdays:editing.weekdays.includes(i)?editing.weekdays.filter(x=>x!==i):[...editing.weekdays,i]});
+  };
+  const addItem=()=>{
+    const v=itemInput.trim();
+    if(!v||!editing||editing.items.includes(v)){ setItemInput(''); return; }
+    setEditing({...editing,items:[...editing.items,v]});
+    setItemInput('');
+  };
+  const removeItem=(v:string)=>{ if(editing) setEditing({...editing,items:editing.items.filter(x=>x!==v)}); };
+
+  const saveEditing=async()=>{
+    if(!editing||!editing.location||!editing.name.trim()||editing.weekdays.length===0||editing.items.length===0) return;
+    const ok=await ensureGeofencePermission();
+    if(!ok){ setPermError('場所を出たときに通知するため、位置情報の利用を許可してください。'); return; }
+    const toSave:ForgetAlert={...editing,name:editing.name.trim(),location:editing.location};
+    if(adding) onChange([...alerts,toSave]);
+    else onChange(alerts.map(a=>a.id===toSave.id?toSave:a));
+    cancelEdit();
+  };
+  const del=(id:string)=>onChange(alerts.filter(a=>a.id!==id));
+  const toggleEnabled=(id:string)=>onChange(alerts.map(a=>a.id===id?{...a,enabled:!a.enabled}:a));
+
+  return (
+    <div className="pb-6">
+      <div className="flex items-center justify-between mb-3 mt-4">
+        <p className="text-sm font-semibold text-gray-700 flex items-center gap-1.5">
+          忘れ物防止アラート
+          {!isPremium&&<span className="inline-flex items-center gap-0.5 border border-gray-300 rounded px-1.5 py-0.5 text-[10px] font-bold text-gray-400 leading-none tracking-wide">★ PRO</span>}
+        </p>
+        <button onClick={startAdd} disabled={!!editing}
+          className="flex items-center gap-1 px-3 py-1.5 bg-[var(--c-primary)] text-white rounded-xl text-sm font-semibold disabled:opacity-40">
+          <AppIcons.plus size={14}/>追加
+        </button>
+      </div>
+      {alerts.length===0&&!editing&&(
+        <p className="text-sm text-gray-400 text-center py-8">アラートが登録されていません</p>
+      )}
+      <div className="space-y-2">
+        {alerts.map(a=>(
+          <div key={a.id} className="bg-white rounded-2xl shadow-sm px-4 py-3">
+            <div className="flex items-center gap-3">
+              <AppIcons.backpack size={16} className={a.enabled?'text-[var(--c-primary)]':'text-gray-300'}/>
+              <button onClick={()=>startEdit(a)} className="flex-1 min-w-0 text-left">
+                <p className="text-sm font-medium text-gray-800 truncate">{a.name}を出るとき</p>
+                <p className="text-xs text-gray-400">{fmtDays(a.weekdays)}{a.timeStart&&a.timeEnd?` ${a.timeStart}〜${a.timeEnd}`:''}</p>
+              </button>
+              <button onClick={()=>toggleEnabled(a.id)}
+                className={`relative w-10 h-6 rounded-full transition-colors shrink-0 ${a.enabled?'bg-[var(--c-primary)]':'bg-gray-200'}`}>
+                <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${a.enabled?'left-[18px]':'left-0.5'}`}/>
+              </button>
+              <button onClick={()=>del(a.id)} className="text-gray-300 active:text-[#D97A7A] shrink-0">
+                <AppIcons.trash size={16}/>
+              </button>
+            </div>
+            {a.items.length>0&&(
+              <div className="flex flex-wrap gap-1.5 mt-2.5 pl-7">
+                {a.items.map(it=>(
+                  <span key={it} className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">{it}</span>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {editing&&(
+        <div className="mt-3 bg-white rounded-2xl shadow-sm p-4">
+          {mapMode?(
+            <ShopMapPicker
+              initialCenter={mapCenter??searchResults[0]??{lat:35.681236,lng:139.767125}}
+              onConfirm={loc=>{pickLocation(loc);setMapMode(false);setMapCenter(null);}}
+              onCancel={()=>{setMapMode(false);setMapCenter(null);}}/>
+          ):(
+            <>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">名前</p>
+              <div className="flex gap-1.5 flex-wrap mb-2">
+                {NAME_PRESETS.map(p=>(
+                  <button key={p} onClick={()=>setEditing({...editing,name:p})}
+                    className={`px-3 py-1 rounded-full text-xs font-semibold ${editing.name===p?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>{p}</button>
+                ))}
+              </div>
+              <input value={editing.name} onChange={e=>setEditing({...editing,name:e.target.value})}
+                placeholder="場所の名前"
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50 mb-4"/>
+
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">場所</p>
+              {editing.location&&(
+                <div className="flex items-center gap-2 bg-gray-50 rounded-xl px-3 py-2 mb-2">
+                  <AppIcons.location size={14} className="text-gray-400 shrink-0"/>
+                  <p className="flex-1 text-sm text-gray-700 truncate">{editing.location.name}</p>
+                </div>
+              )}
+              <div className="flex gap-2 mb-2">
+                <input value={searchQuery} onChange={e=>setSearchQuery(e.target.value)}
+                  onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();doSearch();}}}
+                  placeholder="住所や施設名を入力"
+                  className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50"/>
+                <button onClick={doSearch} disabled={searching||!searchQuery.trim()}
+                  className="px-4 py-2 bg-gray-100 rounded-xl text-sm font-semibold text-gray-700 shrink-0 disabled:opacity-40">
+                  {searching?'検索中':'検索'}
+                </button>
+              </div>
+              {searchResults.length>0&&(
+                <div className="space-y-1 mb-2 max-h-32 overflow-y-auto">
+                  {searchResults.map((r,i)=>(
+                    <button key={i} onClick={()=>pickLocation(r)}
+                      className="w-full text-left px-3 py-2 rounded-xl bg-gray-50 active:bg-gray-100 text-sm text-gray-700 truncate">
+                      {r.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div className="flex gap-2 mb-4">
+                <button onClick={()=>{setMapCenter(editing.location?{lat:editing.location.lat,lng:editing.location.lng}:null);setMapMode(true);}}
+                  className="flex-1 py-2 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200">地図で指定</button>
+                <button onClick={useCurrentLocation} disabled={locating}
+                  className="flex-1 py-2 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200 disabled:opacity-40">
+                  {locating?'取得中...':'現在地から'}
+                </button>
+              </div>
+
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">曜日</p>
+              <div className="flex gap-2 flex-wrap mb-4">
+                {DOW.map((d,i)=>(
+                  <button key={i} onClick={()=>toggleDay(i)}
+                    className={`w-9 h-9 rounded-full text-sm font-semibold transition-colors ${editing.weekdays.includes(i)?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
+                    {d}
+                  </button>
+                ))}
+              </div>
+
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">時間帯（任意）</p>
+              <div className="flex items-center gap-2 mb-1">
+                <input type="time" value={editing.timeStart??''} onChange={e=>setEditing({...editing,timeStart:e.target.value})}
+                  className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50"/>
+                <span className="text-gray-300">〜</span>
+                <input type="time" value={editing.timeEnd??''} onChange={e=>setEditing({...editing,timeEnd:e.target.value})}
+                  className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50"/>
+                {(editing.timeStart||editing.timeEnd)&&(
+                  <button onClick={()=>setEditing({...editing,timeStart:'',timeEnd:''})} className="text-xs text-gray-400 px-1 shrink-0">解除</button>
+                )}
+              </div>
+              <p className="text-[11px] text-gray-300 mb-4">指定しない場合は終日対象になります</p>
+
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">確認する持ち物</p>
+              <div className="flex gap-2 mb-2">
+                <input value={itemInput} onChange={e=>setItemInput(e.target.value)}
+                  onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();addItem();}}}
+                  placeholder="財布、鍵など"
+                  className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50"/>
+                <button onClick={addItem} disabled={!itemInput.trim()}
+                  className="px-4 py-2 bg-gray-100 rounded-xl text-sm font-semibold text-gray-700 shrink-0 disabled:opacity-40">追加</button>
+              </div>
+              {editing.items.length>0&&(
+                <div className="flex flex-wrap gap-1.5 mb-4">
+                  {editing.items.map(it=>(
+                    <span key={it} className="inline-flex items-center gap-1 bg-gray-100 text-gray-600 text-xs font-medium px-2.5 py-1 rounded-full">
+                      {it}<button onClick={()=>removeItem(it)} className="opacity-60 leading-none ml-0.5">×</button>
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {permError&&<p className="text-xs text-[#D97A7A] mb-3">{permError}</p>}
+
+              <div className="flex gap-2">
+                <button onClick={cancelEdit}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200">
+                  キャンセル
+                </button>
+                <button onClick={saveEditing}
+                  disabled={!editing.location||!editing.name.trim()||editing.weekdays.length===0||editing.items.length===0}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-[var(--c-primary)] text-white active:opacity-80 disabled:opacity-40">
+                  {adding?'登録':'保存'}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── BottomTabs ────────────────────────────────────────────────────────────────
 
 function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,shopPending,
@@ -3699,13 +3961,14 @@ function SettingsRow({icon,iconBg,title,desc,onClick,isLast=false,pro=false,isPr
   );
 }
 
-function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,customTabs,onCustomTabs,onDeleteTabTasks,onDeleteTag,onRenameTag,shopNotifSettings,onShopNotifSettings,shopLocations,onShopLocations,authUser,isPremium,onAppleSignIn,onSignOut,onBulkAdd,bulkHistory,onBulkHistoryDelete,onBulkHistoryEdit,lifePatterns,onLifePatterns,patternOverrides,onApplyPattern,initialSub,tasks,onEditTask}:{
+function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,customTabs,onCustomTabs,onDeleteTabTasks,onDeleteTag,onRenameTag,shopNotifSettings,onShopNotifSettings,shopLocations,onShopLocations,forgetAlerts,onForgetAlerts,authUser,isPremium,onAppleSignIn,onSignOut,onBulkAdd,bulkHistory,onBulkHistoryDelete,onBulkHistoryEdit,lifePatterns,onLifePatterns,patternOverrides,onApplyPattern,initialSub,tasks,onEditTask}:{
   settings:Settings; onSettings:(s:Settings)=>void; onClose:()=>void;
   globalTags:TagDef[]; onGlobalTags:(tags:TagDef[])=>void;
   customTabs:CustomTab[]; onCustomTabs:(tabs:CustomTab[])=>void; onDeleteTabTasks:(tabId:string)=>void;
   onDeleteTag:(tagName:string)=>void; onRenameTag:(oldName:string, newName:string, newColor:string)=>void;
   shopNotifSettings:ShopNotifSetting[]; onShopNotifSettings:(s:ShopNotifSetting[])=>void;
   shopLocations:ShopLocation[]; onShopLocations:(l:ShopLocation[])=>void;
+  forgetAlerts:ForgetAlert[]; onForgetAlerts:(a:ForgetAlert[])=>void;
   authUser:AuthUser|null; isPremium:boolean;
   onAppleSignIn:()=>Promise<void>; onSignOut:()=>void;
   onBulkAdd:(tasks:Omit<Task,'id'>[],endTime:string)=>void;
@@ -4214,6 +4477,15 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
         {customTabs.length===0&&(
           <p className="text-sm text-gray-400 text-center mt-10">タブがまだありません</p>
         )}
+      </div>
+    </div>
+  );
+
+  if(sub==='forgetAlerts') return (
+    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
+      {subHeader('忘れ物防止アラート')}{proSheet}
+      <div className="flex-1 overflow-y-auto px-4 pb-8">
+        <ForgetAlertsPanel alerts={forgetAlerts} onChange={onForgetAlerts} isPremium={isPremium} onProPrompt={setProPrompt}/>
       </div>
     </div>
   );
@@ -4944,6 +5216,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             {label:'放置アラート',         free:'既定のみ',  pro:'完全対応'},
             {label:'締切管理',             free:'×',         pro:'対応'},
             {label:'あとでやるの場所通知', free:'×',         pro:'対応'},
+            {label:'忘れ物防止アラート',   free:'×',         pro:'対応'},
           ].map(({label,free,pro},i,arr)=>(
             <div key={i} className={`grid items-center px-4 py-3${i<arr.length-1?' border-b border-gray-100':''}`} style={{gridTemplateColumns:'1fr 72px 64px'}}>
               <p className="text-sm text-gray-800">{label}</p>
@@ -5127,7 +5400,10 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             onClick={()=>{if(!isPremium){setProPrompt('買い物リストの通知設定');return;}setSub('notifications-shop');}} pro isPremium={isPremium}/>
           <SettingsRow icon={<AppIcons.postponed size={18}/>} iconBg="bg-gray-100" title="放置アラート"
             desc="タスクやアプリの放置を通知"
-            onClick={()=>setSub('notifications-later')} isLast/>
+            onClick={()=>setSub('notifications-later')}/>
+          <SettingsRow icon={<AppIcons.backpack size={18}/>} iconBg="bg-gray-100" title="忘れ物防止アラート"
+            desc="場所を出るときに持ち物を確認"
+            onClick={()=>{if(!isPremium){setProPrompt('忘れ物防止アラート');return;}setSub('forgetAlerts');}} pro isPremium={isPremium} isLast/>
         </div>
 
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">一般</p>
@@ -5367,6 +5643,7 @@ export default function App() {
   const morningShownRef = useRef(false);
   const [shopNotifSettings,setShopNotifSettings] = useState<ShopNotifSetting[]>([]);
   const [shopLocations,setShopLocations] = useState<ShopLocation[]>([]);
+  const [forgetAlerts,setForgetAlerts] = useState<ForgetAlert[]>([]);
   const [bulkHistory,setBulkHistory] = useState<BulkHistoryEntry[]>([]);
   const [lifePatterns,setLifePatterns] = useState<LifePattern[]>([]);
   const [patternOverrides,setPatternOverrides] = useState<Record<string,string>>({});
@@ -5419,6 +5696,8 @@ export default function App() {
       if(sn) setShopNotifSettings(JSON.parse(sn) as ShopNotifSetting[]);
       const sl=localStorage.getItem(SHOP_LOC_KEY);
       if(sl) setShopLocations(JSON.parse(sl) as ShopLocation[]);
+      const fga=localStorage.getItem(FORGET_ALERTS_KEY);
+      if(fga) setForgetAlerts(JSON.parse(fga) as ForgetAlert[]);
       const au=localStorage.getItem(AUTH_KEY);
       if(au) setAuthUser(JSON.parse(au) as AuthUser);
       const bh=localStorage.getItem(BULK_HIST_KEY);
@@ -5524,6 +5803,7 @@ export default function App() {
   useEffect(()=>{ if(loaded) localStorage.setItem(CUSTOM_TABS_KEY,JSON.stringify(customTabs)); },[customTabs,loaded]);
   useEffect(()=>{ if(loaded) localStorage.setItem(SHOP_NOTIF_KEY,JSON.stringify(shopNotifSettings)); },[shopNotifSettings,loaded]);
   useEffect(()=>{ if(loaded) localStorage.setItem(SHOP_LOC_KEY,JSON.stringify(shopLocations)); },[shopLocations,loaded]);
+  useEffect(()=>{ if(loaded) localStorage.setItem(FORGET_ALERTS_KEY,JSON.stringify(forgetAlerts)); },[forgetAlerts,loaded]);
   useEffect(()=>{
     if(!loaded) return;
     setShopGeofences(shopLocations.filter(l=>l.enabled).map(l=>({id:l.id,name:l.name,lat:l.lat,lng:l.lng,radius:l.radius})));
@@ -5534,10 +5814,24 @@ export default function App() {
   useEffect(()=>{
     if(!loaded) return;
     const enabledShopCount=shopLocations.filter(l=>l.enabled).length;
-    const budget=Math.max(0,MAX_MONITORED_REGIONS-enabledShopCount);
+    const enabledForgetCount=forgetAlerts.filter(a=>a.enabled).length;
+    const budget=Math.max(0,MAX_MONITORED_REGIONS-enabledShopCount-enabledForgetCount);
     const locTasks=tasks.filter(t=>!t.completed&&t.locationNotify&&t.location).slice(0,budget);
     setTaskLocationGeofences(locTasks.map(t=>({id:t.id,name:t.name,lat:t.location!.lat,lng:t.location!.lng,radius:TASK_LOCATION_RADIUS_M})));
-  },[tasks,shopLocations,loaded]);
+  },[tasks,shopLocations,forgetAlerts,loaded]);
+  // 忘れ物防止アラート（PRO機能）。「あとでやる」とは独立した機能。買い物リストの場所通知・
+  // タスクの場所通知と同じCLLocationManagerの監視上限（20件）を共有するため予算を分け合う
+  useEffect(()=>{
+    if(!loaded) return;
+    const enabledShopCount=shopLocations.filter(l=>l.enabled).length;
+    const activeTaskLocCount=tasks.filter(t=>!t.completed&&t.locationNotify&&t.location).length;
+    const budget=Math.max(0,MAX_MONITORED_REGIONS-enabledShopCount-activeTaskLocCount);
+    const alerts=forgetAlerts.filter(a=>a.enabled).slice(0,budget);
+    setForgetAlertGeofences(alerts.map(a=>({
+      id:a.id,name:a.name,lat:a.location.lat,lng:a.location.lng,radius:TASK_LOCATION_RADIUS_M,
+      weekdays:a.weekdays,timeStart:a.timeStart||'',timeEnd:a.timeEnd||'',items:a.items,
+    })));
+  },[forgetAlerts,shopLocations,tasks,loaded]);
   useEffect(()=>{ if(loaded) localStorage.setItem(DAY_SETTINGS_KEY,JSON.stringify(dayOverrides)); },[dayOverrides,loaded]);
   useEffect(()=>{ if(loaded) localStorage.setItem(BULK_HIST_KEY,JSON.stringify(bulkHistory)); },[bulkHistory,loaded]);
   useEffect(()=>{ if(loaded) localStorage.setItem(LIFE_PATTERNS_KEY,JSON.stringify(lifePatterns)); },[lifePatterns,loaded]);
@@ -5995,8 +6289,10 @@ export default function App() {
   const pendingCount  = useMemo(()=>laterTasks.filter(t=>!t.completed).length,[laterTasks]);
   const shopPending   = useMemo(()=>shopItems.filter(i=>!i.checked).length,[shopItems]);
   const activeLocationRegionCount = useMemo(()=>
-    shopLocations.filter(l=>l.enabled).length + tasks.filter(t=>!t.completed&&t.locationNotify&&t.location&&t.id!==modal.task?.id).length,
-  [shopLocations,tasks,modal.task]);
+    shopLocations.filter(l=>l.enabled).length
+    + tasks.filter(t=>!t.completed&&t.locationNotify&&t.location&&t.id!==modal.task?.id).length
+    + forgetAlerts.filter(a=>a.enabled).length,
+  [shopLocations,tasks,modal.task,forgetAlerts]);
   const weekDates     = useMemo(()=>getWeekDates(weekAnchor),[weekAnchor]);
   const taskDateSet   = useMemo(()=>new Set(filteredTasks.filter(t=>!t.isLater&&t.startTime).map(t=>t.date)),[filteredTasks]);
   const {day,month,year} = useMemo(()=>getDateInfo(date),[date]);
@@ -6552,7 +6848,7 @@ export default function App() {
 
       {/* ── Settings Screen ── */}
       {settingsOpen&&(
-        <SettingsScreen settings={settings} onSettings={setSettings} onClose={()=>setSOp(false)} globalTags={globalTags} onGlobalTags={setGlobalTags} customTabs={customTabs} onCustomTabs={setCustomTabs} onDeleteTabTasks={(tabId)=>setTasks(prev=>prev.filter(t=>t.category!==tabId))} onDeleteTag={(tagName)=>{setGlobalTags(prev=>prev.filter(t=>t.name!==tagName));setTasks(prev=>prev.map(t=>({...t,tags:(t.tags??[]).filter(n=>n!==tagName)})));}} onRenameTag={(oldName,newName,newColor)=>{setGlobalTags(prev=>prev.map(t=>t.name===oldName?{name:newName,color:newColor}:t));setTasks(prev=>prev.map(t=>({...t,tags:(t.tags??[]).map(n=>n===oldName?newName:n)})));}} shopNotifSettings={shopNotifSettings} onShopNotifSettings={setShopNotifSettings} shopLocations={shopLocations} onShopLocations={setShopLocations} authUser={authUser} isPremium={isPremium} onAppleSignIn={handleAppleSignIn} onSignOut={handleSignOut} onBulkAdd={bulkAddTasks} bulkHistory={bulkHistory} onBulkHistoryDelete={bulkHistoryDelete} onBulkHistoryEdit={bulkHistoryEdit} lifePatterns={lifePatterns} onLifePatterns={setLifePatterns} patternOverrides={patternOverrides} onApplyPattern={applyPattern} initialSub={settingsInitSub} tasks={tasks} onEditTask={(t)=>{setSOp(false);openEdit(t);}}/>
+        <SettingsScreen settings={settings} onSettings={setSettings} onClose={()=>setSOp(false)} globalTags={globalTags} onGlobalTags={setGlobalTags} customTabs={customTabs} onCustomTabs={setCustomTabs} onDeleteTabTasks={(tabId)=>setTasks(prev=>prev.filter(t=>t.category!==tabId))} onDeleteTag={(tagName)=>{setGlobalTags(prev=>prev.filter(t=>t.name!==tagName));setTasks(prev=>prev.map(t=>({...t,tags:(t.tags??[]).filter(n=>n!==tagName)})));}} onRenameTag={(oldName,newName,newColor)=>{setGlobalTags(prev=>prev.map(t=>t.name===oldName?{name:newName,color:newColor}:t));setTasks(prev=>prev.map(t=>({...t,tags:(t.tags??[]).map(n=>n===oldName?newName:n)})));}} shopNotifSettings={shopNotifSettings} onShopNotifSettings={setShopNotifSettings} shopLocations={shopLocations} onShopLocations={setShopLocations} forgetAlerts={forgetAlerts} onForgetAlerts={setForgetAlerts} authUser={authUser} isPremium={isPremium} onAppleSignIn={handleAppleSignIn} onSignOut={handleSignOut} onBulkAdd={bulkAddTasks} bulkHistory={bulkHistory} onBulkHistoryDelete={bulkHistoryDelete} onBulkHistoryEdit={bulkHistoryEdit} lifePatterns={lifePatterns} onLifePatterns={setLifePatterns} patternOverrides={patternOverrides} onApplyPattern={applyPattern} initialSub={settingsInitSub} tasks={tasks} onEditTask={(t)=>{setSOp(false);openEdit(t);}}/>
       )}
 
       {/* ── Tab filter bottom sheet ── */}

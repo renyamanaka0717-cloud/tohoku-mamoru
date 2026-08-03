@@ -3,10 +3,13 @@ import { registerPlugin } from '@capacitor/core';
 
 export interface GeofenceLocation { id: string; name: string; lat: number; lng: number; radius: number; }
 export interface GeofencePermissionStatus { location: string; notifications: string; }
+// 忘れ物防止アラート（退出トリガー）。weekdaysは0=日〜6=土。timeStart/timeEndは"HH:mm"、空文字なら終日対象
+export interface ForgetAlertGeofence { id: string; name: string; lat: number; lng: number; radius: number; weekdays: number[]; timeStart: string; timeEnd: string; items: string[]; }
 
 interface GeofencePluginType {
   setGeofences(options: { locationsJson: string }): Promise<void>;
   setTaskLocationGeofences(options: { locationsJson: string }): Promise<void>;
+  setForgetAlerts(options: { alertsJson: string }): Promise<void>;
   requestPermissions(): Promise<GeofencePermissionStatus>;
   checkPermissions(): Promise<GeofencePermissionStatus>;
   getPendingGeofenceAction(): Promise<{ shouldOpenShop: boolean; shouldOpenLater: boolean }>;
@@ -37,6 +40,17 @@ export async function setTaskLocationGeofences(locations: GeofenceLocation[]): P
   if (!isNative()) return;
   try {
     await GeofencePlugin.setTaskLocationGeofences({ locationsJson: JSON.stringify(locations) });
+  } catch {
+    // ネイティブ側プラグイン未導入時はジオフェンス登録のみスキップ
+  }
+}
+
+// 忘れ物防止アラート。「あとでやる」とは独立した機能で、"forget-" prefixで別管理する。
+// 到着(Enter)ではなく退出(Exit)をトリガーにする点が他の場所通知と異なる
+export async function setForgetAlertGeofences(alerts: ForgetAlertGeofence[]): Promise<void> {
+  if (!isNative()) return;
+  try {
+    await GeofencePlugin.setForgetAlerts({ alertsJson: JSON.stringify(alerts) });
   } catch {
     // ネイティブ側プラグイン未導入時はジオフェンス登録のみスキップ
   }

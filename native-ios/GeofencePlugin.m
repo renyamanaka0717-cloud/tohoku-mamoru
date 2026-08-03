@@ -4,6 +4,7 @@
 CAP_PLUGIN(GeofencePlugin, "GeofencePlugin",
   CAP_PLUGIN_METHOD(setGeofences, CAPPluginReturnPromise);
   CAP_PLUGIN_METHOD(setTaskLocationGeofences, CAPPluginReturnPromise);
+  CAP_PLUGIN_METHOD(setForgetAlerts, CAPPluginReturnPromise);
   CAP_PLUGIN_METHOD(requestPermissions, CAPPluginReturnPromise);
   CAP_PLUGIN_METHOD(checkPermissions, CAPPluginReturnPromise);
   CAP_PLUGIN_METHOD(getPendingGeofenceAction, CAPPluginReturnPromise);
