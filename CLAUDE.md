@@ -569,6 +569,65 @@ const SHOP_LOC_KEY = 'tl-shop-loc-v1';
 
 ---
 
+## 「あとでやる」の場所通知（PRO機能）
+
+買い物リストの場所通知（`ShopLocation`）とは別に、個別の「あとでやる」タスクにも場所を設定し、到着時に通知できる。買い物リストの場所通知と同じ `GeofencePlugin`/`CLLocationManager` を共有するが、`"task-loc-"` prefixで完全に別管理する（`"shop-"` prefixとは独立）。
+
+### 型・保存
+
+`Task.locationNotify?:boolean` / `Task.location?:{name:string;lat:number;lng:number}`。半径は初回実装では固定値 `TASK_LOCATION_RADIUS_M=200`（m）。
+
+### タスク作成・編集画面（TaskModal、`mode==='later'`限定）
+
+「場所で通知」ON/OFFトグル → ONにすると場所検索（Nominatim）・地図で指定（`ShopMapPicker`を再利用）・現在地から登録、のいずれかで場所を選び、確認ステップで名前を編集して「設定する」。確定時に `ensureGeofencePermission()` で位置情報・通知の許可を確認し、拒否された場合は場所通知を有効にしない（`locError`にメッセージ表示）。**場所通知はPRO限定**（非PROで ON にしようとすると `ProGateSheet` を表示）。
+
+**OFFにした時点で場所情報も削除する**（初回実装のシンプルな仕様。`toggleLocationNotify()`が`locationNotify`と`location`を同時にクリアする）。
+
+**登録上限（`MAX_MONITORED_REGIONS=19`）:** `CLLocationManager`が同時監視できるリージョンはアプリ全体で20件までで、買い物リストの場所通知と予算を共有する。`App`コンポーネントの`activeLocationRegionCount`（有効な買い物場所通知数＋他タスクの場所通知数）が上限に達している状態でONにしようとすると、`locError`に「場所通知の登録上限に達しています。他の場所通知をオフにしてから追加してください。」を表示してブロックする。
+
+### タイムラインとの連携・時間通知とのOR条件
+
+タイムラインにドロップして時間指定タスクになっても（`isLater`がfalseになっても）`locationNotify`/`location`は維持される。これはApp側の場所通知同期エフェクトが `isLater` で絞り込まず `!t.completed && t.locationNotify && t.location` だけでフィルタしているため、特別な分岐は不要（既存の「`tasks`変更のたびに全解除→再登録」という設計そのもので自然に実現している）。
+
+ドロップ時に時間通知（`notifications:[0]`＝開始時刻ちょうど）が付くのは、ドラッグ&ドロップ・空き時間カードからの予定化で既存から入っている挙動（`scheduleInSlot`/ドラッグの`onEnd`が`notifications`が空なら`[0]`を補う）で、今回新たに実装したものではない。結果として「時間通知（開始時刻）」と「場所通知（到着時）」がOR条件で両方セットされる状態になる。
+
+### 通知の重複防止（1タスク1回のみ）
+
+`GeofencePlugin.swift`の`didEnterRegion`→`handleTaskLocationEnter()`が発火時に:
+1. `taskLocationFired_<taskId>`フラグを立てる（多重発火防止）
+2. 通知を表示（title=タスク名、body="この場所に着きました。"、`userInfo:["openLater":true]`）
+3. そのリージョンの監視を`stopMonitoring`で止める
+4. 残っている時間通知（`task-alert-<taskId>-*`）があれば`removePendingNotificationRequests`で解除する（OR条件のもう片方を消す）
+
+逆方向（時間通知が先に発火した場合）は、`willPresent`デリゲートでアプリがフォアグラウンドの間だけ、発火した`task-alert-`通知のtaskIdを特定して対応する`task-loc-`リージョンの監視を止める。**アプリがバックグラウンド/未起動の間に時間通知が先に発火した場合は、この即時キャンセルができない**（iOSには「予約済みローカル通知が配信された瞬間」にコードを実行するAPIが無いため）。この場合は次にアプリを開いた時点で以下の`getFiredTaskLocationIds()`によるリコンサイル、または単純にユーザーがタスクを完了させることで場所通知も解除される。ごく稀に両方の通知が届く可能性がある既知の制限として割り切っている（初回実装の範囲）。
+
+`setTaskLocationGeofences()`は登録のたびに`taskLocationFired_<id>`が立っているエントリをスキップする（アプリがバックグラウンドの間に他の理由で`tasks`が変わり再同期が走っても、発火済みのリージョンを誤って再武装しないため）。
+
+### アプリ再開時のリコンサイル（`getFiredTaskLocationIds`）
+
+バックグラウンド中に場所到着で発火したタスクIDは、アプリがフォアグラウンドに戻ったタイミング（`visibilitychange`）で`getPendingWidgetActions`/`getPendingGeofenceAction`と同じ`applyPending()`内から`getFiredTaskLocationIds()`を呼んで取得し、該当タスクの`locationNotify`を`false`にする（`location`も削除）。これにより次回の同期対象から確実に外れ、ネイティブ側の発火済みフラグも読み取り時にクリアされる。
+
+### タスク完了・削除時
+
+特別な解除コードは無い。場所通知の同期エフェクトが`tasks`の変更のたびに`!t.completed`かつ`locationNotify`のタスクだけを全解除→再登録するため、完了（`completed:true`）または削除（`tasks`配列から除去）すれば次の同期で自動的に対象から外れる。
+
+### 通知タップ時の画面遷移
+
+買い物リストの場所通知と同じ`UNUserNotificationCenterDelegate`（`GeofencePlugin.load()`で設定済み）を使う。`userInfo:["openLater":true]`を見て`pendingOpenLaterList`フラグを立て、JS側は`getPendingGeofenceAction()`の戻り値`shouldOpenLater`を見て`setActiveTab('later')`で「あとでやる」を開く（`shouldOpenShop`と同じ仕組み、返り値の形が`boolean`から`{shouldOpenShop,shouldOpenLater}`に変わった点に注意）。
+
+### Xcodeでの手動セットアップ
+
+`GeofencePlugin.swift`/`.m`は新規ファイルではなく**既存ファイルの更新**なので、Xcode上の同名ファイルの中身をこの変更後の内容に差し替える（買い物リストの場所通知で使っていたファイルと同じ物理ファイル）。App Group・Info.plist・Background Modesは買い物リストの場所通知ですでに設定済みならそのまま流用でき、追加設定は不要。
+
+### 避けるパターン
+
+- 場所通知の発火判定・重複防止ロジックをJS側だけで完結させようとしない（バックグラウンド/未起動で動く必要があるため、`didEnterRegion`/`willPresent`内のネイティブコードが主役）
+- `setTaskLocationGeofences()`で発火済み（`taskLocationFired_<id>`）のエントリを無条件に再登録しない（バックグラウンド中の再同期で誤って再武装され、二重発火の原因になる）
+- 「あとでやる」以外のタスク（時間指定・繰り返し）に場所通知UIを表示しない（`mode==='later'`限定。初回実装の対象外）
+- 場所通知をOFFにした時に`location`を残さない（初回実装は「OFFで場所情報も削除」という単純な仕様を採用済み）
+
+---
+
 ## 放置タスク通知・アプリ起動リマインダー（設定 → 通知 → 放置タスク）
 
 `sub==='notifications-later'` 画面（`SettingsScreen`）に2つの独立したリマインダー設定がある。
@@ -613,7 +672,7 @@ const SHOP_LOC_KEY = 'tl-shop-loc-v1';
 
 | 型 | 説明 |
 |---|---|
-| `Task` | id, name, startTime, duration, memo, icon, completed, date, isLater, recurrence, customRec, pinned, tags, notifications, incompleteReminder, category, postponedCount, color, subtasks, photoCount, **deadlineAt?:string, deadlineNotify?:'week'\|'3days'\|'dayBefore'\|'sameDay'\|'auto'（PRO）** |
+| `Task` | id, name, startTime, duration, memo, icon, completed, date, isLater, recurrence, customRec, pinned, tags, notifications, incompleteReminder, category, postponedCount, color, subtasks, photoCount, **deadlineAt?:string, deadlineNotify?:'week'\|'3days'\|'dayBefore'\|'sameDay'\|'auto'（PRO）**, **locationNotify?:boolean, location?:{name,lat,lng}（あとでやる限定・PRO）** |
 | `Settings` | wakeTime, sleepTime, **keepIncomplete?:boolean** |
 | `FreeSlot` | タイムライン上の空き時間スロット |
 | `ShopItem` | 買い物リストのアイテム（7日後に自動削除） |

@@ -5,7 +5,7 @@ import { AppIcons } from './components/Icons';
 import { usePremium } from './components/Premium';
 import { setNativeAppIcon } from './components/AppIcon';
 import { updateWidgetData, getPendingWidgetActions } from './components/WidgetData';
-import { setShopGeofences, checkGeofencePermissions, ensureGeofencePermission, getPendingGeofenceAction, getNativeCurrentLocation, openAppSettings } from './components/Geofence';
+import { setShopGeofences, setTaskLocationGeofences, checkGeofencePermissions, ensureGeofencePermission, getPendingGeofenceAction, getFiredTaskLocationIds, getNativeCurrentLocation, openAppSettings } from './components/Geofence';
 import { scheduleInactivityReminder, cancelInactivityReminder } from './components/Inactivity';
 import { notify, requestNotifyPermission, syncTaskAlerts, syncFreeSlotAlerts, syncShopNotifs, syncLaterStaleAlerts, syncWakeCheckins, syncDeadlineAlerts, isNative } from './components/LocalNotify';
 import { getAppVersion } from './components/AppVersion';
@@ -56,6 +56,8 @@ interface Task {
   allDay?: boolean;
   deadlineAt?: string;   // 締切日時（ISO文字列 "YYYY-MM-DDTHH:mm"）。PRO機能
   deadlineNotify?: 'week'|'3days'|'dayBefore'|'sameDay'|'auto';
+  locationNotify?: boolean;               // 「あとでやる」の場所通知 ON/OFF。PRO機能
+  location?: { name:string; lat:number; lng:number };  // 選択した場所
 }
 
 interface Settings { wakeTime: string; sleepTime: string; keepIncomplete?: boolean; showFreeCard?: boolean; freeCardMinMin?: number; wakeColor?:string; sleepColor?:string; theme?:string; appIcon?:string; notificationsEnabled?:boolean; laterReminderHours?: number; appInactivityHours?: number; }
@@ -169,6 +171,12 @@ const DEADLINE_NOTIFY_OPTS: {v:DeadlineNotifyOpt;l:string}[] = [
 ];
 // 「当日」通知を出す時刻（締切当日の朝）
 const DEADLINE_SAMEDAY_HOUR = 9;
+
+// ── 「あとでやる」場所通知（PRO機能）─────────────────────────────────────────────
+const TASK_LOCATION_RADIUS_M = 200; // 初回実装では固定値
+// CLLocationManagerが監視できるリージョンはアプリ全体で20件まで（買い物リストの場所通知と共有の予算）。
+// 安全マージンを見て合計19件までに制限する
+const MAX_MONITORED_REGIONS = 19;
 
 interface DeadlineFire { key:string; fireMs:number; kind:'days'|'hours'|'today'|'exact'; amount:number; }
 // deadlineNotify設定から、実際に発火させる時刻の一覧を計算する。
@@ -941,13 +949,14 @@ function PickerCol({items,value,onChange}:{items:string[];value:string;onChange:
 
 // ── TaskModal ─────────────────────────────────────────────────────────────────
 
-function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:initIconSheet,onSave,onUpdate,onDelete,onClose,onBulkInput,globalTags,customTabs,notificationsEnabled,onEnableNotifications,isPremium=true,onOpenTagSettings}:{
+function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:initIconSheet,onSave,onUpdate,onDelete,onClose,onBulkInput,globalTags,customTabs,notificationsEnabled,onEnableNotifications,isPremium=true,onOpenTagSettings,atLocationLimit=false}:{
   task:Task|null; currentDate:string; prefillTime?:string; prefillCategory?:string; openIconSheet?:boolean;
   onSave:(tasks:Omit<Task,'id'>[])=>void; onUpdate?:(data:Omit<Task,'id'>)=>void; onDelete?:()=>void; onClose:()=>void; onBulkInput?:()=>void;
   isPremium?:boolean;
   globalTags:TagDef[]; customTabs:CustomTab[];
   notificationsEnabled?:boolean; onEnableNotifications?:()=>void;
   onOpenTagSettings?:()=>void;
+  atLocationLimit?:boolean;
 }) {
   const initMode=():TaskMode=>{
     if(!task) return prefillTime?'scheduled':'later';
@@ -1020,6 +1029,17 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
   const [deadlineTime,setDeadlineTime] = useState(task?.deadlineAt?task.deadlineAt.slice(11,16):'18:00');
   const [deadlineNotify,setDeadlineNotify] = useState<DeadlineNotifyOpt>(task?.deadlineNotify??'dayBefore');
   const [deadlineOpen,setDeadlineOpen] = useState(false);
+  const [locationNotify,setLocationNotify] = useState(task?.locationNotify??false);
+  const [taskLocation,setTaskLocation] = useState(task?.location??null);
+  const [locAdding,setLocAdding] = useState(false);
+  const [locMapMode,setLocMapMode] = useState(false);
+  const [locMapCenter,setLocMapCenter] = useState<{lat:number;lng:number}|null>(null);
+  const [locSearchQuery,setLocSearchQuery] = useState('');
+  const [locSearchResults,setLocSearchResults] = useState<{name:string;lat:number;lng:number}[]>([]);
+  const [locSearching,setLocSearching] = useState(false);
+  const [locPending,setLocPending] = useState<{name:string;lat:number;lng:number}|null>(null);
+  const [locLocating,setLocLocating] = useState(false);
+  const [locError,setLocError] = useState<string|null>(null);
   const [modalProPrompt,setModalProPrompt] = useState<string|null>(null);
   const modalSwX=useRef(0), modalSwY=useRef(0);
   const modeOrder:TaskMode[]=['later','scheduled','recurring','allday'];
@@ -1075,6 +1095,8 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
     subtasks:subtasks.length>0?subtasks:undefined,
     deadlineAt:(mode!=='recurring'&&deadlineDate)?`${deadlineDate}T${deadlineTime||'18:00'}`:undefined,
     deadlineNotify:(mode!=='recurring'&&deadlineDate)?deadlineNotify:undefined,
+    locationNotify:locationNotify&&!!taskLocation,
+    location:taskLocation??undefined,
   });
 
   const doSave = (data: Omit<Task,'id'>) => {
@@ -1104,7 +1126,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
     },400);
     return ()=>{if(autoSaveTimer.current) clearTimeout(autoSaveTimer.current);};
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[name,taskDate,startTime,duration,mode,recur,customRec,tags,subtasks,memo,category,notifications,incompleteRem,icon,color,deadlineDate,deadlineTime,deadlineNotify]);
+  },[name,taskDate,startTime,duration,mode,recur,customRec,tags,subtasks,memo,category,notifications,incompleteRem,icon,color,deadlineDate,deadlineTime,deadlineNotify,locationNotify,taskLocation]);
 
   const flushAndClose = () => {
     if(autoSaveTimer.current){
@@ -1144,6 +1166,61 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
 
   const toggleTag=(name:string)=>setTags(prev=>prev.includes(name)?prev.filter(x=>x!==name):[...prev,name]);
 
+  // 場所で通知（PRO機能）── OFFにした時点で場所情報も削除する（初回実装のシンプルな仕様）
+  const toggleLocationNotify=()=>{
+    if(locationNotify){
+      setLocationNotify(false);
+      setTaskLocation(null);
+      setLocAdding(false);
+      setLocError(null);
+      return;
+    }
+    if(!isPremium){ setModalProPrompt('場所で通知'); return; }
+    if(atLocationLimit){ setLocError('場所通知の登録上限に達しています。他の場所通知をオフにしてから追加してください。'); return; }
+    setLocError(null);
+    setLocAdding(true);
+  };
+  const locDoSearch=async()=>{
+    const q=locSearchQuery.trim();
+    if(!q) return;
+    setLocSearching(true);
+    try{
+      const res=await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&countrycodes=jp&limit=8&accept-language=ja`);
+      const data=await res.json() as {display_name:string;lat:string;lon:string}[];
+      setLocSearchResults(data.map(d=>({name:d.display_name,lat:parseFloat(d.lat),lng:parseFloat(d.lon)})));
+    }catch{
+      setLocSearchResults([]);
+    }
+    setLocSearching(false);
+  };
+  const locUseCurrentLocation=()=>{
+    setLocLocating(true);
+    getCurrentCoords(10000).then(loc=>{
+      setLocLocating(false);
+      if(!loc){ setLocError('現在地を取得できませんでした'); return; }
+      setLocMapCenter(loc);
+      setLocMapMode(true);
+    });
+  };
+  const locOpenMapMode=()=>{ setLocMapCenter(null); setLocMapMode(true); };
+  const locConfirmPending=async()=>{
+    if(!locPending) return;
+    const ok=await ensureGeofencePermission();
+    if(!ok){ setLocError('場所に到着したときに通知するため、位置情報の利用を許可してください。'); return; }
+    setTaskLocation({name:locPending.name,lat:locPending.lat,lng:locPending.lng});
+    setLocationNotify(true);
+    setLocAdding(false);
+    setLocMapMode(false);
+    setLocPending(null);
+    setLocSearchQuery('');
+    setLocSearchResults([]);
+    setLocError(null);
+  };
+  const locCancelAdd=()=>{
+    setLocAdding(false);setLocMapMode(false);setLocMapCenter(null);setLocPending(null);
+    setLocSearchQuery('');setLocSearchResults([]);setLocError(null);
+  };
+
   const save=()=>{
     if(!name.trim()) return;
     const dur=duration;
@@ -1168,6 +1245,8 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
       subtasks:subtasks.length>0?subtasks:undefined,
       deadlineAt:(mode!=='recurring'&&deadlineDate)?`${deadlineDate}T${deadlineTime||'18:00'}`:undefined,
       deadlineNotify:(mode!=='recurring'&&deadlineDate)?deadlineNotify:undefined,
+      locationNotify:locationNotify&&!!taskLocation,
+      location:taskLocation??undefined,
     };
     if(mode==='recurring'&&!task){
       const instances:Omit<Task,'id'>[]=[];
@@ -1216,7 +1295,8 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
     memo!==(task?.memo??'') ||
     tags.length!==(task?.tags??[]).length ||
     tags.some((t,i)=>t!==(task?.tags??[])[i]) ||
-    subtasks.length!==(task?.subtasks??[]).length;
+    subtasks.length!==(task?.subtasks??[]).length ||
+    locationNotify!==(task?.locationNotify??false);
 
   const handleClose=()=>{
     if(task){flushAndClose();}
@@ -1674,6 +1754,102 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                               })}
                           </div>
                         )}
+                      </>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* 場所で通知（「あとでやる」限定・PRO機能） */}
+            {mode==='later'&&(
+              <>
+                <div className="h-px bg-gray-100 mx-4"/>
+                <div className="w-full flex items-center gap-3 px-4 py-3.5">
+                  <AppIcons.location size={18} className="text-gray-400 shrink-0"/>
+                  <span className="flex-1 text-left text-sm font-medium text-gray-800 flex items-center gap-1.5">
+                    場所で通知
+                    {!isPremium&&<AppIcons.lock size={11} className="text-gray-300"/>}
+                  </span>
+                  <button onClick={toggleLocationNotify}
+                    className={`relative w-10 h-6 rounded-full transition-colors shrink-0 ${locationNotify?'bg-[var(--c-primary)]':'bg-gray-200'}`}>
+                    <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${locationNotify?'left-[18px]':'left-0.5'}`}/>
+                  </button>
+                </div>
+                {taskLocation&&locationNotify&&!locAdding&&(
+                  <div className="px-4 pb-3 -mt-1">
+                    <button onClick={()=>{setLocPending(taskLocation);setLocAdding(true);}} className="flex items-center gap-1.5 text-xs text-gray-400">
+                      <AppIcons.location size={11}/>
+                      <span className="truncate max-w-[240px]">{taskLocation.name}</span>
+                      <AppIcons.pencil size={11} className="text-gray-300"/>
+                    </button>
+                    <p className="text-[11px] text-gray-300 mt-0.5">半径{TASK_LOCATION_RADIUS_M}m以内で通知</p>
+                  </div>
+                )}
+                {locError&&<p className="text-xs text-[#D97A7A] px-4 pb-3">{locError}</p>}
+                {locAdding&&(
+                  <div className="border-t border-gray-100 px-4 pt-3 pb-4">
+                    {locMapMode?(
+                      <ShopMapPicker
+                        initialCenter={locMapCenter??locSearchResults[0]??{lat:35.681236,lng:139.767125}}
+                        onConfirm={loc=>{setLocPending(prev=>prev?{...loc,name:prev.name}:loc);setLocMapMode(false);setLocMapCenter(null);}}
+                        onCancel={()=>{setLocMapMode(false);setLocMapCenter(null);}}/>
+                    ):!locPending?(
+                      <>
+                        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">場所を検索</p>
+                        <div className="flex gap-2 mb-3">
+                          <input value={locSearchQuery} onChange={e=>setLocSearchQuery(e.target.value)}
+                            onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();locDoSearch();}}}
+                            placeholder="住所や施設名を入力"
+                            className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50"/>
+                          <button onClick={locDoSearch} disabled={locSearching||!locSearchQuery.trim()}
+                            className="px-4 py-2 bg-gray-100 rounded-xl text-sm font-semibold text-gray-700 shrink-0 disabled:opacity-40">
+                            {locSearching?'検索中':'検索'}
+                          </button>
+                        </div>
+                        {locSearchResults.length>0&&(
+                          <div className="space-y-1 mb-3 max-h-32 overflow-y-auto">
+                            {locSearchResults.map((r,i)=>(
+                              <button key={i} onClick={()=>setLocPending(r)}
+                                className="w-full text-left px-3 py-2 rounded-xl bg-gray-50 active:bg-gray-100 text-sm text-gray-700 truncate">
+                                {r.name}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                        <button onClick={locOpenMapMode} disabled={locLocating}
+                          className="w-full py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200 mb-2 disabled:opacity-40">
+                          {locLocating?'取得中...':'地図で指定'}
+                        </button>
+                        <button onClick={locUseCurrentLocation} disabled={locLocating}
+                          className="w-full py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200 mb-3 disabled:opacity-40">
+                          {locLocating?'取得中...':'現在地から登録'}
+                        </button>
+                        <button onClick={locCancelAdd} className="w-full py-2.5 rounded-xl text-sm font-semibold bg-gray-50 text-gray-400">
+                          キャンセル
+                        </button>
+                      </>
+                    ):(
+                      <>
+                        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">名前</p>
+                        <input value={locPending.name} onChange={e=>setLocPending({...locPending,name:e.target.value})}
+                          placeholder="場所の名前"
+                          className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50 mb-3"/>
+                        <p className="text-xs text-gray-400 mb-3">半径{TASK_LOCATION_RADIUS_M}m以内に入ったら通知します</p>
+                        <button onClick={()=>{setLocMapCenter({lat:locPending.lat,lng:locPending.lng});setLocMapMode(true);}}
+                          className="w-full py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200 mb-3">
+                          地図で場所を変更
+                        </button>
+                        <div className="flex gap-2">
+                          <button onClick={()=>setLocPending(null)}
+                            className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200">
+                            戻る
+                          </button>
+                          <button onClick={locConfirmPending}
+                            className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-[var(--c-primary)] text-white active:opacity-80">
+                            設定する
+                          </button>
+                        </div>
                       </>
                     )}
                   </div>
@@ -3322,6 +3498,11 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
                             <AppIcons.deadline size={10}/>{deadlineRemainLabel(t.deadlineAt)}
                           </p>
                         )}
+                        {t.locationNotify&&t.location&&(
+                          <p className="text-[11px] text-gray-400 font-semibold mt-0.5 flex items-center gap-1">
+                            <AppIcons.location size={10}/><span className="truncate">{t.location.name}</span>
+                          </p>
+                        )}
                       </div>
                       {(t.postponedCount??0)>0&&(
                         <span className="flex items-center gap-0.5 text-xs text-gray-400 font-semibold shrink-0"><AppIcons.postponed size={11}/>{t.postponedCount}</span>
@@ -4764,6 +4945,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             {label:'場所で通知',           free:'×',         pro:'対応'},
             {label:'放置アラート',         free:'既定のみ',  pro:'完全対応'},
             {label:'締切管理',             free:'×',         pro:'対応'},
+            {label:'あとでやるの場所通知', free:'×',         pro:'対応'},
           ].map(({label,free,pro},i,arr)=>(
             <div key={i} className={`grid items-center px-4 py-3${i<arr.length-1?' border-b border-gray-100':''}`} style={{gridTemplateColumns:'1fr 72px 64px'}}>
               <p className="text-sm text-gray-800">{label}</p>
@@ -5290,7 +5472,15 @@ export default function App() {
       if(purchasedShopItemIds.length>0){
         setShopItems(prev=>prev.map(s=>purchasedShopItemIds.includes(s.id)?{...s,checked:true,purchasedAt:new Date().toISOString()}:s));
       }
-      if(await getPendingGeofenceAction()) setActiveTab('shop');
+      const {shouldOpenShop,shouldOpenLater}=await getPendingGeofenceAction();
+      if(shouldOpenShop) setActiveTab('shop');
+      if(shouldOpenLater) setActiveTab('later');
+      // バックグラウンド中に場所到着で発火済みになったタスクのlocationNotifyをオフにする
+      // （時間通知とのOR条件で、片方が発火したらもう片方は解除する仕様）
+      const firedIds=await getFiredTaskLocationIds();
+      if(firedIds.length>0){
+        setTasks(prev=>prev.map(t=>firedIds.includes(t.id)?{...t,locationNotify:false,location:undefined}:t));
+      }
     };
     applyPending();
     const onVisible=()=>{ if(document.visibilityState==='visible') applyPending(); };
@@ -5340,6 +5530,16 @@ export default function App() {
     if(!loaded) return;
     setShopGeofences(shopLocations.filter(l=>l.enabled).map(l=>({id:l.id,name:l.name,lat:l.lat,lng:l.lng,radius:l.radius})));
   },[shopLocations,loaded]);
+  // 「あとでやる」タスクの場所通知。タイムラインにドロップされて時間指定タスクになっても
+  // （isLaterがfalseになっても）locationNotifyは維持され続けるので isLater では絞り込まない。
+  // 完了・削除したタスクは tasks から外れる（または completed になる）ことで自動的に解除される
+  useEffect(()=>{
+    if(!loaded) return;
+    const enabledShopCount=shopLocations.filter(l=>l.enabled).length;
+    const budget=Math.max(0,MAX_MONITORED_REGIONS-enabledShopCount);
+    const locTasks=tasks.filter(t=>!t.completed&&t.locationNotify&&t.location).slice(0,budget);
+    setTaskLocationGeofences(locTasks.map(t=>({id:t.id,name:t.name,lat:t.location!.lat,lng:t.location!.lng,radius:TASK_LOCATION_RADIUS_M})));
+  },[tasks,shopLocations,loaded]);
   useEffect(()=>{ if(loaded) localStorage.setItem(DAY_SETTINGS_KEY,JSON.stringify(dayOverrides)); },[dayOverrides,loaded]);
   useEffect(()=>{ if(loaded) localStorage.setItem(BULK_HIST_KEY,JSON.stringify(bulkHistory)); },[bulkHistory,loaded]);
   useEffect(()=>{ if(loaded) localStorage.setItem(LIFE_PATTERNS_KEY,JSON.stringify(lifePatterns)); },[lifePatterns,loaded]);
@@ -5796,6 +5996,9 @@ export default function App() {
   const laterTasks    = useMemo(()=>filteredTasks.filter(t=>t.isLater),[filteredTasks]);
   const pendingCount  = useMemo(()=>laterTasks.filter(t=>!t.completed).length,[laterTasks]);
   const shopPending   = useMemo(()=>shopItems.filter(i=>!i.checked).length,[shopItems]);
+  const activeLocationRegionCount = useMemo(()=>
+    shopLocations.filter(l=>l.enabled).length + tasks.filter(t=>!t.completed&&t.locationNotify&&t.location&&t.id!==modal.task?.id).length,
+  [shopLocations,tasks,modal.task]);
   const weekDates     = useMemo(()=>getWeekDates(weekAnchor),[weekAnchor]);
   const taskDateSet   = useMemo(()=>new Set(filteredTasks.filter(t=>!t.isLater&&t.startTime).map(t=>t.date)),[filteredTasks]);
   const {day,month,year} = useMemo(()=>getDateInfo(date),[date]);
@@ -6346,7 +6549,7 @@ export default function App() {
           globalTags={globalTags} customTabs={customTabs}
           notificationsEnabled={settings.notificationsEnabled??true}
           onEnableNotifications={()=>setSettings(s=>({...s,notificationsEnabled:true}))}
-          isPremium={isPremium}/>
+          isPremium={isPremium} atLocationLimit={activeLocationRegionCount>=MAX_MONITORED_REGIONS}/>
       )}
 
       {/* ── Settings Screen ── */}

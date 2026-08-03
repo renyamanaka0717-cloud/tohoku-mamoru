@@ -6,9 +6,11 @@ export interface GeofencePermissionStatus { location: string; notifications: str
 
 interface GeofencePluginType {
   setGeofences(options: { locationsJson: string }): Promise<void>;
+  setTaskLocationGeofences(options: { locationsJson: string }): Promise<void>;
   requestPermissions(): Promise<GeofencePermissionStatus>;
   checkPermissions(): Promise<GeofencePermissionStatus>;
-  getPendingGeofenceAction(): Promise<{ shouldOpenShop: boolean }>;
+  getPendingGeofenceAction(): Promise<{ shouldOpenShop: boolean; shouldOpenLater: boolean }>;
+  getFiredTaskLocationIds(): Promise<{ ids: string[] }>;
   getCurrentLocation(): Promise<{ lat: number; lng: number }>;
   openAppSettings(): Promise<void>;
 }
@@ -24,6 +26,17 @@ export async function setShopGeofences(locations: GeofenceLocation[]): Promise<v
   if (!isNative()) return;
   try {
     await GeofencePlugin.setGeofences({ locationsJson: JSON.stringify(locations) });
+  } catch {
+    // ネイティブ側プラグイン未導入時はジオフェンス登録のみスキップ
+  }
+}
+
+// 「あとでやる」タスクの場所通知（syncTaskAlerts等と同じ全解除→再登録方式）。
+// name には通知に表示するタスク名をそのまま渡す（ShopLocationとは別の"task-loc-"prefixで管理される）
+export async function setTaskLocationGeofences(locations: GeofenceLocation[]): Promise<void> {
+  if (!isNative()) return;
+  try {
+    await GeofencePlugin.setTaskLocationGeofences({ locationsJson: JSON.stringify(locations) });
   } catch {
     // ネイティブ側プラグイン未導入時はジオフェンス登録のみスキップ
   }
@@ -49,13 +62,25 @@ export async function ensureGeofencePermission(): Promise<boolean> {
   }
 }
 
-export async function getPendingGeofenceAction(): Promise<boolean> {
-  if (!isNative()) return false;
+export async function getPendingGeofenceAction(): Promise<{ shouldOpenShop: boolean; shouldOpenLater: boolean }> {
+  if (!isNative()) return { shouldOpenShop: false, shouldOpenLater: false };
   try {
     const res = await GeofencePlugin.getPendingGeofenceAction();
-    return !!res.shouldOpenShop;
+    return { shouldOpenShop: !!res.shouldOpenShop, shouldOpenLater: !!res.shouldOpenLater };
   } catch {
-    return false;
+    return { shouldOpenShop: false, shouldOpenLater: false };
+  }
+}
+
+// バックグラウンド中に場所到着で発火済みになったタスクIDを取得する（読み取り後はネイティブ側でクリアされる）。
+// 呼び出し元はこれを受けて該当タスクのlocationNotifyをfalseにし、時間通知とのOR条件の重複発火を防ぐ
+export async function getFiredTaskLocationIds(): Promise<string[]> {
+  if (!isNative()) return [];
+  try {
+    const res = await GeofencePlugin.getFiredTaskLocationIds();
+    return res.ids ?? [];
+  } catch {
+    return [];
   }
 }
 

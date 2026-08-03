@@ -12,6 +12,7 @@ private struct WidgetShopEntry: Codable { let id: String; let name: String }
 public class GeofencePlugin: CAPPlugin, CLLocationManagerDelegate, UNUserNotificationCenterDelegate {
     static let appGroupId = "group.jp.brainbox.app"
     static let regionPrefix = "shop-"
+    static let taskLocPrefix = "task-loc-"
     // 同じ場所への接近で通知を連発しないためのクールダウン（秒）
     static let notifyCooldown: TimeInterval = 2 * 60 * 60
 
@@ -124,10 +125,62 @@ public class GeofencePlugin: CAPPlugin, CLLocationManagerDelegate, UNUserNotific
         call.resolve()
     }
 
+    // 「あとでやる」タスクの場所通知。setGeofences（買い物リスト用）と同じ全解除→再登録方式だが、
+    // "task-loc-" prefixで別管理し、通知内容用にタスク名を "taskLocationNames" に保存する
+    @objc func setTaskLocationGeofences(_ call: CAPPluginCall) {
+        let json = call.getString("locationsJson") ?? "[]"
+        guard let data = json.data(using: .utf8),
+              let entries = try? JSONDecoder().decode([GeofenceLocationEntry].self, from: data) else {
+            call.reject("invalid locationsJson")
+            return
+        }
+        for region in locationManager.monitoredRegions where region.identifier.hasPrefix(GeofencePlugin.taskLocPrefix) {
+            locationManager.stopMonitoring(for: region)
+        }
+        var names: [String: String] = [:]
+        for entry in entries {
+            // 発火済みのタスクは、アプリがフォアグラウンドに戻って
+            // getFiredTaskLocationIds() が処理する（JS側でlocationNotifyがfalseになる）まで
+            // 再登録しない。バックグラウンド中に他の理由でこの関数が再度呼ばれても
+            // 発火済みリージョンが誤って再武装されるのを防ぐため
+            if UserDefaults.standard.bool(forKey: "taskLocationFired_\(entry.id)") { continue }
+            let region = CLCircularRegion(
+                center: CLLocationCoordinate2D(latitude: entry.lat, longitude: entry.lng),
+                radius: entry.radius,
+                identifier: GeofencePlugin.taskLocPrefix + entry.id
+            )
+            region.notifyOnEntry = true
+            region.notifyOnExit = false
+            locationManager.startMonitoring(for: region)
+            names[entry.id] = entry.name
+        }
+        if let data = try? JSONEncoder().encode(names), let json = String(data: data, encoding: .utf8) {
+            UserDefaults.standard.set(json, forKey: "taskLocationNames")
+        }
+        call.resolve()
+    }
+
+    // アプリがフォアグラウンドに戻ったタイミングでJS側から呼ばれる。バックグラウンド中に
+    // 場所到着で発火済みのタスクID一覧を返し、読み取り後はネイティブ側のフラグをクリアする
+    // （JS側はこれを受けて該当タスクのlocationNotifyをfalseにし、以後の再登録対象から外す）
+    @objc func getFiredTaskLocationIds(_ call: CAPPluginCall) {
+        let defaults = UserDefaults.standard
+        let ids = defaults.string(forKey: "taskLocationFiredIds")
+        var idList: [String] = []
+        if let ids = ids, let data = ids.data(using: .utf8), let arr = try? JSONDecoder().decode([String].self, from: data) {
+            idList = arr
+        }
+        for id in idList { defaults.removeObject(forKey: "taskLocationFired_\(id)") }
+        defaults.removeObject(forKey: "taskLocationFiredIds")
+        call.resolve(["ids": idList])
+    }
+
     @objc func getPendingGeofenceAction(_ call: CAPPluginCall) {
-        let shouldOpen = UserDefaults.standard.bool(forKey: "pendingOpenShopList")
+        let shouldOpenShop = UserDefaults.standard.bool(forKey: "pendingOpenShopList")
+        let shouldOpenLater = UserDefaults.standard.bool(forKey: "pendingOpenLaterList")
         UserDefaults.standard.removeObject(forKey: "pendingOpenShopList")
-        call.resolve(["shouldOpenShop": shouldOpen])
+        UserDefaults.standard.removeObject(forKey: "pendingOpenLaterList")
+        call.resolve(["shouldOpenShop": shouldOpenShop, "shouldOpenLater": shouldOpenLater])
     }
 
     // iOSは位置情報・通知の許可をアプリから直接ONにするAPIを提供していないため、
@@ -164,6 +217,10 @@ public class GeofencePlugin: CAPPlugin, CLLocationManagerDelegate, UNUserNotific
     }
 
     public func locationManager(_ manager: CLLocationManager, didEnterRegion region: CLRegion) {
+        if region.identifier.hasPrefix(GeofencePlugin.taskLocPrefix) {
+            handleTaskLocationEnter(region)
+            return
+        }
         guard region.identifier.hasPrefix(GeofencePlugin.regionPrefix) else { return }
         let locId = String(region.identifier.dropFirst(GeofencePlugin.regionPrefix.count))
 
@@ -206,15 +263,82 @@ public class GeofencePlugin: CAPPlugin, CLLocationManagerDelegate, UNUserNotific
         UNUserNotificationCenter.current().add(request)
     }
 
+    // 「あとでやる」タスクの場所通知。時間通知（task-alert-）とOR条件のため、
+    // 発火したらこのタスクの残りの時間通知予約を解除し、このリージョンの監視も止める（1タスク1回のみ）
+    private func handleTaskLocationEnter(_ region: CLRegion) {
+        let taskId = String(region.identifier.dropFirst(GeofencePlugin.taskLocPrefix.count))
+        let defaults = UserDefaults.standard
+        let firedKey = "taskLocationFired_\(taskId)"
+        if defaults.bool(forKey: firedKey) { return }
+        defaults.set(true, forKey: firedKey)
+
+        var firedIds: [String] = []
+        if let idsJson = defaults.string(forKey: "taskLocationFiredIds"),
+           let idsData = idsJson.data(using: .utf8),
+           let arr = try? JSONDecoder().decode([String].self, from: idsData) {
+            firedIds = arr
+        }
+        firedIds.append(taskId)
+        if let data = try? JSONEncoder().encode(firedIds), let json = String(data: data, encoding: .utf8) {
+            defaults.set(json, forKey: "taskLocationFiredIds")
+        }
+
+        var taskName = "あとでやるタスク"
+        if let namesJson = defaults.string(forKey: "taskLocationNames"),
+           let namesData = namesJson.data(using: .utf8),
+           let names = try? JSONDecoder().decode([String: String].self, from: namesData),
+           let n = names[taskId] {
+            taskName = n
+        }
+
+        let content = UNMutableNotificationContent()
+        content.title = taskName
+        content.body = "この場所に着きました。"
+        content.sound = .default
+        content.userInfo = ["openLater": true]
+        let request = UNNotificationRequest(identifier: "task-loc-fire-\(taskId)-\(Int(Date().timeIntervalSince1970))", content: content, trigger: nil)
+        UNUserNotificationCenter.current().add(request)
+
+        if let circular = region as? CLCircularRegion {
+            locationManager.stopMonitoring(for: circular)
+        }
+
+        // 時間通知（task-alert-<taskId>-<分オフセット>）が残っていれば解除する（OR条件の重複防止）
+        let center = UNUserNotificationCenter.current()
+        let alertPrefix = "task-alert-\(taskId)-"
+        center.getPendingNotificationRequests { requests in
+            let staleIds = requests.map { $0.identifier }.filter { $0.hasPrefix(alertPrefix) }
+            if !staleIds.isEmpty {
+                center.removePendingNotificationRequests(withIdentifiers: staleIds)
+            }
+        }
+    }
+
     // MARK: - UNUserNotificationCenterDelegate
 
     public func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        // アプリがフォアグラウンドの間に時間通知（task-alert-）が発火した場合、
+        // OR条件のもう片方である場所通知（task-loc-）の監視を止める（重複防止）
+        let id = notification.request.identifier
+        if id.hasPrefix("task-alert-") {
+            let rest = String(id.dropFirst("task-alert-".count))
+            if let lastDash = rest.range(of: "-", options: .backwards) {
+                let taskId = String(rest[rest.startIndex..<lastDash.lowerBound])
+                let regionId = GeofencePlugin.taskLocPrefix + taskId
+                for region in locationManager.monitoredRegions where region.identifier == regionId {
+                    locationManager.stopMonitoring(for: region)
+                }
+            }
+        }
         completionHandler([.banner, .sound, .list])
     }
 
     public func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
         if response.notification.request.content.userInfo["openShop"] as? Bool == true {
             UserDefaults.standard.set(true, forKey: "pendingOpenShopList")
+        }
+        if response.notification.request.content.userInfo["openLater"] as? Bool == true {
+            UserDefaults.standard.set(true, forKey: "pendingOpenLaterList")
         }
         completionHandler()
     }
