@@ -165,7 +165,7 @@ const taskAlertBody = (startTime: string, offset: number): string => {
 // ── 締切管理（PRO機能）─────────────────────────────────────────────────────────
 type DeadlineNotifyOpt = NonNullable<Task['deadlineNotify']>;
 const DEADLINE_NOTIFY_OPTS: {v:DeadlineNotifyOpt;l:string}[] = [
-  {v:'week',l:'1週間前'},{v:'3days',l:'3日前'},{v:'dayBefore',l:'前日'},{v:'sameDay',l:'当日'},{v:'auto',l:'おまかせ'},
+  {v:'auto',l:'おまかせ'},{v:'week',l:'1週間前'},{v:'3days',l:'3日前'},{v:'dayBefore',l:'前日'},{v:'sameDay',l:'当日'},
 ];
 // 「当日」通知を出す時刻（締切当日の朝）
 const DEADLINE_SAMEDAY_HOUR = 9;
@@ -1654,6 +1654,24 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                               className={`px-3 py-1 rounded-full text-xs font-semibold ${deadlineNotify===v?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>{l}</button>
                           ))}
                         </div>
+                        {deadlineNotify==='auto'&&(
+                          <div className="mt-2 bg-gray-50 rounded-xl p-3 space-y-2.5">
+                            <p className="text-xs font-semibold text-gray-500">通知される内容（8件）</p>
+                            {computeDeadlineFires(`${deadlineDate}T${deadlineTime||'18:00'}`,'auto')
+                              .sort((a,b)=>a.fireMs-b.fireMs)
+                              .map(fire=>{
+                                const d=new Date(fire.fireMs);
+                                const w=['日','月','火','水','木','金','土'][d.getDay()];
+                                const label=`${d.getMonth()+1}/${d.getDate()}(${w}) ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+                                return (
+                                  <div key={fire.key}>
+                                    <p className="text-[11px] text-gray-400">{label}</p>
+                                    <p className="text-xs text-gray-700">{deadlineAlertBody(name.trim()||'このタスク',fire)}</p>
+                                  </div>
+                                );
+                              })}
+                          </div>
+                        )}
                       </>
                     )}
                   </div>
