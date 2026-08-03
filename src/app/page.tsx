@@ -1167,19 +1167,6 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
   const toggleTag=(name:string)=>setTags(prev=>prev.includes(name)?prev.filter(x=>x!==name):[...prev,name]);
 
   // 場所で通知（PRO機能）── OFFにした時点で場所情報も削除する（初回実装のシンプルな仕様）
-  const toggleLocationNotify=()=>{
-    if(locationNotify){
-      setLocationNotify(false);
-      setTaskLocation(null);
-      setLocAdding(false);
-      setLocError(null);
-      return;
-    }
-    if(!isPremium){ setModalProPrompt('場所で通知'); return; }
-    if(atLocationLimit){ setLocError('場所通知の登録上限に達しています。他の場所通知をオフにしてから追加してください。'); return; }
-    setLocError(null);
-    setLocAdding(true);
-  };
   const locDoSearch=async()=>{
     const q=locSearchQuery.trim();
     if(!q) return;
@@ -1765,27 +1752,20 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
             {mode==='later'&&(
               <>
                 <div className="h-px bg-gray-100 mx-4"/>
-                <div className="w-full flex items-center gap-3 px-4 py-3.5">
+                <button className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50"
+                  onClick={()=>{
+                    if(!isPremium){ setModalProPrompt('場所で通知'); return; }
+                    if(!taskLocation&&atLocationLimit){ setLocError('場所通知の登録上限に達しています。他の場所通知をオフにしてから追加してください。'); return; }
+                    setLocAdding(o=>!o);
+                  }}>
                   <AppIcons.location size={18} className="text-gray-400 shrink-0"/>
                   <span className="flex-1 text-left text-sm font-medium text-gray-800 flex items-center gap-1.5">
                     場所で通知
                     {!isPremium&&<AppIcons.lock size={11} className="text-gray-300"/>}
                   </span>
-                  <button onClick={toggleLocationNotify}
-                    className={`relative w-10 h-6 rounded-full transition-colors shrink-0 ${locationNotify?'bg-[var(--c-primary)]':'bg-gray-200'}`}>
-                    <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${locationNotify?'left-[18px]':'left-0.5'}`}/>
-                  </button>
-                </div>
-                {taskLocation&&locationNotify&&!locAdding&&(
-                  <div className="px-4 pb-3 -mt-1">
-                    <button onClick={()=>{setLocPending(taskLocation);setLocAdding(true);}} className="flex items-center gap-1.5 text-xs text-gray-400">
-                      <AppIcons.location size={11}/>
-                      <span className="truncate max-w-[240px]">{taskLocation.name}</span>
-                      <AppIcons.pencil size={11} className="text-gray-300"/>
-                    </button>
-                    <p className="text-[11px] text-gray-300 mt-0.5">半径{TASK_LOCATION_RADIUS_M}m以内で通知</p>
-                  </div>
-                )}
+                  {taskLocation&&<span className="text-xs text-gray-400 truncate max-w-[140px]">{taskLocation.name}</span>}
+                  <AppIcons.caretRight size={14} className="text-gray-300"/>
+                </button>
                 {locError&&<p className="text-xs text-[#D97A7A] px-4 pb-3">{locError}</p>}
                 {locAdding&&(
                   <div className="border-t border-gray-100 px-4 pt-3 pb-4">
@@ -1794,6 +1774,24 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                         initialCenter={locMapCenter??locSearchResults[0]??{lat:35.681236,lng:139.767125}}
                         onConfirm={loc=>{setLocPending(prev=>prev?{...loc,name:prev.name}:loc);setLocMapMode(false);setLocMapCenter(null);}}
                         onCancel={()=>{setLocMapMode(false);setLocMapCenter(null);}}/>
+                    ):taskLocation&&!locPending?(
+                      <>
+                        <div className="flex items-center gap-2 mb-3">
+                          <AppIcons.location size={14} className="text-gray-400 shrink-0"/>
+                          <p className="flex-1 text-sm text-gray-700 truncate">{taskLocation.name}</p>
+                        </div>
+                        <p className="text-xs text-gray-400 mb-3">半径{TASK_LOCATION_RADIUS_M}m以内に入ったら通知します</p>
+                        <div className="flex gap-2">
+                          <button onClick={()=>setLocPending(taskLocation)}
+                            className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200">
+                            場所を変更
+                          </button>
+                          <button onClick={()=>{setTaskLocation(null);setLocationNotify(false);setLocAdding(false);setLocError(null);}}
+                            className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-gray-50 text-[#D97A7A]">
+                            解除
+                          </button>
+                        </div>
+                      </>
                     ):!locPending?(
                       <>
                         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">場所を検索</p>
