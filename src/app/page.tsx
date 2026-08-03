@@ -11,6 +11,7 @@ import { notify, requestNotifyPermission, syncTaskAlerts, syncFreeSlotAlerts, sy
 import { getAppVersion } from './components/AppVersion';
 import { App as CapApp } from '@capacitor/app';
 import Onboarding from './components/Onboarding';
+import ProductTour from './components/ProductTour';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -113,6 +114,7 @@ const WAKESLEEP_ASKED_KEY = 'tl-wakesleep-asked-v1';
 const ONBOARDING_KEY = 'tl-onboarding-completed-v1';
 const FEATURE_USAGE_KEY = 'tl-feature-usage-v1';
 const RECOMMEND_STATE_KEY = 'tl-recommend-state-v1';
+const TOUR_COMPLETED_KEY = 'tl-product-tour-completed-v1';
 const LATER_NOTIFIED_KEY = 'tl-later-notified-v1';
 const TASK_ALERT_FIRED_KEY = 'tl-task-alert-fired-v1';
 const WAKE_CHECKIN_NOTIF_KEY = 'tl-wake-checkin-notif-v1';
@@ -1885,7 +1887,7 @@ function FreeTimeCard({slot,fits,height,onSchedule,onDragStart}:{
 
   const h=Math.floor(slot.min/60), m=slot.min%60;
   return (
-    <div className="bg-gray-50 rounded-2xl px-3 pt-3 pb-3 flex flex-col border border-gray-100" style={{minHeight:`${height}px`}}>
+    <div className="bg-gray-50 rounded-2xl px-3 pt-3 pb-3 flex flex-col border border-gray-100" style={{minHeight:`${height}px`}} data-tour="free-time-card">
       <div className="flex items-center gap-1 mb-1">
         <AppIcons.freeTime size={12} className="text-gray-400"/>
         <span className="text-xs text-gray-400 font-medium">空き時間 {slot.start}〜{slot.end}</span>
@@ -1902,6 +1904,7 @@ function FreeTimeCard({slot,fits,height,onSchedule,onDragStart}:{
               onTouchStart={e=>startLP(t,e)}
               onTouchEnd={cancelLP}
               onTouchMove={cancelLP}
+              data-tour="tour-draggable"
               className={`inline-flex items-center bg-gray-100 rounded-full px-2.5 py-1 text-xs font-medium text-gray-500 select-none transition-transform${pressingId===t.id?' scale-95':''}`}>
               <span>{t.name}</span>
             </button>
@@ -2387,7 +2390,8 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
                 opacity:isDragging?0.25:1,pointerEvents:isDragging?'none':'auto'}}
               onTouchStart={e=>startLP(task,e)}
               onTouchEnd={cancelLP}
-              onTouchMove={cancelLP}>
+              onTouchMove={cancelLP}
+              data-tour="tour-draggable">
               <TaskCard task={task} onToggle={()=>onToggle(task.id)} onEdit={()=>onEdit(task)} globalTags={globalTags} onSubtaskToggle={(sid)=>onSubtaskToggle(task.id,sid)} tabName={task.category?customTabs.find(t=>t.id===task.category)?.name:undefined}/>
             </div>,
           ];
@@ -5042,6 +5046,8 @@ export default function App() {
   const [authUser,setAuthUser] = useState<AuthUser|null>(null);
   const [showNotifPrompt,setShowNotifPrompt] = useState(false);
   const [showOnboarding,setShowOnboarding] = useState(false);
+  const [showTour,setShowTour] = useState(false);
+  const [tourDragSignal,setTourDragSignal] = useState(0);
   const [showWakeSleepPrompt,setShowWakeSleepPrompt] = useState(false);
   const [wsPromptWake,setWsPromptWake] = useState('07:00');
   const [wsPromptSleep,setWsPromptSleep] = useState('23:00');
@@ -5104,6 +5110,10 @@ export default function App() {
       setShowOnboarding(true);
     } else if(!localStorage.getItem(NOTIF_ASKED_KEY)){
       setShowNotifPrompt(true);
+    } else if(!localStorage.getItem(WAKESLEEP_ASKED_KEY)){
+      maybeShowWakeSleepPrompt();
+    } else if(!localStorage.getItem(TOUR_COMPLETED_KEY)){
+      setTimeout(()=>setShowTour(true),1000);
     }
   },[]);
 
@@ -5238,8 +5248,12 @@ export default function App() {
     localStorage.removeItem(AUTH_KEY);
   };
 
+  const maybeShowProductTour=()=>{
+    if(localStorage.getItem(TOUR_COMPLETED_KEY)) return;
+    setTimeout(()=>setShowTour(true),600);
+  };
   const maybeShowWakeSleepPrompt=()=>{
-    if(localStorage.getItem(WAKESLEEP_ASKED_KEY)) return;
+    if(localStorage.getItem(WAKESLEEP_ASKED_KEY)){ maybeShowProductTour(); return; }
     setWsPromptWake(settings.wakeTime);
     setWsPromptSleep(settings.sleepTime);
     setShowWakeSleepPrompt(true);
@@ -5265,6 +5279,7 @@ export default function App() {
   const dismissWakeSleepPrompt=()=>{
     localStorage.setItem(WAKESLEEP_ASKED_KEY,'1');
     setShowWakeSleepPrompt(false);
+    maybeShowProductTour();
   };
   const confirmWakeSleepPrompt=()=>{
     setSettings(s=>({...s,wakeTime:wsPromptWake,sleepTime:wsPromptSleep}));
@@ -5302,7 +5317,7 @@ export default function App() {
   // オンボーディング完了から一定時間が経ったタイミングで、未使用の機能を1つだけ提案する
   // （インストールから3日以上・前回のおすすめ表示から2日以上・却下から7日以上・表示は最大2回まで）
   useEffect(()=>{
-    if(!loaded||showOnboarding||!featureUsage||recommendPickedRef.current) return;
+    if(!loaded||showOnboarding||showTour||!featureUsage||recommendPickedRef.current) return;
     const timer=setTimeout(async()=>{
       if(recommendPickedRef.current) return;
       const fu=featureUsageRef.current;
@@ -5658,6 +5673,7 @@ export default function App() {
       setDropTime(null);
       setOverTrash(false);
       setOverLater(false);
+      setTourDragSignal(n=>n+1);
     };
     document.addEventListener('touchmove',onMove,{passive:false});
     document.addEventListener('touchend',onEnd);
@@ -5995,7 +6011,7 @@ export default function App() {
       )}
 
       {/* ── FAB ── */}
-      <div className="fixed right-4 z-50" style={{bottom:'calc(3.5rem + env(safe-area-inset-bottom))'}}>
+      <div className="fixed right-4 z-50" style={{bottom:'calc(3.5rem + env(safe-area-inset-bottom))'}} data-tour="fab-add">
         <button onClick={()=>openAdd()}
           className="w-14 h-14 bg-[var(--c-primary)] text-white rounded-full shadow-2xl active:bg-gray-700"
           style={{display:'grid',placeItems:'center'}}>
@@ -6271,8 +6287,13 @@ export default function App() {
         </div>
       )}
 
+      {/* ── プロダクトツアー ── */}
+      {showTour&&!modal.open&&!settingsOpen&&!calendarOpen&&!searchOpen&&(
+        <ProductTour gestureSignal={tourDragSignal} onFinish={()=>{localStorage.setItem(TOUR_COMPLETED_KEY,'1');setShowTour(false);}}/>
+      )}
+
       {/* ── おすすめ機能カード ── */}
-      {activeRecommendation&&!modal.open&&!settingsOpen&&!calendarOpen&&!searchOpen&&(()=>{
+      {activeRecommendation&&!showTour&&!modal.open&&!settingsOpen&&!calendarOpen&&!searchOpen&&(()=>{
         const def=RECOMMENDATION_DEFS.find(d=>d.id===activeRecommendation);
         if(!def) return null;
         return (

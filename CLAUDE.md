@@ -631,6 +631,66 @@ const SHOP_LOC_KEY = 'tl-shop-loc-v1';
 | `PHOTOS_KEY` | `'tl-photos-v1'` | タスクIDをキーとした写真データ（base64） |
 | `SHOP_NOTIF_KEY` | `'tl-shop-notif-v1'` | 買い物リストの時間指定通知設定 |
 | `SHOP_LOC_KEY` | `'tl-shop-loc-v1'` | 買い物リストの場所通知設定（`ShopLocation[]`） |
+| `ONBOARDING_KEY` | `'tl-onboarding-completed-v1'` | 初回起動オンボーディング完了フラグ |
+| `FEATURE_USAGE_KEY` | `'tl-feature-usage-v1'` | 「おすすめ機能」判定用の機能利用履歴（`FeatureUsage`） |
+| `RECOMMEND_STATE_KEY` | `'tl-recommend-state-v1'` | 「おすすめ機能」の表示・却下状態（`RecommendationState`） |
+| `TOUR_COMPLETED_KEY` | `'tl-product-tour-completed-v1'` | プロダクトツアー完了フラグ |
+
+---
+
+## オンボーディング・おすすめ機能・プロダクトツアー
+
+初回起動時の導線として3つの機能がこの順で連鎖する: **オンボーディング → （通知プロンプト） → 起床・就寝プロンプト → プロダクトツアー**。「おすすめ機能」はこれらとは独立して、インストール後しばらく経ってから条件を満たすたびに表示される。
+
+### オンボーディング（`src/app/components/Onboarding.tsx`）
+
+初回起動時だけ表示する5ページのスワイプ式イントロ（`App`のトップレベルで`showOnboarding`がtrueの間は`Onboarding`を全画面表示し、メインUIは描画しない）。`ONBOARDING_KEY`が無ければ表示。最終ページで通知・位置情報の許可ボタン（`requestNotifyPermission()`/`ensureGeofencePermission()`、ボタンを押した時だけ実行・拒否されても完了可能）。「始める」→`completeOnboarding()`が`ONBOARDING_KEY`と`NOTIF_ASKED_KEY`（オンボーディング内で通知案内済みのため通知プロンプトはスキップ）をセットし、`maybeShowWakeSleepPrompt()`を呼ぶ。
+
+### 起床・就寝プロンプト → プロダクトツアーへの連鎖
+
+`maybeShowWakeSleepPrompt()`は`WAKESLEEP_ASKED_KEY`が既にあれば何もせず`maybeShowProductTour()`を呼ぶ（＝オンボーディングを飛ばして起動した既存ユーザーでもツアーへ繋がる）。プロンプトを表示した場合は`dismissWakeSleepPrompt()`（`confirmWakeSleepPrompt()`もこれを呼ぶ）の中で`WAKESLEEP_ASKED_KEY`セット後に`maybeShowProductTour()`を呼ぶ。
+
+**既にオンボーディング・通知・起床就寝プロンプトを済ませている既存ユーザー**（この機能追加前からのユーザー）は上記チェーンが発火しないため、初回ロードの`useEffect`に`else if(!localStorage.getItem(TOUR_COMPLETED_KEY)){setTimeout(()=>setShowTour(true),1000);}`という最終分岐を追加し、次回起動時にツアーが表示されるようにしている。
+
+### プロダクトツアー（`src/app/components/ProductTour.tsx`）
+
+タスク追加ボタン→空き時間カード→ドラッグ＆ドロップの3ステップのスポットライト型ツアー。`App`の`showTour`がtrueの間、メインUIの上に**オーバーレイ表示**する（オンボーディングと違い実際のUIを隠さない。`modal.open`/`settingsOpen`/`calendarOpen`/`searchOpen`のいずれかがtrueの間は表示しない）。
+
+- 各ステップは`data-tour="fab-add"` / `data-tour="free-time-card"` / `data-tour="tour-draggable"`のCSSセレクタで対象DOM要素を`querySelector`し、`getBoundingClientRect()`で位置を取得（`setInterval(400ms)`＋`resize`/`scroll`で再計測）。
+- **スポットライト演出**: 対象要素の四方を覆う4枚の暗転帯（`pointer-events:auto`でタップを吸収）＋ 対象要素ぴったりに重ねる`pointer-events:none`の光る枠（`globals.css`の`tourPulse`/`tourScale`キーフレームで呼吸するようなパルスアニメーション）。対象要素自体には何も重ねないため、実際のボタン操作がそのまま機能する（＝ハイライト部分だけ操作可能、という要件をDOM上の「穴」として実現）。
+- 吹き出し（タイトル・本文・矢印）は`globals.css`の`tourBlink`で点滅する三角形の矢印付き。対象が画面下半分にあれば吹き出しは上に、上半分にあれば下に自動配置。
+- **ドラッグ＆ドロップのステップだけは「次へ」ボタンを出さず、実際のジェスチャー完了を待つ**: `App`側で既存のドラッグ完了処理（`onEnd`、`dragTask`のuseEffect内）に`setTourDragSignal(n=>n+1)`を追加し、`gestureSignal` propとして`ProductTour`に渡す。ツアー側は「ドラッグ」ステップに入った時点の値を`gestureBaseline`に記録し、それと異なる値になったら（＝実際に何らかのタスクがドラッグ＆ドロップされたら）自動で次へ進む
+- **対象要素が見つからない場合**（空き時間が無い日・タスクが1件も無い日など）は800ms待って自動的に次のステップへスキップする（データが無くてもツアーが止まらない）。
+- 最終ステップの後は完了画面（チェックアイコン＋「ツアー完了！」＋「はじめる」ボタン）を表示してから`onFinish()`を呼ぶ。「スキップ」ボタンは完了画面を経由せず即座に`onFinish()`を呼ぶ。`onFinish`は`App`側で`TOUR_COMPLETED_KEY`をセットして`showTour`をfalseにする（スキップしても再表示されない）。
+
+### おすすめ機能（未使用機能の段階的な提案）
+
+`RECOMMENDATION_DEFS`（`src/app/page.tsx`）に定義された機能を、未使用のものだけ優先順位順（買い物リスト→場所通知→繰り返しタスク）に1つ、画面下部の小さいカードで提案する。**対象機能を増やす時は`RECOMMENDATION_DEFS`に1件追記するだけでよい。**
+
+```typescript
+interface FeatureUsage { installedAt:string; shoppingListUsedAt?:string; locationReminderUsedAt?:string; repeatTaskUsedAt?:string; lastRecommendationShownAt?:string; }
+interface RecommendationState { shownCount:number; lastShownAt?:string; dismissedAt?:string; }
+type RecommendationId = 'shoppingList'|'locationReminder'|'repeatTask';
+interface RecommendationDef { id:RecommendationId; usedKey:keyof Omit<FeatureUsage,'installedAt'|'lastRecommendationShownAt'>; title:string; body:string; cta:string; requiresLocationPermission?:boolean; }
+```
+
+- `featureUsage`（`FEATURE_USAGE_KEY`）は初回ロード時に無ければ`{installedAt:new Date().toISOString()}`で作成（＝そのタイミングを「インストール日時」とみなす）
+- 利用検知用`useEffect`が`shopItems`/`shopLocations`/`tasks`の変化を見て、各機能が初めて使われた時刻を一度だけ`featureUsage`に記録する（`shopItems.length>0`→買い物リスト、`shopLocations.length>0`→場所通知、`tasks.some(t=>t.recurrence)`→繰り返しタスク）
+- `recommendState`（`RECOMMEND_STATE_KEY`、`Partial<Record<RecommendationId,RecommendationState>>`）に機能ごとの表示回数・最終表示日時・却下日時を記録
+- **表示条件判定**（`loaded && !showOnboarding && !showTour`のタイミングで6秒後に1回だけ判定、`recommendPickedRef`で1セッション1回に制限）:
+  - インストールから3日以上経過していること（`daysBetween`）
+  - 前回何らかのおすすめを表示してから2日以上経過していること（`featureUsage.lastRecommendationShownAt`、機能を跨いだグローバルな間隔）
+  - 対象機能が未使用であること（`featureUsage[def.usedKey]`が未設定）
+  - その機能の表示回数が2回未満であること、却下してから7日未満でないこと
+  - 位置情報の許可が必要な機能（`requiresLocationPermission`）は、既に拒否されている場合は提案しない（`checkGeofencePermissions()`で確認。**許可を拒否された機能を再度求めない**という要件のため）
+- 条件を満たす最初の1件を`showRecommendation(id)`で表示（`shownCount`をインクリメントし`lastShownAt`/`lastRecommendationShownAt`を更新）
+- UIは画面下部（Bottom Barの上）の小さいカード（フルモーダルではない）。「使ってみる」→`useRecommendation()`が該当機能の画面を開く（買い物リスト→`activeTab='shop'`、場所通知→設定の`notifications-shop`サブ画面、繰り返しタスク→`openAdd()`）。「今はしない」→`dismissRecommendation()`が`dismissedAt`を記録して閉じる（7日間は再表示しない）
+
+### 避けるパターン
+
+- オンボーディング・おすすめ機能・プロダクトツアーの3つを同時に表示しない（`showTour`は`showOnboarding`とrecommendation表示条件の両方でガードしている）
+- プロダクトツアーの対象要素に`data-tour`属性を付け忘れない（`ProductTour`は`querySelector`でこれらを探すため、対象のJSXを変更する時は属性ごと移動させること）
+- 「おすすめ機能」の対象を増やす時、`RECOMMENDATION_DEFS`に追記する以外の分岐（if文の追加等）を作らない（優先順位はこの配列の並び順で決まる設計）
 
 ---
 

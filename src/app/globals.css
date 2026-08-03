@@ -50,3 +50,18 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+@keyframes tourPulse {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--c-primary) 55%, transparent); }
+  50%      { box-shadow: 0 0 0 10px color-mix(in srgb, var(--c-primary) 0%, transparent); }
+}
+
+@keyframes tourScale {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.03); }
+}
+
+@keyframes tourBlink {
+  0%, 100% { opacity: 1; transform: translateY(0); }
+  50%      { opacity: 0.35; transform: translateY(-4px); }
+}
