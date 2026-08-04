@@ -5577,21 +5577,21 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
 
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">機能</p>
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
-          <SettingsRow icon={<AppIcons.tag/>} iconBg="bg-gray-100" title="タグ" desc="タスクにラベルを付けて整理・検索" onClick={()=>setSub('tags')} pro isPremium={isPremium}/>
-          <SettingsRow icon={<AppIcons.caretRight/>} iconBg="bg-gray-100" title="ファイルタブ" desc="タスクをフォルダ別に管理" onClick={()=>setSub('tabs')} pro isPremium={isPremium}/>
-          <SettingsRow icon={<AppIcons.pencil size={18}/>} iconBg="bg-gray-100" title="タスク一括入力" desc="まとめてタスクを登録" onClick={()=>setSub('bulkInput')} pro isPremium={isPremium}/>
-          <SettingsRow icon={<AppIcons.calendar size={18}/>} iconBg="bg-gray-100" title="生活パターン" desc="シフトや休日で起床・就寝時間を切り替え" onClick={()=>setSub('lifePatterns')} pro isPremium={isPremium}/>
+          <SettingsRow icon={<AppIcons.tag/>} iconBg="bg-gray-100" title="タグ" desc="タスクにラベルを付けて整理・検索" onClick={()=>setSub('tags')}/>
+          <SettingsRow icon={<AppIcons.caretRight/>} iconBg="bg-gray-100" title="ファイルタブ" desc="タスクをフォルダ別に管理" onClick={()=>setSub('tabs')}/>
+          <SettingsRow icon={<AppIcons.pencil size={18}/>} iconBg="bg-gray-100" title="タスク一括入力" desc="まとめてタスクを登録" onClick={()=>setSub('bulkInput')}/>
+          <SettingsRow icon={<AppIcons.calendar size={18}/>} iconBg="bg-gray-100" title="生活パターン" desc="シフトや休日で起床・就寝時間を切り替え" onClick={()=>setSub('lifePatterns')}/>
           <SettingsRow icon={<AppIcons.repeat size={18}/>} iconBg="bg-gray-100" title="繰り返しタスク" desc="繰り返しタスクを管理" onClick={()=>setSub('recurring')}/>
           <SettingsRow icon={<AppIcons.wake size={18}/>} iconBg="bg-gray-100" title="起床・就寝" desc="起床時間、就寝時間を設定" onClick={()=>setSub('wakeSleep')}/>
           <SettingsRow icon={<AppIcons.shopping size={18}/>} iconBg="bg-gray-100" title="買い物リスト通知"
             desc="時間や場所で買い物リストを通知"
-            onClick={()=>{if(!isPremium){setProPrompt('買い物リストの通知設定');return;}setSub('notifications-shop');}} pro isPremium={isPremium}/>
+            onClick={()=>{if(!isPremium){setProPrompt('買い物リストの通知設定');return;}setSub('notifications-shop');}}/>
           <SettingsRow icon={<AppIcons.postponed size={18}/>} iconBg="bg-gray-100" title="放置アラート"
             desc="タスクやアプリの放置を通知"
             onClick={()=>setSub('notifications-later')}/>
           <SettingsRow icon={<AppIcons.backpack size={18}/>} iconBg="bg-gray-100" title="忘れ物防止アラート"
             desc="場所を出るときに持ち物を確認"
-            onClick={()=>{if(!isPremium){setProPrompt('忘れ物防止アラート');return;}setSub('forgetAlerts');}} pro isPremium={isPremium} isLast/>
+            onClick={()=>{if(!isPremium){setProPrompt('忘れ物防止アラート');return;}setSub('forgetAlerts');}} isLast/>
         </div>
 
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">一般</p>
