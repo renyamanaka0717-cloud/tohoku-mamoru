@@ -1,5 +1,6 @@
 'use client';
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { logAnalyticsEvent } from './Analytics';
 
 const RC_API_KEY = 'appl_zyfcgKyGHORBKcOppeougWslCRP';
 const ENTITLEMENT_ID = 'BrainBox Pro';
@@ -63,7 +64,9 @@ export function PremiumProvider({ children }: { children: React.ReactNode }) {
       const pkg = offerings.current?.monthly;
       if (!pkg) throw new Error('No monthly package found');
       const { customerInfo } = await Purchases.purchasePackage({ aPackage: pkg });
-      setIsPremium(ENTITLEMENT_ID in customerInfo.entitlements.active);
+      const active = ENTITLEMENT_ID in customerInfo.entitlements.active;
+      setIsPremium(active);
+      if (active) logAnalyticsEvent('subscription_started');
     } catch (e: unknown) {
       const err = e as { userCancelled?: boolean };
       if (!err.userCancelled) throw e;

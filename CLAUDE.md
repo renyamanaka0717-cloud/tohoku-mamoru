@@ -1250,6 +1250,84 @@ const recTasks = tasks.filter((t,i,a)=>t.recurrence&&a.findIndex(x=>x.name===t.n
 | 変数 | 説明 |
 |---|---|
 | `GROQ_API_KEY` | Groq APIキー（Threads投稿生成で使用） |
+| `NEXT_PUBLIC_FIREBASE_API_KEY` 他6件 | Firebase Analytics（Web用）。詳細は下記「Firebase Analytics」節を参照 |
+
+---
+
+## Firebase Analytics（利用状況計測）
+
+BrainBoxはFlutterではなくNext.js/Capacitorのアプリなので、FlutterFire CLI・`firebase_core`・`firebase_analytics`（Flutter用パッケージ）は使えない。代わりに **Web: Firebase JS SDK（`firebase/analytics`、GA4計測）／iOSネイティブ: Firebase iOS SDKをラップした自作Capacitorプラグイン（`AnalyticsPlugin`）** という、このリポジトリの他機能（Geofence・LocalNotify等）と同じ「JS薄いラッパー→ネイティブはCapacitorカスタムプラグイン」構成で実装している。Androidターゲットはこのプロジェクトに存在しないため対応していない。
+
+### アーキテクチャ
+
+```
+src/app/components/Analytics.ts   … logAnalyticsEvent(name, params) を全画面から共通で呼ぶ窓口
+  ├─ ネイティブ: registerPlugin('AnalyticsPlugin') 経由でCapacitorプラグインを呼ぶ
+  └─ Web/開発環境: firebase/app + firebase/analytics を動的importして gtag ベースのGA4計測を行う
+       （NEXT_PUBLIC_FIREBASE_* が1つでも未設定なら何もせず静かに終了する。ローカル開発でFirebase
+       プロジェクト未設定でもアプリが壊れないようにするための設計）
+native-ios/AnalyticsPlugin.swift/.m  … Analytics.logEvent(name, parameters:) を呼ぶだけの薄いプラグイン
+native-ios/BridgeViewController.swift … capacitorDidLoad() 内で FirebaseApp.configure() を一度だけ呼び、
+       AnalyticsPluginを登録する（AppDelegate.swiftは編集しない。既存プラグインと同じ最小限の変更方針）
+```
+
+`logAnalyticsEvent(name, params?)` は`src/app/page.tsx`・`src/app/components/Premium.tsx`から呼ぶ。失敗しても例外を投げず（try/catchで握りつぶす）、Analytics側の不具合がアプリ本体の動作に影響しないようにしている。
+
+### プライバシー方針（重要・必ず守ること）
+
+**送ってはいけないもの:** タスク名、買い物リストの中身、メモの内容、住所・施設名、緯度・経度、メールアドレス、ユーザー名、その他個人を特定できる情報。
+
+**場所通知イベント（`location_notification_created`）は、実際の場所の名前・住所・緯度経度を一切paramsに含めず、半径（`radius`: 100/300/500の数値）のような非識別の設定値のみ送る。** 「スーパー」「薬局」等の一般カテゴリを送る案も検討したが、このアプリの場所登録は自由入力（プリセットの「自宅」「職場」等はあるがユーザーが自由に書き換えられる）でカテゴリ分類の仕組みが無いため、誤って個人を特定しうる文字列を送るリスクを避けて**何も送らない**方針にした（イベント発火自体で「場所通知を設定した」という事実は計測できる）。
+
+新しいイベント・パラメータを追加する時は、必ずこのプライバシー方針に照らして「このparamsに個人を特定しうる情報が紛れ込んでいないか」を確認してから実装すること。
+
+### 計測イベント一覧
+
+| イベント名 | 発火箇所 | 備考 |
+|---|---|---|
+| `task_created` | `App.saveTasks()`（新規タスク保存時） | `params.mode`: `'later'\|'scheduled'\|'recurring'` |
+| `task_completed` | `App.toggle()` | 完了→未完了に戻す操作では発火しない |
+| `task_deleted` | `App.delTask()`、タイムラインのドラッグ&ドロップでゴミ箱にドロップした時 | |
+| `later_task_created` | `App.saveTasks()`（新規タスクが`isLater:true`） | |
+| `later_task_moved_to_timeline` | ドラッグ&ドロップの`onEnd`（`dragTask.isLater`なタスクをタイムラインにドロップ） | |
+| `shopping_item_created` | `App.addShopItem()` | |
+| `shopping_item_completed` | `App.toggleShop()`（未購入→購入済みへの遷移のみ） | |
+| `timeline_task_added` | `App.saveTasks()`（新規タスクが時間指定で`startTime`あり） | |
+| `timeline_task_moved` | ドラッグ&ドロップの`onEnd`（元々時間指定済みタスクの時刻を変更） | |
+| `time_notification_created` | `App.saveTasks()`（`notifications`配列が空→非空に変わった時のみ） | 新規タスク作成・既存タスク編集どちらも対象 |
+| `location_notification_created` | `App.saveTasks()`（`Task.locationNotify`がfalse→trueに変わった時）、`ShopLocationPanel.confirmAdd()`（新規登録時）、`ForgetAlertsPanel.saveEditing()`（新規登録時） | `params.radius`（場所通知系のみ）以外は送らない |
+| `notification_opened` | `App`の`applyPending()`（`GeofencePlugin`の共有`UNUserNotificationCenterDelegate`が`pendingNotificationOpened`フラグを立て、次回起動/フォアグラウンド復帰時に読み取ってクリアする） | 全通知カテゴリ共通の1つのdelegateを経由するため種類を問わず計測できるが、種類（どの通知か）までは区別していない |
+| `product_tour_started` | `App`のツアー表示分岐（`maybeShowProductTour()`、および初回ロード時の既存ユーザー向けフォールバック分岐）で`setShowTour(true)`と同時に発火 | |
+| `product_tour_completed` | `ProductTour`の`onFinish(false)`（完了画面の「はじめる」ボタン） | |
+| `product_tour_skipped` | `ProductTour`の`onFinish(true)`（「スキップ」ボタン、`handleSkip`） | |
+| `paywall_viewed` | `ProGateSheet`のマウント時、`SettingsScreen`で`sub==='premium'`になった時 | |
+| `subscription_started` | `Premium.tsx`の`purchase()`（購入成功で`ENTITLEMENT_ID`がアクティブになった時のみ） | |
+
+**意図的に計測していないもの（スコープ外）:** 繰り返しタスクの一括編集（`editScope==='all'`）保存、「あとでやる」の朝の一括完了（`handleMorningAction`）、繰り返しタスクのドラッグ確認ポップアップ経由の移動。これらは単一操作の裏で複数タスクが変化するバルク処理で、単純な1イベント=1操作の対応にならないため初回実装では対象外にした。
+
+### Firebase側のセットアップ手順（ユーザー側の作業）
+
+1. [Firebase console](https://console.firebase.google.com)で新規プロジェクトを作成（Google Analyticsの有効化を選ぶ）
+2. プロジェクトに **iOSアプリ** を追加。バンドルIDはXcodeプロジェクトのバンドルID（`jp.brainbox.app`）と一致させる
+3. ダウンロードした `GoogleService-Info.plist` は消さずに保管しておく（Xcodeでの手動セットアップで使う）
+4. 同じプロジェクトに **ウェブアプリ** も追加し、「SDKの設定と構成」に表示される`apiKey`/`authDomain`/`projectId`等の値を`.env.local`（`.env.local.example`参照）とVercelのプロジェクト環境変数の両方に設定する
+
+### Xcodeでの手動セットアップ（`ios/`はgitignore対象なので毎回必要）
+
+1. ダウンロード済みの `GoogleService-Info.plist` をXcodeの`ios/App/App/`にドラッグ＆ドロップで追加（Target Membership: App、ファイル名は変更しない）
+2. Xcodeメニュー File → Add Package Dependencies → `https://github.com/firebase/firebase-ios-sdk` を追加 → 製品選択で **FirebaseAnalytics**（依存する FirebaseCore も自動で付いてくる）を選び、Target: App に追加
+3. `native-ios/AnalyticsPlugin.swift` / `.m` を `ios/App/App/` に追加（Target Membership: App）
+4. `ios/App/App/BridgeViewController.swift` の中身を `native-ios/BridgeViewController.swift` の最新内容に差し替える（`import FirebaseCore`・`FirebaseApp.configure()`・`AnalyticsPlugin`の登録が追加されている。既存ファイルは`git pull`しても自動更新されないので、Xcode上で直接コピー&ペーストで差し替えること）
+5. （任意・デバッグ用）Xcodeの Product → Scheme → Edit Scheme → Run → Arguments → "Arguments Passed On Launch" に `-FIRDebugEnabled` を追加すると、[Firebase console の DebugView](https://console.firebase.google.com)でイベントをリアルタイムに確認できる
+6. ビルド・実行し、タスク作成やドラッグ操作を行って DebugView にイベントが届くことを確認する
+
+### 避けるパターン
+
+- `firebase_core`/`firebase_analytics`（Flutter用パッケージ）や FlutterFire CLI を使おうとしない（このアプリはFlutterではない）
+- タスク名・メモ・買い物リストの中身・住所・緯度経度・メールアドレス・ユーザー名を`params`に含めない
+- 場所関連イベントに実際の場所の名前やカテゴリ推測ロジックを追加しない（自由入力でカテゴリ分類の仕組みが無いため、何も送らない方針を維持する）
+- `AnalyticsPlugin`をWidget Extensionターゲットなど他ターゲットに追加しない（メインAppターゲットのみ）
+- `AppDelegate.swift`を編集して`FirebaseApp.configure()`を呼ぼうとしない（`BridgeViewController.capacitorDidLoad()`で完結させる設計にしてあるため不要）
 
 ---
 

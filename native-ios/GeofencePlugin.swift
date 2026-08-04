@@ -213,9 +213,11 @@ public class GeofencePlugin: CAPPlugin, CLLocationManagerDelegate, UNUserNotific
     @objc func getPendingGeofenceAction(_ call: CAPPluginCall) {
         let shouldOpenShop = UserDefaults.standard.bool(forKey: "pendingOpenShopList")
         let shouldOpenLater = UserDefaults.standard.bool(forKey: "pendingOpenLaterList")
+        let notificationOpened = UserDefaults.standard.bool(forKey: "pendingNotificationOpened")
         UserDefaults.standard.removeObject(forKey: "pendingOpenShopList")
         UserDefaults.standard.removeObject(forKey: "pendingOpenLaterList")
-        call.resolve(["shouldOpenShop": shouldOpenShop, "shouldOpenLater": shouldOpenLater])
+        UserDefaults.standard.removeObject(forKey: "pendingNotificationOpened")
+        call.resolve(["shouldOpenShop": shouldOpenShop, "shouldOpenLater": shouldOpenLater, "notificationOpened": notificationOpened])
     }
 
     // iOSは位置情報・通知の許可をアプリから直接ONにするAPIを提供していないため、
@@ -427,6 +429,9 @@ public class GeofencePlugin: CAPPlugin, CLLocationManagerDelegate, UNUserNotific
     }
 
     public func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
+        // このdelegateはアプリ全体で1つだけ（load()で設定済み）なので、どのプラグインが
+        // スケジュールした通知のタップでもここを通る。Analyticsのnotification_opened計測に使う
+        UserDefaults.standard.set(true, forKey: "pendingNotificationOpened")
         if response.notification.request.content.userInfo["openShop"] as? Bool == true {
             UserDefaults.standard.set(true, forKey: "pendingOpenShopList")
         }

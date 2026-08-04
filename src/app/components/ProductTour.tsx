@@ -18,7 +18,7 @@ const STEPS: TourStepDef[] = [
 interface Rect { top: number; left: number; width: number; height: number; }
 
 export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSavedSignal }: {
-  onFinish: () => void;
+  onFinish: (skipped: boolean) => void;
   gestureSignal: number;
   modalOpen: boolean;
   taskSavedSignal: number;
@@ -73,7 +73,7 @@ export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSa
     if (step.id === 'drag' && gestureSignal !== gestureBaseline.current) goNext();
   }, [gestureSignal, step.id, goNext]);
 
-  const handleSkip = () => onFinish();
+  const handleSkip = () => onFinish(true);
 
   if (showCompletion) {
     return (
@@ -84,7 +84,7 @@ export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSa
           </div>
           <p className="text-lg font-bold text-gray-900 mb-2">ツアー完了！</p>
           <p className="text-sm text-gray-500 leading-relaxed mb-6">これでBrainBoxの基本的な使い方はばっちりです。さっそく使ってみましょう。</p>
-          <button onClick={onFinish} className="w-full py-3 rounded-2xl text-[15px] font-bold text-white" style={{ background: 'var(--c-primary)' }}>はじめる</button>
+          <button onClick={() => onFinish(false)} className="w-full py-3 rounded-2xl text-[15px] font-bold text-white" style={{ background: 'var(--c-primary)' }}>はじめる</button>
         </div>
       </div>
     );

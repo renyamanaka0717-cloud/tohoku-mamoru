@@ -12,7 +12,7 @@ interface GeofencePluginType {
   setForgetAlerts(options: { alertsJson: string }): Promise<void>;
   requestPermissions(): Promise<GeofencePermissionStatus>;
   checkPermissions(): Promise<GeofencePermissionStatus>;
-  getPendingGeofenceAction(): Promise<{ shouldOpenShop: boolean; shouldOpenLater: boolean }>;
+  getPendingGeofenceAction(): Promise<{ shouldOpenShop: boolean; shouldOpenLater: boolean; notificationOpened: boolean }>;
   getFiredTaskLocationIds(): Promise<{ ids: string[] }>;
   getCurrentLocation(): Promise<{ lat: number; lng: number }>;
   openAppSettings(): Promise<void>;
@@ -76,13 +76,13 @@ export async function ensureGeofencePermission(): Promise<boolean> {
   }
 }
 
-export async function getPendingGeofenceAction(): Promise<{ shouldOpenShop: boolean; shouldOpenLater: boolean }> {
-  if (!isNative()) return { shouldOpenShop: false, shouldOpenLater: false };
+export async function getPendingGeofenceAction(): Promise<{ shouldOpenShop: boolean; shouldOpenLater: boolean; notificationOpened: boolean }> {
+  if (!isNative()) return { shouldOpenShop: false, shouldOpenLater: false, notificationOpened: false };
   try {
     const res = await GeofencePlugin.getPendingGeofenceAction();
-    return { shouldOpenShop: !!res.shouldOpenShop, shouldOpenLater: !!res.shouldOpenLater };
+    return { shouldOpenShop: !!res.shouldOpenShop, shouldOpenLater: !!res.shouldOpenLater, notificationOpened: !!res.notificationOpened };
   } catch {
-    return { shouldOpenShop: false, shouldOpenLater: false };
+    return { shouldOpenShop: false, shouldOpenLater: false, notificationOpened: false };
   }
 }
 

@@ -9,6 +9,7 @@ import { setShopGeofences, setTaskLocationGeofences, setForgetAlertGeofences, ch
 import { scheduleInactivityReminder, cancelInactivityReminder } from './components/Inactivity';
 import { notify, requestNotifyPermission, syncTaskAlerts, syncFreeSlotAlerts, syncShopNotifs, syncLaterStaleAlerts, syncWakeCheckins, syncDeadlineAlerts, isNative } from './components/LocalNotify';
 import { getAppVersion } from './components/AppVersion';
+import { logAnalyticsEvent } from './components/Analytics';
 import { App as CapApp } from '@capacitor/app';
 import Onboarding from './components/Onboarding';
 import ProductTour from './components/ProductTour';
@@ -3197,6 +3198,7 @@ function ShopLocationPanel({locations,onChange,isPremium,onProPrompt}:{
       onChange(locations.map(l=>l.id===editLocId?{...l,name:pendingCoord.name,lat:pendingCoord.lat,lng:pendingCoord.lng,radius}:l));
     }else{
       onChange([...locations,{id:uid(),name:pendingCoord.name,lat:pendingCoord.lat,lng:pendingCoord.lng,radius,enabled:true}]);
+      logAnalyticsEvent('location_notification_created',{radius});
     }
     cancelAdd();
   };
@@ -3428,7 +3430,7 @@ function ForgetAlertsPanel({alerts,onChange,isPremium,onProPrompt}:{
     const ok=await ensureGeofencePermission();
     if(!ok){ setPermError('場所を出たときに通知するため、位置情報の利用を許可してください。'); return; }
     const toSave:ForgetAlert={...editing,name:editing.name.trim(),location:editing.location};
-    if(adding) onChange([...alerts,toSave]);
+    if(adding){ onChange([...alerts,toSave]); logAnalyticsEvent('location_notification_created',{radius:toSave.radius}); }
     else onChange(alerts.map(a=>a.id===toSave.id?toSave:a));
     cancelEdit();
   };
@@ -3911,6 +3913,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
 // ── Settings Screen ──────────────────────────────────────────────────────────
 
 function ProGateSheet({onClose,onView,feature}:{onClose:()=>void;onView?:()=>void;feature?:string}) {
+  useEffect(()=>{ logAnalyticsEvent('paywall_viewed'); },[]);
   return (
     <div className="fixed inset-0 z-[200] bg-black/40 flex items-end justify-center" onClick={onClose}>
       <div className="bg-white w-full max-w-md rounded-t-3xl px-5 pt-5 pb-10 shadow-2xl" onClick={e=>e.stopPropagation()}>
@@ -3970,6 +3973,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   tasks:Task[]; onEditTask:(t:Task)=>void;
 }) {
   const [sub,setSub]           = useState<string|null>(initialSub??null);
+  useEffect(()=>{ if(sub==='premium') logAnalyticsEvent('paywall_viewed'); },[sub]);
   const [appVersion,setAppVersion] = useState<string|null>(null);
   useEffect(()=>{ getAppVersion().then(setAppVersion); },[]);
   const [tagInput,setTagInput] = useState('');
@@ -5720,7 +5724,7 @@ export default function App() {
     } else if(!localStorage.getItem(WAKESLEEP_ASKED_KEY)){
       maybeShowWakeSleepPrompt();
     } else if(!localStorage.getItem(TOUR_COMPLETED_KEY)){
-      setTimeout(()=>setShowTour(true),1000);
+      setTimeout(()=>{setShowTour(true);logAnalyticsEvent('product_tour_started');},1000);
     } else if(!localStorage.getItem(NOTIF_ASKED_KEY)){
       setTimeout(()=>maybeShowNotifPrompt(),800);
     }
@@ -5752,9 +5756,10 @@ export default function App() {
       if(purchasedShopItemIds.length>0){
         setShopItems(prev=>prev.map(s=>purchasedShopItemIds.includes(s.id)?{...s,checked:true,purchasedAt:new Date().toISOString()}:s));
       }
-      const {shouldOpenShop,shouldOpenLater}=await getPendingGeofenceAction();
+      const {shouldOpenShop,shouldOpenLater,notificationOpened}=await getPendingGeofenceAction();
       if(shouldOpenShop) setActiveTab('shop');
       if(shouldOpenLater) setActiveTab('later');
+      if(notificationOpened) logAnalyticsEvent('notification_opened');
       // バックグラウンド中に場所到着で発火済みになったタスクのlocationNotifyをオフにする
       // （時間通知とのOR条件で、片方が発火したらもう片方は解除する仕様）
       const firedIds=await getFiredTaskLocationIds();
@@ -5892,7 +5897,7 @@ export default function App() {
 
   const maybeShowProductTour=()=>{
     if(localStorage.getItem(TOUR_COMPLETED_KEY)){ maybeShowNotifPrompt(); return; }
-    setTimeout(()=>setShowTour(true),600);
+    setTimeout(()=>{setShowTour(true);logAnalyticsEvent('product_tour_started');},600);
   };
   const maybeShowWakeSleepPrompt=()=>{
     if(localStorage.getItem(WAKESLEEP_ASKED_KEY)){ maybeShowProductTour(); return; }
@@ -6366,6 +6371,7 @@ export default function App() {
       const t=e.changedTouches[0];
       if(isInTrash(t.clientX,t.clientY)){
         setTasks(prev=>prev.filter(tk=>tk.id!==dragTask.id));
+        logAnalyticsEvent('task_deleted');
       } else if(isInLater(t.clientX,t.clientY)){
         setTasks(prev=>prev.map(tk=>tk.id===dragTask.id
           ? {...tk,isLater:true,startTime:null,laterSince:tk.laterSince??new Date().toISOString()}
@@ -6380,6 +6386,7 @@ export default function App() {
             ? dragTask.isLater ? {...tk,isLater:false,startTime:time,date,laterSince:undefined,notifications:tk.notifications?.length?tk.notifications:[0]} : {...tk,startTime:time}
             : tk
           ));
+          logAnalyticsEvent(dragTask.isLater?'later_task_moved_to_timeline':'timeline_task_moved');
         }
       }
       setDragTask(null);
@@ -6396,9 +6403,11 @@ export default function App() {
     };
   },[dragTask,settings,date]);
 
-  const addShopItem  = (name:string) => setShopItems(prev=>[...prev,{id:uid(),name,checked:false}]);
+  const addShopItem  = (name:string) => { setShopItems(prev=>[...prev,{id:uid(),name,checked:false}]); logAnalyticsEvent('shopping_item_created'); };
   const toggleShop   = (id:string)   => setShopItems(prev=>{
     const now=Date.now();
+    const target=prev.find(i=>i.id===id);
+    if(target&&!target.checked) logAnalyticsEvent('shopping_item_completed');
     return prev
       .map(i=>i.id===id?{...i,checked:!i.checked,purchasedAt:!i.checked?new Date().toISOString():(i.purchasedAt)}:i)
       .filter(i=>!(i.checked&&i.purchasedAt&&now-new Date(i.purchasedAt).getTime()>=7*24*60*60*1000));
@@ -6484,6 +6493,15 @@ export default function App() {
         :[...prev,...newTasks]
       );
       if(showTour&&!modal.task) setTourTaskSavedSignal(n=>n+1);
+      if(!modal.task){
+        logAnalyticsEvent('task_created',{mode:newTasks[0].isLater?'later':newTasks[0].recurrence?'recurring':'scheduled'});
+        if(newTasks[0].isLater) logAnalyticsEvent('later_task_created');
+        else if(newTasks[0].startTime) logAnalyticsEvent('timeline_task_added');
+      }
+      const wasTimeNotify=(modal.task?.notifications?.length??0)>0;
+      const wasLocNotify=modal.task?.locationNotify??false;
+      if(!wasTimeNotify&&(newTasks[0].notifications?.length??0)>0) logAnalyticsEvent('time_notification_created');
+      if(!wasLocNotify&&newTasks[0].locationNotify) logAnalyticsEvent('location_notification_created');
     }
     setEditScope('one');
     closeModal();
@@ -6494,8 +6512,13 @@ export default function App() {
       :t));
   const delTask  = (id:string) => {
     setTasks(prev=>prev.filter(t=>t.id!==id));
+    logAnalyticsEvent('task_deleted');
   };
-  const toggle   = (id:string) => setTasks(prev=>prev.map(t=>t.id===id?{...t,completed:!t.completed}:t));
+  const toggle   = (id:string) => setTasks(prev=>{
+    const target=prev.find(t=>t.id===id);
+    if(target&&!target.completed) logAnalyticsEvent('task_completed');
+    return prev.map(t=>t.id===id?{...t,completed:!t.completed}:t);
+  });
   const scheduleInSlot=(task:Task,startTime:string)=>setModal({open:true,task:{...task,isLater:false,startTime,date,notifications:task.notifications?.length?task.notifications:[0]}});
   const moveToTimeline=(task:Task)=>setModal({open:true,task:{...task,isLater:false}});
   const handleMorningAction=(type:'done'|'later')=>{
@@ -7029,9 +7052,10 @@ export default function App() {
       {/* ── プロダクトツアー ── */}
       {showTour&&!settingsOpen&&!calendarOpen&&!searchOpen&&(
         <ProductTour gestureSignal={tourDragSignal} modalOpen={modal.open} taskSavedSignal={tourTaskSavedSignal}
-          onFinish={()=>{
+          onFinish={(skipped)=>{
             localStorage.setItem(TOUR_COMPLETED_KEY,'1');
             setShowTour(false);
+            logAnalyticsEvent(skipped?'product_tour_skipped':'product_tour_completed');
             maybeShowNotifPrompt();
           }}/>
       )}
