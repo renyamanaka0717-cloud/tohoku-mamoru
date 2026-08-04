@@ -4033,7 +4033,14 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   initialSub?:string;
   tasks:Task[]; onEditTask:(t:Task)=>void;
 }) {
-  const [sub,setSub]           = useState<string|null>(initialSub??null);
+  const [sub,setSubRaw]        = useState<string|null>(initialSub??null);
+  // 戻る操作で常にメイン設定画面まで戻ってしまわないよう、遷移履歴をスタックで保持する。
+  // setSub(次の画面) で現在地をスタックに積み、back() でスタックから1つ戻す
+  const subHistoryRef = useRef<(string|null)[]>([]);
+  const setSub = (next:string|null) => {
+    subHistoryRef.current.push(sub);
+    setSubRaw(next);
+  };
   useEffect(()=>{ if(sub==='premium') logAnalyticsEvent('paywall_viewed'); },[sub]);
   const [appVersion,setAppVersion] = useState<string|null>(null);
   useEffect(()=>{ getAppVersion().then(setAppVersion); },[]);
@@ -4151,7 +4158,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   const [proPrompt,setProPrompt] = useState<string|null>(null);
   const proSheet = proPrompt ? <ProGateSheet feature={proPrompt} onClose={()=>setProPrompt(null)} onView={()=>{setProPrompt(null);setSub('premium');}}/> : null;
 
-  const back = () => setSub(null);
+  const back = () => setSubRaw(subHistoryRef.current.pop() ?? null);
 
   const subHeader = (title:string) => (
     <div className="bg-white border-b border-gray-200 px-4 py-3.5 flex items-center shrink-0" style={{paddingTop:'calc(0.875rem + env(safe-area-inset-top))'}}>
