@@ -774,14 +774,20 @@ interface ForgetAlert {
 
 ### プロダクトツアー（`src/app/components/ProductTour.tsx`）
 
-タスク追加ボタン→空き時間カード→ドラッグ＆ドロップの3ステップのスポットライト型ツアー。`App`の`showTour`がtrueの間、メインUIの上に**オーバーレイ表示**する（オンボーディングと違い実際のUIを隠さない。`modal.open`/`settingsOpen`/`calendarOpen`/`searchOpen`のいずれかがtrueの間は表示しない）。
+タスク追加→「あとでやる」に保存→ドラッグ＆ドロップの3ステップのスポットライト型ツアー。`App`の`showTour`がtrueの間、メインUIの上に**オーバーレイ表示**する（オンボーディングと違い実際のUIを隠さない。`settingsOpen`/`calendarOpen`/`searchOpen`のいずれかがtrueの間は表示しないが、**`modal.open`中は表示し続ける**——「保存」ステップでタスクモーダル自体をスポットライトする必要があるため）。
 
-- 各ステップは`data-tour="fab-add"` / `data-tour="free-time-card"` / `data-tour="tour-draggable"`のCSSセレクタで対象DOM要素を`querySelector`し、`getBoundingClientRect()`で位置を取得（`setInterval(400ms)`＋`resize`/`scroll`で再計測）。
-- **スポットライト演出**: 対象要素の四方を覆う4枚の暗転帯（`pointer-events:auto`でタップを吸収）＋ 対象要素ぴったりに重ねる`pointer-events:none`の光る枠（`globals.css`の`tourPulse`/`tourScale`キーフレームで呼吸するようなパルスアニメーション）。対象要素自体には何も重ねないため、実際のボタン操作がそのまま機能する（＝ハイライト部分だけ操作可能、という要件をDOM上の「穴」として実現）。
-- 吹き出し（タイトル・本文・矢印）は`globals.css`の`tourBlink`で点滅する三角形の矢印付き。対象が画面下半分にあれば吹き出しは上に、上半分にあれば下に自動配置。
-- **ドラッグ＆ドロップのステップだけは「次へ」ボタンを出さず、実際のジェスチャー完了を待つ**: `App`側で既存のドラッグ完了処理（`onEnd`、`dragTask`のuseEffect内）に`setTourDragSignal(n=>n+1)`を追加し、`gestureSignal` propとして`ProductTour`に渡す。ツアー側は「ドラッグ」ステップに入った時点の値を`gestureBaseline`に記録し、それと異なる値になったら（＝実際に何らかのタスクがドラッグ＆ドロップされたら）自動で次へ進む
-- **対象要素が見つからない場合**（空き時間が無い日・タスクが1件も無い日など）は800ms待って自動的に次のステップへスキップする（データが無くてもツアーが止まらない）。
-- 最終ステップの後は完了画面（チェックアイコン＋「ツアー完了！」＋「はじめる」ボタン）を表示してから`onFinish()`を呼ぶ。「スキップ」ボタンは完了画面を経由せず即座に`onFinish()`を呼ぶ。`onFinish`は`App`側で`TOUR_COMPLETED_KEY`をセットして`showTour`をfalseにする（スキップしても再表示されない）。
+**全ステップが実際の操作でのみ進む（「次へ」ボタンは無い）。** 静的な説明を読んで進むのではなく、実際にタップ・入力・ドラッグしてもらうことでBrainBoxの使い方を体感してもらう設計（読まれにくい説明文・無駄な操作回数を減らす狙い）。
+
+- 各ステップは`data-tour="fab-add"` / `data-tour="modal-header"` / `data-tour="tour-draggable"`のCSSセレクタで対象DOM要素を`querySelector`し、`getBoundingClientRect()`で位置を取得（`setInterval(400ms)`＋`resize`/`scroll`で再計測）。
+- **ステップ1「タスクを追加してみよう」**: FABをスポットライト。`modalOpen` propが`false→true`になった時点（＝実際にFABをタップしてモーダルが開いた瞬間）で自動的に次へ進む
+- **ステップ2「「あとでやる」に保存」**: `data-tour="modal-header"`（TaskModalの色付きヘッダー全体——タスク名入力・モードタブ・保存ボタンをまとめて含む）をスポットライト。ヘッダー全体を対象にしているのは、保存ボタンだけをスポットライトすると名前入力欄が暗転帯に覆われてタップできなくなるため。`App`の`saveTasks()`が新規タスク保存時（`!modal.task`）に`tourTaskSavedSignal`をインクリメントし、`taskSavedSignal` propとしてツアー側に渡す。その値が変化した時点（＝実際に保存された瞬間）で自動的に次へ進む
+- **ステップ3「ドラッグして時間を設定」**: `data-tour="tour-draggable"`をスポットライト。既存のドラッグ完了処理（`onEnd`、`dragTask`のuseEffect内）の`setTourDragSignal(n=>n+1)`を`gestureSignal` propとして受け取り、値が変化したら（＝実際にドラッグ&ドロップされたら）自動で次へ進む
+- **スポットライト演出**: 対象要素の四方を覆う4枚の暗転帯（`pointer-events:auto`でタップを吸収）＋ 対象要素ぴったりに重ねる`pointer-events:none`の光る枠（`globals.css`の`tourPulse`/`tourScale`キーフレームで呼吸するようなパルスアニメーション）。対象要素自体には何も重ねないため、実際の操作がそのまま機能する（＝ハイライト部分だけ操作可能、という要件をDOM上の「穴」として実現）。TaskModal自体はz-50、ツアーのオーバーレイはz-[220]なので、ステップ2でモーダルの上からスポットライトを重ねても正しく機能する
+- 吹き出し（タイトル・本文・矢印、ボタン無し）は`globals.css`の`tourBlink`で点滅する三角形の矢印付き。対象が画面下半分にあれば吹き出しは上に、上半分にあれば下に自動配置。`pointerEvents:'none'`なので対象操作を妨げない
+- **対象要素が見つからない場合**は800ms待って自動的に次のステップへスキップする（何らかの理由で対象が描画されない場合でもツアーが止まらない安全策）
+- 最終ステップの後は完了画面（チェックアイコン＋「ツアー完了！」＋「はじめる」ボタン）を表示してから`onFinish()`を呼ぶ。「スキップ」ボタンは完了画面を経由せず即座に`onFinish()`を呼ぶ。`onFinish`は`App`側で`TOUR_COMPLETED_KEY`をセットして`showTour`をfalseにする（スキップしても再表示されない）
+
+**サンプルタスク（`tourSampleTasks`）:** ツアー中は「牛乳を買う」「クリーニングを受け取る」「振込をする」の3件を空き時間カード・あとでやるリストに表示し、アプリが実際に使われている状態を疑似的に見せる。**実データ（`tasks` state・localStorage）には一切保存せず**、`showTour`がtrueの間だけ`filteredTasks`の算出時に`[...tasks,...tourSampleTasks]`として表示用に合成する（`tourSampleTasks`自体は`useState`のみで永続化しない）。`showTour`がfalseになると同じエフェクトで`tourSampleTasks`を空配列にリセットする。ステップ3でドラッグする対象は、ユーザーが実際に保存した新規タスクが（配列の並び順的に）サンプルより先に来るため自然とスポットライトされる。
 
 ### おすすめ機能（未使用機能の段階的な提案）
 

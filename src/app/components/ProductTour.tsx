@@ -3,28 +3,33 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppIcons } from './Icons';
 
 interface TourStepDef {
-  id: 'add' | 'freeTime' | 'drag';
+  id: 'add' | 'save' | 'drag';
   selector: string;
   title: string;
   body: string;
-  requireGesture?: boolean;
 }
 
 const STEPS: TourStepDef[] = [
-  { id: 'add', selector: '[data-tour="fab-add"]', title: 'タスクを追加', body: 'ここをタップすると、新しいタスクを追加できます。' },
-  { id: 'freeTime', selector: '[data-tour="free-time-card"]', title: '空き時間を活用', body: 'タスクカードをタップすると時間を設定できます。' },
-  { id: 'drag', selector: '[data-tour="tour-draggable"]', title: 'ドラッグで移動', body: 'タスクを長押ししてそのままドラッグすると、時間を変更できます。実際に動かしてみましょう。', requireGesture: true },
+  { id: 'add', selector: '[data-tour="fab-add"]', title: 'タスクを追加してみよう', body: 'ここをタップして、新しいタスクを追加しましょう。' },
+  { id: 'save', selector: '[data-tour="modal-header"]', title: '「あとでやる」に保存', body: 'タスク名を入力して保存すると、「あとでやる」に追加されます。' },
+  { id: 'drag', selector: '[data-tour="tour-draggable"]', title: 'ドラッグして時間を設定', body: 'タスクを長押ししてそのままドラッグし、空き時間カードに重ねてみましょう。' },
 ];
 
 interface Rect { top: number; left: number; width: number; height: number; }
 
-export default function ProductTour({ onFinish, gestureSignal }: { onFinish: () => void; gestureSignal: number }) {
+export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSavedSignal }: {
+  onFinish: () => void;
+  gestureSignal: number;
+  modalOpen: boolean;
+  taskSavedSignal: number;
+}) {
   const [stepIndex, setStepIndex] = useState(0);
   const [rect, setRect] = useState<Rect | null>(null);
   const [showCompletion, setShowCompletion] = useState(false);
+  const modalOpenBaseline = useRef(modalOpen);
+  const taskSavedBaseline = useRef(taskSavedSignal);
   const gestureBaseline = useRef(gestureSignal);
   const step = STEPS[stepIndex];
-  const isLastStep = stepIndex === STEPS.length - 1;
 
   const measure = useCallback(() => {
     const el = document.querySelector(step.selector) as HTMLElement | null;
@@ -52,8 +57,18 @@ export default function ProductTour({ onFinish, gestureSignal }: { onFinish: () 
     return () => clearTimeout(t);
   }, [rect, showCompletion, goNext]);
 
-  // ドラッグの実演ステップに入った時点のgestureSignalを基準に、実際のドラッグ完了で自動的に進む
-  useEffect(() => { gestureBaseline.current = gestureSignal; }, [stepIndex]);
+  // 各ステップに入った時点の値を基準に記録し、実際の操作（タップ・保存・ドラッグ）で自動的に進む
+  useEffect(() => {
+    modalOpenBaseline.current = modalOpen;
+    taskSavedBaseline.current = taskSavedSignal;
+    gestureBaseline.current = gestureSignal;
+  }, [stepIndex]);
+  useEffect(() => {
+    if (step.id === 'add' && modalOpen && !modalOpenBaseline.current) goNext();
+  }, [modalOpen, step.id, goNext]);
+  useEffect(() => {
+    if (step.id === 'save' && taskSavedSignal !== taskSavedBaseline.current) goNext();
+  }, [taskSavedSignal, step.id, goNext]);
   useEffect(() => {
     if (step.id === 'drag' && gestureSignal !== gestureBaseline.current) goNext();
   }, [gestureSignal, step.id, goNext]);
@@ -75,7 +90,6 @@ export default function ProductTour({ onFinish, gestureSignal }: { onFinish: () 
     );
   }
 
-  const vw = typeof window !== 'undefined' ? window.innerWidth : 375;
   const vh = typeof window !== 'undefined' ? window.innerHeight : 812;
   const above = rect ? rect.top > vh * 0.55 : false;
   const bubbleTop = rect
@@ -111,9 +125,9 @@ export default function ProductTour({ onFinish, gestureSignal }: { onFinish: () 
         <button onClick={handleSkip} className="text-xs font-medium text-white bg-black/30 rounded-full px-3 py-1.5 active:opacity-70">スキップ</button>
       </div>
 
-      {/* 吹き出し */}
+      {/* 吹き出し（説明のみ・ボタンなし。実際に操作すると自動で次に進む） */}
       {rect && (
-        <div className="fixed left-4 right-4" style={{ top: bubbleTop, pointerEvents: 'auto' }}>
+        <div className="fixed left-4 right-4" style={{ top: bubbleTop, pointerEvents: 'none' }}>
           <div className="relative bg-white rounded-2xl px-5 py-4 shadow-2xl max-w-xs mx-auto">
             <div style={{
               position: 'absolute', left: 24, width: 0, height: 0,
@@ -123,13 +137,6 @@ export default function ProductTour({ onFinish, gestureSignal }: { onFinish: () 
             }} />
             <p className="text-sm font-bold text-gray-900 mb-1">{step.title}</p>
             <p className="text-xs text-gray-500 leading-relaxed">{step.body}</p>
-            {step.requireGesture ? (
-              <p className="mt-3 text-[11px] text-gray-400 text-center">実際にタスクを長押ししてドラッグしてみましょう</p>
-            ) : (
-              <button onClick={goNext} className="mt-3 w-full py-2.5 rounded-xl text-sm font-bold text-white" style={{ background: 'var(--c-primary)' }}>
-                {isLastStep ? '完了' : '次へ'}
-              </button>
-            )}
           </div>
         </div>
       )}

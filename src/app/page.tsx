@@ -126,9 +126,6 @@ const ONBOARDING_KEY = 'tl-onboarding-completed-v1';
 const FEATURE_USAGE_KEY = 'tl-feature-usage-v1';
 const RECOMMEND_STATE_KEY = 'tl-recommend-state-v1';
 const TOUR_COMPLETED_KEY = 'tl-product-tour-completed-v1';
-// プロダクトツアー用のダミー「あとでやる」タスク。ツアー中だけ一時的に追加し、終了時に削除する
-// （空き時間カード・ドラッグ&ドロップのステップで実演する対象が必要なため）
-const TOUR_DUMMY_TASK_IDS = ['tour-dummy-1','tour-dummy-2'];
 const LATER_NOTIFIED_KEY = 'tl-later-notified-v1';
 const TASK_ALERT_FIRED_KEY = 'tl-task-alert-fired-v1';
 const DEADLINE_ALERT_FIRED_KEY = 'tl-deadline-alert-fired-v1';
@@ -1311,7 +1308,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
     <div className="fixed inset-0 z-50 bg-black/60" onClick={handleClose}>
       <div className="absolute bottom-0 left-0 right-0 max-w-md mx-auto" onClick={e=>e.stopPropagation()}>
         {/* ── Dark header ── */}
-        <div className="rounded-t-3xl px-4 pt-4" style={{background:headerBg}}>
+        <div className="rounded-t-3xl px-4 pt-4" style={{background:headerBg}} data-tour={!task?'modal-header':undefined}>
           {/* Buttons row */}
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
@@ -5655,20 +5652,18 @@ export default function App() {
   const [showOnboarding,setShowOnboarding] = useState(false);
   const [showTour,setShowTour] = useState(false);
   const [tourDragSignal,setTourDragSignal] = useState(0);
-  // プロダクトツアー開始時にダミーの「あとでやる」タスクを追加する（空き時間カード・
-  // ドラッグ&ドロップのステップで実演する対象が無いユーザーでもツアーが機能するように）
+  const [tourTaskSavedSignal,setTourTaskSavedSignal] = useState(0);
+  const [tourSampleTasks,setTourSampleTasks] = useState<Task[]>([]);
+  // プロダクトツアー中だけ表示するサンプルタスク。実データ（tasks/localStorage）には
+  // 一切保存せず、表示用にfilteredTasksへ合成するだけなのでツアー終了時に消せば痕跡は残らない
   useEffect(()=>{
-    if(!showTour) return;
-    setTasks(prev=>{
-      if(TOUR_DUMMY_TASK_IDS.some(id=>prev.some(t=>t.id===id))) return prev;
-      const today=todayStr();
-      const names=['振込をする','クリーニングを受け取る'];
-      const dummies:Task[]=TOUR_DUMMY_TASK_IDS.map((id,i)=>({
-        id,name:names[i],startTime:null,duration:0,memo:'',icon:defaultIconKey(names[i]),
-        completed:false,date:today,isLater:true,recurrence:null,tags:[],notifications:[],subtasks:[],
-      }));
-      return [...prev,...dummies];
-    });
+    if(!showTour){ setTourSampleTasks([]); return; }
+    const today=todayStr();
+    const names=['牛乳を買う','クリーニングを受け取る','振込をする'];
+    setTourSampleTasks(names.map((name,i)=>({
+      id:`tour-sample-${i}`,name,startTime:null,duration:0,memo:'',icon:defaultIconKey(name),
+      completed:false,date:today,isLater:true,recurrence:null,tags:[],notifications:[],subtasks:[],
+    })));
   },[showTour]);
   const [showWakeSleepPrompt,setShowWakeSleepPrompt] = useState(false);
   const [wsPromptWake,setWsPromptWake] = useState('07:00');
@@ -6296,13 +6291,15 @@ export default function App() {
   },[loaded,now,tasks,settings,settings.notificationsEnabled]);
 
   const filteredTasks = useMemo(()=>{
+    // プロダクトツアー中はサンプルタスクを表示にだけ合成する（実データには保存しない）
+    const source=showTour?[...tasks,...tourSampleTasks]:tasks;
     const base=activeCategory
-      ?tasks.filter(t=>t.category===activeCategory)
+      ?source.filter(t=>t.category===activeCategory)
       :tabFilter.length>0
-        ?tasks.filter(t=>!(t.category&&tabFilter.includes(t.category)))
-        :tasks.filter(t=>!t.category||customTabs.find(ct=>ct.id===t.category)?.showInAll!==false);
+        ?source.filter(t=>!(t.category&&tabFilter.includes(t.category)))
+        :source.filter(t=>!t.category||customTabs.find(ct=>ct.id===t.category)?.showInAll!==false);
     return base.filter(t=>!t.allDay);
-  },[tasks,activeCategory,customTabs,tabFilter]);
+  },[tasks,activeCategory,customTabs,tabFilter,showTour,tourSampleTasks]);
   const laterTasks    = useMemo(()=>filteredTasks.filter(t=>t.isLater),[filteredTasks]);
   const pendingCount  = useMemo(()=>laterTasks.filter(t=>!t.completed).length,[laterTasks]);
   const shopPending   = useMemo(()=>shopItems.filter(i=>!i.checked).length,[shopItems]);
@@ -6481,6 +6478,7 @@ export default function App() {
         ?prev.map(t=>t.id===modal.task!.id?{...newTasks[0],id:t.id}:t)
         :[...prev,...newTasks]
       );
+      if(showTour&&!modal.task) setTourTaskSavedSignal(n=>n+1);
     }
     setEditScope('one');
     closeModal();
@@ -7001,12 +6999,12 @@ export default function App() {
       )}
 
       {/* ── プロダクトツアー ── */}
-      {showTour&&!modal.open&&!settingsOpen&&!calendarOpen&&!searchOpen&&(
-        <ProductTour gestureSignal={tourDragSignal} onFinish={()=>{
-          localStorage.setItem(TOUR_COMPLETED_KEY,'1');
-          setShowTour(false);
-          setTasks(prev=>prev.filter(t=>!TOUR_DUMMY_TASK_IDS.includes(t.id)));
-        }}/>
+      {showTour&&!settingsOpen&&!calendarOpen&&!searchOpen&&(
+        <ProductTour gestureSignal={tourDragSignal} modalOpen={modal.open} taskSavedSignal={tourTaskSavedSignal}
+          onFinish={()=>{
+            localStorage.setItem(TOUR_COMPLETED_KEY,'1');
+            setShowTour(false);
+          }}/>
       )}
 
       {/* ── おすすめ機能カード ── */}
