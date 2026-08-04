@@ -3194,6 +3194,7 @@ function ShopLocationPanel({locations,onChange,isPremium,onProPrompt}:{
 
   const confirmAdd=async()=>{
     if(!pendingCoord) return;
+    if(!isPremium){ onProPrompt('場所で通知'); return; }
     const ok=await ensureGeofencePermission();
     const status=await checkGeofencePermissions();
     setPermStatus(status);
@@ -3232,7 +3233,7 @@ function ShopLocationPanel({locations,onChange,isPremium,onProPrompt}:{
           場所で通知
           {!isPremium&&<span className="inline-flex items-center gap-0.5 border border-gray-300 rounded px-1.5 py-0.5 text-[10px] font-bold text-gray-400 leading-none tracking-wide">★ PRO</span>}
         </p>
-        <button onClick={()=>{if(!isPremium){onProPrompt('場所で通知');return;}setAdding(true);}} disabled={adding}
+        <button onClick={()=>setAdding(true)} disabled={adding}
           className="flex items-center gap-1 px-3 py-1.5 bg-[var(--c-primary)] text-white rounded-xl text-sm font-semibold disabled:opacity-40">
           <AppIcons.plus size={14}/>追加
         </button>
