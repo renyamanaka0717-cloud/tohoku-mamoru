@@ -1360,6 +1360,36 @@ native-ios/BridgeViewController.swift … capacitorDidLoad() 内で FirebaseApp.
 
 ---
 
+## 開発者モード（検証用の隠しメニュー）
+
+一般ユーザーには表示されない検証用のメニュー。設定画面の「アプリバージョン」行を**7回タップ**すると解放され、以後「開発者向け」セクションに「開発者モード」の行が常に表示されるようになる（`localStorage`の`DEV_MODE_UNLOCKED_KEY`で永続化。一度解放したら再度タップし直す必要はない）。
+
+**方針: RevenueCatや実際のOS権限を変更するのではなく、UI上の判定結果だけを一時的に上書きする。** 本物の購入処理をしたり実機の設定アプリを操作したりせずに、開発中によく確認したい状態（Free/Premium表示・初回起動・プロダクトツアー・権限拒否時の表示）を素早く再現するための機能。
+
+### 実装（`src/app/components/DevMode.ts`）
+
+localStorageキーとヘルパー関数を集約した薄いファイル。他のファイルから見た「上書きの窓口」はこれだけ。
+
+```typescript
+DEV_MODE_UNLOCKED_KEY      // 開発者モードが解放済みか
+DEV_PREMIUM_OVERRIDE_KEY   // ''|'free'|'premium'（プランの上書き）
+DEV_LOCATION_DENIED_KEY    // 位置情報を拒否済みとして扱うか
+DEV_NOTIF_DENIED_KEY       // 通知を拒否済みとして扱うか
+DEV_PREMIUM_CHANGED_EVENT  // プラン上書きの変更をPremiumProviderに即時反映させるためのカスタムイベント名
+```
+
+- **プラン**: `Premium.tsx`の`PremiumProvider`が`getDevPremiumOverride()`を読み、`devOverride`が設定されていれば実際の`isPremium`計算結果より優先する（`effectiveIsPremium = devOverride ? devOverride==='premium' : isPremium`）。`setDevPremiumOverride()`は`localStorage`更新後に`DEV_PREMIUM_CHANGED_EVENT`を発火し、`PremiumProvider`はこれをlistenしてリロード無しで即座に反映する
+- **権限（通知・位置情報）**: `Geofence.ts`の`checkGeofencePermissions()`/`ensureGeofencePermission()`の先頭で`devPermissionOverride()`を確認し、どちらかの拒否フラグが立っていれば実際のネイティブ呼び出し・Web既定値より優先して`'denied'`/`false`を返す。これにより`ShopLocationPanel`の権限拒否バナー等、実際の権限確認ロジックを使う画面がそのまま正しく反応する
+- **初回起動・プロダクトツアー**: `SettingsScreen`内の`toggleFirstLaunch()`/`toggleTour()`が`ONBOARDING_KEY`等のオンボーディング関連キーを直接読み書きし、**`window.location.reload()`で即座に反映する**（これらのフラグはApp起動時の`useEffect`で一度だけ読まれる設計のため、リロードしないと反映されない）。「初回起動」をOFFにすると`ONBOARDING_KEY`/`WAKESLEEP_ASKED_KEY`/`TOUR_COMPLETED_KEY`/`NOTIF_ASKED_KEY`/`LOCATION_ASKED_KEY`をまとめてクリアし、オンボーディングから全ての導線をやり直せる。「プロダクトツアー」は`TOUR_COMPLETED_KEY`のみを対象にする
+
+### 避けるパターン
+
+- 開発者モードから実際にRevenueCatの購入処理を呼んだり、実際のOS権限ダイアログを操作しようとしない（見た目の上書きのみに留める設計）
+- `DevMode.ts`のキーを他のファイルに文字列としてベタ書きしない（`Premium.tsx`/`Geofence.ts`/`page.tsx`すべて`DevMode.ts`からimportする）
+- 一般ユーザーが誤って踏まないよう、7回タップ以外の導線（メニュー項目など）を新設しない
+
+---
+
 ## Vercel / Git 運用
 
 - `main` または `claude/**` branch への push で **GitHub Actions** が Vercel deploy hook を呼び出して自動デプロイ

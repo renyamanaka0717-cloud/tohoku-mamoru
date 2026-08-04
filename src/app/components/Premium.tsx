@@ -1,6 +1,7 @@
 'use client';
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { logAnalyticsEvent } from './Analytics';
+import { getDevPremiumOverride, DEV_PREMIUM_CHANGED_EVENT } from './DevMode';
 
 const RC_API_KEY = 'appl_zyfcgKyGHORBKcOppeougWslCRP';
 const ENTITLEMENT_ID = 'BrainBox Pro';
@@ -30,6 +31,15 @@ export function PremiumProvider({ children }: { children: React.ReactNode }) {
   const [isPremium, setIsPremium] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isPurchasing, setIsPurchasing] = useState(false);
+  // 開発者モードのプラン上書き。RevenueCatの実際の状態は変えず、表示だけを差し替える
+  const [devOverride, setDevOverride] = useState<'free' | 'premium' | null>(null);
+
+  useEffect(() => {
+    setDevOverride(getDevPremiumOverride());
+    const onChange = () => setDevOverride(getDevPremiumOverride());
+    window.addEventListener(DEV_PREMIUM_CHANGED_EVENT, onChange);
+    return () => window.removeEventListener(DEV_PREMIUM_CHANGED_EVENT, onChange);
+  }, []);
 
   useEffect(() => {
     if (!isNative()) {
@@ -88,8 +98,10 @@ export function PremiumProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const effectiveIsPremium = devOverride ? devOverride === 'premium' : isPremium;
+
   return (
-    <PremiumContext.Provider value={{ isPremium, isLoading, isPurchasing, purchase, restore }}>
+    <PremiumContext.Provider value={{ isPremium: effectiveIsPremium, isLoading, isPurchasing, purchase, restore }}>
       {children}
     </PremiumContext.Provider>
   );

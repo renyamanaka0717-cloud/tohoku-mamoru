@@ -10,6 +10,7 @@ import { scheduleInactivityReminder, cancelInactivityReminder } from './componen
 import { notify, requestNotifyPermission, syncTaskAlerts, syncFreeSlotAlerts, syncShopNotifs, syncLaterStaleAlerts, syncWakeCheckins, syncDeadlineAlerts, isNative } from './components/LocalNotify';
 import { getAppVersion } from './components/AppVersion';
 import { logAnalyticsEvent } from './components/Analytics';
+import { isDevModeUnlocked, DEV_MODE_UNLOCKED_KEY, getDevPremiumOverride, setDevPremiumOverride, isDevDenied, DEV_LOCATION_DENIED_KEY, DEV_NOTIF_DENIED_KEY } from './components/DevMode';
 import { App as CapApp } from '@capacitor/app';
 import Onboarding from './components/Onboarding';
 import ProductTour from './components/ProductTour';
@@ -4042,6 +4043,70 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   useEffect(()=>{ if(sub==='premium') logAnalyticsEvent('paywall_viewed'); },[sub]);
   const [appVersion,setAppVersion] = useState<string|null>(null);
   useEffect(()=>{ getAppVersion().then(setAppVersion); },[]);
+  // 開発者モード（アプリバージョン行を7回タップで解放。一般ユーザーには表示しない）
+  const [devModeUnlocked,setDevModeUnlocked] = useState(false);
+  useEffect(()=>{ setDevModeUnlocked(isDevModeUnlocked()); },[]);
+  const versionTapCountRef = useRef(0);
+  const versionTapTimerRef = useRef<ReturnType<typeof setTimeout>|null>(null);
+  const handleVersionTap = () => {
+    if(versionTapTimerRef.current) clearTimeout(versionTapTimerRef.current);
+    versionTapCountRef.current += 1;
+    if(versionTapCountRef.current>=7){
+      versionTapCountRef.current = 0;
+      localStorage.setItem(DEV_MODE_UNLOCKED_KEY,'1');
+      setDevModeUnlocked(true);
+      if(navigator.vibrate) navigator.vibrate(50);
+      return;
+    }
+    versionTapTimerRef.current = setTimeout(()=>{ versionTapCountRef.current = 0; },1500);
+  };
+  // 開発者モードの各種上書き状態。RevenueCat・OS権限は変更せず、UI上の判定結果だけを差し替える
+  const [devPlan,setDevPlanState] = useState<'free'|'premium'|null>(null);
+  const [firstLaunchDone,setFirstLaunchDone] = useState(true);
+  const [tourDone,setTourDone] = useState(true);
+  const [notifGranted,setNotifGrantedState] = useState(true);
+  const [locGranted,setLocGrantedState] = useState(true);
+  useEffect(()=>{
+    setDevPlanState(getDevPremiumOverride());
+    setFirstLaunchDone(!!localStorage.getItem(ONBOARDING_KEY));
+    setTourDone(!!localStorage.getItem(TOUR_COMPLETED_KEY));
+    setNotifGrantedState(!isDevDenied(DEV_NOTIF_DENIED_KEY));
+    setLocGrantedState(!isDevDenied(DEV_LOCATION_DENIED_KEY));
+  },[]);
+  const setDevPlan=(p:'free'|'premium'|null)=>{ setDevPlanState(p); setDevPremiumOverride(p); };
+  const toggleFirstLaunch=()=>{
+    const next=!firstLaunchDone;
+    if(next){
+      localStorage.setItem(ONBOARDING_KEY,'1');
+      localStorage.setItem(WAKESLEEP_ASKED_KEY,'1');
+      localStorage.setItem(TOUR_COMPLETED_KEY,'1');
+      localStorage.setItem(NOTIF_ASKED_KEY,'1');
+      localStorage.setItem(LOCATION_ASKED_KEY,'1');
+    }else{
+      localStorage.removeItem(ONBOARDING_KEY);
+      localStorage.removeItem(WAKESLEEP_ASKED_KEY);
+      localStorage.removeItem(TOUR_COMPLETED_KEY);
+      localStorage.removeItem(NOTIF_ASKED_KEY);
+      localStorage.removeItem(LOCATION_ASKED_KEY);
+    }
+    window.location.reload();
+  };
+  const toggleTour=()=>{
+    const next=!tourDone;
+    if(next) localStorage.setItem(TOUR_COMPLETED_KEY,'1');
+    else localStorage.removeItem(TOUR_COMPLETED_KEY);
+    window.location.reload();
+  };
+  const toggleNotifGranted=()=>{
+    const next=!notifGranted;
+    setNotifGrantedState(next);
+    if(next) localStorage.removeItem(DEV_NOTIF_DENIED_KEY); else localStorage.setItem(DEV_NOTIF_DENIED_KEY,'1');
+  };
+  const toggleLocGranted=()=>{
+    const next=!locGranted;
+    setLocGrantedState(next);
+    if(next) localStorage.removeItem(DEV_LOCATION_DENIED_KEY); else localStorage.setItem(DEV_LOCATION_DENIED_KEY,'1');
+  };
   const [tagInput,setTagInput] = useState('');
   const [newTagColor,setNewTagColor] = useState(TAG_COLORS[0].bg);
   const [editIdx,setEditIdx]   = useState<number|null>(null);
@@ -5243,6 +5308,70 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   );
 
 
+  if(sub==='devMode') return (
+    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
+      {subHeader('開発者モード')}
+      <div className="flex-1 overflow-y-auto px-4 pb-8">
+        <p className="text-xs text-gray-400 px-1 mb-4 mt-4 leading-relaxed">
+          ここでの変更はRevenueCatや実際のOS権限を変えるものではなく、アプリの見た目だけを一時的に切り替えます。
+        </p>
+
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2">プラン</p>
+        <div className="bg-white rounded-2xl shadow-sm p-3 mb-6 flex gap-2">
+          <button onClick={()=>setDevPlan('free')}
+            className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors ${devPlan==='free'?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>Free</button>
+          <button onClick={()=>setDevPlan('premium')}
+            className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors ${devPlan==='premium'?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>Premium</button>
+          <button onClick={()=>setDevPlan(null)}
+            className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors ${devPlan===null?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>実際の状態</button>
+        </div>
+
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2">アプリ状態</p>
+        <div className="bg-white rounded-2xl shadow-sm overflow-hidden mb-6">
+          <div className="flex items-center justify-between px-4 py-3.5 border-b border-gray-100">
+            <div className="flex-1 min-w-0 pr-3">
+              <p className="text-sm font-medium text-gray-800">初回起動</p>
+              <p className="text-xs text-gray-400 mt-0.5">OFFにするとオンボーディングからやり直せます</p>
+            </div>
+            <button onClick={toggleFirstLaunch}
+              className={`relative w-10 h-6 rounded-full transition-colors shrink-0 ${firstLaunchDone?'bg-[var(--c-primary)]':'bg-gray-200'}`}>
+              <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${firstLaunchDone?'left-[18px]':'left-0.5'}`}/>
+            </button>
+          </div>
+          <div className="flex items-center justify-between px-4 py-3.5">
+            <div className="flex-1 min-w-0 pr-3">
+              <p className="text-sm font-medium text-gray-800">プロダクトツアー</p>
+              <p className="text-xs text-gray-400 mt-0.5">OFFにするとツアーを再表示できます</p>
+            </div>
+            <button onClick={toggleTour}
+              className={`relative w-10 h-6 rounded-full transition-colors shrink-0 ${tourDone?'bg-[var(--c-primary)]':'bg-gray-200'}`}>
+              <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${tourDone?'left-[18px]':'left-0.5'}`}/>
+            </button>
+          </div>
+        </div>
+        <p className="text-[11px] text-gray-300 px-1 mb-6 -mt-4">切り替えるとアプリが再読み込みされます</p>
+
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2">権限</p>
+        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3.5 border-b border-gray-100">
+            <p className="text-sm font-medium text-gray-800">通知許可</p>
+            <button onClick={toggleNotifGranted}
+              className={`relative w-10 h-6 rounded-full transition-colors shrink-0 ${notifGranted?'bg-[var(--c-primary)]':'bg-gray-200'}`}>
+              <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${notifGranted?'left-[18px]':'left-0.5'}`}/>
+            </button>
+          </div>
+          <div className="flex items-center justify-between px-4 py-3.5">
+            <p className="text-sm font-medium text-gray-800">位置情報許可</p>
+            <button onClick={toggleLocGranted}
+              className={`relative w-10 h-6 rounded-full transition-colors shrink-0 ${locGranted?'bg-[var(--c-primary)]':'bg-gray-200'}`}>
+              <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${locGranted?'left-[18px]':'left-0.5'}`}/>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
   if(sub==='premium') return (
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
       {subHeader('PRO')}
@@ -5487,15 +5616,24 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           <SettingsRow icon={<AppIcons.book size={18}/>} iconBg="bg-gray-100" title="利用規約" onClick={()=>setSub('terms')}/>
           <SettingsRow icon={<AppIcons.question size={18}/>} iconBg="bg-gray-100" title="よくある質問" onClick={()=>setSub('support')}/>
           <SettingsRow icon={<AppIcons.mail size={18}/>} iconBg="bg-gray-100" title="お問い合わせ" onClick={()=>setSub('contact')}/>
-          <div className="w-full flex items-center gap-3 px-4 py-3.5">
+          <button onClick={handleVersionTap} className="w-full flex items-center gap-3 px-4 py-3.5 text-left active:bg-gray-50">
             <div className="w-[30px] h-[30px] rounded-[8px] flex items-center justify-center shrink-0"
               style={{background:'color-mix(in srgb, var(--c-primary) 15%, white)', color:'var(--c-primary)'}}>
               <AppIcons.sparkle size={18}/>
             </div>
             <p className="flex-1 text-[15px] font-medium text-gray-900">アプリバージョン</p>
             <span className="text-sm text-gray-400">{appVersion??'—'}</span>
-          </div>
+          </button>
         </div>
+
+        {devModeUnlocked&&(
+          <>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">開発者向け</p>
+            <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
+              <SettingsRow icon={<AppIcons.settings size={18}/>} iconBg="bg-gray-100" title="開発者モード" desc="検証用の状態を切り替える" onClick={()=>setSub('devMode')} isLast/>
+            </div>
+          </>
+        )}
 
       </div>
     </div>

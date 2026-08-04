@@ -1,5 +1,6 @@
 'use client';
 import { registerPlugin } from '@capacitor/core';
+import { isDevDenied, DEV_LOCATION_DENIED_KEY, DEV_NOTIF_DENIED_KEY } from './DevMode';
 
 export interface GeofenceLocation { id: string; name: string; lat: number; lng: number; radius: number; }
 export interface GeofencePermissionStatus { location: string; notifications: string; }
@@ -56,7 +57,21 @@ export async function setForgetAlertGeofences(alerts: ForgetAlertGeofence[]): Pr
   }
 }
 
+// 開発者モードで権限拒否状態を疑似再現している間は、実際の権限確認より優先する
+// （RevenueCatと同じく、実際の権限は変更せずUI上の判定結果だけを上書きする方針）
+function devPermissionOverride(): GeofencePermissionStatus | null {
+  const locationDenied = isDevDenied(DEV_LOCATION_DENIED_KEY);
+  const notifDenied = isDevDenied(DEV_NOTIF_DENIED_KEY);
+  if (!locationDenied && !notifDenied) return null;
+  return {
+    location: locationDenied ? 'denied' : 'granted',
+    notifications: notifDenied ? 'denied' : 'granted',
+  };
+}
+
 export async function checkGeofencePermissions(): Promise<GeofencePermissionStatus> {
+  const override = devPermissionOverride();
+  if (override) return override;
   if (!isNative()) return { location: 'granted', notifications: 'granted' };
   try {
     return await GeofencePlugin.checkPermissions();
@@ -67,6 +82,7 @@ export async function checkGeofencePermissions(): Promise<GeofencePermissionStat
 
 // 位置情報（常に許可）と通知の両方をリクエストし、両方許可されたか返す
 export async function ensureGeofencePermission(): Promise<boolean> {
+  if (devPermissionOverride()) return false;
   if (!isNative()) return true;
   try {
     const res = await GeofencePlugin.requestPermissions();
@@ -87,7 +103,8 @@ export async function getPendingGeofenceAction(): Promise<{ shouldOpenShop: bool
 }
 
 // バックグラウンド中に場所到着で発火済みになったタスクIDを取得する（読み取り後はネイティブ側でクリアされる）。
-// 呼び出し元はこれを受けて該当タスクのlocationNotifyをfalseにし、時間通知とのOR条件の重複発火を防ぐ
+// 場所通知は1タスク1回のみのため、呼び出し元はこれを受けて該当タスクのlocationNotifyをfalseにする
+// （時間通知とは独立しており、互いに解除し合う仕様ではない）
 export async function getFiredTaskLocationIds(): Promise<string[]> {
   if (!isNative()) return [];
   try {
