@@ -90,7 +90,8 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
     }
   };
 
-  // 権限リクエストはボタンを押した時だけ実行する（自動実行しない）。拒否されてもオンボーディングは完了できる
+  // 権限リクエストは行タップ、または最後の「始める」ボタンを押した時に実行する。
+  // 拒否されてもオンボーディングは完了できる
   const requestNotif = () => {
     requestNotifyPermission();
     setNotifDone(true);
@@ -98,6 +99,11 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
   const requestLocation = () => {
     ensureGeofencePermission();
     setLocDone(true);
+  };
+  const finish = () => {
+    if(!notifDone) requestNotif();
+    if(!locDone) requestLocation();
+    onComplete();
   };
 
   const p = PAGES[page];
@@ -150,7 +156,7 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
               style={{ width: i === page ? 18 : 6, height: 6, background: i === page ? 'var(--c-primary)' : '#E5E7EB' }}/>
           ))}
         </div>
-        <button onClick={isLast ? onComplete : next}
+        <button onClick={isLast ? finish : next}
           className="w-full py-3.5 rounded-2xl text-[15px] font-bold text-white bg-[var(--c-primary)] active:opacity-80">
           {isLast ? '始める' : '次へ'}
         </button>
