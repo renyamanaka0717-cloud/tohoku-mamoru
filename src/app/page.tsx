@@ -5585,13 +5585,13 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           <SettingsRow icon={<AppIcons.wake size={18}/>} iconBg="bg-gray-100" title="起床・就寝" desc="起床時間、就寝時間を設定" onClick={()=>setSub('wakeSleep')}/>
           <SettingsRow icon={<AppIcons.shopping size={18}/>} iconBg="bg-gray-100" title="買い物リスト通知"
             desc="時間や場所で買い物リストを通知"
-            onClick={()=>{if(!isPremium){setProPrompt('買い物リストの通知設定');return;}setSub('notifications-shop');}}/>
+            onClick={()=>setSub('notifications-shop')}/>
           <SettingsRow icon={<AppIcons.postponed size={18}/>} iconBg="bg-gray-100" title="放置アラート"
             desc="タスクやアプリの放置を通知"
             onClick={()=>setSub('notifications-later')}/>
           <SettingsRow icon={<AppIcons.backpack size={18}/>} iconBg="bg-gray-100" title="忘れ物防止アラート"
             desc="場所を出るときに持ち物を確認"
-            onClick={()=>{if(!isPremium){setProPrompt('忘れ物防止アラート');return;}setSub('forgetAlerts');}} isLast/>
+            onClick={()=>setSub('forgetAlerts')} isLast/>
         </div>
 
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">一般</p>
