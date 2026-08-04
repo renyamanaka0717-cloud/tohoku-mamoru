@@ -4673,7 +4673,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                 return (
                   <button key={o.v} onClick={()=>{if(locked){setProPrompt('タスク放置アラートの間隔変更');return;}onSettings({...settings,laterReminderHours:o.v});}}
                     className={`px-3 py-1.5 rounded-xl text-sm font-medium transition-colors inline-flex items-center gap-1 ${(settings.laterReminderHours??72)===o.v?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
-                    {locked&&<AppIcons.star size={10} className={(settings.laterReminderHours??72)===o.v?'text-white':'text-[var(--c-primary)]'}/>}
+                    {locked&&<AppIcons.lock size={10} className="text-gray-400"/>}
                     {o.l}
                   </button>
                 );
@@ -4699,7 +4699,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                 return (
                   <button key={o.v} onClick={()=>{if(locked){setProPrompt('アプリ放置アラートの間隔変更');return;}onSettings({...settings,appInactivityHours:o.v});}}
                     className={`px-3 py-1.5 rounded-xl text-sm font-medium transition-colors inline-flex items-center gap-1 ${(settings.appInactivityHours??6)===o.v?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
-                    {locked&&<AppIcons.star size={10} className={(settings.appInactivityHours??6)===o.v?'text-white':'text-[var(--c-primary)]'}/>}
+                    {locked&&<AppIcons.lock size={10} className="text-gray-400"/>}
                     {o.l}
                   </button>
                 );
