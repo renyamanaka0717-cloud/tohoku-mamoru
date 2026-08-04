@@ -3363,6 +3363,17 @@ function ShopLocationPanel({locations,onChange,isPremium,onProPrompt}:{
 
 type ForgetAlertDraft = Omit<ForgetAlert,'location'> & { location: {name:string;lat:number;lng:number}|null };
 
+// 文章の空欄（タップすると下に該当項目のピッカーが開く）
+function SentenceBlank({active,onClick,children}:{active:boolean;onClick:()=>void;children:React.ReactNode}) {
+  return (
+    <button onClick={onClick}
+      className="inline-flex items-center px-2 py-0.5 mx-0.5 rounded-lg font-bold align-baseline"
+      style={{background:active?'var(--c-primary)':'color-mix(in srgb, var(--c-primary) 12%, white)',color:active?'#fff':'var(--c-primary)'}}>
+      {children}
+    </button>
+  );
+}
+
 function ForgetAlertsPanel({alerts,onChange,isPremium,onProPrompt}:{
   alerts:ForgetAlert[];
   onChange:(a:ForgetAlert[])=>void;
@@ -3370,6 +3381,8 @@ function ForgetAlertsPanel({alerts,onChange,isPremium,onProPrompt}:{
   onProPrompt:(feature:string)=>void;
 }) {
   const DOW=['日','月','火','水','木','金','土'];
+  const NAME_PRESETS=['自宅','職場','学校','スーパー'];
+  const ITEM_SUGGESTIONS=['財布','鍵','定期券','パソコン','充電器'];
   const [editing,setEditing]=useState<ForgetAlertDraft|null>(null);
   const [adding,setAdding]=useState(false);
   const [mapMode,setMapMode]=useState(false);
@@ -3377,6 +3390,9 @@ function ForgetAlertsPanel({alerts,onChange,isPremium,onProPrompt}:{
   const [locating,setLocating]=useState(false);
   const [itemInput,setItemInput]=useState('');
   const [permError,setPermError]=useState<string|null>(null);
+  const [activeField,setActiveField]=useState<'location'|'trigger'|'weekday'|'time'|'items'|null>('location');
+  const [customDayOpen,setCustomDayOpen]=useState(false);
+  const [showPreview,setShowPreview]=useState(false);
 
   // 2件目以降の登録・有効化はPRO限定（1件までは無料）。作成順（配列の並び順）で判定する
   const isLockedByPlan=(idx:number)=>!isPremium&&idx>0;
@@ -3387,18 +3403,36 @@ function ForgetAlertsPanel({alerts,onChange,isPremium,onProPrompt}:{
     if(days.length===5&&!days.includes(0)&&!days.includes(6)) return '平日';
     return [...days].sort((a,b)=>a-b).map(d=>DOW[d]).join('・');
   };
+  // 文章の空欄に表示する曜日プリセット名（毎日/平日/休日に一致しなければカスタム扱い）
+  const dayPreset=(days:number[]):'毎日'|'平日'|'休日'|'カスタム'=>{
+    const s=[...days].sort((a,b)=>a-b).join(',');
+    if(s==='0,1,2,3,4,5,6') return '毎日';
+    if(s==='1,2,3,4,5') return '平日';
+    if(s==='0,6') return '休日';
+    return 'カスタム';
+  };
+  const applyDayPreset=(p:'毎日'|'平日'|'休日'|'カスタム')=>{
+    if(!editing) return;
+    if(p==='毎日'){ setEditing({...editing,weekdays:[0,1,2,3,4,5,6]}); setCustomDayOpen(false); }
+    else if(p==='平日'){ setEditing({...editing,weekdays:[1,2,3,4,5]}); setCustomDayOpen(false); }
+    else if(p==='休日'){ setEditing({...editing,weekdays:[0,6]}); setCustomDayOpen(false); }
+    else setCustomDayOpen(true);
+  };
 
   const cancelEdit=()=>{
     setEditing(null);setAdding(false);setMapMode(false);setMapCenter(null);
-    setPermError(null);setItemInput('');
+    setPermError(null);setItemInput('');setActiveField('location');setCustomDayOpen(false);setShowPreview(false);
   };
   const startAdd=()=>{
     if(!isPremium&&alerts.length>=1){ onProPrompt('忘れ物防止アラート（2件目以降）'); return; }
     setEditing({id:uid(),name:'',location:null,radius:300,trigger:'exit',weekdays:[1,2,3,4,5],timeStart:'',timeEnd:'',enabled:true,items:[]});
     setAdding(true);
-    setItemInput('');setPermError(null);
+    setItemInput('');setPermError(null);setActiveField('location');setCustomDayOpen(false);setShowPreview(false);
   };
-  const startEdit=(a:ForgetAlert)=>{ setEditing({...a,trigger:a.trigger??'exit'}); setAdding(false); setItemInput(''); setPermError(null); };
+  const startEdit=(a:ForgetAlert)=>{
+    setEditing({...a,trigger:a.trigger??'exit'}); setAdding(false); setItemInput(''); setPermError(null);
+    setActiveField('location');setCustomDayOpen(dayPreset(a.weekdays)==='カスタム');setShowPreview(false);
+  };
 
   const useCurrentLocation=()=>{
     setLocating(true);
@@ -3491,102 +3525,193 @@ function ForgetAlertsPanel({alerts,onChange,isPremium,onProPrompt}:{
       {editing&&(
         <div className="fixed inset-0 z-[100] bg-black/40 flex items-end justify-center" onClick={cancelEdit}>
           <div className="bg-white w-full max-w-md mx-auto rounded-t-3xl max-h-[85vh] overflow-y-auto p-4" onClick={e=>e.stopPropagation()}>
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">名前</p>
-            <input value={editing.name} onChange={e=>setEditing({...editing,name:e.target.value})}
-              placeholder="場所の名前"
-              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50 mb-4"/>
-
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">場所</p>
-            {editing.location&&(
-              <div className="flex items-center gap-2 bg-gray-50 rounded-xl px-3 py-2 mb-2">
-                <AppIcons.location size={14} className="text-gray-400 shrink-0"/>
-                <p className="flex-1 text-sm text-gray-700 truncate">{editing.location.name}</p>
-              </div>
-            )}
-            <div className="flex gap-2 mb-4">
-              <button onClick={()=>{setMapCenter(editing.location?{lat:editing.location.lat,lng:editing.location.lng}:null);setMapMode(true);}}
-                className="flex-1 py-2 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200">地図で指定</button>
-              <button onClick={useCurrentLocation} disabled={locating}
-                className="flex-1 py-2 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200 disabled:opacity-40">
-                {locating?'取得中...':'現在地から'}
-              </button>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">忘れ物防止アラートを作成</p>
+            <div className="text-[19px] leading-[2] text-gray-900 font-medium mb-1">
+              <SentenceBlank active={activeField==='location'} onClick={()=>setActiveField(f=>f==='location'?null:'location')}>
+                {editing.name||'場所'}
+              </SentenceBlank>
+              を
+              <SentenceBlank active={activeField==='trigger'} onClick={()=>setActiveField(f=>f==='trigger'?null:'trigger')}>
+                {editing.trigger==='enter'?'到着したら':'出発したら'}
+              </SentenceBlank>
+              、
+              <br/>
+              <SentenceBlank active={activeField==='weekday'} onClick={()=>setActiveField(f=>f==='weekday'?null:'weekday')}>
+                {dayPreset(editing.weekdays)}
+              </SentenceBlank>
+              の
+              <SentenceBlank active={activeField==='time'} onClick={()=>setActiveField(f=>f==='time'?null:'time')}>
+                {editing.timeStart&&editing.timeEnd?`${editing.timeStart}〜${editing.timeEnd}`:'終日'}
+              </SentenceBlank>
+              に、
+              <br/>
+              <SentenceBlank active={activeField==='items'} onClick={()=>setActiveField(f=>f==='items'?null:'items')}>
+                {editing.items.length>0?editing.items.join('・'):'持ち物'}
+              </SentenceBlank>
+              <br/>
+              を確認する。
             </div>
 
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">通知するタイミング</p>
-            <div className="flex gap-2 mb-4">
-              <button onClick={()=>setEditing({...editing,trigger:'enter'})}
-                className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors ${editing.trigger==='enter'?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
-                到着したら
-              </button>
-              <button onClick={()=>setEditing({...editing,trigger:'exit'})}
-                className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors ${editing.trigger==='exit'?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
-                離れたら
-              </button>
-            </div>
-
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">通知する範囲</p>
-            <div className="flex gap-2 mb-4">
-              {([100,300,500] as const).map(r=>(
-                <button key={r} onClick={()=>setEditing({...editing,radius:r})}
-                  className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors ${editing.radius===r?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
-                  {r}m
-                </button>
-              ))}
-            </div>
-
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">曜日</p>
-            <div className="flex gap-2 flex-wrap mb-4">
-              {DOW.map((d,i)=>(
-                <button key={i} onClick={()=>toggleDay(i)}
-                  className={`w-9 h-9 rounded-full text-sm font-semibold transition-colors ${editing.weekdays.includes(i)?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
-                  {d}
-                </button>
-              ))}
-            </div>
-
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">時間帯（任意）</p>
-            <div className="flex items-center gap-2 mb-1">
-              <input type="time" value={editing.timeStart??''} onChange={e=>setEditing({...editing,timeStart:e.target.value})}
-                className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50"/>
-              <span className="text-gray-300">〜</span>
-              <input type="time" value={editing.timeEnd??''} onChange={e=>setEditing({...editing,timeEnd:e.target.value})}
-                className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50"/>
-              {(editing.timeStart||editing.timeEnd)&&(
-                <button onClick={()=>setEditing({...editing,timeStart:'',timeEnd:''})} className="text-xs text-gray-400 px-1 shrink-0">解除</button>
-              )}
-            </div>
-            <p className="text-[11px] text-gray-300 mb-4">指定しない場合は終日対象になります</p>
-
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">確認する持ち物</p>
-            <div className="flex gap-2 mb-2">
-              <input value={itemInput} onChange={e=>setItemInput(e.target.value)}
-                onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();addItem();}}}
-                placeholder="財布、鍵など"
-                className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50"/>
-              <button onClick={addItem} disabled={!itemInput.trim()}
-                className="px-4 py-2 bg-gray-100 rounded-xl text-sm font-semibold text-gray-700 shrink-0 disabled:opacity-40">追加</button>
-            </div>
-            {editing.items.length>0&&(
-              <div className="flex flex-wrap gap-1.5 mb-4">
-                {editing.items.map(it=>(
-                  <span key={it} className="inline-flex items-center gap-1 bg-gray-100 text-gray-600 text-xs font-medium px-2.5 py-1 rounded-full">
-                    {it}<button onClick={()=>removeItem(it)} className="opacity-60 leading-none ml-0.5">×</button>
-                  </span>
-                ))}
+            {activeField==='location'&&(
+              <div className="bg-gray-50 rounded-2xl p-3 mb-4 mt-2">
+                <div className="flex gap-1.5 flex-wrap mb-2">
+                  {NAME_PRESETS.map(p=>(
+                    <button key={p} onClick={()=>setEditing({...editing,name:p})}
+                      className={`px-3 py-1 rounded-full text-xs font-semibold ${editing.name===p?'bg-[var(--c-primary)] text-white':'bg-white text-gray-600'}`}>{p}</button>
+                  ))}
+                  <button onClick={()=>setEditing({...editing,name:''})}
+                    className={`px-3 py-1 rounded-full text-xs font-semibold ${editing.name&&!NAME_PRESETS.includes(editing.name)?'bg-[var(--c-primary)] text-white':'bg-white text-gray-600'}`}>その他</button>
+                </div>
+                <input value={editing.name} onChange={e=>setEditing({...editing,name:e.target.value})}
+                  placeholder="場所の名前"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white mb-3"/>
+                {editing.location&&(
+                  <div className="flex items-center gap-2 bg-white rounded-xl px-3 py-2 mb-2">
+                    <AppIcons.location size={14} className="text-gray-400 shrink-0"/>
+                    <p className="flex-1 text-sm text-gray-700 truncate">{editing.location.name}</p>
+                  </div>
+                )}
+                <div className="flex gap-2 mb-3">
+                  <button onClick={()=>{setMapCenter(editing.location?{lat:editing.location.lat,lng:editing.location.lng}:null);setMapMode(true);}}
+                    className="flex-1 py-2 rounded-xl text-sm font-semibold bg-white text-gray-700 active:bg-gray-100">地図で指定</button>
+                  <button onClick={useCurrentLocation} disabled={locating}
+                    className="flex-1 py-2 rounded-xl text-sm font-semibold bg-white text-gray-700 active:bg-gray-100 disabled:opacity-40">
+                    {locating?'取得中...':'現在地から'}
+                  </button>
+                </div>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">通知する範囲</p>
+                <div className="flex gap-2">
+                  {([100,300,500] as const).map(r=>(
+                    <button key={r} onClick={()=>setEditing({...editing,radius:r})}
+                      className={`flex-1 py-2 rounded-xl text-sm font-semibold transition-colors ${editing.radius===r?'bg-[var(--c-primary)] text-white':'bg-white text-gray-600'}`}>
+                      {r}m
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
 
-            {permError&&<p className="text-xs text-[#D97A7A] mb-3">{permError}</p>}
+            {activeField==='trigger'&&(
+              <div className="bg-gray-50 rounded-2xl p-3 mb-4 mt-2 flex gap-2">
+                <button onClick={()=>setEditing({...editing,trigger:'enter'})}
+                  className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors ${editing.trigger==='enter'?'bg-[var(--c-primary)] text-white':'bg-white text-gray-600'}`}>
+                  到着したら
+                </button>
+                <button onClick={()=>setEditing({...editing,trigger:'exit'})}
+                  className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors ${editing.trigger==='exit'?'bg-[var(--c-primary)] text-white':'bg-white text-gray-600'}`}>
+                  出発したら
+                </button>
+              </div>
+            )}
 
-            <div className="flex gap-2">
+            {activeField==='weekday'&&(
+              <div className="bg-gray-50 rounded-2xl p-3 mb-4 mt-2">
+                <div className="flex gap-2 flex-wrap mb-3">
+                  {(['毎日','平日','休日','カスタム'] as const).map(p=>(
+                    <button key={p} onClick={()=>applyDayPreset(p)}
+                      className={`px-3 py-1.5 rounded-full text-sm font-semibold ${dayPreset(editing.weekdays)===p||(p==='カスタム'&&customDayOpen&&dayPreset(editing.weekdays)!=='カスタム')?'bg-[var(--c-primary)] text-white':'bg-white text-gray-600'}`}>{p}</button>
+                  ))}
+                </div>
+                {(dayPreset(editing.weekdays)==='カスタム'||customDayOpen)&&(
+                  <div className="flex gap-2 flex-wrap">
+                    {DOW.map((d,i)=>(
+                      <button key={i} onClick={()=>toggleDay(i)}
+                        className={`w-9 h-9 rounded-full text-sm font-semibold transition-colors ${editing.weekdays.includes(i)?'bg-[var(--c-primary)] text-white':'bg-white text-gray-600'}`}>
+                        {d}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeField==='time'&&(
+              <div className="bg-gray-50 rounded-2xl p-3 mb-4 mt-2">
+                <div className="flex items-center gap-2 mb-1">
+                  <input type="time" value={editing.timeStart??''} onChange={e=>setEditing({...editing,timeStart:e.target.value})}
+                    className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white"/>
+                  <span className="text-gray-300">〜</span>
+                  <input type="time" value={editing.timeEnd??''} onChange={e=>setEditing({...editing,timeEnd:e.target.value})}
+                    className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white"/>
+                  {(editing.timeStart||editing.timeEnd)&&(
+                    <button onClick={()=>setEditing({...editing,timeStart:'',timeEnd:''})} className="text-xs text-gray-400 px-1 shrink-0">解除</button>
+                  )}
+                </div>
+                <p className="text-[11px] text-gray-400">指定しない場合は終日対象になります</p>
+              </div>
+            )}
+
+            {activeField==='items'&&(
+              <div className="bg-gray-50 rounded-2xl p-3 mb-4 mt-2">
+                <div className="flex gap-2 mb-2">
+                  <input value={itemInput} onChange={e=>setItemInput(e.target.value)}
+                    onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();addItem();}}}
+                    placeholder="財布、鍵など"
+                    className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white"/>
+                  <button onClick={addItem} disabled={!itemInput.trim()}
+                    className="px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 shrink-0 disabled:opacity-40">追加</button>
+                </div>
+                {ITEM_SUGGESTIONS.filter(s=>!editing.items.includes(s)).length>0&&(
+                  <div className="flex gap-1.5 flex-wrap mb-2">
+                    {ITEM_SUGGESTIONS.filter(s=>!editing.items.includes(s)).map(s=>(
+                      <button key={s} onClick={()=>setEditing({...editing,items:[...editing.items,s]})}
+                        className="px-3 py-1 rounded-full text-xs font-semibold bg-white text-gray-500 border border-gray-200">+{s}</button>
+                    ))}
+                  </div>
+                )}
+                {editing.items.length>0&&(
+                  <div className="flex flex-wrap gap-1.5">
+                    {editing.items.map(it=>(
+                      <span key={it} className="inline-flex items-center gap-1 bg-white text-gray-600 text-xs font-medium px-2.5 py-1 rounded-full border border-gray-200">
+                        {it}<button onClick={()=>removeItem(it)} className="opacity-60 leading-none ml-0.5">×</button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="flex gap-2 mt-2">
               <button onClick={cancelEdit}
                 className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200">
                 キャンセル
               </button>
-              <button onClick={saveEditing}
+              <button onClick={()=>setShowPreview(true)}
                 disabled={!editing.location||!editing.name.trim()||editing.weekdays.length===0||editing.items.length===0}
                 className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-[var(--c-primary)] text-white active:opacity-80 disabled:opacity-40">
-                {adding?'登録':'保存'}
+                次へ
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editing&&showPreview&&(
+        <div className="fixed inset-0 z-[105] bg-black/50 flex items-end justify-center" onClick={()=>setShowPreview(false)}>
+          <div className="bg-white w-full max-w-md mx-auto rounded-t-3xl p-5" onClick={e=>e.stopPropagation()}>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">この内容で登録します</p>
+            <div className="bg-gray-50 rounded-2xl p-4 mb-4">
+              <p className="text-[17px] font-bold text-gray-900 mb-1">
+                {editing.name}{editing.trigger==='enter'?'に着いたとき':'を出るとき'}
+              </p>
+              <p className="text-xs text-gray-400 mb-3">
+                {dayPreset(editing.weekdays)==='カスタム'?fmtDays(editing.weekdays):dayPreset(editing.weekdays)}
+                {editing.timeStart&&editing.timeEnd?` ${editing.timeStart}〜${editing.timeEnd}`:''}・{editing.radius}m
+              </p>
+              <div className="space-y-1 mb-2">
+                {editing.items.map(it=>(<p key={it} className="text-sm text-gray-700">・{it}</p>))}
+              </div>
+              <p className="text-sm text-gray-700">を確認してください。</p>
+            </div>
+            {permError&&<p className="text-xs text-[#D97A7A] mb-3">{permError}</p>}
+            <div className="flex gap-2">
+              <button onClick={()=>setShowPreview(false)}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200">
+                戻る
+              </button>
+              <button onClick={saveEditing}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-[var(--c-primary)] text-white active:opacity-80">
+                {adding?'登録する':'保存する'}
               </button>
             </div>
           </div>
