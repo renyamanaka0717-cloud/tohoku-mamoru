@@ -636,15 +636,19 @@ const SHOP_LOC_KEY = 'tl-shop-loc-v1';
 
 ```typescript
 interface ForgetAlert {
-  id: string; name: string; location: { name:string; lat:number; lng:number };
+  id: string; name: string; location: { name:string; lat:number; lng:number }; radius: 100|300|500;
   weekdays: number[]; timeStart?: string; timeEnd?: string; enabled: boolean; items: string[];
 }
 ```
-`FORGET_ALERTS_KEY='tl-forget-alerts-v1'`に配列で保存。`weekdays`は`0=日〜6=土`。`timeStart`/`timeEnd`は両方空なら終日対象。半径は他の場所通知と同じ`TASK_LOCATION_RADIUS_M=200`固定（設定項目に無いため）。
+`FORGET_ALERTS_KEY='tl-forget-alerts-v1'`に配列で保存。`weekdays`は`0=日〜6=土`。`timeStart`/`timeEnd`は両方空なら終日対象。`radius`はShopLocationと同じ100/300/500mから選択可能（新規追加時のデフォルトは300m）。ネイティブ側（`GeofencePlugin.swift`の`ForgetAlertEntry`/`setForgetAlerts`）は元々`entry.radius`で`CLCircularRegion`を作っていたため、この変更にネイティブ側の追加対応は不要（JS側で固定値`TASK_LOCATION_RADIUS_M`を渡していたのをUIで選んだ`radius`を渡すよう変えただけ）。旧データ（`radius`未設定）は同期エフェクトで`a.radius??TASK_LOCATION_RADIUS_M`にフォールバックする。
+
+**課金プラン: 1件までは無料、2件目以降はPRO。** `ForgetAlertsPanel`内の`isLockedByPlan(idx)`（`!isPremium&&idx>0`、`idx`は`alerts`配列内の作成順インデックス）で判定する。「＋追加」は非PROかつ既に1件以上ある場合に`onProPrompt()`でブロックし、既存の2件目以降の有効化トグルも同様にブロックする（OFFにする操作は常に許可。ダウングレードで2件目以降が残っている場合の表示用に、対象行に小さい★アイコンを出す）。
 
 ### 管理画面（`ForgetAlertsPanel`、設定 → 忘れ物防止アラート）
 
-専用のフルスクリーン画面ではなく設定画面のサブ画面（`sub==='forgetAlerts'`）として実装（初回実装の方針通り）。一覧はカード形式で「{name}を出るとき」＋曜日・時間帯のサマリ＋確認する持ち物のチップ＋ON/OFFトグル＋削除ボタン。追加/編集フォームは`ShopLocationPanel`と同じ場所検索（Nominatim）・地図で指定（`ShopMapPicker`再利用）・現在地から、のパターンに加えて曜日選択（`ShopNotifPanel`と同じ7つの丸ボタン）・時間帯（開始/終了の`<input type="time">`、任意）・持ち物チップ入力（追加・×で削除）を持つ。保存時に`ensureGeofencePermission()`で位置情報・通知の許可を確認し、拒否時は登録しない。
+専用のフルスクリーン画面ではなく設定画面のサブ画面（`sub==='forgetAlerts'`）として実装（初回実装の方針通り）。一覧はカード形式で「{name}を出るとき」＋曜日・時間帯・半径のサマリ＋確認する持ち物のチップ＋ON/OFFトグル＋削除ボタン。
+
+**「＋追加」を押すとポップアップ（ボトムシート、`z-[100]`）で追加/編集フォームが開く**（一覧の下にインラインで展開する旧実装は廃止）。フォームは名前（プリセット＋自由入力）・場所（**住所検索ボックスは無し**、「地図で指定」「現在地から」の2ボタンのみ）・通知する範囲（100/300/500mの3択、`ShopLocationPanel`と同じUI）・曜日選択（`ShopNotifPanel`と同じ7つの丸ボタン）・時間帯（開始/終了の`<input type="time">`、任意）・持ち物チップ入力（追加・×で削除）を持つ。「地図で指定」「現在地から」を押すと`ShopMapPicker`が**さらに上のポップアップ（`z-[110]`）として**開く（フォームのポップアップに埋め込む旧実装は廃止）。`ShopMapPicker`自体は地図内検索（Nominatim）を内包しているため、外側フォームの住所検索ボックスを削除しても場所の文字列検索は可能。保存時に`ensureGeofencePermission()`で位置情報・通知の許可を確認し、拒否時は登録しない。
 
 **バリデーション:** 名前・場所・曜日1つ以上・持ち物1つ以上が揃うまで「登録」ボタンは無効。
 
@@ -679,11 +683,11 @@ interface ForgetAlert {
 
 ### 放置タスク通知（既存機能・一部PRO化済み）
 
-`Settings.laterReminderHours`（`LATER_REMINDER_OPTS`: オフ/1時間/3時間/6時間/12時間/1日/2日/3日）。**「オフ」と「3日」のみ無料。それ以外（1時間〜2日）はPRO。** 非PROで選ぶと `setProPrompt('放置タスク通知の間隔変更')` で `ProGateSheet` を表示し、選択中のボタンに `AppIcons.lock`（小さい鍵アイコン、テキストの左）を表示する。タスク実行判定自体は既存のJS側 `useEffect`（`now` ベースのポーリング、フォアグラウンド時のみ動作）。**就寝〜起床の時間帯（`inSleepWindow()`）は通知しない**（判定タイミングがたまたま就寝時間中だった場合はスキップされ、次に起きている時間帯にポーリングが走った時に改めて判定される）。
+`Settings.laterReminderHours`（`LATER_REMINDER_OPTS`: オフ/1時間/3時間/6時間/12時間/1日/2日/3日）。**「オフ」と「3日」のみ無料。それ以外（1時間〜2日）はPRO。** 非PROで選ぶと `setProPrompt('タスク放置アラートの間隔変更')` で `ProGateSheet` を表示し、選択中のボタンに `AppIcons.star`（小さい★アイコン、テキストの左。旧`AppIcons.lock`から変更済み）を表示する。タスク実行判定自体は既存のJS側 `useEffect`（`now` ベースのポーリング、フォアグラウンド時のみ動作）。**就寝〜起床の時間帯（`inSleepWindow()`）は通知しない**（判定タイミングがたまたま就寝時間中だった場合はスキップされ、次に起きている時間帯にポーリングが走った時に改めて判定される）。
 
 ### アプリ起動リマインダー（一部PRO化済み）
 
-`Settings.appInactivityHours`（`APP_INACTIVITY_OPTS`: オフ/6時間/12時間/1日/2日/3日、デフォルト6時間）。「一定時間アプリを開いていない場合に通知する」機能。**放置タスク通知とは独立した別機能**（あとでやるタスクの有無に関係なく、単純にアプリを開いた/開いていない時間で判定）。**「オフ」とデフォルト値の「6時間」のみ無料。それ以外（12時間〜3日）はPRO。** 非PROで選ぶと `setProPrompt('アプリ起動リマインダーの間隔変更')` で `ProGateSheet` を表示し、選択中のボタンに `AppIcons.lock` を表示する（放置タスク通知と同じパターン）。
+`Settings.appInactivityHours`（`APP_INACTIVITY_OPTS`: オフ/6時間/12時間/1日/2日/3日、デフォルト6時間）。「一定時間アプリを開いていない場合に通知する」機能。**放置タスク通知とは独立した別機能**（あとでやるタスクの有無に関係なく、単純にアプリを開いた/開いていない時間で判定）。**「オフ」とデフォルト値の「6時間」のみ無料。それ以外（12時間〜3日）はPRO。** 非PROで選ぶと `setProPrompt('アプリ放置アラートの間隔変更')` で `ProGateSheet` を表示し、選択中のボタンに `AppIcons.star` を表示する（放置タスク通知と同じパターン）。
 
 タスクリマインダーと違い、アプリがバックグラウンド/未起動でも数時間〜数日後に発火する必要があるため、JSのタイマーでは実現できない（プロセスが生きている保証がない）。iOSネイティブの `UNTimeIntervalNotificationTrigger` で完結させる。
 
@@ -760,17 +764,27 @@ interface ForgetAlert {
 
 ## オンボーディング・おすすめ機能・プロダクトツアー
 
-初回起動時の導線として3つの機能がこの順で連鎖する: **オンボーディング → （通知プロンプト） → 起床・就寝プロンプト → プロダクトツアー**。「おすすめ機能」はこれらとは独立して、インストール後しばらく経ってから条件を満たすたびに表示される。
+初回起動時の導線として3つの機能がこの順で連鎖する: **オンボーディング → 起床・就寝プロンプト → プロダクトツアー → （通知プロンプト → 位置情報プロンプト）**。「おすすめ機能」はこれらとは独立して、インストール後しばらく経ってから条件を満たすたびに表示される。
+
+**通知・位置情報の許可は、オンボーディング中ではなくプロダクトツアー完了後に求める。** アプリに触る前に許可を求めると拒否されやすく、BrainBoxの価値を実際に体験した後の方が許可する理由が伝わりやすいため（オンボーディングの最終ページに許可ボタンの行があった旧実装は削除済み）。
 
 ### オンボーディング（`src/app/components/Onboarding.tsx`）
 
-初回起動時だけ表示する5ページのスワイプ式イントロ（`App`のトップレベルで`showOnboarding`がtrueの間は`Onboarding`を全画面表示し、メインUIは描画しない）。`ONBOARDING_KEY`が無ければ表示。最終ページで通知・位置情報の許可ボタン（`requestNotifyPermission()`/`ensureGeofencePermission()`、ボタンを押した時だけ実行・拒否されても完了可能）。「始める」→`completeOnboarding()`が`ONBOARDING_KEY`と`NOTIF_ASKED_KEY`（オンボーディング内で通知案内済みのため通知プロンプトはスキップ）をセットし、`maybeShowWakeSleepPrompt()`を呼ぶ。
+初回起動時だけ表示する5ページのスワイプ式イントロ（`App`のトップレベルで`showOnboarding`がtrueの間は`Onboarding`を全画面表示し、メインUIは描画しない）。`ONBOARDING_KEY`が無ければ表示。**通知・位置情報の許可リクエストは行わない**（`onComplete`を呼ぶだけ）。「始める」→`completeOnboarding()`が`ONBOARDING_KEY`をセットし、`maybeShowWakeSleepPrompt()`を呼ぶ。
 
-### 起床・就寝プロンプト → プロダクトツアーへの連鎖
+### 起床・就寝プロンプト → プロダクトツアー → 通知・位置情報プロンプトの連鎖
 
 `maybeShowWakeSleepPrompt()`は`WAKESLEEP_ASKED_KEY`が既にあれば何もせず`maybeShowProductTour()`を呼ぶ（＝オンボーディングを飛ばして起動した既存ユーザーでもツアーへ繋がる）。プロンプトを表示した場合は`dismissWakeSleepPrompt()`（`confirmWakeSleepPrompt()`もこれを呼ぶ）の中で`WAKESLEEP_ASKED_KEY`セット後に`maybeShowProductTour()`を呼ぶ。
 
-**既にオンボーディング・通知・起床就寝プロンプトを済ませている既存ユーザー**（この機能追加前からのユーザー）は上記チェーンが発火しないため、初回ロードの`useEffect`に`else if(!localStorage.getItem(TOUR_COMPLETED_KEY)){setTimeout(()=>setShowTour(true),1000);}`という最終分岐を追加し、次回起動時にツアーが表示されるようにしている。
+`maybeShowProductTour()`は`TOUR_COMPLETED_KEY`が既にあれば`maybeShowNotifPrompt()`（後述）を呼んでツアーをスキップする。ツアーを表示した場合は、`ProductTour`の`onFinish`（`TOUR_COMPLETED_KEY`をセットする箇所）から`maybeShowNotifPrompt()`を呼ぶ——**「スキップ」ボタンを押した場合も`onFinish`経由で同じ連鎖に入る**（ツアーを完了させてもスキップさせても、その後の許可プロンプトの流れは変わらない）。
+
+**通知・位置情報プロンプト（`showNotifPrompt`/`showLocPrompt`、ツアー完了直後に表示）:**
+- 通知プロンプトが先、位置情報プロンプトが後（`dismissNotifPrompt()`が`NOTIF_ASKED_KEY`をセットしてから`maybeShowLocPrompt()`を呼ぶ）
+- 文言: 通知は「必要なタイミングで、やることを思い出せるようにします。」、位置情報は「場所に着いたときに、必要なことを思い出せるようにします。」。どちらも「あとから設定画面でいつでも有効にできます」を添えている
+- 「あとで」（拒否）を押した場合も許可フローを進める（通知→位置情報→ホーム）だけで、それ以上何も表示しない＝そのままホーム画面に戻る
+- `NOTIF_ASKED_KEY`/`LOCATION_ASKED_KEY`で「一度尋ねたら二度と出さない」を管理する（拒否されても再度は聞かない）
+
+**既にオンボーディング・起床就寝プロンプト・ツアーを済ませている既存ユーザー**（この導線変更前からのユーザー）は上記チェーンが発火しないため、初回ロードの`useEffect`の最終分岐で`TOUR_COMPLETED_KEY`はあるが`NOTIF_ASKED_KEY`が無い場合に`maybeShowNotifPrompt()`を呼び、通知・位置情報プロンプトだけ改めて表示する。
 
 ### プロダクトツアー（`src/app/components/ProductTour.tsx`）
 
@@ -785,7 +799,7 @@ interface ForgetAlert {
 - **スポットライト演出**: 対象要素の四方を覆う4枚の暗転帯（`pointer-events:auto`でタップを吸収）＋ 対象要素ぴったりに重ねる`pointer-events:none`の光る枠（`globals.css`の`tourPulse`/`tourScale`キーフレームで呼吸するようなパルスアニメーション）。対象要素自体には何も重ねないため、実際の操作がそのまま機能する（＝ハイライト部分だけ操作可能、という要件をDOM上の「穴」として実現）。TaskModal自体はz-50、ツアーのオーバーレイはz-[220]なので、ステップ2でモーダルの上からスポットライトを重ねても正しく機能する
 - 吹き出し（タイトル・本文・矢印、ボタン無し）は`globals.css`の`tourBlink`で点滅する三角形の矢印付き。対象が画面下半分にあれば吹き出しは上に、上半分にあれば下に自動配置。`pointerEvents:'none'`なので対象操作を妨げない
 - **対象要素が見つからない場合**は800ms待って自動的に次のステップへスキップする（何らかの理由で対象が描画されない場合でもツアーが止まらない安全策）
-- 最終ステップの後は完了画面（チェックアイコン＋「ツアー完了！」＋「はじめる」ボタン）を表示してから`onFinish()`を呼ぶ。「スキップ」ボタンは完了画面を経由せず即座に`onFinish()`を呼ぶ。`onFinish`は`App`側で`TOUR_COMPLETED_KEY`をセットして`showTour`をfalseにする（スキップしても再表示されない）
+- 最終ステップの後は完了画面（チェックアイコン＋「ツアー完了！」＋「はじめる」ボタン）を表示してから`onFinish()`を呼ぶ。「スキップ」ボタンは完了画面を経由せず即座に`onFinish()`を呼ぶ。`onFinish`は`App`側で`TOUR_COMPLETED_KEY`をセットして`showTour`をfalseにし、続けて`maybeShowNotifPrompt()`（通知→位置情報プロンプトの連鎖）を呼ぶ（スキップしてもこの連鎖には入る）
 
 **サンプルタスク（`tourSampleTasks`）:** ツアー中は「牛乳を買う」「クリーニングを受け取る」「振込をする」の3件を空き時間カード・あとでやるリストに表示し、アプリが実際に使われている状態を疑似的に見せる。**実データ（`tasks` state・localStorage）には一切保存せず**、`showTour`がtrueの間だけ`filteredTasks`の算出時に`[...tasks,...tourSampleTasks]`として表示用に合成する（`tourSampleTasks`自体は`useState`のみで永続化しない）。`showTour`がfalseになると同じエフェクトで`tourSampleTasks`を空配列にリセットする。ステップ3でドラッグする対象は、ユーザーが実際に保存した新規タスクが（配列の並び順的に）サンプルより先に来るため自然とスポットライトされる。
 

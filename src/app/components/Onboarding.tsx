@@ -2,8 +2,6 @@
 import { useState, useRef } from 'react';
 import type { TouchEvent } from 'react';
 import { AppIcons } from './Icons';
-import { requestNotifyPermission } from './LocalNotify';
-import { ensureGeofencePermission } from './Geofence';
 
 const MINT_SOFT = 'color-mix(in srgb, var(--c-primary) 14%, white)';
 
@@ -70,8 +68,6 @@ function Illustration({ page }: { page: number }) {
 
 export default function Onboarding({ onComplete }: { onComplete: () => void }) {
   const [page, setPage] = useState(0);
-  const [notifDone, setNotifDone] = useState(false);
-  const [locDone, setLocDone] = useState(false);
   const touchX = useRef(0);
   const touchY = useRef(0);
 
@@ -90,22 +86,6 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
     }
   };
 
-  // 権限リクエストは行タップ、または最後の「始める」ボタンを押した時に実行する。
-  // 拒否されてもオンボーディングは完了できる
-  const requestNotif = () => {
-    requestNotifyPermission();
-    setNotifDone(true);
-  };
-  const requestLocation = () => {
-    ensureGeofencePermission();
-    setLocDone(true);
-  };
-  const finish = () => {
-    if(!notifDone) requestNotif();
-    if(!locDone) requestLocation();
-    onComplete();
-  };
-
   const p = PAGES[page];
   const isLast = page === PAGES.length - 1;
 
@@ -119,33 +99,6 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
           <Illustration page={page}/>
           <h1 className="text-2xl font-bold text-gray-900 text-center mt-8 whitespace-pre-line leading-snug">{p.title}</h1>
           <p className="text-sm text-gray-500 text-center mt-3 whitespace-pre-line leading-relaxed">{p.body}</p>
-
-          {isLast && (
-            <div className="w-full mt-8 space-y-2">
-              <button onClick={requestNotif} disabled={notifDone}
-                className="w-full flex items-center gap-3 bg-gray-50 rounded-2xl px-4 py-3.5 text-left active:bg-gray-100 disabled:opacity-60">
-                <Circle size={36}><AppIcons.bell size={17} className="text-[var(--c-primary)]"/></Circle>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-800">通知を許可</p>
-                  <p className="text-xs text-gray-400">大事なことを見逃さないために通知の許可が必要です。</p>
-                </div>
-                {notifDone
-                  ? <AppIcons.checkSquare size={18} className="text-[var(--c-primary)] shrink-0"/>
-                  : <AppIcons.caretRight size={14} className="text-gray-300 shrink-0"/>}
-              </button>
-              <button onClick={requestLocation} disabled={locDone}
-                className="w-full flex items-center gap-3 bg-gray-50 rounded-2xl px-4 py-3.5 text-left active:bg-gray-100 disabled:opacity-60">
-                <Circle size={36}><AppIcons.location size={17} className="text-[var(--c-primary)]"/></Circle>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-800">位置情報を許可</p>
-                  <p className="text-xs text-gray-400">場所に基づいた通知のために位置情報の許可が必要です。</p>
-                </div>
-                {locDone
-                  ? <AppIcons.checkSquare size={18} className="text-[var(--c-primary)] shrink-0"/>
-                  : <AppIcons.caretRight size={14} className="text-gray-300 shrink-0"/>}
-              </button>
-            </div>
-          )}
         </div>
       </div>
 
@@ -156,7 +109,7 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
               style={{ width: i === page ? 18 : 6, height: 6, background: i === page ? 'var(--c-primary)' : '#E5E7EB' }}/>
           ))}
         </div>
-        <button onClick={isLast ? finish : next}
+        <button onClick={isLast ? onComplete : next}
           className="w-full py-3.5 rounded-2xl text-[15px] font-bold text-white bg-[var(--c-primary)] active:opacity-80">
           {isLast ? '始める' : '次へ'}
         </button>

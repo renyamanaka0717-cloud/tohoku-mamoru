@@ -92,7 +92,7 @@ interface ShopLocation { id: string; name: string; lat: number; lng: number; rad
 // 忘れ物防止アラート（PRO機能）。「あとでやる」とは独立した機能。weekdaysは0=日〜6=土、
 // timeStart/timeEndは省略可（両方空なら終日対象）。初回実装では退出(Exit)トリガーのみ対応
 interface ForgetAlert {
-  id: string; name: string; location: { name:string; lat:number; lng:number };
+  id: string; name: string; location: { name:string; lat:number; lng:number }; radius: 100|300|500;
   weekdays: number[]; timeStart?: string; timeEnd?: string; enabled: boolean; items: string[];
 }
 interface TagDef    { name: string; color: string; }
@@ -121,6 +121,7 @@ const SHOP_NOTIF_KEY    = 'tl-shop-notif-v1';
 const SHOP_LOC_KEY      = 'tl-shop-loc-v1';
 const FORGET_ALERTS_KEY = 'tl-forget-alerts-v1';
 const NOTIF_ASKED_KEY   = 'tl-notif-asked-v1';
+const LOCATION_ASKED_KEY = 'tl-location-asked-v1';
 const WAKESLEEP_ASKED_KEY = 'tl-wakesleep-asked-v1';
 const ONBOARDING_KEY = 'tl-onboarding-completed-v1';
 const FEATURE_USAGE_KEY = 'tl-feature-usage-v1';
@@ -3371,12 +3372,12 @@ function ForgetAlertsPanel({alerts,onChange,isPremium,onProPrompt}:{
   const [adding,setAdding]=useState(false);
   const [mapMode,setMapMode]=useState(false);
   const [mapCenter,setMapCenter]=useState<{lat:number;lng:number}|null>(null);
-  const [searchQuery,setSearchQuery]=useState('');
-  const [searchResults,setSearchResults]=useState<{name:string;lat:number;lng:number}[]>([]);
-  const [searching,setSearching]=useState(false);
   const [locating,setLocating]=useState(false);
   const [itemInput,setItemInput]=useState('');
   const [permError,setPermError]=useState<string|null>(null);
+
+  // 2件目以降の登録・有効化はPRO限定（1件までは無料）。作成順（配列の並び順）で判定する
+  const isLockedByPlan=(idx:number)=>!isPremium&&idx>0;
 
   const fmtDays=(days:number[])=>{
     if(days.length===7) return '毎日';
@@ -3387,29 +3388,16 @@ function ForgetAlertsPanel({alerts,onChange,isPremium,onProPrompt}:{
 
   const cancelEdit=()=>{
     setEditing(null);setAdding(false);setMapMode(false);setMapCenter(null);
-    setSearchQuery('');setSearchResults([]);setPermError(null);setItemInput('');
+    setPermError(null);setItemInput('');
   };
   const startAdd=()=>{
-    if(!isPremium){ onProPrompt('忘れ物防止アラート'); return; }
-    setEditing({id:uid(),name:'',location:null,weekdays:[1,2,3,4,5],timeStart:'',timeEnd:'',enabled:true,items:[]});
+    if(!isPremium&&alerts.length>=1){ onProPrompt('忘れ物防止アラート（2件目以降）'); return; }
+    setEditing({id:uid(),name:'',location:null,radius:300,weekdays:[1,2,3,4,5],timeStart:'',timeEnd:'',enabled:true,items:[]});
     setAdding(true);
     setItemInput('');setPermError(null);
   };
   const startEdit=(a:ForgetAlert)=>{ setEditing(a); setAdding(false); setItemInput(''); setPermError(null); };
 
-  const doSearch=async()=>{
-    const q=searchQuery.trim();
-    if(!q) return;
-    setSearching(true);
-    try{
-      const res=await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&countrycodes=jp&limit=8&accept-language=ja`);
-      const data=await res.json() as {display_name:string;lat:string;lon:string}[];
-      setSearchResults(data.map(d=>({name:d.display_name,lat:parseFloat(d.lat),lng:parseFloat(d.lon)})));
-    }catch{
-      setSearchResults([]);
-    }
-    setSearching(false);
-  };
   const useCurrentLocation=()=>{
     setLocating(true);
     getCurrentCoords(10000).then(loc=>{
@@ -3422,7 +3410,6 @@ function ForgetAlertsPanel({alerts,onChange,isPremium,onProPrompt}:{
   const pickLocation=(loc:{name:string;lat:number;lng:number})=>{
     if(!editing) return;
     setEditing({...editing, location:loc, name:editing.name||loc.name});
-    setSearchQuery('');setSearchResults([]);
   };
   const toggleDay=(i:number)=>{
     if(!editing) return;
@@ -3446,7 +3433,11 @@ function ForgetAlertsPanel({alerts,onChange,isPremium,onProPrompt}:{
     cancelEdit();
   };
   const del=(id:string)=>onChange(alerts.filter(a=>a.id!==id));
-  const toggleEnabled=(id:string)=>onChange(alerts.map(a=>a.id===id?{...a,enabled:!a.enabled}:a));
+  const toggleEnabled=(id:string)=>{
+    const idx=alerts.findIndex(a=>a.id===id);
+    if(idx>=0&&!alerts[idx].enabled&&isLockedByPlan(idx)){ onProPrompt('忘れ物防止アラート（2件目以降）'); return; }
+    onChange(alerts.map(a=>a.id===id?{...a,enabled:!a.enabled}:a));
+  };
 
   return (
     <div className="pb-6">
@@ -3455,23 +3446,27 @@ function ForgetAlertsPanel({alerts,onChange,isPremium,onProPrompt}:{
           忘れ物防止アラート
           {!isPremium&&<span className="inline-flex items-center gap-0.5 border border-gray-300 rounded px-1.5 py-0.5 text-[10px] font-bold text-gray-400 leading-none tracking-wide">★ PRO</span>}
         </p>
-        <button onClick={startAdd} disabled={!!editing}
-          className="flex items-center gap-1 px-3 py-1.5 bg-[var(--c-primary)] text-white rounded-xl text-sm font-semibold disabled:opacity-40">
+        <button onClick={startAdd}
+          className="flex items-center gap-1 px-3 py-1.5 bg-[var(--c-primary)] text-white rounded-xl text-sm font-semibold">
           <AppIcons.plus size={14}/>追加
         </button>
       </div>
-      {alerts.length===0&&!editing&&(
+      {!isPremium&&<p className="text-xs text-gray-400 px-1 mb-3">1件まで無料でご利用いただけます。2件目以降はPROが必要です。</p>}
+      {alerts.length===0&&(
         <p className="text-sm text-gray-400 text-center py-8">アラートが登録されていません</p>
       )}
       <div className="space-y-2">
-        {alerts.map(a=>(
+        {alerts.map((a,i)=>{
+          const locked=isLockedByPlan(i);
+          return (
           <div key={a.id} className="bg-white rounded-2xl shadow-sm px-4 py-3">
             <div className="flex items-center gap-3">
               <AppIcons.backpack size={16} className={a.enabled?'text-[var(--c-primary)]':'text-gray-300'}/>
               <button onClick={()=>startEdit(a)} className="flex-1 min-w-0 text-left">
                 <p className="text-sm font-medium text-gray-800 truncate">{a.name}を出るとき</p>
-                <p className="text-xs text-gray-400">{fmtDays(a.weekdays)}{a.timeStart&&a.timeEnd?` ${a.timeStart}〜${a.timeEnd}`:''}</p>
+                <p className="text-xs text-gray-400">{fmtDays(a.weekdays)}{a.timeStart&&a.timeEnd?` ${a.timeStart}〜${a.timeEnd}`:''}・{a.radius??200}m</p>
               </button>
+              {locked&&<AppIcons.star size={12} className="text-gray-300 shrink-0"/>}
               <button onClick={()=>toggleEnabled(a.id)}
                 className={`relative w-10 h-6 rounded-full transition-colors shrink-0 ${a.enabled?'bg-[var(--c-primary)]':'bg-gray-200'}`}>
                 <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${a.enabled?'left-[18px]':'left-0.5'}`}/>
@@ -3488,122 +3483,116 @@ function ForgetAlertsPanel({alerts,onChange,isPremium,onProPrompt}:{
               </div>
             )}
           </div>
-        ))}
+        );})}
       </div>
 
       {editing&&(
-        <div className="mt-3 bg-white rounded-2xl shadow-sm p-4">
-          {mapMode?(
+        <div className="fixed inset-0 z-[100] bg-black/40 flex items-end justify-center" onClick={cancelEdit}>
+          <div className="bg-white w-full max-w-md mx-auto rounded-t-3xl max-h-[85vh] overflow-y-auto p-4" onClick={e=>e.stopPropagation()}>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">名前</p>
+            <div className="flex gap-1.5 flex-wrap mb-2">
+              {NAME_PRESETS.map(p=>(
+                <button key={p} onClick={()=>setEditing({...editing,name:p})}
+                  className={`px-3 py-1 rounded-full text-xs font-semibold ${editing.name===p?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>{p}</button>
+              ))}
+            </div>
+            <input value={editing.name} onChange={e=>setEditing({...editing,name:e.target.value})}
+              placeholder="場所の名前"
+              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50 mb-4"/>
+
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">場所</p>
+            {editing.location&&(
+              <div className="flex items-center gap-2 bg-gray-50 rounded-xl px-3 py-2 mb-2">
+                <AppIcons.location size={14} className="text-gray-400 shrink-0"/>
+                <p className="flex-1 text-sm text-gray-700 truncate">{editing.location.name}</p>
+              </div>
+            )}
+            <div className="flex gap-2 mb-4">
+              <button onClick={()=>{setMapCenter(editing.location?{lat:editing.location.lat,lng:editing.location.lng}:null);setMapMode(true);}}
+                className="flex-1 py-2 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200">地図で指定</button>
+              <button onClick={useCurrentLocation} disabled={locating}
+                className="flex-1 py-2 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200 disabled:opacity-40">
+                {locating?'取得中...':'現在地から'}
+              </button>
+            </div>
+
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">通知する範囲</p>
+            <div className="flex gap-2 mb-4">
+              {([100,300,500] as const).map(r=>(
+                <button key={r} onClick={()=>setEditing({...editing,radius:r})}
+                  className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors ${editing.radius===r?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
+                  {r}m
+                </button>
+              ))}
+            </div>
+
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">曜日</p>
+            <div className="flex gap-2 flex-wrap mb-4">
+              {DOW.map((d,i)=>(
+                <button key={i} onClick={()=>toggleDay(i)}
+                  className={`w-9 h-9 rounded-full text-sm font-semibold transition-colors ${editing.weekdays.includes(i)?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
+                  {d}
+                </button>
+              ))}
+            </div>
+
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">時間帯（任意）</p>
+            <div className="flex items-center gap-2 mb-1">
+              <input type="time" value={editing.timeStart??''} onChange={e=>setEditing({...editing,timeStart:e.target.value})}
+                className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50"/>
+              <span className="text-gray-300">〜</span>
+              <input type="time" value={editing.timeEnd??''} onChange={e=>setEditing({...editing,timeEnd:e.target.value})}
+                className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50"/>
+              {(editing.timeStart||editing.timeEnd)&&(
+                <button onClick={()=>setEditing({...editing,timeStart:'',timeEnd:''})} className="text-xs text-gray-400 px-1 shrink-0">解除</button>
+              )}
+            </div>
+            <p className="text-[11px] text-gray-300 mb-4">指定しない場合は終日対象になります</p>
+
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">確認する持ち物</p>
+            <div className="flex gap-2 mb-2">
+              <input value={itemInput} onChange={e=>setItemInput(e.target.value)}
+                onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();addItem();}}}
+                placeholder="財布、鍵など"
+                className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50"/>
+              <button onClick={addItem} disabled={!itemInput.trim()}
+                className="px-4 py-2 bg-gray-100 rounded-xl text-sm font-semibold text-gray-700 shrink-0 disabled:opacity-40">追加</button>
+            </div>
+            {editing.items.length>0&&(
+              <div className="flex flex-wrap gap-1.5 mb-4">
+                {editing.items.map(it=>(
+                  <span key={it} className="inline-flex items-center gap-1 bg-gray-100 text-gray-600 text-xs font-medium px-2.5 py-1 rounded-full">
+                    {it}<button onClick={()=>removeItem(it)} className="opacity-60 leading-none ml-0.5">×</button>
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {permError&&<p className="text-xs text-[#D97A7A] mb-3">{permError}</p>}
+
+            <div className="flex gap-2">
+              <button onClick={cancelEdit}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200">
+                キャンセル
+              </button>
+              <button onClick={saveEditing}
+                disabled={!editing.location||!editing.name.trim()||editing.weekdays.length===0||editing.items.length===0}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-[var(--c-primary)] text-white active:opacity-80 disabled:opacity-40">
+                {adding?'登録':'保存'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editing&&mapMode&&(
+        <div className="fixed inset-0 z-[110] bg-black/50 flex items-end justify-center" onClick={()=>{setMapMode(false);setMapCenter(null);}}>
+          <div className="bg-white w-full max-w-md mx-auto rounded-t-3xl p-4" onClick={e=>e.stopPropagation()}>
             <ShopMapPicker
-              initialCenter={mapCenter??searchResults[0]??{lat:35.681236,lng:139.767125}}
+              initialCenter={mapCenter??{lat:35.681236,lng:139.767125}}
               onConfirm={loc=>{pickLocation(loc);setMapMode(false);setMapCenter(null);}}
               onCancel={()=>{setMapMode(false);setMapCenter(null);}}/>
-          ):(
-            <>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">名前</p>
-              <div className="flex gap-1.5 flex-wrap mb-2">
-                {NAME_PRESETS.map(p=>(
-                  <button key={p} onClick={()=>setEditing({...editing,name:p})}
-                    className={`px-3 py-1 rounded-full text-xs font-semibold ${editing.name===p?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>{p}</button>
-                ))}
-              </div>
-              <input value={editing.name} onChange={e=>setEditing({...editing,name:e.target.value})}
-                placeholder="場所の名前"
-                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50 mb-4"/>
-
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">場所</p>
-              {editing.location&&(
-                <div className="flex items-center gap-2 bg-gray-50 rounded-xl px-3 py-2 mb-2">
-                  <AppIcons.location size={14} className="text-gray-400 shrink-0"/>
-                  <p className="flex-1 text-sm text-gray-700 truncate">{editing.location.name}</p>
-                </div>
-              )}
-              <div className="flex gap-2 mb-2">
-                <input value={searchQuery} onChange={e=>setSearchQuery(e.target.value)}
-                  onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();doSearch();}}}
-                  placeholder="住所や施設名を入力"
-                  className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50"/>
-                <button onClick={doSearch} disabled={searching||!searchQuery.trim()}
-                  className="px-4 py-2 bg-gray-100 rounded-xl text-sm font-semibold text-gray-700 shrink-0 disabled:opacity-40">
-                  {searching?'検索中':'検索'}
-                </button>
-              </div>
-              {searchResults.length>0&&(
-                <div className="space-y-1 mb-2 max-h-32 overflow-y-auto">
-                  {searchResults.map((r,i)=>(
-                    <button key={i} onClick={()=>pickLocation(r)}
-                      className="w-full text-left px-3 py-2 rounded-xl bg-gray-50 active:bg-gray-100 text-sm text-gray-700 truncate">
-                      {r.name}
-                    </button>
-                  ))}
-                </div>
-              )}
-              <div className="flex gap-2 mb-4">
-                <button onClick={()=>{setMapCenter(editing.location?{lat:editing.location.lat,lng:editing.location.lng}:null);setMapMode(true);}}
-                  className="flex-1 py-2 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200">地図で指定</button>
-                <button onClick={useCurrentLocation} disabled={locating}
-                  className="flex-1 py-2 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200 disabled:opacity-40">
-                  {locating?'取得中...':'現在地から'}
-                </button>
-              </div>
-
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">曜日</p>
-              <div className="flex gap-2 flex-wrap mb-4">
-                {DOW.map((d,i)=>(
-                  <button key={i} onClick={()=>toggleDay(i)}
-                    className={`w-9 h-9 rounded-full text-sm font-semibold transition-colors ${editing.weekdays.includes(i)?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
-                    {d}
-                  </button>
-                ))}
-              </div>
-
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">時間帯（任意）</p>
-              <div className="flex items-center gap-2 mb-1">
-                <input type="time" value={editing.timeStart??''} onChange={e=>setEditing({...editing,timeStart:e.target.value})}
-                  className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50"/>
-                <span className="text-gray-300">〜</span>
-                <input type="time" value={editing.timeEnd??''} onChange={e=>setEditing({...editing,timeEnd:e.target.value})}
-                  className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50"/>
-                {(editing.timeStart||editing.timeEnd)&&(
-                  <button onClick={()=>setEditing({...editing,timeStart:'',timeEnd:''})} className="text-xs text-gray-400 px-1 shrink-0">解除</button>
-                )}
-              </div>
-              <p className="text-[11px] text-gray-300 mb-4">指定しない場合は終日対象になります</p>
-
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">確認する持ち物</p>
-              <div className="flex gap-2 mb-2">
-                <input value={itemInput} onChange={e=>setItemInput(e.target.value)}
-                  onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();addItem();}}}
-                  placeholder="財布、鍵など"
-                  className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50"/>
-                <button onClick={addItem} disabled={!itemInput.trim()}
-                  className="px-4 py-2 bg-gray-100 rounded-xl text-sm font-semibold text-gray-700 shrink-0 disabled:opacity-40">追加</button>
-              </div>
-              {editing.items.length>0&&(
-                <div className="flex flex-wrap gap-1.5 mb-4">
-                  {editing.items.map(it=>(
-                    <span key={it} className="inline-flex items-center gap-1 bg-gray-100 text-gray-600 text-xs font-medium px-2.5 py-1 rounded-full">
-                      {it}<button onClick={()=>removeItem(it)} className="opacity-60 leading-none ml-0.5">×</button>
-                    </span>
-                  ))}
-                </div>
-              )}
-
-              {permError&&<p className="text-xs text-[#D97A7A] mb-3">{permError}</p>}
-
-              <div className="flex gap-2">
-                <button onClick={cancelEdit}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200">
-                  キャンセル
-                </button>
-                <button onClick={saveEditing}
-                  disabled={!editing.location||!editing.name.trim()||editing.weekdays.length===0||editing.items.length===0}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-[var(--c-primary)] text-white active:opacity-80 disabled:opacity-40">
-                  {adding?'登録':'保存'}
-                </button>
-              </div>
-            </>
-          )}
+          </div>
         </div>
       )}
     </div>
@@ -4680,7 +4669,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                 return (
                   <button key={o.v} onClick={()=>{if(locked){setProPrompt('タスク放置アラートの間隔変更');return;}onSettings({...settings,laterReminderHours:o.v});}}
                     className={`px-3 py-1.5 rounded-xl text-sm font-medium transition-colors inline-flex items-center gap-1 ${(settings.laterReminderHours??72)===o.v?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
-                    {locked&&<AppIcons.lock size={10} className="text-gray-400"/>}
+                    {locked&&<AppIcons.star size={10} className={(settings.laterReminderHours??72)===o.v?'text-white':'text-[var(--c-primary)]'}/>}
                     {o.l}
                   </button>
                 );
@@ -4706,7 +4695,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                 return (
                   <button key={o.v} onClick={()=>{if(locked){setProPrompt('アプリ放置アラートの間隔変更');return;}onSettings({...settings,appInactivityHours:o.v});}}
                     className={`px-3 py-1.5 rounded-xl text-sm font-medium transition-colors inline-flex items-center gap-1 ${(settings.appInactivityHours??6)===o.v?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
-                    {locked&&<AppIcons.lock size={10} className="text-gray-400"/>}
+                    {locked&&<AppIcons.star size={10} className={(settings.appInactivityHours??6)===o.v?'text-white':'text-[var(--c-primary)]'}/>}
                     {o.l}
                   </button>
                 );
@@ -5649,6 +5638,7 @@ export default function App() {
   const [patternOverrides,setPatternOverrides] = useState<Record<string,string>>({});
   const [authUser,setAuthUser] = useState<AuthUser|null>(null);
   const [showNotifPrompt,setShowNotifPrompt] = useState(false);
+  const [showLocPrompt,setShowLocPrompt] = useState(false);
   const [showOnboarding,setShowOnboarding] = useState(false);
   const [showTour,setShowTour] = useState(false);
   const [tourDragSignal,setTourDragSignal] = useState(0);
@@ -5727,12 +5717,12 @@ export default function App() {
     setLoaded(true);
     if(!localStorage.getItem(ONBOARDING_KEY)){
       setShowOnboarding(true);
-    } else if(!localStorage.getItem(NOTIF_ASKED_KEY)){
-      setShowNotifPrompt(true);
     } else if(!localStorage.getItem(WAKESLEEP_ASKED_KEY)){
       maybeShowWakeSleepPrompt();
     } else if(!localStorage.getItem(TOUR_COMPLETED_KEY)){
       setTimeout(()=>setShowTour(true),1000);
+    } else if(!localStorage.getItem(NOTIF_ASKED_KEY)){
+      setTimeout(()=>maybeShowNotifPrompt(),800);
     }
   },[]);
 
@@ -5841,7 +5831,7 @@ export default function App() {
     const budget=Math.max(0,MAX_MONITORED_REGIONS-enabledShopCount-activeTaskLocCount);
     const alerts=forgetAlerts.filter(a=>a.enabled).slice(0,budget);
     setForgetAlertGeofences(alerts.map(a=>({
-      id:a.id,name:a.name,lat:a.location.lat,lng:a.location.lng,radius:TASK_LOCATION_RADIUS_M,
+      id:a.id,name:a.name,lat:a.location.lat,lng:a.location.lng,radius:a.radius??TASK_LOCATION_RADIUS_M,
       weekdays:a.weekdays,timeStart:a.timeStart||'',timeEnd:a.timeEnd||'',items:a.items,
     })));
   },[forgetAlerts,shopLocations,tasks,loaded]);
@@ -5901,7 +5891,7 @@ export default function App() {
   };
 
   const maybeShowProductTour=()=>{
-    if(localStorage.getItem(TOUR_COMPLETED_KEY)) return;
+    if(localStorage.getItem(TOUR_COMPLETED_KEY)){ maybeShowNotifPrompt(); return; }
     setTimeout(()=>setShowTour(true),600);
   };
   const maybeShowWakeSleepPrompt=()=>{
@@ -5910,23 +5900,38 @@ export default function App() {
     setWsPromptSleep(settings.sleepTime);
     setShowWakeSleepPrompt(true);
   };
-  // オンボーディング内で通知の案内は済んでいるので、旧来の通知プロンプトはスキップして
-  // 起床・就寝プロンプトへそのままつなげる
+  // 通知・位置情報の許可は、プロダクトツアーを体験して価値が伝わった後に求める
+  // （アプリに触る前だと拒否されやすいため。ツアー完了時に呼ばれる）
+  const maybeShowNotifPrompt=()=>{
+    if(localStorage.getItem(NOTIF_ASKED_KEY)){ maybeShowLocPrompt(); return; }
+    setShowNotifPrompt(true);
+  };
+  const maybeShowLocPrompt=()=>{
+    if(localStorage.getItem(LOCATION_ASKED_KEY)) return;
+    setShowLocPrompt(true);
+  };
   const completeOnboarding=()=>{
     localStorage.setItem(ONBOARDING_KEY,'1');
-    localStorage.setItem(NOTIF_ASKED_KEY,'1');
     setShowOnboarding(false);
     maybeShowWakeSleepPrompt();
   };
   const dismissNotifPrompt=()=>{
     localStorage.setItem(NOTIF_ASKED_KEY,'1');
     setShowNotifPrompt(false);
-    maybeShowWakeSleepPrompt();
+    maybeShowLocPrompt();
   };
   const enableNotifFromPrompt=()=>{
     requestNotifyPermission();
     setSettings(s=>({...s,notificationsEnabled:true}));
     dismissNotifPrompt();
+  };
+  const dismissLocPrompt=()=>{
+    localStorage.setItem(LOCATION_ASKED_KEY,'1');
+    setShowLocPrompt(false);
+  };
+  const enableLocFromPrompt=()=>{
+    ensureGeofencePermission();
+    dismissLocPrompt();
   };
   const dismissWakeSleepPrompt=()=>{
     localStorage.setItem(WAKESLEEP_ASKED_KEY,'1');
@@ -6950,7 +6955,7 @@ export default function App() {
 
       {appProPrompt&&<ProGateSheet onClose={()=>setAppProPrompt(false)} onView={()=>{setAppProPrompt(false);setSettingsInitSub('premium');setSOp(true);}} feature="起床・就寝アイコンの色変更"/>}
 
-      {/* ── Notification onboarding prompt ── */}
+      {/* ── 通知許可プロンプト（プロダクトツアー完了後） ── */}
       {showNotifPrompt&&(
         <div className="fixed inset-0 z-[210] flex items-end justify-center">
           <div className="absolute inset-0 bg-black/40" onClick={dismissNotifPrompt}/>
@@ -6961,11 +6966,34 @@ export default function App() {
               </div>
             </div>
             <p className="text-lg font-bold text-gray-900 text-center mb-2">通知を有効にしよう</p>
-            <p className="text-sm text-gray-500 text-center mb-7 leading-relaxed">タスクのアラームや買い物リストのリマインダーをお届けします。</p>
+            <p className="text-sm text-gray-500 text-center mb-1 leading-relaxed">必要なタイミングで、やることを思い出せるようにします。</p>
+            <p className="text-xs text-gray-400 text-center mb-7 leading-relaxed">あとから設定画面でいつでも有効にできます。</p>
             <button onClick={enableNotifFromPrompt}
               className="w-full py-3.5 rounded-2xl text-[15px] font-bold text-white mb-3"
               style={{background:'var(--c-primary)'}}>通知をオンにする</button>
             <button onClick={dismissNotifPrompt}
+              className="w-full py-2.5 text-sm font-medium text-gray-400">あとで</button>
+          </div>
+        </div>
+      )}
+
+      {/* ── 位置情報許可プロンプト（通知許可の直後） ── */}
+      {showLocPrompt&&(
+        <div className="fixed inset-0 z-[210] flex items-end justify-center">
+          <div className="absolute inset-0 bg-black/40" onClick={dismissLocPrompt}/>
+          <div className="relative bg-white rounded-t-3xl w-full max-w-md px-6 pt-7 pb-10 shadow-2xl">
+            <div className="flex justify-center mb-4">
+              <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{background:'rgba(217,163,178,0.12)'}}>
+                <AppIcons.location size={32} className="text-[var(--c-primary)]"/>
+              </div>
+            </div>
+            <p className="text-lg font-bold text-gray-900 text-center mb-2">位置情報を有効にしよう</p>
+            <p className="text-sm text-gray-500 text-center mb-1 leading-relaxed">場所に着いたときに、必要なことを思い出せるようにします。</p>
+            <p className="text-xs text-gray-400 text-center mb-7 leading-relaxed">あとから設定画面でいつでも有効にできます。</p>
+            <button onClick={enableLocFromPrompt}
+              className="w-full py-3.5 rounded-2xl text-[15px] font-bold text-white mb-3"
+              style={{background:'var(--c-primary)'}}>位置情報をオンにする</button>
+            <button onClick={dismissLocPrompt}
               className="w-full py-2.5 text-sm font-medium text-gray-400">あとで</button>
           </div>
         </div>
@@ -7004,6 +7032,7 @@ export default function App() {
           onFinish={()=>{
             localStorage.setItem(TOUR_COMPLETED_KEY,'1');
             setShowTour(false);
+            maybeShowNotifPrompt();
           }}/>
       )}
 
