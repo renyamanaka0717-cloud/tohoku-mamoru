@@ -126,6 +126,9 @@ const ONBOARDING_KEY = 'tl-onboarding-completed-v1';
 const FEATURE_USAGE_KEY = 'tl-feature-usage-v1';
 const RECOMMEND_STATE_KEY = 'tl-recommend-state-v1';
 const TOUR_COMPLETED_KEY = 'tl-product-tour-completed-v1';
+// プロダクトツアー用のダミー「あとでやる」タスク。ツアー中だけ一時的に追加し、終了時に削除する
+// （空き時間カード・ドラッグ&ドロップのステップで実演する対象が必要なため）
+const TOUR_DUMMY_TASK_IDS = ['tour-dummy-1','tour-dummy-2'];
 const LATER_NOTIFIED_KEY = 'tl-later-notified-v1';
 const TASK_ALERT_FIRED_KEY = 'tl-task-alert-fired-v1';
 const DEADLINE_ALERT_FIRED_KEY = 'tl-deadline-alert-fired-v1';
@@ -5652,6 +5655,21 @@ export default function App() {
   const [showOnboarding,setShowOnboarding] = useState(false);
   const [showTour,setShowTour] = useState(false);
   const [tourDragSignal,setTourDragSignal] = useState(0);
+  // プロダクトツアー開始時にダミーの「あとでやる」タスクを追加する（空き時間カード・
+  // ドラッグ&ドロップのステップで実演する対象が無いユーザーでもツアーが機能するように）
+  useEffect(()=>{
+    if(!showTour) return;
+    setTasks(prev=>{
+      if(TOUR_DUMMY_TASK_IDS.some(id=>prev.some(t=>t.id===id))) return prev;
+      const today=todayStr();
+      const names=['振込をする','クリーニングを受け取る'];
+      const dummies:Task[]=TOUR_DUMMY_TASK_IDS.map((id,i)=>({
+        id,name:names[i],startTime:null,duration:0,memo:'',icon:defaultIconKey(names[i]),
+        completed:false,date:today,isLater:true,recurrence:null,tags:[],notifications:[],subtasks:[],
+      }));
+      return [...prev,...dummies];
+    });
+  },[showTour]);
   const [showWakeSleepPrompt,setShowWakeSleepPrompt] = useState(false);
   const [wsPromptWake,setWsPromptWake] = useState('07:00');
   const [wsPromptSleep,setWsPromptSleep] = useState('23:00');
@@ -6984,7 +7002,11 @@ export default function App() {
 
       {/* ── プロダクトツアー ── */}
       {showTour&&!modal.open&&!settingsOpen&&!calendarOpen&&!searchOpen&&(
-        <ProductTour gestureSignal={tourDragSignal} onFinish={()=>{localStorage.setItem(TOUR_COMPLETED_KEY,'1');setShowTour(false);}}/>
+        <ProductTour gestureSignal={tourDragSignal} onFinish={()=>{
+          localStorage.setItem(TOUR_COMPLETED_KEY,'1');
+          setShowTour(false);
+          setTasks(prev=>prev.filter(t=>!TOUR_DUMMY_TASK_IDS.includes(t.id)));
+        }}/>
       )}
 
       {/* ── おすすめ機能カード ── */}
