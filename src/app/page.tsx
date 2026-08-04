@@ -2871,8 +2871,8 @@ function ShopNotifPanel({settings,onChange,notificationsEnabled=true,onEnableNot
         ))}
       </div>
       {editing&&(
-        <div className="fixed inset-0 z-[100] bg-black/40 flex items-end justify-center" onClick={()=>{setEditing(null);setAdding(false);}}>
-          <div className="bg-white w-full max-w-md mx-auto rounded-t-3xl max-h-[85vh] overflow-y-auto p-4" onClick={e=>e.stopPropagation()}>
+        <div className="fixed inset-0 z-[100] bg-black/40 flex items-center justify-center p-4" onClick={()=>{setEditing(null);setAdding(false);}}>
+          <div className="bg-white w-full max-w-md mx-auto rounded-3xl max-h-[85vh] overflow-y-auto p-4" onClick={e=>e.stopPropagation()}>
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">曜日</p>
             <div className="flex gap-2 flex-wrap mb-4">
               {DOW.map((d,i)=>(
@@ -3284,8 +3284,8 @@ function ShopLocationPanel({locations,onChange,isPremium,onProPrompt}:{
         ))}
       </div>
       {adding&&(
-        <div className="fixed inset-0 z-[100] bg-black/40 flex items-end justify-center" onClick={cancelAdd}>
-          <div className="bg-white w-full max-w-md mx-auto rounded-t-3xl max-h-[85vh] overflow-y-auto p-4" onClick={e=>e.stopPropagation()}>
+        <div className="fixed inset-0 z-[100] bg-black/40 flex items-center justify-center p-4" onClick={cancelAdd}>
+          <div className="bg-white w-full max-w-md mx-auto rounded-3xl max-h-[85vh] overflow-y-auto p-4" onClick={e=>e.stopPropagation()}>
             {!pendingCoord?(
               <>
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">場所を検索</p>
@@ -3530,8 +3530,8 @@ function ForgetAlertsPanel({alerts,onChange,isPremium,onProPrompt}:{
       </div>
 
       {editing&&(
-        <div className="fixed inset-0 z-[100] bg-black/40 flex items-end justify-center" onClick={cancelEdit}>
-          <div className="bg-white w-full max-w-md mx-auto rounded-t-3xl max-h-[85vh] overflow-y-auto p-4" onClick={e=>e.stopPropagation()}>
+        <div className="fixed inset-0 z-[100] bg-black/40 flex items-center justify-center p-4" onClick={cancelEdit}>
+          <div className="bg-white w-full max-w-md mx-auto rounded-3xl max-h-[85vh] overflow-y-auto p-4" onClick={e=>e.stopPropagation()}>
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">忘れ物防止アラートを作成</p>
 
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">場所</p>
