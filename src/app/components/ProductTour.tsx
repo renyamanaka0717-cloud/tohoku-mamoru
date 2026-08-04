@@ -12,7 +12,7 @@ interface TourStepDef {
 
 const STEPS: TourStepDef[] = [
   { id: 'add', selector: '[data-tour="fab-add"]', title: 'タスクを追加', body: 'ここをタップすると、新しいタスクを追加できます。' },
-  { id: 'freeTime', selector: '[data-tour="free-time-card"]', title: '空き時間を活用', body: '空いている時間には「あとでやる」タスクが提案されます。タップするとその時間に予定できます。' },
+  { id: 'freeTime', selector: '[data-tour="free-time-card"]', title: '空き時間を活用', body: 'タスクカードをタップすると時間を設定できます。' },
   { id: 'drag', selector: '[data-tour="tour-draggable"]', title: 'ドラッグで移動', body: 'タスクを長押ししてそのままドラッグすると、時間を変更できます。実際に動かしてみましょう。', requireGesture: true },
 ];
 
