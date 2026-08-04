@@ -3432,7 +3432,6 @@ function ForgetAlertsPanel({alerts,onChange,isPremium,onProPrompt}:{
     setPermError(null);setItemInput('');setCustomDayOpen(false);
   };
   const startAdd=()=>{
-    if(!isPremium&&alerts.length>=1){ onProPrompt('忘れ物防止アラート（2件目以降）'); return; }
     setEditing({id:uid(),name:'',location:null,radius:300,trigger:'exit',weekdays:[1,2,3,4,5],timeStart:'',timeEnd:'',enabled:true,items:[]});
     setAdding(true);
     setItemInput('');setPermError(null);setCustomDayOpen(false);
@@ -3469,6 +3468,7 @@ function ForgetAlertsPanel({alerts,onChange,isPremium,onProPrompt}:{
 
   const saveEditing=async()=>{
     if(!editing||!editing.location||!editing.name.trim()||editing.weekdays.length===0||editing.items.length===0) return;
+    if(adding&&!isPremium&&alerts.length>=1){ onProPrompt('忘れ物防止アラート（2件目以降）'); return; }
     const ok=await ensureGeofencePermission();
     if(!ok){ setPermError('場所を出たときに通知するため、位置情報の利用を許可してください。'); return; }
     const toSave:ForgetAlert={...editing,name:editing.name.trim(),location:editing.location};
