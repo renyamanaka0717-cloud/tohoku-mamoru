@@ -2871,31 +2871,35 @@ function ShopNotifPanel({settings,onChange,notificationsEnabled=true,onEnableNot
         ))}
       </div>
       {editing&&(
-        <div className="mt-3 bg-white rounded-2xl shadow-sm p-4">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">曜日</p>
-          <div className="flex gap-2 flex-wrap mb-4">
-            {DOW.map((d,i)=>(
-              <button key={i} onClick={()=>{
-                const days=editing.days.includes(i)?editing.days.filter(x=>x!==i):[...editing.days,i];
-                setEditing({...editing,days});
-              }}
-                className={`w-9 h-9 rounded-full text-sm font-semibold transition-colors ${editing.days.includes(i)?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
-                {d}
+        <div className="fixed inset-0 z-[100] bg-black/40 flex items-end justify-center" onClick={()=>{setEditing(null);setAdding(false);}}>
+          <div className="bg-white w-full max-w-md mx-auto rounded-t-3xl max-h-[85vh] overflow-y-auto p-4" onClick={e=>e.stopPropagation()}>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">曜日</p>
+            <div className="flex gap-2 flex-wrap mb-4">
+              {DOW.map((d,i)=>(
+                <button key={i} onClick={()=>{
+                  const days=editing.days.includes(i)?editing.days.filter(x=>x!==i):[...editing.days,i];
+                  setEditing({...editing,days});
+                }}
+                  className={`w-9 h-9 rounded-full text-sm font-semibold transition-colors ${editing.days.includes(i)?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
+                  {d}
+                </button>
+              ))}
+            </div>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">時間</p>
+            <div className="overflow-hidden rounded-xl mb-4">
+              <input type="time" value={editing.time} onChange={e=>setEditing({...editing,time:e.target.value})}
+                className="border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50 w-full block"/>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={()=>{setEditing(null);setAdding(false);}}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200">
+                キャンセル
               </button>
-            ))}
-          </div>
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">時間</p>
-          <input type="time" value={editing.time} onChange={e=>setEditing({...editing,time:e.target.value})}
-            className="border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50 mb-4 w-full"/>
-          <div className="flex gap-2">
-            <button onClick={()=>{setEditing(null);setAdding(false);}}
-              className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200">
-              キャンセル
-            </button>
-            <button onClick={()=>save(editing)} disabled={editing.days.length===0}
-              className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-[var(--c-primary)] text-white active:opacity-80 disabled:opacity-40">
-              保存
-            </button>
+              <button onClick={()=>save(editing)} disabled={editing.days.length===0}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-[var(--c-primary)] text-white active:opacity-80 disabled:opacity-40">
+                保存
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -3280,78 +3284,86 @@ function ShopLocationPanel({locations,onChange,isPremium,onProPrompt}:{
         ))}
       </div>
       {adding&&(
-        <div className="mt-3 bg-white rounded-2xl shadow-sm p-4">
-          {mapMode?(
+        <div className="fixed inset-0 z-[100] bg-black/40 flex items-end justify-center" onClick={cancelAdd}>
+          <div className="bg-white w-full max-w-md mx-auto rounded-t-3xl max-h-[85vh] overflow-y-auto p-4" onClick={e=>e.stopPropagation()}>
+            {!pendingCoord?(
+              <>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">場所を検索</p>
+                <div className="flex gap-2 mb-3">
+                  <input value={searchQuery} onChange={e=>setSearchQuery(e.target.value)}
+                    onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();doSearch();}}}
+                    placeholder="住所や施設名を入力"
+                    className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50"/>
+                  <button onClick={doSearch} disabled={searching||!searchQuery.trim()}
+                    className="px-4 py-2 bg-gray-100 rounded-xl text-sm font-semibold text-gray-700 shrink-0 disabled:opacity-40">
+                    {searching?'検索中':'検索'}
+                  </button>
+                </div>
+                {searchResults.length>0&&(
+                  <div className="space-y-1 mb-3 max-h-40 overflow-y-auto">
+                    {searchResults.map((r,i)=>(
+                      <button key={i} onClick={()=>setPendingCoord(r)}
+                        className="w-full text-left px-3 py-2 rounded-xl bg-gray-50 active:bg-gray-100 text-sm text-gray-700 truncate">
+                        {r.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <button onClick={openMapMode} disabled={locating}
+                  className="w-full py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200 mb-2 disabled:opacity-40">
+                  {locating?'取得中...':'地図で指定'}
+                </button>
+                <button onClick={useCurrentLocation} disabled={locating}
+                  className="w-full py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200 mb-3 disabled:opacity-40">
+                  {locating?'取得中...':'現在地から登録'}
+                </button>
+                <button onClick={cancelAdd} className="w-full py-2.5 rounded-xl text-sm font-semibold bg-gray-50 text-gray-400">
+                  キャンセル
+                </button>
+              </>
+            ):(
+              <>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">通知する範囲</p>
+                <div className="flex gap-2 mb-4">
+                  {([100,300,500] as const).map(r=>(
+                    <button key={r} onClick={()=>setRadius(r)}
+                      className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors ${radius===r?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
+                      {r}m
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">名前</p>
+                <input value={pendingCoord.name} onChange={e=>setPendingCoord({...pendingCoord,name:e.target.value})}
+                  placeholder="場所の名前"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50 mb-4"/>
+                <button onClick={()=>{setMapCenter({lat:pendingCoord.lat,lng:pendingCoord.lng});setMapMode(true);}}
+                  className="w-full py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200 mb-4">
+                  地図で場所を変更
+                </button>
+                <div className="flex gap-2">
+                  <button onClick={()=>{editLocId?cancelAdd():setPendingCoord(null);}}
+                    className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200">
+                    {editLocId?'キャンセル':'戻る'}
+                  </button>
+                  <button onClick={confirmAdd}
+                    className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-[var(--c-primary)] text-white active:opacity-80">
+                    {editLocId?'保存':'登録'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {adding&&mapMode&&(
+        <div className="fixed inset-0 z-[110] bg-black/50 flex items-end justify-center" onClick={()=>{setMapMode(false);setMapCenter(null);}}>
+          <div className="bg-white w-full max-w-md mx-auto rounded-t-3xl p-4" onClick={e=>e.stopPropagation()}>
             <ShopMapPicker
               initialCenter={mapCenter??searchResults[0]??{lat:35.681236,lng:139.767125}}
               onConfirm={loc=>{setPendingCoord(prev=>editLocId&&prev?{...loc,name:prev.name}:loc);setMapMode(false);setMapCenter(null);}}
               onCancel={()=>{setMapMode(false);setMapCenter(null);}}/>
-          ):!pendingCoord?(
-            <>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">場所を検索</p>
-              <div className="flex gap-2 mb-3">
-                <input value={searchQuery} onChange={e=>setSearchQuery(e.target.value)}
-                  onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();doSearch();}}}
-                  placeholder="住所や施設名を入力"
-                  className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50"/>
-                <button onClick={doSearch} disabled={searching||!searchQuery.trim()}
-                  className="px-4 py-2 bg-gray-100 rounded-xl text-sm font-semibold text-gray-700 shrink-0 disabled:opacity-40">
-                  {searching?'検索中':'検索'}
-                </button>
-              </div>
-              {searchResults.length>0&&(
-                <div className="space-y-1 mb-3 max-h-40 overflow-y-auto">
-                  {searchResults.map((r,i)=>(
-                    <button key={i} onClick={()=>setPendingCoord(r)}
-                      className="w-full text-left px-3 py-2 rounded-xl bg-gray-50 active:bg-gray-100 text-sm text-gray-700 truncate">
-                      {r.name}
-                    </button>
-                  ))}
-                </div>
-              )}
-              <button onClick={openMapMode} disabled={locating}
-                className="w-full py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200 mb-2 disabled:opacity-40">
-                {locating?'取得中...':'地図で指定'}
-              </button>
-              <button onClick={useCurrentLocation} disabled={locating}
-                className="w-full py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200 mb-3 disabled:opacity-40">
-                {locating?'取得中...':'現在地から登録'}
-              </button>
-              <button onClick={cancelAdd} className="w-full py-2.5 rounded-xl text-sm font-semibold bg-gray-50 text-gray-400">
-                キャンセル
-              </button>
-            </>
-          ):(
-            <>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">通知する範囲</p>
-              <div className="flex gap-2 mb-4">
-                {([100,300,500] as const).map(r=>(
-                  <button key={r} onClick={()=>setRadius(r)}
-                    className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors ${radius===r?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
-                    {r}m
-                  </button>
-                ))}
-              </div>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">名前</p>
-              <input value={pendingCoord.name} onChange={e=>setPendingCoord({...pendingCoord,name:e.target.value})}
-                placeholder="場所の名前"
-                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50 mb-4"/>
-              <button onClick={()=>{setMapCenter({lat:pendingCoord.lat,lng:pendingCoord.lng});setMapMode(true);}}
-                className="w-full py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200 mb-4">
-                地図で場所を変更
-              </button>
-              <div className="flex gap-2">
-                <button onClick={()=>{editLocId?cancelAdd():setPendingCoord(null);}}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200">
-                  {editLocId?'キャンセル':'戻る'}
-                </button>
-                <button onClick={confirmAdd}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-[var(--c-primary)] text-white active:opacity-80">
-                  {editLocId?'保存':'登録'}
-                </button>
-              </div>
-            </>
-          )}
+          </div>
         </div>
       )}
     </div>
@@ -3369,8 +3381,6 @@ function ForgetAlertsPanel({alerts,onChange,isPremium,onProPrompt}:{
   onProPrompt:(feature:string)=>void;
 }) {
   const DOW=['日','月','火','水','木','金','土'];
-  const NAME_PRESETS=['自宅','職場','学校','スーパー'];
-  const ITEM_SUGGESTIONS=['財布','鍵','定期券','パソコン','充電器'];
   const [editing,setEditing]=useState<ForgetAlertDraft|null>(null);
   const [adding,setAdding]=useState(false);
   const [mapMode,setMapMode]=useState(false);
@@ -3404,14 +3414,16 @@ function ForgetAlertsPanel({alerts,onChange,isPremium,onProPrompt}:{
     else if(p==='休日'){ setEditing({...editing,weekdays:[0,6]}); setCustomDayOpen(false); }
     else setCustomDayOpen(true);
   };
-  // 保存前に表示する文章形式のプレビュー（入力フォームとは別に、確認だけを担う）
+  // 保存前に表示する文章形式のプレビュー（入力フォームとは別に、確認だけを担う）。
+  // 時間帯を指定していない（終日）場合は「の終日に」という不自然な言い回しを避け、
+  // 曜日だけを述べる形にする
   const previewText=(d:ForgetAlertDraft)=>{
     const day=dayPreset(d.weekdays)==='カスタム'?fmtDays(d.weekdays):dayPreset(d.weekdays);
-    const time=d.timeStart&&d.timeEnd?`${d.timeStart}〜${d.timeEnd}`:'終日';
     const place=d.name||'（場所未設定）';
     const triggerLabel=d.trigger==='enter'?`${place}に着いたとき`:`${place}を出るとき`;
     const items=d.items.length>0?d.items.join('、'):'（持ち物未設定）';
-    return `${day}の${time}に${triggerLabel}、\n${items}を確認してください。`;
+    const dayClause=d.timeStart&&d.timeEnd?`${day}の${d.timeStart}〜${d.timeEnd}に`:`${day}、`;
+    return `${dayClause}${triggerLabel}、\n${items}を確認してください。`;
   };
 
   const cancelEdit=()=>{
@@ -3523,14 +3535,6 @@ function ForgetAlertsPanel({alerts,onChange,isPremium,onProPrompt}:{
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">忘れ物防止アラートを作成</p>
 
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">場所</p>
-            <div className="flex gap-1.5 flex-wrap mb-2">
-              {NAME_PRESETS.map(p=>(
-                <button key={p} onClick={()=>setEditing({...editing,name:p})}
-                  className={`px-3 py-1 rounded-full text-xs font-semibold ${editing.name===p?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>{p}</button>
-              ))}
-              <button onClick={()=>setEditing({...editing,name:''})}
-                className={`px-3 py-1 rounded-full text-xs font-semibold ${editing.name&&!NAME_PRESETS.includes(editing.name)?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>その他</button>
-            </div>
             <input value={editing.name} onChange={e=>setEditing({...editing,name:e.target.value})}
               placeholder="場所の名前"
               className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50 mb-2"/>
@@ -3610,14 +3614,6 @@ function ForgetAlertsPanel({alerts,onChange,isPremium,onProPrompt}:{
               <button onClick={addItem} disabled={!itemInput.trim()}
                 className="px-4 py-2 bg-gray-100 rounded-xl text-sm font-semibold text-gray-700 shrink-0 disabled:opacity-40">追加</button>
             </div>
-            {ITEM_SUGGESTIONS.filter(s=>!editing.items.includes(s)).length>0&&(
-              <div className="flex gap-1.5 flex-wrap mb-2">
-                {ITEM_SUGGESTIONS.filter(s=>!editing.items.includes(s)).map(s=>(
-                  <button key={s} onClick={()=>setEditing({...editing,items:[...editing.items,s]})}
-                    className="px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-500">+{s}</button>
-                ))}
-              </div>
-            )}
             {editing.items.length>0&&(
               <div className="flex flex-wrap gap-1.5 mb-4">
                 {editing.items.map(it=>(
