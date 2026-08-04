@@ -5892,7 +5892,8 @@ export default function App() {
       if(shouldOpenLater) setActiveTab('later');
       if(notificationOpened) logAnalyticsEvent('notification_opened');
       // バックグラウンド中に場所到着で発火済みになったタスクのlocationNotifyをオフにする
-      // （時間通知とのOR条件で、片方が発火したらもう片方は解除する仕様）
+      // （場所通知は1タスク1回のみのため。時間通知とは独立しており、時間通知が別途発火しても
+      // 互いに解除し合わない仕様）
       const firedIds=await getFiredTaskLocationIds();
       if(firedIds.length>0){
         setTasks(prev=>prev.map(t=>firedIds.includes(t.id)?{...t,locationNotify:false,location:undefined}:t));

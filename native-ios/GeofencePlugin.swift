@@ -304,8 +304,9 @@ public class GeofencePlugin: CAPPlugin, CLLocationManagerDelegate, UNUserNotific
         UNUserNotificationCenter.current().add(request)
     }
 
-    // 「あとでやる」タスクの場所通知。時間通知（task-alert-）とOR条件のため、
-    // 発火したらこのタスクの残りの時間通知予約を解除し、このリージョンの監視も止める（1タスク1回のみ）
+    // 「あとでやる」タスクの場所通知。時間通知（task-alert-）とは独立して動作し、
+    // 発火してもお互いを解除しない（ADHDの特性上「重複通知は問題ではなく、必要なタイミングで
+    // 思い出せることを優先する」方針のため）。このリージョン自体の監視は1タスク1回のみ
     private func handleTaskLocationEnter(_ region: CLRegion) {
         let taskId = String(region.identifier.dropFirst(GeofencePlugin.taskLocPrefix.count))
         let defaults = UserDefaults.standard
@@ -342,16 +343,6 @@ public class GeofencePlugin: CAPPlugin, CLLocationManagerDelegate, UNUserNotific
 
         if let circular = region as? CLCircularRegion {
             locationManager.stopMonitoring(for: circular)
-        }
-
-        // 時間通知（task-alert-<taskId>-<分オフセット>）が残っていれば解除する（OR条件の重複防止）
-        let center = UNUserNotificationCenter.current()
-        let alertPrefix = "task-alert-\(taskId)-"
-        center.getPendingNotificationRequests { requests in
-            let staleIds = requests.map { $0.identifier }.filter { $0.hasPrefix(alertPrefix) }
-            if !staleIds.isEmpty {
-                center.removePendingNotificationRequests(withIdentifiers: staleIds)
-            }
         }
     }
 
@@ -422,19 +413,8 @@ public class GeofencePlugin: CAPPlugin, CLLocationManagerDelegate, UNUserNotific
     // MARK: - UNUserNotificationCenterDelegate
 
     public func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
-        // アプリがフォアグラウンドの間に時間通知（task-alert-）が発火した場合、
-        // OR条件のもう片方である場所通知（task-loc-）の監視を止める（重複防止）
-        let id = notification.request.identifier
-        if id.hasPrefix("task-alert-") {
-            let rest = String(id.dropFirst("task-alert-".count))
-            if let lastDash = rest.range(of: "-", options: .backwards) {
-                let taskId = String(rest[rest.startIndex..<lastDash.lowerBound])
-                let regionId = GeofencePlugin.taskLocPrefix + taskId
-                for region in locationManager.monitoredRegions where region.identifier == regionId {
-                    locationManager.stopMonitoring(for: region)
-                }
-            }
-        }
+        // 時間通知（task-alert-）と場所通知（task-loc-）は独立して動作する設計のため、
+        // 一方の発火をもう一方の解除トリガーにはしない（意図的に何もしない）
         completionHandler([.banner, .sound, .list])
     }
 
