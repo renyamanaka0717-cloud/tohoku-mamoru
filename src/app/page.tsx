@@ -12,7 +12,6 @@ import { getAppVersion } from './components/AppVersion';
 import { logAnalyticsEvent } from './components/Analytics';
 import { isDevModeUnlocked, DEV_MODE_UNLOCKED_KEY, getDevPremiumOverride, setDevPremiumOverride, isDevDenied, DEV_LOCATION_DENIED_KEY, DEV_NOTIF_DENIED_KEY } from './components/DevMode';
 import { App as CapApp } from '@capacitor/app';
-import Onboarding from './components/Onboarding';
 import ProductTour from './components/ProductTour';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -126,7 +125,6 @@ const FORGET_ALERTS_KEY = 'tl-forget-alerts-v1';
 const NOTIF_ASKED_KEY   = 'tl-notif-asked-v1';
 const LOCATION_ASKED_KEY = 'tl-location-asked-v1';
 const WAKESLEEP_ASKED_KEY = 'tl-wakesleep-asked-v1';
-const ONBOARDING_KEY = 'tl-onboarding-completed-v1';
 const FEATURE_USAGE_KEY = 'tl-feature-usage-v1';
 const RECOMMEND_STATE_KEY = 'tl-recommend-state-v1';
 const TOUR_COMPLETED_KEY = 'tl-product-tour-completed-v1';
@@ -4068,7 +4066,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   const [locGranted,setLocGrantedState] = useState(true);
   useEffect(()=>{
     setDevPlanState(getDevPremiumOverride());
-    setFirstLaunchDone(!!localStorage.getItem(ONBOARDING_KEY));
+    setFirstLaunchDone(!!localStorage.getItem(WAKESLEEP_ASKED_KEY));
     setTourDone(!!localStorage.getItem(TOUR_COMPLETED_KEY));
     setNotifGrantedState(!isDevDenied(DEV_NOTIF_DENIED_KEY));
     setLocGrantedState(!isDevDenied(DEV_LOCATION_DENIED_KEY));
@@ -4077,13 +4075,11 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   const toggleFirstLaunch=()=>{
     const next=!firstLaunchDone;
     if(next){
-      localStorage.setItem(ONBOARDING_KEY,'1');
       localStorage.setItem(WAKESLEEP_ASKED_KEY,'1');
       localStorage.setItem(TOUR_COMPLETED_KEY,'1');
       localStorage.setItem(NOTIF_ASKED_KEY,'1');
       localStorage.setItem(LOCATION_ASKED_KEY,'1');
     }else{
-      localStorage.removeItem(ONBOARDING_KEY);
       localStorage.removeItem(WAKESLEEP_ASKED_KEY);
       localStorage.removeItem(TOUR_COMPLETED_KEY);
       localStorage.removeItem(NOTIF_ASKED_KEY);
@@ -5847,7 +5843,6 @@ export default function App() {
   const [authUser,setAuthUser] = useState<AuthUser|null>(null);
   const [showNotifPrompt,setShowNotifPrompt] = useState(false);
   const [showLocPrompt,setShowLocPrompt] = useState(false);
-  const [showOnboarding,setShowOnboarding] = useState(false);
   const [showTour,setShowTour] = useState(false);
   const [tourDragSignal,setTourDragSignal] = useState(0);
   const [tourTaskSavedSignal,setTourTaskSavedSignal] = useState(0);
@@ -5923,9 +5918,7 @@ export default function App() {
       if(rs) setRecommendState(JSON.parse(rs) as Partial<Record<RecommendationId,RecommendationState>>);
     }catch{}
     setLoaded(true);
-    if(!localStorage.getItem(ONBOARDING_KEY)){
-      setShowOnboarding(true);
-    } else if(!localStorage.getItem(WAKESLEEP_ASKED_KEY)){
+    if(!localStorage.getItem(WAKESLEEP_ASKED_KEY)){
       maybeShowWakeSleepPrompt();
     } else if(!localStorage.getItem(TOUR_COMPLETED_KEY)){
       setTimeout(()=>{setShowTour(true);logAnalyticsEvent('product_tour_started');},1000);
@@ -6120,11 +6113,6 @@ export default function App() {
     if(localStorage.getItem(LOCATION_ASKED_KEY)) return;
     setShowLocPrompt(true);
   };
-  const completeOnboarding=()=>{
-    localStorage.setItem(ONBOARDING_KEY,'1');
-    setShowOnboarding(false);
-    maybeShowWakeSleepPrompt();
-  };
   const dismissNotifPrompt=()=>{
     localStorage.setItem(NOTIF_ASKED_KEY,'1');
     setShowNotifPrompt(false);
@@ -6181,10 +6169,10 @@ export default function App() {
     else if(id==='repeatTask'){ openAdd(); }
   };
 
-  // オンボーディング完了から一定時間が経ったタイミングで、未使用の機能を1つだけ提案する
+  // 起動から一定時間が経ったタイミングで、未使用の機能を1つだけ提案する
   // （インストールから3日以上・前回のおすすめ表示から2日以上・却下から7日以上・表示は最大2回まで）
   useEffect(()=>{
-    if(!loaded||showOnboarding||showTour||!featureUsage||recommendPickedRef.current) return;
+    if(!loaded||showTour||!featureUsage||recommendPickedRef.current) return;
     const timer=setTimeout(async()=>{
       if(recommendPickedRef.current) return;
       const fu=featureUsageRef.current;
@@ -6210,7 +6198,7 @@ export default function App() {
       }
     },6000);
     return ()=>clearTimeout(timer);
-  },[loaded,showOnboarding,featureUsage]);
+  },[loaded,featureUsage]);
 
   // 起床時間後、初回起動時に過去の未完了タスクをポップアップで確認（スヌーズ対応）
   useEffect(()=>{
@@ -6756,7 +6744,6 @@ export default function App() {
   };
 
   if(!loaded) return <div className="flex h-screen items-center justify-center text-gray-400">読み込み中…</div>;
-  if(showOnboarding) return <Onboarding onComplete={completeOnboarding}/>;
 
   return (
     <div className="max-w-md mx-auto bg-white font-sans flex flex-col" style={{height:'100%'}}>

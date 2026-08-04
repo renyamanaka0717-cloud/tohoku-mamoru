@@ -766,7 +766,6 @@ interface ForgetAlert {
 | `SHOP_NOTIF_KEY` | `'tl-shop-notif-v1'` | 買い物リストの時間指定通知設定 |
 | `SHOP_LOC_KEY` | `'tl-shop-loc-v1'` | 買い物リストの場所通知設定（`ShopLocation[]`） |
 | `FORGET_ALERTS_KEY` | `'tl-forget-alerts-v1'` | 忘れ物防止アラート設定（`ForgetAlert[]`） |
-| `ONBOARDING_KEY` | `'tl-onboarding-completed-v1'` | 初回起動オンボーディング完了フラグ |
 | `FEATURE_USAGE_KEY` | `'tl-feature-usage-v1'` | 「おすすめ機能」判定用の機能利用履歴（`FeatureUsage`） |
 | `RECOMMEND_STATE_KEY` | `'tl-recommend-state-v1'` | 「おすすめ機能」の表示・却下状態（`RecommendationState`） |
 | `TOUR_COMPLETED_KEY` | `'tl-product-tour-completed-v1'` | プロダクトツアー完了フラグ |
@@ -775,17 +774,15 @@ interface ForgetAlert {
 
 ## オンボーディング・おすすめ機能・プロダクトツアー
 
-初回起動時の導線として3つの機能がこの順で連鎖する: **オンボーディング → 起床・就寝プロンプト → プロダクトツアー → （通知プロンプト → 位置情報プロンプト）**。「おすすめ機能」はこれらとは独立して、インストール後しばらく経ってから条件を満たすたびに表示される。
+初回起動時の導線として以下の順で連鎖する: **起床・就寝プロンプト → プロダクトツアー → （通知プロンプト → 位置情報プロンプト）**。「おすすめ機能」はこれらとは独立して、インストール後しばらく経ってから条件を満たすたびに表示される。
 
-**通知・位置情報の許可は、オンボーディング中ではなくプロダクトツアー完了後に求める。** アプリに触る前に許可を求めると拒否されやすく、BrainBoxの価値を実際に体験した後の方が許可する理由が伝わりやすいため（オンボーディングの最終ページに許可ボタンの行があった旧実装は削除済み）。
+**オンボーディング（説明用のスワイプ式イントロ画面）は廃止済み。** 「読まれにくい」「BrainBoxの価値は説明よりも実際に触ることで伝わる」「起動からツアー開始までの操作回数を減らしたい」という理由で削除し、初回起動時はいきなり起床・就寝プロンプト→プロダクトツアーが始まる構成にした（`src/app/components/Onboarding.tsx`・`ONBOARDING_KEY`・`showOnboarding`state・`completeOnboarding()`はすべて削除済み。新しいセッションで復活させないこと）。
 
-### オンボーディング（`src/app/components/Onboarding.tsx`）
-
-初回起動時だけ表示する5ページのスワイプ式イントロ（`App`のトップレベルで`showOnboarding`がtrueの間は`Onboarding`を全画面表示し、メインUIは描画しない）。`ONBOARDING_KEY`が無ければ表示。**通知・位置情報の許可リクエストは行わない**（`onComplete`を呼ぶだけ）。「始める」→`completeOnboarding()`が`ONBOARDING_KEY`をセットし、`maybeShowWakeSleepPrompt()`を呼ぶ。
+**通知・位置情報の許可は、プロダクトツアー完了後に求める。** アプリに触る前に許可を求めると拒否されやすく、BrainBoxの価値を実際に体験した後の方が許可する理由が伝わりやすいため。
 
 ### 起床・就寝プロンプト → プロダクトツアー → 通知・位置情報プロンプトの連鎖
 
-`maybeShowWakeSleepPrompt()`は`WAKESLEEP_ASKED_KEY`が既にあれば何もせず`maybeShowProductTour()`を呼ぶ（＝オンボーディングを飛ばして起動した既存ユーザーでもツアーへ繋がる）。プロンプトを表示した場合は`dismissWakeSleepPrompt()`（`confirmWakeSleepPrompt()`もこれを呼ぶ）の中で`WAKESLEEP_ASKED_KEY`セット後に`maybeShowProductTour()`を呼ぶ。
+初回ロードの`useEffect`は`WAKESLEEP_ASKED_KEY`が無ければ`maybeShowWakeSleepPrompt()`を呼ぶところから始まる（オンボーディングを挟まないため、これが初回起動時の最初のポップアップになる）。`maybeShowWakeSleepPrompt()`は`WAKESLEEP_ASKED_KEY`が既にあれば何もせず`maybeShowProductTour()`を呼ぶ（＝既にこのプロンプトを済ませた既存ユーザーはそのままツアーへ繋がる）。プロンプトを表示した場合は`dismissWakeSleepPrompt()`（`confirmWakeSleepPrompt()`もこれを呼ぶ）の中で`WAKESLEEP_ASKED_KEY`セット後に`maybeShowProductTour()`を呼ぶ。
 
 `maybeShowProductTour()`は`TOUR_COMPLETED_KEY`が既にあれば`maybeShowNotifPrompt()`（後述）を呼んでツアーをスキップする。ツアーを表示した場合は、`ProductTour`の`onFinish`（`TOUR_COMPLETED_KEY`をセットする箇所）から`maybeShowNotifPrompt()`を呼ぶ——**「スキップ」ボタンを押した場合も`onFinish`経由で同じ連鎖に入る**（ツアーを完了させてもスキップさせても、その後の許可プロンプトの流れは変わらない）。
 
@@ -795,11 +792,11 @@ interface ForgetAlert {
 - 「あとで」（拒否）を押した場合も許可フローを進める（通知→位置情報→ホーム）だけで、それ以上何も表示しない＝そのままホーム画面に戻る
 - `NOTIF_ASKED_KEY`/`LOCATION_ASKED_KEY`で「一度尋ねたら二度と出さない」を管理する（拒否されても再度は聞かない）
 
-**既にオンボーディング・起床就寝プロンプト・ツアーを済ませている既存ユーザー**（この導線変更前からのユーザー）は上記チェーンが発火しないため、初回ロードの`useEffect`の最終分岐で`TOUR_COMPLETED_KEY`はあるが`NOTIF_ASKED_KEY`が無い場合に`maybeShowNotifPrompt()`を呼び、通知・位置情報プロンプトだけ改めて表示する。
+**既に起床就寝プロンプト・ツアーを済ませている既存ユーザー**（この導線変更前からのユーザー）は上記チェーンが発火しないため、初回ロードの`useEffect`の最終分岐で`TOUR_COMPLETED_KEY`はあるが`NOTIF_ASKED_KEY`が無い場合に`maybeShowNotifPrompt()`を呼び、通知・位置情報プロンプトだけ改めて表示する。
 
 ### プロダクトツアー（`src/app/components/ProductTour.tsx`）
 
-タスク追加→「あとでやる」に保存→ドラッグ＆ドロップの3ステップのスポットライト型ツアー。`App`の`showTour`がtrueの間、メインUIの上に**オーバーレイ表示**する（オンボーディングと違い実際のUIを隠さない。`settingsOpen`/`calendarOpen`/`searchOpen`のいずれかがtrueの間は表示しないが、**`modal.open`中は表示し続ける**——「保存」ステップでタスクモーダル自体をスポットライトする必要があるため）。
+タスク追加→「あとでやる」に保存→ドラッグ＆ドロップの3ステップのスポットライト型ツアー。`App`の`showTour`がtrueの間、メインUIの上に**オーバーレイ表示**する（実際のUIを隠さず、暗転帯の「穴」から直接操作させる設計。`settingsOpen`/`calendarOpen`/`searchOpen`のいずれかがtrueの間は表示しないが、**`modal.open`中は表示し続ける**——「保存」ステップでタスクモーダル自体をスポットライトする必要があるため）。
 
 **全ステップが実際の操作でのみ進む（「次へ」ボタンは無い）。** 静的な説明を読んで進むのではなく、実際にタップ・入力・ドラッグしてもらうことでBrainBoxの使い方を体感してもらう設計（読まれにくい説明文・無駄な操作回数を減らす狙い）。
 
@@ -828,7 +825,7 @@ interface RecommendationDef { id:RecommendationId; usedKey:keyof Omit<FeatureUsa
 - `featureUsage`（`FEATURE_USAGE_KEY`）は初回ロード時に無ければ`{installedAt:new Date().toISOString()}`で作成（＝そのタイミングを「インストール日時」とみなす）
 - 利用検知用`useEffect`が`shopItems`/`shopLocations`/`tasks`の変化を見て、各機能が初めて使われた時刻を一度だけ`featureUsage`に記録する（`shopItems.length>0`→買い物リスト、`shopLocations.length>0`→場所通知、`tasks.some(t=>t.recurrence)`→繰り返しタスク）
 - `recommendState`（`RECOMMEND_STATE_KEY`、`Partial<Record<RecommendationId,RecommendationState>>`）に機能ごとの表示回数・最終表示日時・却下日時を記録
-- **表示条件判定**（`loaded && !showOnboarding && !showTour`のタイミングで6秒後に1回だけ判定、`recommendPickedRef`で1セッション1回に制限）:
+- **表示条件判定**（`loaded && !showTour`のタイミングで6秒後に1回だけ判定、`recommendPickedRef`で1セッション1回に制限）:
   - インストールから3日以上経過していること（`daysBetween`）
   - 前回何らかのおすすめを表示してから2日以上経過していること（`featureUsage.lastRecommendationShownAt`、機能を跨いだグローバルな間隔）
   - 対象機能が未使用であること（`featureUsage[def.usedKey]`が未設定）
@@ -839,7 +836,8 @@ interface RecommendationDef { id:RecommendationId; usedKey:keyof Omit<FeatureUsa
 
 ### 避けるパターン
 
-- オンボーディング・おすすめ機能・プロダクトツアーの3つを同時に表示しない（`showTour`は`showOnboarding`とrecommendation表示条件の両方でガードしている）
+- おすすめ機能とプロダクトツアーを同時に表示しない（おすすめ機能の表示条件が`!showTour`でガードしている）
+- 削除済みの`Onboarding.tsx`・`ONBOARDING_KEY`・`showOnboarding`を新しいセッションで復活させない（初回起動時の説明画面は意図的に廃止済み。起床・就寝プロンプトから直接プロダクトツアーに入る設計）
 - プロダクトツアーの対象要素に`data-tour`属性を付け忘れない（`ProductTour`は`querySelector`でこれらを探すため、対象のJSXを変更する時は属性ごと移動させること）
 - 「おすすめ機能」の対象を増やす時、`RECOMMENDATION_DEFS`に追記する以外の分岐（if文の追加等）を作らない（優先順位はこの配列の並び順で決まる設計）
 
@@ -1380,7 +1378,7 @@ DEV_PREMIUM_CHANGED_EVENT  // プラン上書きの変更をPremiumProviderに�
 
 - **プラン**: `Premium.tsx`の`PremiumProvider`が`getDevPremiumOverride()`を読み、`devOverride`が設定されていれば実際の`isPremium`計算結果より優先する（`effectiveIsPremium = devOverride ? devOverride==='premium' : isPremium`）。`setDevPremiumOverride()`は`localStorage`更新後に`DEV_PREMIUM_CHANGED_EVENT`を発火し、`PremiumProvider`はこれをlistenしてリロード無しで即座に反映する
 - **権限（通知・位置情報）**: `Geofence.ts`の`checkGeofencePermissions()`/`ensureGeofencePermission()`の先頭で`devPermissionOverride()`を確認し、どちらかの拒否フラグが立っていれば実際のネイティブ呼び出し・Web既定値より優先して`'denied'`/`false`を返す。これにより`ShopLocationPanel`の権限拒否バナー等、実際の権限確認ロジックを使う画面がそのまま正しく反応する
-- **初回起動・プロダクトツアー**: `SettingsScreen`内の`toggleFirstLaunch()`/`toggleTour()`が`ONBOARDING_KEY`等のオンボーディング関連キーを直接読み書きし、**`window.location.reload()`で即座に反映する**（これらのフラグはApp起動時の`useEffect`で一度だけ読まれる設計のため、リロードしないと反映されない）。「初回起動」をOFFにすると`ONBOARDING_KEY`/`WAKESLEEP_ASKED_KEY`/`TOUR_COMPLETED_KEY`/`NOTIF_ASKED_KEY`/`LOCATION_ASKED_KEY`をまとめてクリアし、オンボーディングから全ての導線をやり直せる。「プロダクトツアー」は`TOUR_COMPLETED_KEY`のみを対象にする
+- **初回起動・プロダクトツアー**: `SettingsScreen`内の`toggleFirstLaunch()`/`toggleTour()`が`WAKESLEEP_ASKED_KEY`等の初回起動関連キーを直接読み書きし、**`window.location.reload()`で即座に反映する**（これらのフラグはApp起動時の`useEffect`で一度だけ読まれる設計のため、リロードしないと反映されない）。「初回起動」をOFFにすると`WAKESLEEP_ASKED_KEY`/`TOUR_COMPLETED_KEY`/`NOTIF_ASKED_KEY`/`LOCATION_ASKED_KEY`をまとめてクリアし、起床・就寝プロンプトから全ての導線をやり直せる。「プロダクトツアー」は`TOUR_COMPLETED_KEY`のみを対象にする
 
 ### 避けるパターン
 
