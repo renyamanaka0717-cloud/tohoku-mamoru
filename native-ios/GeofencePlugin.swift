@@ -8,7 +8,7 @@ import UIKit
 private struct GeofenceLocationEntry: Codable { let id: String; let name: String; let lat: Double; let lng: Double; let radius: Double }
 private struct WidgetShopEntry: Codable { let id: String; let name: String }
 // 忘れ物防止アラート（退出トリガー）。weekdaysは0=日〜6=土、timeStart/timeEndは"HH:mm"（空文字なら終日対象）
-private struct ForgetAlertEntry: Codable { let id: String; let name: String; let lat: Double; let lng: Double; let radius: Double; let weekdays: [Int]; let timeStart: String; let timeEnd: String; let items: [String] }
+private struct ForgetAlertEntry: Codable { let id: String; let name: String; let lat: Double; let lng: Double; let radius: Double; let trigger: String; let weekdays: [Int]; let timeStart: String; let timeEnd: String; let items: [String] }
 
 @objc(GeofencePlugin)
 public class GeofencePlugin: CAPPlugin, CLLocationManagerDelegate, UNUserNotificationCenterDelegate {
@@ -199,8 +199,8 @@ public class GeofencePlugin: CAPPlugin, CLLocationManagerDelegate, UNUserNotific
                 radius: entry.radius,
                 identifier: GeofencePlugin.forgetPrefix + entry.id
             )
-            region.notifyOnEntry = false
-            region.notifyOnExit = true
+            region.notifyOnEntry = entry.trigger == "enter"
+            region.notifyOnExit = entry.trigger != "enter"
             locationManager.startMonitoring(for: region)
             dataDict[entry.id] = entry
         }
@@ -256,6 +256,10 @@ public class GeofencePlugin: CAPPlugin, CLLocationManagerDelegate, UNUserNotific
     public func locationManager(_ manager: CLLocationManager, didEnterRegion region: CLRegion) {
         if region.identifier.hasPrefix(GeofencePlugin.taskLocPrefix) {
             handleTaskLocationEnter(region)
+            return
+        }
+        if region.identifier.hasPrefix(GeofencePlugin.forgetPrefix) {
+            handleForgetAlertFire(region, isEnter: true)
             return
         }
         guard region.identifier.hasPrefix(GeofencePlugin.regionPrefix) else { return }
@@ -353,12 +357,13 @@ public class GeofencePlugin: CAPPlugin, CLLocationManagerDelegate, UNUserNotific
 
     public func locationManager(_ manager: CLLocationManager, didExitRegion region: CLRegion) {
         guard region.identifier.hasPrefix(GeofencePlugin.forgetPrefix) else { return }
-        handleForgetAlertExit(region)
+        handleForgetAlertFire(region, isEnter: false)
     }
 
-    // 忘れ物防止アラート。退出のたびに毎回発火し得る（タスクの場所通知と違い1回きりではない）ため、
-    // GPS境界付近でのジッターによる連続発火だけをクールダウンで防ぐ。曜日・時間帯は発火時点の現在時刻で判定する
-    private func handleForgetAlertExit(_ region: CLRegion) {
+    // 忘れ物防止アラート。到着(Enter)・退出(Exit)どちらかをトリガーに選べる。条件を満たすたびに
+    // 毎回発火し得る（タスクの場所通知と違い1回きりではない）ため、GPS境界付近でのジッターによる
+    // 連続発火だけをクールダウンで防ぐ。曜日・時間帯は発火時点の現在時刻で判定する
+    private func handleForgetAlertFire(_ region: CLRegion, isEnter: Bool) {
         let alertId = String(region.identifier.dropFirst(GeofencePlugin.forgetPrefix.count))
         let defaults = UserDefaults.standard
         let cooldownKey = "forgetAlertLastNotified_\(alertId)"
@@ -396,8 +401,13 @@ public class GeofencePlugin: CAPPlugin, CLLocationManagerDelegate, UNUserNotific
         defaults.set(now, forKey: cooldownKey)
 
         let content = UNMutableNotificationContent()
-        content.title = "\(entry.name)を出ました"
-        content.body = entry.items.isEmpty ? "忘れ物はありませんか？" : "\(entry.items.joined(separator: "、"))を持ちましたか？"
+        if isEnter {
+            content.title = "\(entry.name)に着きました"
+            content.body = entry.items.isEmpty ? "確認することはありませんか？" : "\(entry.items.joined(separator: "、"))を確認しましょう。"
+        } else {
+            content.title = "\(entry.name)を出ました"
+            content.body = entry.items.isEmpty ? "忘れ物はありませんか？" : "\(entry.items.joined(separator: "、"))を持ちましたか？"
+        }
         content.sound = .default
         let request = UNNotificationRequest(identifier: "forget-fire-\(alertId)-\(Int(now))", content: content, trigger: nil)
         UNUserNotificationCenter.current().add(request)

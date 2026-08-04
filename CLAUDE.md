@@ -630,25 +630,26 @@ const SHOP_LOC_KEY = 'tl-shop-loc-v1';
 
 ## 忘れ物防止アラート（設定 → 忘れ物防止アラート、PRO機能）
 
-「あとでやる」とは完全に独立した機能。「何をするか」ではなく「何を持っていくか」を管理する（例: 自宅を出るときに財布・鍵・社員証を確認）。買い物リスト・タスクの場所通知と同じ`GeofencePlugin`/`CLLocationManager`を共有するが、`"forget-"` prefixで別管理し、**到着(Enter)ではなく退出(Exit)をトリガーにする点が他の場所通知と異なる**（初回実装ではExitのみ対応、Enter/滞在通知は将来拡張）。
+「あとでやる」とは完全に独立した機能。「何をするか」ではなく「何を持っていくか」を管理する（例: 自宅を出るときに財布・鍵・社員証を確認）。買い物リスト・タスクの場所通知と同じ`GeofencePlugin`/`CLLocationManager`を共有するが、`"forget-"` prefixで別管理する。**到着(Enter)・退出(Exit)のどちらをトリガーにするかをアラートごとに選べる**（初回実装ではExit固定だったが、後に`trigger`フィールドを追加してEnterも選択可能にした）。
 
 ### 型・保存
 
 ```typescript
 interface ForgetAlert {
   id: string; name: string; location: { name:string; lat:number; lng:number }; radius: 100|300|500;
+  trigger: 'enter'|'exit';
   weekdays: number[]; timeStart?: string; timeEnd?: string; enabled: boolean; items: string[];
 }
 ```
-`FORGET_ALERTS_KEY='tl-forget-alerts-v1'`に配列で保存。`weekdays`は`0=日〜6=土`。`timeStart`/`timeEnd`は両方空なら終日対象。`radius`はShopLocationと同じ100/300/500mから選択可能（新規追加時のデフォルトは300m）。ネイティブ側（`GeofencePlugin.swift`の`ForgetAlertEntry`/`setForgetAlerts`）は元々`entry.radius`で`CLCircularRegion`を作っていたため、この変更にネイティブ側の追加対応は不要（JS側で固定値`TASK_LOCATION_RADIUS_M`を渡していたのをUIで選んだ`radius`を渡すよう変えただけ）。旧データ（`radius`未設定）は同期エフェクトで`a.radius??TASK_LOCATION_RADIUS_M`にフォールバックする。
+`FORGET_ALERTS_KEY='tl-forget-alerts-v1'`に配列で保存。`weekdays`は`0=日〜6=土`。`timeStart`/`timeEnd`は両方空なら終日対象。`radius`はShopLocationと同じ100/300/500mから選択可能（新規追加時のデフォルトは300m）。`trigger`は新規追加時のデフォルト`'exit'`（従来の「出るとき」挙動を維持）。旧データ（`trigger`/`radius`未設定）はJS側で`a.trigger??'exit'`・`a.radius??TASK_LOCATION_RADIUS_M`にフォールバックする（`ForgetAlertsPanel.startEdit()`・同期エフェクトの両方）。ネイティブ側（`GeofencePlugin.swift`の`ForgetAlertEntry`/`setForgetAlerts`）は元々`entry.radius`で`CLCircularRegion`を作っていたため、半径の変更自体にネイティブ側の追加対応は不要だった。
 
 **課金プラン: 1件までは無料、2件目以降はPRO。** `ForgetAlertsPanel`内の`isLockedByPlan(idx)`（`!isPremium&&idx>0`、`idx`は`alerts`配列内の作成順インデックス）で判定する。「＋追加」は非PROかつ既に1件以上ある場合に`onProPrompt()`でブロックし、既存の2件目以降の有効化トグルも同様にブロックする（OFFにする操作は常に許可。ダウングレードで2件目以降が残っている場合の表示用に、対象行に小さい★アイコンを出す）。
 
 ### 管理画面（`ForgetAlertsPanel`、設定 → 忘れ物防止アラート）
 
-専用のフルスクリーン画面ではなく設定画面のサブ画面（`sub==='forgetAlerts'`）として実装（初回実装の方針通り）。一覧はカード形式で「{name}を出るとき」＋曜日・時間帯・半径のサマリ＋確認する持ち物のチップ＋ON/OFFトグル＋削除ボタン。
+専用のフルスクリーン画面ではなく設定画面のサブ画面（`sub==='forgetAlerts'`）として実装（初回実装の方針通り）。一覧はカード形式で「{name}を出るとき」（`trigger==='enter'`の場合は「{name}に着いたとき」）＋曜日・時間帯・半径のサマリ＋確認する持ち物のチップ＋ON/OFFトグル＋削除ボタン。
 
-**「＋追加」を押すとポップアップ（ボトムシート、`z-[100]`）で追加/編集フォームが開く**（一覧の下にインラインで展開する旧実装は廃止）。フォームは名前（プリセット＋自由入力）・場所（**住所検索ボックスは無し**、「地図で指定」「現在地から」の2ボタンのみ）・通知する範囲（100/300/500mの3択、`ShopLocationPanel`と同じUI）・曜日選択（`ShopNotifPanel`と同じ7つの丸ボタン）・時間帯（開始/終了の`<input type="time">`、任意）・持ち物チップ入力（追加・×で削除）を持つ。「地図で指定」「現在地から」を押すと`ShopMapPicker`が**さらに上のポップアップ（`z-[110]`）として**開く（フォームのポップアップに埋め込む旧実装は廃止）。`ShopMapPicker`自体は地図内検索（Nominatim）を内包しているため、外側フォームの住所検索ボックスを削除しても場所の文字列検索は可能。保存時に`ensureGeofencePermission()`で位置情報・通知の許可を確認し、拒否時は登録しない。
+**「＋追加」を押すとポップアップ（ボトムシート、`z-[100]`）で追加/編集フォームが開く**（一覧の下にインラインで展開する旧実装は廃止）。フォームは名前（自由入力のみ、**プリセットボタンは廃止済み**）・場所（**住所検索ボックスは無し**、「地図で指定」「現在地から」の2ボタンのみ）・**通知するタイミング（「到着したら」/「離れたら」の2択）**・通知する範囲（100/300/500mの3択、`ShopLocationPanel`と同じUI）・曜日選択（`ShopNotifPanel`と同じ7つの丸ボタン）・時間帯（開始/終了の`<input type="time">`、任意）・持ち物チップ入力（追加・×で削除）を持つ。「地図で指定」「現在地から」を押すと`ShopMapPicker`が**さらに上のポップアップ（`z-[110]`）として**開く（フォームのポップアップに埋め込む旧実装は廃止）。`ShopMapPicker`自体は地図内検索（Nominatim）を内包しているため、外側フォームの住所検索ボックスを削除しても場所の文字列検索は可能。保存時に`ensureGeofencePermission()`で位置情報・通知の許可を確認し、拒否時は登録しない。
 
 **バリデーション:** 名前・場所・曜日1つ以上・持ち物1つ以上が揃うまで「登録」ボタンは無効。
 
@@ -658,9 +659,9 @@ interface ForgetAlert {
 
 ### ネイティブ実装（`GeofencePlugin.swift`）
 
-- `setForgetAlerts()` — 他の`set*Geofences`系と同じ全解除→再登録方式。`region.notifyOnExit=true, notifyOnEntry=false`で登録する点が唯一の違い。曜日・持ち物等のメタデータは`UserDefaults`の`forgetAlertData`（id→`ForgetAlertEntry`の辞書）に保存する
-- `didExitRegion`（このプラグインで新規追加したデリゲートメソッド。他の場所通知は全てEnterトリガーのため今まで実装していなかった）→ `handleForgetAlertExit()`が本体
-- **曜日・時間帯の判定は発火時点（=退出した瞬間）の現在時刻でネイティブ側が行う**（JS側で事前計算はできない。時間指定通知や締切通知と違い、いつ退出するか分からないため）。`Calendar.current.component(.weekday:)`はSunday=1〜Saturday=7なので、JS側の`0=日〜6=土`に合わせるため`-1`する
+- `setForgetAlerts()` — 他の`set*Geofences`系と同じ全解除→再登録方式。`region.notifyOnEntry`/`notifyOnExit`を`entry.trigger`（`"enter"`/`"exit"`）に応じて排他的にセットする点が唯一の違い。曜日・持ち物等のメタデータは`UserDefaults`の`forgetAlertData`（id→`ForgetAlertEntry`の辞書）に保存する
+- `didEnterRegion`/`didExitRegion`（`didExitRegion`はこのプラグインで新規追加したデリゲートメソッド。他の場所通知は全てEnterトリガーのため今まで実装していなかった）の両方から`forget-`prefixのリージョンを`handleForgetAlertFire(_:isEnter:)`という共通関数に振り分ける。`isEnter`で通知文言（「〜に着きました」/「〜を出ました」）を出し分ける
+- **曜日・時間帯の判定は発火時点（=到着/退出した瞬間）の現在時刻でネイティブ側が行う**（JS側で事前計算はできない。時間指定通知や締切通知と違い、いつ到着・退出するか分からないため）。`Calendar.current.component(.weekday:)`はSunday=1〜Saturday=7なので、JS側の`0=日〜6=土`に合わせるため`-1`する
 - 時間帯が日をまたぐ場合（例: 22:00〜2:00）は`inSleepWindow`と同様の判定ロジックを踏襲
 - **1回きりの通知ではなく、条件を満たすたびに毎回発火する**（タスクの場所通知の「1回のみ・発火後はfired flagで再武装しない」という設計とは異なる。習慣的なリマインダーなのでOFFにしない限り繰り返し届くのが正しい仕様）
 - GPS境界付近でのジッターによる連続発火だけを防ぐため、`forgetAlertLastNotified_<id>`による短いクールダウン（`forgetCooldown=10分`。買い物リストの場所通知の2時間クールダウンより大幅に短い）を設ける

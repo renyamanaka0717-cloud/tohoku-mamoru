@@ -4,7 +4,7 @@ import { registerPlugin } from '@capacitor/core';
 export interface GeofenceLocation { id: string; name: string; lat: number; lng: number; radius: number; }
 export interface GeofencePermissionStatus { location: string; notifications: string; }
 // 忘れ物防止アラート（退出トリガー）。weekdaysは0=日〜6=土。timeStart/timeEndは"HH:mm"、空文字なら終日対象
-export interface ForgetAlertGeofence { id: string; name: string; lat: number; lng: number; radius: number; weekdays: number[]; timeStart: string; timeEnd: string; items: string[]; }
+export interface ForgetAlertGeofence { id: string; name: string; lat: number; lng: number; radius: number; trigger: 'enter'|'exit'; weekdays: number[]; timeStart: string; timeEnd: string; items: string[]; }
 
 interface GeofencePluginType {
   setGeofences(options: { locationsJson: string }): Promise<void>;

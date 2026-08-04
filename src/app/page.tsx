@@ -94,6 +94,7 @@ interface ShopLocation { id: string; name: string; lat: number; lng: number; rad
 // timeStart/timeEndは省略可（両方空なら終日対象）。初回実装では退出(Exit)トリガーのみ対応
 interface ForgetAlert {
   id: string; name: string; location: { name:string; lat:number; lng:number }; radius: 100|300|500;
+  trigger: 'enter'|'exit';
   weekdays: number[]; timeStart?: string; timeEnd?: string; enabled: boolean; items: string[];
 }
 interface TagDef    { name: string; color: string; }
@@ -3369,7 +3370,6 @@ function ForgetAlertsPanel({alerts,onChange,isPremium,onProPrompt}:{
   onProPrompt:(feature:string)=>void;
 }) {
   const DOW=['日','月','火','水','木','金','土'];
-  const NAME_PRESETS=['自宅','職場','学校','スーパー'];
   const [editing,setEditing]=useState<ForgetAlertDraft|null>(null);
   const [adding,setAdding]=useState(false);
   const [mapMode,setMapMode]=useState(false);
@@ -3394,11 +3394,11 @@ function ForgetAlertsPanel({alerts,onChange,isPremium,onProPrompt}:{
   };
   const startAdd=()=>{
     if(!isPremium&&alerts.length>=1){ onProPrompt('忘れ物防止アラート（2件目以降）'); return; }
-    setEditing({id:uid(),name:'',location:null,radius:300,weekdays:[1,2,3,4,5],timeStart:'',timeEnd:'',enabled:true,items:[]});
+    setEditing({id:uid(),name:'',location:null,radius:300,trigger:'exit',weekdays:[1,2,3,4,5],timeStart:'',timeEnd:'',enabled:true,items:[]});
     setAdding(true);
     setItemInput('');setPermError(null);
   };
-  const startEdit=(a:ForgetAlert)=>{ setEditing(a); setAdding(false); setItemInput(''); setPermError(null); };
+  const startEdit=(a:ForgetAlert)=>{ setEditing({...a,trigger:a.trigger??'exit'}); setAdding(false); setItemInput(''); setPermError(null); };
 
   const useCurrentLocation=()=>{
     setLocating(true);
@@ -3465,7 +3465,7 @@ function ForgetAlertsPanel({alerts,onChange,isPremium,onProPrompt}:{
             <div className="flex items-center gap-3">
               <AppIcons.backpack size={16} className={a.enabled?'text-[var(--c-primary)]':'text-gray-300'}/>
               <button onClick={()=>startEdit(a)} className="flex-1 min-w-0 text-left">
-                <p className="text-sm font-medium text-gray-800 truncate">{a.name}を出るとき</p>
+                <p className="text-sm font-medium text-gray-800 truncate">{a.name}{(a.trigger??'exit')==='enter'?'に着いたとき':'を出るとき'}</p>
                 <p className="text-xs text-gray-400">{fmtDays(a.weekdays)}{a.timeStart&&a.timeEnd?` ${a.timeStart}〜${a.timeEnd}`:''}・{a.radius??200}m</p>
               </button>
               {locked&&<AppIcons.star size={12} className="text-gray-300 shrink-0"/>}
@@ -3492,12 +3492,6 @@ function ForgetAlertsPanel({alerts,onChange,isPremium,onProPrompt}:{
         <div className="fixed inset-0 z-[100] bg-black/40 flex items-end justify-center" onClick={cancelEdit}>
           <div className="bg-white w-full max-w-md mx-auto rounded-t-3xl max-h-[85vh] overflow-y-auto p-4" onClick={e=>e.stopPropagation()}>
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">名前</p>
-            <div className="flex gap-1.5 flex-wrap mb-2">
-              {NAME_PRESETS.map(p=>(
-                <button key={p} onClick={()=>setEditing({...editing,name:p})}
-                  className={`px-3 py-1 rounded-full text-xs font-semibold ${editing.name===p?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>{p}</button>
-              ))}
-            </div>
             <input value={editing.name} onChange={e=>setEditing({...editing,name:e.target.value})}
               placeholder="場所の名前"
               className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50 mb-4"/>
@@ -3515,6 +3509,18 @@ function ForgetAlertsPanel({alerts,onChange,isPremium,onProPrompt}:{
               <button onClick={useCurrentLocation} disabled={locating}
                 className="flex-1 py-2 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200 disabled:opacity-40">
                 {locating?'取得中...':'現在地から'}
+              </button>
+            </div>
+
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">通知するタイミング</p>
+            <div className="flex gap-2 mb-4">
+              <button onClick={()=>setEditing({...editing,trigger:'enter'})}
+                className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors ${editing.trigger==='enter'?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
+                到着したら
+              </button>
+              <button onClick={()=>setEditing({...editing,trigger:'exit'})}
+                className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors ${editing.trigger==='exit'?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
+                離れたら
               </button>
             </div>
 
@@ -5837,7 +5843,7 @@ export default function App() {
     const alerts=forgetAlerts.filter(a=>a.enabled).slice(0,budget);
     setForgetAlertGeofences(alerts.map(a=>({
       id:a.id,name:a.name,lat:a.location.lat,lng:a.location.lng,radius:a.radius??TASK_LOCATION_RADIUS_M,
-      weekdays:a.weekdays,timeStart:a.timeStart||'',timeEnd:a.timeEnd||'',items:a.items,
+      trigger:a.trigger??'exit',weekdays:a.weekdays,timeStart:a.timeStart||'',timeEnd:a.timeEnd||'',items:a.items,
     })));
   },[forgetAlerts,shopLocations,tasks,loaded]);
   useEffect(()=>{ if(loaded) localStorage.setItem(DAY_SETTINGS_KEY,JSON.stringify(dayOverrides)); },[dayOverrides,loaded]);
