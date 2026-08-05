@@ -3813,7 +3813,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
 
         <div className="flex-1 overflow-hidden" style={{display:'grid',gridTemplateColumns:'1fr',gridTemplateRows:'1fr'}}>
         {/* ── あとでやる tab ── */}
-          <div className={`overflow-y-auto px-4 pb-10 ${activeTab==='later'?'':'invisible pointer-events-none'}`} style={{gridArea:'1/1'}}>
+          <div className={`overflow-y-auto px-4 ${activeTab==='later'?'':'invisible pointer-events-none'}`} style={{gridArea:'1/1',paddingBottom:'calc(5.5rem + env(safe-area-inset-bottom))'}}>
             <div className="flex items-center justify-between pt-3 pb-2">
               <h3 className="text-sm font-bold text-gray-900">
                 あとでやる
@@ -7040,7 +7040,7 @@ export default function App() {
 
       {/* あとでやる FAB */}
       {activeTab==='later'&&(
-        <div className="fixed bottom-6 right-4 z-[60]">
+        <div className="fixed right-4 z-[60]" style={{bottom:'calc(1.5rem + env(safe-area-inset-bottom))'}}>
           <button onClick={()=>{setActiveTab(null);openAdd();}}
             className="w-14 h-14 bg-[var(--c-primary)] text-white rounded-full shadow-2xl active:bg-gray-700"
             style={{display:'grid',placeItems:'center'}}><AppIcons.plus size={28} className="block"/></button>
