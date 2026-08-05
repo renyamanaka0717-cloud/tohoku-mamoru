@@ -3495,7 +3495,7 @@ function ForgetAlertsPanel({alerts,onChange,isPremium,onProPrompt}:{
           <AppIcons.plus size={14}/>追加
         </button>
       </div>
-      {!isPremium&&<p className="text-xs text-gray-400 px-1 mb-3">1件まで無料でご利用いただけます。2件目以降はPROが必要です。</p>}
+      {!isPremium&&<p className="text-xs text-gray-400 px-1 mb-3">1件まで無料でご利用いただけます。2件目からPROが必要です。</p>}
       {alerts.length===0&&(
         <p className="text-sm text-gray-400 text-center py-8">アラートが登録されていません</p>
       )}
@@ -4238,7 +4238,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
       <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
         {subHeader('タスク一括入力')}{proSheet}
         <div className="flex-1 overflow-y-auto px-4 pb-10">
-          <p className="text-xs text-gray-400 px-1 mt-4 mb-4">月1回まで無料・2回目からPro</p>
+          <p className="text-xs text-gray-400 px-1 mt-4 mb-4">月1回まで無料でご利用いただけます。2回目からPROが必要です。</p>
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2">タスク情報</p>
           <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
             <div className="flex items-center gap-3 px-4 py-3.5 border-b border-gray-100">
@@ -4516,7 +4516,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
       {subHeader('ファイルタブ')}{proSheet}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
-        <p className="text-xs text-gray-400 px-1 mt-4 mb-4">1個まで無料・2個目からPro</p>
+        <p className="text-xs text-gray-400 px-1 mt-4 mb-4">1個まで無料でご利用いただけます。2個目からPROが必要です。</p>
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2">新しいタブ</p>
         <div className="bg-white rounded-2xl shadow-sm px-4 py-3">
           <div className="flex gap-2 items-center">
@@ -4618,7 +4618,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
       {subHeader('タグ')}{proSheet}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
-        <p className="text-xs text-gray-400 px-1 mt-4">2個まで無料・3個目からPro</p>
+        <p className="text-xs text-gray-400 px-1 mt-4">2個まで無料でご利用いただけます。3個目からPROが必要です。</p>
 
         {/* New tag */}
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-4">新しいタグ</p>
@@ -5035,7 +5035,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
       <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
         {subHeader('生活パターン')}{proSheet}
         <div className="flex-1 overflow-y-auto px-4 pb-10">
-          <p className="text-xs text-gray-400 px-1 mt-4 mb-2">1個まで無料・2個目からPro</p>
+          <p className="text-xs text-gray-400 px-1 mt-4 mb-2">1個まで無料でご利用いただけます。2個目からPROが必要です。</p>
           <p className="text-xs text-gray-400 px-1 mb-1 mt-6">シフトや予定に合わせて、日ごとの起床・就寝時間を変更できます</p>
           <p className="text-xs text-gray-400 px-1 mb-2">パターンを追加・選択して日付をタップ</p>
           <div className="bg-white rounded-2xl overflow-hidden shadow-sm mb-1">
