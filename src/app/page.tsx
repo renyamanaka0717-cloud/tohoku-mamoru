@@ -4617,8 +4617,9 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   if(sub==='tags') return (
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
       {subHeader('タグ')}{proSheet}
-      {!isPremium&&<p className="text-xs text-gray-400 bg-white px-5 py-3 shrink-0">2個まで無料でご利用いただけます。3個目からPROが必要です。</p>}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
+        {!isPremium&&<p className="text-xs text-gray-400 px-1 mt-4">2個まで無料でご利用いただけます。3個目からPROが必要です。</p>}
+
         {/* New tag */}
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-4">新しいタグ</p>
         <div className="bg-white rounded-2xl shadow-sm px-4 pt-4 pb-3">
