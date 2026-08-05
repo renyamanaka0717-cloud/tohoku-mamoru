@@ -704,9 +704,9 @@ interface ForgetAlert {
 
 タスクリマインダーと違い、アプリがバックグラウンド/未起動でも数時間〜数日後に発火する必要があるため、JSのタイマーでは実現できない（プロセスが生きている保証がない）。iOSネイティブの `UNTimeIntervalNotificationTrigger` で完結させる。
 
-**就寝時間帯を避ける調整:** バックグラウンドに移る瞬間（`document.visibilitychange`）に `Date.now()+hours*3600*1000` で発火予定時刻を計算し、`inSleepWindow()` でその時刻が就寝〜起床の時間帯に重なるか判定する。重なる場合は起床時刻まで後ろ倒しした時間差を計算し直す（ネイティブ側の `UNTimeIntervalNotificationTrigger` は相対時間しか扱えないため、時刻の調整はJS側で行う）。
+**就寝時間帯を避ける調整（起床時刻から改めてカウントし直す）:** バックグラウンドに移る瞬間（`document.visibilitychange`）に基準となる発火予定時刻を `Date.now()+hours*3600*1000` で計算し、`inSleepWindow()` でその時刻が就寝〜起床の時間帯に重なるか判定する。重なる場合、**単に起床時刻ちょうどに前倒しするのではなく**、起床時刻を起点として改めて `hours` 時間分カウントし直した時刻（起床時刻+`hours`時間）を基準発火時刻にする（就寝中はカウントが止まっているイメージ）。これは「起床直後に間髪入れず『しばらく開いていません』通知が来る」という不具合を避けるための仕様（起床時刻ちょうどへの前倒しだと、起床した瞬間に無条件で通知が来てしまっていた）。再通知（`STALE_REPEAT_HOURS`ごと）はこの基準発火時刻からの固定間隔で予約する（`nowMs+hours*STALE_REPEAT_HOURS...`のように毎回`nowMs`から再計算しない。そうすると基準時刻の調整前後で再通知の順序が逆転し得るため）。ネイティブ側の `UNTimeIntervalNotificationTrigger` は相対時間しか扱えないため、時刻の調整はJS側で行う。
 
-**未解決なら再通知する（`STALE_REPEAT_HOURS`/`STALE_MAX_REPEATS`、放置タスク通知と共通の定数）:** アプリが開かれないままだと、最初の通知（`hours`時間後）に加えて `STALE_REPEAT_HOURS`（6時間）おきに最大 `STALE_MAX_REPEATS`（5回）ぶんの通知をまとめて事前予約する。`scheduleInactivityReminder()` には単一の`hours`ではなく、この一連の時間数（`hoursList: number[]`）を渡す。アプリを開けば`cancelInactivityReminder()`で全件まとめて取り消される。
+**未解決なら再通知する（`STALE_REPEAT_HOURS`/`STALE_MAX_REPEATS`、放置タスク通知と共通の定数）:** アプリが開かれないままだと、最初の通知（起床時刻を考慮して調整済みの基準時刻）に加えて `STALE_REPEAT_HOURS`（6時間）おきに最大 `STALE_MAX_REPEATS`（5回）ぶんの通知をまとめて事前予約する。`scheduleInactivityReminder()` には単一の`hours`ではなく、この一連の時間数（`hoursList: number[]`）を渡す。アプリを開けば`cancelInactivityReminder()`で全件まとめて取り消される。
 
 **データの流れ:**
 

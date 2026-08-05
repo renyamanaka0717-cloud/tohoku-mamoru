@@ -5990,13 +5990,24 @@ export default function App() {
     const onVisibilityChange=()=>{
       if(document.visibilityState==='hidden'){
         if(settings.notificationsEnabled??true){
-          // 発火予定時刻が就寝時間帯に重なる場合は、起床時刻まで後ろ倒しにする。
-          // アプリが開かれなければSTALE_REPEAT_HOURSごとに最大STALE_MAX_REPEATS回まで再通知する
+          // 就寝中に設定時間が経過してしまう場合、起床時刻ちょうどに即通知するのではなく、
+          // 起床時刻を起点として改めて設定時間分カウントし直す（就寝中はカウントが止まるイメージ）。
+          // 以降の再通知（STALE_REPEAT_HOURSごと）はこの基準時刻からの固定間隔で予約する
           const nowMs=Date.now();
+          const rawBaseMs=nowMs+hours*3600*1000;
+          let baseFireMs=rawBaseMs;
+          const baseDate=new Date(rawBaseMs);
+          const baseM=baseDate.getHours()*60+baseDate.getMinutes();
+          if(inSleepWindow(baseM,toMin(settings.wakeTime),toMin(settings.sleepTime))){
+            const wakeM=toMin(settings.wakeTime);
+            const wakeDate=new Date(baseDate);
+            wakeDate.setHours(Math.floor(wakeM/60),wakeM%60,0,0);
+            if(wakeDate.getTime()<=rawBaseMs) wakeDate.setDate(wakeDate.getDate()+1);
+            baseFireMs=wakeDate.getTime()+hours*3600000;
+          }
           const hoursList:number[]=[];
           for(let i=0;i<STALE_MAX_REPEATS;i++){
-            const rawFireMs=nowMs+(hours+i*STALE_REPEAT_HOURS)*3600*1000;
-            const fireMs=adjustFireForSleep(rawFireMs,settings.wakeTime,settings.sleepTime);
+            const fireMs=baseFireMs+i*STALE_REPEAT_HOURS*3600000;
             hoursList.push((fireMs-nowMs)/3600000);
           }
           scheduleInactivityReminder(hoursList);
