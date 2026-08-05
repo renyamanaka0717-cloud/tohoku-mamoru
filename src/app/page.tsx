@@ -1285,6 +1285,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
 
   const [showDiscard,setShowDiscard] = useState(false);
   const [tagNavConfirm,setTagNavConfirm] = useState(false);
+  const [deleteConfirm,setDeleteConfirm] = useState(false);
   const hasChanges =
     name!==(task?.name??'') ||
     duration!==(task?.duration??0) ||
@@ -1953,7 +1954,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
 
           {/* Delete */}
           {task&&onDelete&&(
-            <button onClick={()=>{onDelete();onClose();}}
+            <button onClick={()=>setDeleteConfirm(true)}
               className="w-full mt-3 mb-2 py-3 text-sm text-[#D97A7A] font-medium">
               削除する
             </button>
@@ -2093,6 +2094,20 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
         </div>
       )}
       {modalProPrompt&&<ProGateSheet onClose={()=>setModalProPrompt(null)} feature={modalProPrompt}/>}
+      {deleteConfirm&&(
+        <div className="absolute inset-0 z-[110] flex items-center justify-center px-6" onClick={e=>e.stopPropagation()}>
+          <div className="bg-white rounded-2xl p-5 shadow-xl w-full max-w-xs">
+            <h3 className="text-base font-bold text-gray-900 mb-1">このタスクを削除しますか？</h3>
+            <p className="text-sm text-gray-500 mb-5">この操作は取り消せません。</p>
+            <div className="flex flex-col gap-2">
+              <button onClick={()=>{onDelete?.();onClose();}}
+                className="py-2.5 bg-[#D97A7A] text-white rounded-xl text-sm font-semibold">削除する</button>
+              <button onClick={()=>setDeleteConfirm(false)}
+                className="py-2.5 bg-gray-100 text-gray-900 rounded-xl text-sm font-semibold">キャンセル</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -2825,12 +2840,14 @@ function ShopNotifPanel({settings,onChange,notificationsEnabled=true,onEnableNot
     setEditing({id:Math.random().toString(36).slice(2),days:[1,2,3,4,5],time:'09:00',enabled:true});
     setAdding(true);
   };
+  const startEdit=(s:ShopNotifSetting)=>{ setEditing(s); setAdding(false); };
   const save=(s:ShopNotifSetting)=>{
     if(adding) onChange([...settings,s]);
     else onChange(settings.map(x=>x.id===s.id?s:x));
     setEditing(null);setAdding(false);
   };
   const del=(id:string)=>onChange(settings.filter(s=>s.id!==id));
+  const [deleteId,setDeleteId]=useState<string|null>(null);
   const toggleEnabled=(id:string)=>{
     const target=settings.find(s=>s.id===id);
     if(target&&!target.enabled&&!notificationsEnabled){
@@ -2856,20 +2873,34 @@ function ShopNotifPanel({settings,onChange,notificationsEnabled=true,onEnableNot
         {settings.map(s=>(
           <div key={s.id} className="bg-white rounded-2xl shadow-sm px-4 py-3 flex items-center gap-3">
             <AppIcons.bell size={16} className={s.enabled?'text-[var(--c-primary)]':'text-gray-300'}/>
-            <div className="flex-1 min-w-0">
+            <button onClick={()=>startEdit(s)} className="flex-1 min-w-0 text-left">
               <p className="text-sm font-medium text-gray-800">{fmtDays(s.days)}</p>
               <p className="text-xs text-gray-400">{s.time}</p>
-            </div>
+            </button>
             <button onClick={()=>toggleEnabled(s.id)}
               className={`relative w-10 h-6 rounded-full transition-colors shrink-0 ${s.enabled?'bg-[var(--c-primary)]':'bg-gray-200'}`}>
               <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${s.enabled?'left-[18px]':'left-0.5'}`}/>
             </button>
-            <button onClick={()=>del(s.id)} className="text-gray-300 active:text-[#D97A7A] shrink-0">
+            <button onClick={()=>setDeleteId(s.id)} className="text-gray-300 active:text-[#D97A7A] shrink-0">
               <AppIcons.trash size={16}/>
             </button>
           </div>
         ))}
       </div>
+      {deleteId&&(
+        <div className="fixed inset-0 z-[110] bg-black/40 flex items-center justify-center p-4" onClick={()=>setDeleteId(null)}>
+          <div className="bg-white rounded-3xl w-full max-w-md mx-auto p-5" onClick={e=>e.stopPropagation()}>
+            <p className="text-center text-[17px] font-semibold text-gray-900 mb-1">この通知を削除しますか？</p>
+            <p className="text-center text-[13px] text-gray-400 mb-6">この操作は取り消せません</p>
+            <div className="flex gap-2">
+              <button onClick={()=>setDeleteId(null)}
+                className="flex-1 py-3 rounded-2xl bg-gray-100 text-gray-700 text-[15px] font-semibold">キャンセル</button>
+              <button onClick={()=>{del(deleteId);setDeleteId(null);}}
+                className="flex-1 py-3 rounded-2xl bg-[#D97A7A] text-white text-[15px] font-semibold">削除する</button>
+            </div>
+          </div>
+        </div>
+      )}
       {editing&&(
         <div className="fixed inset-0 z-[100] bg-black/40 flex items-center justify-center p-4" onClick={()=>{setEditing(null);setAdding(false);}}>
           <div className="bg-white w-full max-w-md mx-auto rounded-3xl max-h-[85vh] overflow-y-auto p-4" onClick={e=>e.stopPropagation()}>
@@ -3214,6 +3245,7 @@ function ShopLocationPanel({locations,onChange,isPremium,onProPrompt}:{
     onChange(locations.map(l=>l.id===id?{...l,enabled:!l.enabled}:l));
   };
   const del=(id:string)=>onChange(locations.filter(l=>l.id!==id));
+  const [deleteId,setDeleteId]=useState<string|null>(null);
 
   const [editingId,setEditingId]=useState<string|null>(null);
   const [editingName,setEditingName]=useState('');
@@ -3266,24 +3298,36 @@ function ShopLocationPanel({locations,onChange,isPremium,onProPrompt}:{
               ):(
                 <button onClick={()=>startRename(l)} className="flex items-center gap-1.5 max-w-full py-1 -my-1">
                   <p className="text-sm font-medium text-gray-800 truncate">{l.name}</p>
-                  <AppIcons.pencil size={15} className="text-gray-400 shrink-0"/>
                 </button>
               )}
               <button onClick={()=>startEditLocation(l)} className="flex items-center gap-1 py-0.5 -my-0.5">
                 <p className="text-xs text-gray-400">半径{l.radius}m・場所を変更</p>
-                <AppIcons.pencil size={11} className="text-gray-300"/>
               </button>
             </div>
             <button onClick={()=>toggle(l.id)}
               className={`relative w-10 h-6 rounded-full transition-colors shrink-0 ${l.enabled?'bg-[var(--c-primary)]':'bg-gray-200'}`}>
               <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${l.enabled?'left-[18px]':'left-0.5'}`}/>
             </button>
-            <button onClick={()=>del(l.id)} className="text-gray-300 active:text-[#D97A7A] shrink-0">
+            <button onClick={()=>setDeleteId(l.id)} className="text-gray-300 active:text-[#D97A7A] shrink-0">
               <AppIcons.trash size={16}/>
             </button>
           </div>
         ))}
       </div>
+      {deleteId&&(
+        <div className="fixed inset-0 z-[110] bg-black/40 flex items-center justify-center p-4" onClick={()=>setDeleteId(null)}>
+          <div className="bg-white rounded-3xl w-full max-w-md mx-auto p-5" onClick={e=>e.stopPropagation()}>
+            <p className="text-center text-[17px] font-semibold text-gray-900 mb-1">この場所を削除しますか？</p>
+            <p className="text-center text-[13px] text-gray-400 mb-6">この操作は取り消せません</p>
+            <div className="flex gap-2">
+              <button onClick={()=>setDeleteId(null)}
+                className="flex-1 py-3 rounded-2xl bg-gray-100 text-gray-700 text-[15px] font-semibold">キャンセル</button>
+              <button onClick={()=>{del(deleteId);setDeleteId(null);}}
+                className="flex-1 py-3 rounded-2xl bg-[#D97A7A] text-white text-[15px] font-semibold">削除する</button>
+            </div>
+          </div>
+        </div>
+      )}
       {adding&&(
         <div className="fixed inset-0 z-[100] bg-black/40 flex items-center justify-center p-4" onClick={cancelAdd}>
           <div className="bg-white w-full max-w-md mx-auto rounded-3xl max-h-[85vh] overflow-y-auto p-4" onClick={e=>e.stopPropagation()}>
@@ -3477,6 +3521,7 @@ function ForgetAlertsPanel({alerts,onChange,isPremium,onProPrompt}:{
     cancelEdit();
   };
   const del=(id:string)=>onChange(alerts.filter(a=>a.id!==id));
+  const [deleteId,setDeleteId]=useState<string|null>(null);
   const toggleEnabled=(id:string)=>{
     const idx=alerts.findIndex(a=>a.id===id);
     if(idx>=0&&!alerts[idx].enabled&&isLockedByPlan(idx)){ onProPrompt('忘れ物防止アラート（2件目以降）'); return; }
@@ -3515,7 +3560,7 @@ function ForgetAlertsPanel({alerts,onChange,isPremium,onProPrompt}:{
                 className={`relative w-10 h-6 rounded-full transition-colors shrink-0 ${a.enabled?'bg-[var(--c-primary)]':'bg-gray-200'}`}>
                 <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${a.enabled?'left-[18px]':'left-0.5'}`}/>
               </button>
-              <button onClick={()=>del(a.id)} className="text-gray-300 active:text-[#D97A7A] shrink-0">
+              <button onClick={()=>setDeleteId(a.id)} className="text-gray-300 active:text-[#D97A7A] shrink-0">
                 <AppIcons.trash size={16}/>
               </button>
             </div>
@@ -3529,6 +3574,21 @@ function ForgetAlertsPanel({alerts,onChange,isPremium,onProPrompt}:{
           </div>
         );})}
       </div>
+
+      {deleteId&&(
+        <div className="fixed inset-0 z-[110] bg-black/40 flex items-center justify-center p-4" onClick={()=>setDeleteId(null)}>
+          <div className="bg-white rounded-3xl w-full max-w-md mx-auto p-5" onClick={e=>e.stopPropagation()}>
+            <p className="text-center text-[17px] font-semibold text-gray-900 mb-1">このアラートを削除しますか？</p>
+            <p className="text-center text-[13px] text-gray-400 mb-6">この操作は取り消せません</p>
+            <div className="flex gap-2">
+              <button onClick={()=>setDeleteId(null)}
+                className="flex-1 py-3 rounded-2xl bg-gray-100 text-gray-700 text-[15px] font-semibold">キャンセル</button>
+              <button onClick={()=>{del(deleteId);setDeleteId(null);}}
+                className="flex-1 py-3 rounded-2xl bg-[#D97A7A] text-white text-[15px] font-semibold">削除する</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {editing&&(
         <div className="fixed inset-0 z-[100] bg-black/40 flex items-center justify-center p-4" onClick={cancelEdit}>
