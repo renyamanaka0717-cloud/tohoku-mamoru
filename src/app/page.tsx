@@ -1311,7 +1311,8 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
     <div className="fixed inset-0 z-50 bg-black/60" onClick={handleClose}>
       <div className="absolute bottom-0 left-0 right-0 max-w-md mx-auto" onClick={e=>e.stopPropagation()}>
         {/* ── Dark header ── */}
-        <div className="rounded-t-3xl px-4 pt-4" style={{background:headerBg}} data-tour={!task?'modal-header':undefined}>
+        <div className="rounded-t-3xl px-4 pt-4" style={{background:headerBg}}>
+        <div data-tour={!task?'modal-header':undefined}>
           {/* Buttons row */}
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
@@ -1364,12 +1365,13 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
           {/* Tabs */}
           <div className="flex bg-white/20 rounded-xl p-1 mb-3">
             {([['later','あとで'],['scheduled','時間指定'],['recurring','繰り返し']] as [TaskMode,string][]).map(([m,l])=>(
-              <button key={m} onClick={()=>setMode(m)}
+              <button key={m} onClick={()=>setMode(m)} data-tour={!task&&m==='later'?'tab-later':undefined}
                 className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-colors ${mode===m?'bg-white/90 text-gray-800':'text-white/70'}`}>
                 {l}
               </button>
             ))}
           </div>
+        </div>
 
           {/* Category file tabs */}
           <div className="tabs-scroll flex items-end" style={{overflowX:'auto',WebkitOverflowScrolling:'touch',touchAction:'pan-x',marginLeft:'-16px',marginRight:'-16px',paddingLeft:'16px'}}>
@@ -5987,12 +5989,14 @@ export default function App() {
       if(rs) setRecommendState(JSON.parse(rs) as Partial<Record<RecommendationId,RecommendationState>>);
     }catch{}
     setLoaded(true);
-    if(!localStorage.getItem(WAKESLEEP_ASKED_KEY)){
-      maybeShowWakeSleepPrompt();
-    } else if(!localStorage.getItem(TOUR_COMPLETED_KEY)){
+    if(!localStorage.getItem(TOUR_COMPLETED_KEY)){
       setTimeout(()=>{setShowTour(true);logAnalyticsEvent('product_tour_started');},1000);
     } else if(!localStorage.getItem(NOTIF_ASKED_KEY)){
       setTimeout(()=>maybeShowNotifPrompt(),800);
+    } else if(!localStorage.getItem(LOCATION_ASKED_KEY)){
+      setTimeout(()=>maybeShowLocPrompt(),800);
+    } else if(!localStorage.getItem(WAKESLEEP_ASKED_KEY)){
+      maybeShowWakeSleepPrompt();
     }
   },[]);
 
@@ -6177,8 +6181,9 @@ export default function App() {
     if(localStorage.getItem(TOUR_COMPLETED_KEY)){ maybeShowNotifPrompt(); return; }
     setTimeout(()=>{setShowTour(true);logAnalyticsEvent('product_tour_started');},600);
   };
+  // 起床・就寝設定は導線の最後（通知・位置情報許可の後）に確認する
   const maybeShowWakeSleepPrompt=()=>{
-    if(localStorage.getItem(WAKESLEEP_ASKED_KEY)){ maybeShowProductTour(); return; }
+    if(localStorage.getItem(WAKESLEEP_ASKED_KEY)) return;
     setWsPromptWake(settings.wakeTime);
     setWsPromptSleep(settings.sleepTime);
     setShowWakeSleepPrompt(true);
@@ -6190,7 +6195,7 @@ export default function App() {
     setShowNotifPrompt(true);
   };
   const maybeShowLocPrompt=()=>{
-    if(localStorage.getItem(LOCATION_ASKED_KEY)) return;
+    if(localStorage.getItem(LOCATION_ASKED_KEY)){ maybeShowWakeSleepPrompt(); return; }
     setShowLocPrompt(true);
   };
   const dismissNotifPrompt=()=>{
@@ -6206,6 +6211,7 @@ export default function App() {
   const dismissLocPrompt=()=>{
     localStorage.setItem(LOCATION_ASKED_KEY,'1');
     setShowLocPrompt(false);
+    maybeShowWakeSleepPrompt();
   };
   const enableLocFromPrompt=()=>{
     ensureGeofencePermission();
@@ -6214,7 +6220,6 @@ export default function App() {
   const dismissWakeSleepPrompt=()=>{
     localStorage.setItem(WAKESLEEP_ASKED_KEY,'1');
     setShowWakeSleepPrompt(false);
-    maybeShowProductTour();
   };
   const confirmWakeSleepPrompt=()=>{
     setSettings(s=>({...s,wakeTime:wsPromptWake,sleepTime:wsPromptSleep}));

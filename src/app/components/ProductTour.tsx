@@ -5,14 +5,17 @@ import { AppIcons } from './Icons';
 interface TourStepDef {
   id: 'add' | 'save' | 'drag';
   selector: string;
+  // 吹き出しの矢印が指す位置。省略時はselectorの対象と同じ（スポットライトの範囲と矢印の指す先が
+  // 異なる場合に使う。例: saveステップはヘッダー全体をスポットライトするが、矢印は「あとで」タブを指す）
+  arrowSelector?: string;
   title: string;
   body: string;
 }
 
 const STEPS: TourStepDef[] = [
   { id: 'add', selector: '[data-tour="fab-add"]', title: 'タスクを追加してみよう', body: 'ここをタップして、新しいタスクを追加しましょう。' },
-  { id: 'save', selector: '[data-tour="modal-header"]', title: '「あとでやる」に保存', body: 'タスク名を入力して保存すると、「あとでやる」に追加されます。' },
-  { id: 'drag', selector: '[data-tour="tour-draggable"]', title: 'ドラッグして時間を設定', body: 'タスクを長押ししてそのままドラッグし、空き時間カードに重ねてみましょう。' },
+  { id: 'save', selector: '[data-tour="modal-header"]', arrowSelector: '[data-tour="tab-later"]', title: '「あとでやる」に保存', body: 'タスク名を入力して保存すると、「あとでやる」に追加されます。' },
+  { id: 'drag', selector: '[data-tour="tour-draggable"]', title: 'タスクをタイムラインに追加', body: 'タスクを長押しして、空いている時間にドラッグしてみましょう。' },
 ];
 
 interface Rect { top: number; left: number; width: number; height: number; }
@@ -25,6 +28,7 @@ export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSa
 }) {
   const [stepIndex, setStepIndex] = useState(0);
   const [rect, setRect] = useState<Rect | null>(null);
+  const [arrowRect, setArrowRect] = useState<Rect | null>(null);
   const [showCompletion, setShowCompletion] = useState(false);
   const modalOpenBaseline = useRef(modalOpen);
   const taskSavedBaseline = useRef(taskSavedSignal);
@@ -35,7 +39,13 @@ export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSa
     const el = document.querySelector(step.selector) as HTMLElement | null;
     if (el) setRect(el.getBoundingClientRect());
     else setRect(null);
-  }, [step.selector]);
+    if (step.arrowSelector) {
+      const arrowEl = document.querySelector(step.arrowSelector) as HTMLElement | null;
+      setArrowRect(arrowEl ? arrowEl.getBoundingClientRect() : null);
+    } else {
+      setArrowRect(null);
+    }
+  }, [step.selector, step.arrowSelector]);
 
   useEffect(() => {
     measure();
@@ -91,10 +101,20 @@ export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSa
   }
 
   const vh = typeof window !== 'undefined' ? window.innerHeight : 812;
+  const vw = typeof window !== 'undefined' ? window.innerWidth : 390;
   const above = rect ? rect.top > vh * 0.55 : false;
   const bubbleTop = rect
     ? (above ? Math.max(56, rect.top - 168) : Math.min(vh - 190, rect.top + rect.height + 20))
     : vh / 2 - 80;
+  // 矢印の水平位置は、吹き出しの範囲（スポットライト対象）ではなく矢印が指すべき対象
+  // （arrowSelectorがあればそちら、無ければスポットライト対象そのもの）の中心に追従させる
+  const bubbleContainerLeft = 16, bubbleContainerWidth = vw - 32;
+  const bubbleWidth = Math.min(320, bubbleContainerWidth);
+  const bubbleLeft = bubbleContainerLeft + (bubbleContainerWidth - bubbleWidth) / 2;
+  const arrowTarget = arrowRect ?? rect;
+  const arrowLeft = arrowTarget
+    ? Math.min(bubbleWidth - 24, Math.max(24, (arrowTarget.left + arrowTarget.width / 2) - bubbleLeft))
+    : bubbleWidth / 2;
 
   return (
     <div className="fixed inset-0 z-[220]" style={{ pointerEvents: 'none' }}>
@@ -130,7 +150,7 @@ export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSa
         <div className="fixed left-4 right-4" style={{ top: bubbleTop, pointerEvents: 'none' }}>
           <div className="relative bg-white rounded-2xl px-5 py-4 shadow-2xl max-w-xs mx-auto">
             <div style={{
-              position: 'absolute', left: 24, width: 0, height: 0,
+              position: 'absolute', left: arrowLeft, width: 0, height: 0,
               borderLeft: '8px solid transparent', borderRight: '8px solid transparent',
               ...(above ? { bottom: -8, borderTop: '8px solid white' } : { top: -8, borderBottom: '8px solid white' }),
               animation: 'tourBlink 1.4s ease-in-out infinite',

@@ -776,25 +776,26 @@ interface ForgetAlert {
 
 ## オンボーディング・おすすめ機能・プロダクトツアー
 
-初回起動時の導線として以下の順で連鎖する: **起床・就寝プロンプト → プロダクトツアー → （通知プロンプト → 位置情報プロンプト）**。「おすすめ機能」はこれらとは独立して、インストール後しばらく経ってから条件を満たすたびに表示される。
+初回起動時の導線として以下の順で連鎖する: **プロダクトツアー → 通知プロンプト → 位置情報プロンプト → 起床・就寝プロンプト**。アプリに触る前に許可や設定を求めると離脱されやすいため、まずツアーで実際に触ってもらい、価値が伝わった後に通知・位置情報の許可を求め、起床・就寝設定は最後に回している。「おすすめ機能」はこれらとは独立して、インストール後しばらく経ってから条件を満たすたびに表示される。
 
-**オンボーディング（説明用のスワイプ式イントロ画面）は廃止済み。** 「読まれにくい」「BrainBoxの価値は説明よりも実際に触ることで伝わる」「起動からツアー開始までの操作回数を減らしたい」という理由で削除し、初回起動時はいきなり起床・就寝プロンプト→プロダクトツアーが始まる構成にした（`src/app/components/Onboarding.tsx`・`ONBOARDING_KEY`・`showOnboarding`state・`completeOnboarding()`はすべて削除済み。新しいセッションで復活させないこと）。
+**オンボーディング（説明用のスワイプ式イントロ画面）は廃止済み。** 「読まれにくい」「BrainBoxの価値は説明よりも実際に触ることで伝わる」という理由で削除し、初回起動時はいきなりプロダクトツアーが始まる構成にした（`src/app/components/Onboarding.tsx`・`ONBOARDING_KEY`・`showOnboarding`state・`completeOnboarding()`はすべて削除済み。新しいセッションで復活させないこと）。
 
-**通知・位置情報の許可は、プロダクトツアー完了後に求める。** アプリに触る前に許可を求めると拒否されやすく、BrainBoxの価値を実際に体験した後の方が許可する理由が伝わりやすいため。
+### プロダクトツアー → 通知・位置情報プロンプト → 起床・就寝プロンプトの連鎖
 
-### 起床・就寝プロンプト → プロダクトツアー → 通知・位置情報プロンプトの連鎖
+初回ロードの`useEffect`は`TOUR_COMPLETED_KEY`が無ければツアーを表示するところから始まる（オンボーディングを挟まないため、これが初回起動時の最初の画面になる）。
 
-初回ロードの`useEffect`は`WAKESLEEP_ASKED_KEY`が無ければ`maybeShowWakeSleepPrompt()`を呼ぶところから始まる（オンボーディングを挟まないため、これが初回起動時の最初のポップアップになる）。`maybeShowWakeSleepPrompt()`は`WAKESLEEP_ASKED_KEY`が既にあれば何もせず`maybeShowProductTour()`を呼ぶ（＝既にこのプロンプトを済ませた既存ユーザーはそのままツアーへ繋がる）。プロンプトを表示した場合は`dismissWakeSleepPrompt()`（`confirmWakeSleepPrompt()`もこれを呼ぶ）の中で`WAKESLEEP_ASKED_KEY`セット後に`maybeShowProductTour()`を呼ぶ。
-
-`maybeShowProductTour()`は`TOUR_COMPLETED_KEY`が既にあれば`maybeShowNotifPrompt()`（後述）を呼んでツアーをスキップする。ツアーを表示した場合は、`ProductTour`の`onFinish`（`TOUR_COMPLETED_KEY`をセットする箇所）から`maybeShowNotifPrompt()`を呼ぶ——**「スキップ」ボタンを押した場合も`onFinish`経由で同じ連鎖に入る**（ツアーを完了させてもスキップさせても、その後の許可プロンプトの流れは変わらない）。
+`ProductTour`の`onFinish`（`TOUR_COMPLETED_KEY`をセットする箇所）から`maybeShowNotifPrompt()`を呼ぶ——**「スキップ」ボタンを押した場合も`onFinish`経由で同じ連鎖に入る**（ツアーを完了させてもスキップさせても、その後の連鎖は変わらない）。ツアーが既に完了しているユーザーの入口である`maybeShowProductTour()`も、`TOUR_COMPLETED_KEY`があれば同様に`maybeShowNotifPrompt()`を呼ぶ。
 
 **通知・位置情報プロンプト（`showNotifPrompt`/`showLocPrompt`、ツアー完了直後に表示）:**
 - 通知プロンプトが先、位置情報プロンプトが後（`dismissNotifPrompt()`が`NOTIF_ASKED_KEY`をセットしてから`maybeShowLocPrompt()`を呼ぶ）
 - 文言: 通知は「必要なタイミングで、やることを思い出せるようにします。」、位置情報は「場所に着いたときに、必要なことを思い出せるようにします。」。どちらも「あとから設定画面でいつでも有効にできます」を添えている
-- 「あとで」（拒否）を押した場合も許可フローを進める（通知→位置情報→ホーム）だけで、それ以上何も表示しない＝そのままホーム画面に戻る
+- 「あとで」（拒否）を押した場合も連鎖は先に進む（通知→位置情報→起床・就寝）だけで、それ以上何も表示しない
 - `NOTIF_ASKED_KEY`/`LOCATION_ASKED_KEY`で「一度尋ねたら二度と出さない」を管理する（拒否されても再度は聞かない）
+- `maybeShowLocPrompt()`は`LOCATION_ASKED_KEY`が既にあれば`maybeShowWakeSleepPrompt()`を呼び、`dismissLocPrompt()`（`enableLocFromPrompt()`もこれを呼ぶ）も位置情報プロンプトを閉じた直後に`maybeShowWakeSleepPrompt()`を呼ぶ
 
-**既に起床就寝プロンプト・ツアーを済ませている既存ユーザー**（この導線変更前からのユーザー）は上記チェーンが発火しないため、初回ロードの`useEffect`の最終分岐で`TOUR_COMPLETED_KEY`はあるが`NOTIF_ASKED_KEY`が無い場合に`maybeShowNotifPrompt()`を呼び、通知・位置情報プロンプトだけ改めて表示する。
+**起床・就寝プロンプト（連鎖の最後）:** `maybeShowWakeSleepPrompt()`は`WAKESLEEP_ASKED_KEY`が既にあれば何もせず終了する（＝この連鎖はここで終わり、次のプロンプトへは繋がらない）。`dismissWakeSleepPrompt()`（`confirmWakeSleepPrompt()`もこれを呼ぶ）は`WAKESLEEP_ASKED_KEY`をセットして閉じるだけで、以降何も呼ばない。
+
+**既存ユーザー（この導線変更前からのユーザー）向けフォールバック:** 初回ロードの`useEffect`は`TOUR_COMPLETED_KEY`→`NOTIF_ASKED_KEY`→`LOCATION_ASKED_KEY`→`WAKESLEEP_ASKED_KEY`の順で「まだ済んでいない最初の段階」を判定し、そこから連鎖を再開する（各段階の関数が「次の段階が済んでいなければ呼ぶ」を内包しているため、この判定は開始地点を決めるだけでよい）。
 
 ### プロダクトツアー（`src/app/components/ProductTour.tsx`）
 
@@ -802,14 +803,15 @@ interface ForgetAlert {
 
 **全ステップが実際の操作でのみ進む（「次へ」ボタンは無い）。** 静的な説明を読んで進むのではなく、実際にタップ・入力・ドラッグしてもらうことでBrainBoxの使い方を体感してもらう設計（読まれにくい説明文・無駄な操作回数を減らす狙い）。
 
-- 各ステップは`data-tour="fab-add"` / `data-tour="modal-header"` / `data-tour="tour-draggable"`のCSSセレクタで対象DOM要素を`querySelector`し、`getBoundingClientRect()`で位置を取得（`setInterval(400ms)`＋`resize`/`scroll`で再計測）。
+- 各ステップは`data-tour="fab-add"` / `data-tour="modal-header"` / `data-tour="tour-draggable"`のCSSセレクタで対象DOM要素（スポットライト＝暗転帯に開ける「穴」）を`querySelector`し、`getBoundingClientRect()`で位置を取得（`setInterval(400ms)`＋`resize`/`scroll`で再計測）。
 - **ステップ1「タスクを追加してみよう」**: FABをスポットライト。`modalOpen` propが`false→true`になった時点（＝実際にFABをタップしてモーダルが開いた瞬間）で自動的に次へ進む
-- **ステップ2「「あとでやる」に保存」**: `data-tour="modal-header"`（TaskModalの色付きヘッダー全体——タスク名入力・モードタブ・保存ボタンをまとめて含む）をスポットライト。ヘッダー全体を対象にしているのは、保存ボタンだけをスポットライトすると名前入力欄が暗転帯に覆われてタップできなくなるため。`App`の`saveTasks()`が新規タスク保存時（`!modal.task`）に`tourTaskSavedSignal`をインクリメントし、`taskSavedSignal` propとしてツアー側に渡す。その値が変化した時点（＝実際に保存された瞬間）で自動的に次へ進む
-- **ステップ3「ドラッグして時間を設定」**: `data-tour="tour-draggable"`をスポットライト。既存のドラッグ完了処理（`onEnd`、`dragTask`のuseEffect内）の`setTourDragSignal(n=>n+1)`を`gestureSignal` propとして受け取り、値が変化したら（＝実際にドラッグ&ドロップされたら）自動で次へ進む
+- **ステップ2「「あとでやる」に保存」**: `data-tour="modal-header"`（TaskModalの色付きヘッダーのうち、ボタン行・アイコン+タスク名入力・モードタブまで。**ファイルタブ行は含まない**——ファイルタブまでスポットライトすると吹き出しが下に長く伸びて見づらくなるため、`modal-header`はモードタブの直後で終わるよう別divで区切ってある。ファイルタブ自体はスポットライト外の暗転帯の下にそのまま表示される）をスポットライト。ヘッダーの一部を対象にしているのは、保存ボタンだけをスポットライトすると名前入力欄が暗転帯に覆われてタップできなくなるため。`App`の`saveTasks()`が新規タスク保存時（`!modal.task`）に`tourTaskSavedSignal`をインクリメントし、`taskSavedSignal` propとしてツアー側に渡す。その値が変化した時点（＝実際に保存された瞬間）で自動的に次へ進む
+- **ステップ3「タスクをタイムラインに追加」**: `data-tour="tour-draggable"`をスポットライト。既存のドラッグ完了処理（`onEnd`、`dragTask`のuseEffect内）の`setTourDragSignal(n=>n+1)`を`gestureSignal` propとして受け取り、値が変化したら（＝実際にドラッグ&ドロップされたら）自動で次へ進む
 - **スポットライト演出**: 対象要素の四方を覆う4枚の暗転帯（`pointer-events:auto`でタップを吸収）＋ 対象要素ぴったりに重ねる`pointer-events:none`の光る枠（`globals.css`の`tourPulse`/`tourScale`キーフレームで呼吸するようなパルスアニメーション）。対象要素自体には何も重ねないため、実際の操作がそのまま機能する（＝ハイライト部分だけ操作可能、という要件をDOM上の「穴」として実現）。TaskModal自体はz-50、ツアーのオーバーレイはz-[220]なので、ステップ2でモーダルの上からスポットライトを重ねても正しく機能する
 - 吹き出し（タイトル・本文・矢印、ボタン無し）は`globals.css`の`tourBlink`で点滅する三角形の矢印付き。対象が画面下半分にあれば吹き出しは上に、上半分にあれば下に自動配置。`pointerEvents:'none'`なので対象操作を妨げない
+- **矢印の水平位置は動的に計算する（固定値にしない）。** 吹き出し本体は`max-w-xs mx-auto`で画面中央寄せだが、矢印は`TourStepDef.arrowSelector`（省略時はスポットライト対象と同じ要素）の実際の中心x座標に追従する（吹き出し左端からのオフセットとして`arrowLeft`を計算し、吹き出し幅の範囲内にクランプする）。**過去の不具合**: 矢印を吹き出し左端から固定`left:24`にしていたところ、対象が画面右側にある場合（FABなど）に矢印が対象と無関係な位置を指してしまい、吹き出しと対象の位置関係が分かりにくくなっていた。ステップ2はスポットライト対象（ヘッダー全体、`modal-header`）と矢印の指す先（「あとで」タブ、`data-tour="tab-later"`）が異なるため`arrowSelector`を使う実例——スポットライトは名前入力欄をタップ可能にするため広い範囲が必要だが、矢印は「あとでやるに保存されること」を示すため「あとで」タブを指す方が分かりやすいという理由
 - **対象要素が見つからない場合**は800ms待って自動的に次のステップへスキップする（何らかの理由で対象が描画されない場合でもツアーが止まらない安全策）
-- 最終ステップの後は完了画面（チェックアイコン＋「ツアー完了！」＋「はじめる」ボタン）を表示してから`onFinish()`を呼ぶ。「スキップ」ボタンは完了画面を経由せず即座に`onFinish()`を呼ぶ。`onFinish`は`App`側で`TOUR_COMPLETED_KEY`をセットして`showTour`をfalseにし、続けて`maybeShowNotifPrompt()`（通知→位置情報プロンプトの連鎖）を呼ぶ（スキップしてもこの連鎖には入る）
+- 最終ステップの後は完了画面（チェックアイコン＋「ツアー完了！」＋「はじめる」ボタン）を表示してから`onFinish()`を呼ぶ。「スキップ」ボタンは完了画面を経由せず即座に`onFinish()`を呼ぶ。`onFinish`は`App`側で`TOUR_COMPLETED_KEY`をセットして`showTour`をfalseにし、続けて`maybeShowNotifPrompt()`（通知→位置情報→起床・就寝プロンプトの連鎖）を呼ぶ（スキップしてもこの連鎖には入る）
 
 **サンプルタスク（`tourSampleTasks`）:** ツアー中は「牛乳を買う」「クリーニングを受け取る」「振込をする」の3件を空き時間カード・あとでやるリストに表示し、アプリが実際に使われている状態を疑似的に見せる。**実データ（`tasks` state・localStorage）には一切保存せず**、`showTour`がtrueの間だけ`filteredTasks`の算出時に`[...tasks,...tourSampleTasks]`として表示用に合成する（`tourSampleTasks`自体は`useState`のみで永続化しない）。`showTour`がfalseになると同じエフェクトで`tourSampleTasks`を空配列にリセットする。ステップ3でドラッグする対象は、ユーザーが実際に保存した新規タスクが（配列の並び順的に）サンプルより先に来るため自然とスポットライトされる。
 
@@ -839,8 +841,11 @@ interface RecommendationDef { id:RecommendationId; usedKey:keyof Omit<FeatureUsa
 ### 避けるパターン
 
 - おすすめ機能とプロダクトツアーを同時に表示しない（おすすめ機能の表示条件が`!showTour`でガードしている）
-- 削除済みの`Onboarding.tsx`・`ONBOARDING_KEY`・`showOnboarding`を新しいセッションで復活させない（初回起動時の説明画面は意図的に廃止済み。起床・就寝プロンプトから直接プロダクトツアーに入る設計）
+- 削除済みの`Onboarding.tsx`・`ONBOARDING_KEY`・`showOnboarding`を新しいセッションで復活させない（初回起動時の説明画面は意図的に廃止済み。いきなりプロダクトツアーから始まる設計）
+- プロダクトツアー→通知・位置情報プロンプト→起床・就寝プロンプトの順序を変えない（アプリに触る前に許可や設定を求めると離脱されやすいため、意図的に起床・就寝設定を最後に回している）
 - プロダクトツアーの対象要素に`data-tour`属性を付け忘れない（`ProductTour`は`querySelector`でこれらを探すため、対象のJSXを変更する時は属性ごと移動させること）
+- ステップ2の`data-tour="modal-header"`をTaskModalのファイルタブ行まで含む範囲に戻さない（ファイルタブまでスポットライトすると吹き出しが下に長く伸びて見づらくなるため、モードタブ直後で区切ってある）
+- 吹き出しの矢印の水平位置を固定値（`left:24`等）に戻さない（対象が画面右側にある場合に矢印が対象と無関係な位置を指してしまう不具合の実績あり。`arrowRect`（`arrowSelector`が指す要素、省略時はスポットライト対象）の中心座標に動的に追従させる設計を維持すること）
 - 「おすすめ機能」の対象を増やす時、`RECOMMENDATION_DEFS`に追記する以外の分岐（if文の追加等）を作らない（優先順位はこの配列の並び順で決まる設計）
 
 ---
@@ -1380,7 +1385,7 @@ DEV_PREMIUM_CHANGED_EVENT  // プラン上書きの変更をPremiumProviderに�
 
 - **プラン**: `Premium.tsx`の`PremiumProvider`が`getDevPremiumOverride()`を読み、`devOverride`が設定されていれば実際の`isPremium`計算結果より優先する（`effectiveIsPremium = devOverride ? devOverride==='premium' : isPremium`）。`setDevPremiumOverride()`は`localStorage`更新後に`DEV_PREMIUM_CHANGED_EVENT`を発火し、`PremiumProvider`はこれをlistenしてリロード無しで即座に反映する
 - **権限（通知・位置情報）**: `Geofence.ts`の`checkGeofencePermissions()`/`ensureGeofencePermission()`の先頭で`devPermissionOverride()`を確認し、どちらかの拒否フラグが立っていれば実際のネイティブ呼び出し・Web既定値より優先して`'denied'`/`false`を返す。これにより`ShopLocationPanel`の権限拒否バナー等、実際の権限確認ロジックを使う画面がそのまま正しく反応する
-- **初回起動・プロダクトツアー**: `SettingsScreen`内の`toggleFirstLaunch()`/`toggleTour()`が`WAKESLEEP_ASKED_KEY`等の初回起動関連キーを直接読み書きし、**`window.location.reload()`で即座に反映する**（これらのフラグはApp起動時の`useEffect`で一度だけ読まれる設計のため、リロードしないと反映されない）。「初回起動」をOFFにすると`WAKESLEEP_ASKED_KEY`/`TOUR_COMPLETED_KEY`/`NOTIF_ASKED_KEY`/`LOCATION_ASKED_KEY`をまとめてクリアし、起床・就寝プロンプトから全ての導線をやり直せる。「プロダクトツアー」は`TOUR_COMPLETED_KEY`のみを対象にする
+- **初回起動・プロダクトツアー**: `SettingsScreen`内の`toggleFirstLaunch()`/`toggleTour()`が`WAKESLEEP_ASKED_KEY`等の初回起動関連キーを直接読み書きし、**`window.location.reload()`で即座に反映する**（これらのフラグはApp起動時の`useEffect`で一度だけ読まれる設計のため、リロードしないと反映されない）。「初回起動」をOFFにすると`WAKESLEEP_ASKED_KEY`/`TOUR_COMPLETED_KEY`/`NOTIF_ASKED_KEY`/`LOCATION_ASKED_KEY`をまとめてクリアし、プロダクトツアーから全ての導線をやり直せる。「プロダクトツアー」は`TOUR_COMPLETED_KEY`のみを対象にする
 
 ### 避けるパターン
 
