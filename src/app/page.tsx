@@ -5568,14 +5568,25 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
       {subHeader('お問い合わせ')}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
+        <div className="mt-4 rounded-2xl shadow-sm px-4 py-5" style={{background:'#06C755'}}>
+          <div className="flex items-center gap-2 mb-2">
+            <AppIcons.chat size={20} className="text-white"/>
+            <p className="text-[15px] font-bold text-white">LINEでお問い合わせ</p>
+          </div>
+          <p className="text-[14px] text-white/90 leading-relaxed mb-1">ご質問やご要望がございましたら、公式LINEからお気軽にお問い合わせください。</p>
+          <p className="text-[13px] text-white/70 mb-4">通常、1〜3日以内にお返事いたします。</p>
+          <button onClick={()=>window.open('https://lin.ee/TeaJYTJ')}
+            className="w-full py-3 rounded-xl text-[15px] font-semibold"
+            style={{background:'white',color:'#06C755'}}>
+            LINEで問い合わせる
+          </button>
+        </div>
+
         <div className="mt-4 bg-white rounded-2xl shadow-sm px-4 py-5">
-          <p className="text-[15px] font-bold text-gray-900 mb-2">メールでお問い合わせ</p>
-          <p className="text-[14px] text-gray-500 leading-relaxed mb-1">ご質問・ご要望がございましたら、以下のメールアドレスまでお気軽にお問い合わせください。</p>
-          <p className="text-[14px] text-gray-400 mb-4">お返事まで数日いただく場合があります。</p>
-          <p className="text-[13px] text-gray-400 mb-4 text-center">support.brainbox.jp@gmail.com</p>
+          <p className="text-[14px] font-semibold text-gray-500 mb-2">メールでお問い合わせ</p>
+          <p className="text-[13px] text-gray-400 leading-relaxed mb-4">LINEをご利用でない方は、メールでもお問い合わせいただけます。</p>
           <button onClick={()=>window.open('mailto:support.brainbox.jp@gmail.com')}
-            className="w-full py-3 rounded-xl text-[15px] font-semibold text-white"
-            style={{background:'var(--c-primary)'}}>
+            className="w-full py-2.5 rounded-xl text-[14px] font-semibold text-gray-600 bg-gray-100">
             メールアプリで開く
           </button>
         </div>
