@@ -2919,10 +2919,8 @@ function ShopNotifPanel({settings,onChange,notificationsEnabled=true,onEnableNot
               ))}
             </div>
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">時間</p>
-            <div className="overflow-hidden rounded-xl mb-4">
-              <input type="time" value={editing.time} onChange={e=>setEditing({...editing,time:e.target.value})}
-                className="border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50 w-full block"/>
-            </div>
+            <input type="time" value={editing.time} onChange={e=>setEditing({...editing,time:e.target.value})}
+              className="border border-gray-200 rounded-xl px-2 py-2 text-sm bg-gray-50 w-full block mb-4" style={{boxSizing:'border-box'}}/>
             <div className="flex gap-2">
               <button onClick={()=>{setEditing(null);setAdding(false);}}
                 className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200">
@@ -3249,15 +3247,6 @@ function ShopLocationPanel({locations,onChange,isPremium,onProPrompt}:{
   const del=(id:string)=>onChange(locations.filter(l=>l.id!==id));
   const [deleteId,setDeleteId]=useState<string|null>(null);
 
-  const [editingId,setEditingId]=useState<string|null>(null);
-  const [editingName,setEditingName]=useState('');
-  const startRename=(l:ShopLocation)=>{ setEditingId(l.id); setEditingName(l.name); };
-  const saveRename=()=>{
-    const v=editingName.trim();
-    if(v) onChange(locations.map(l=>l.id===editingId?{...l,name:v}:l));
-    setEditingId(null);
-  };
-
   const permDenied = permStatus!==null && (permStatus.location==='denied'||permStatus.notifications==='denied');
 
   return (
@@ -3291,21 +3280,10 @@ function ShopLocationPanel({locations,onChange,isPremium,onProPrompt}:{
         {locations.map(l=>(
           <div key={l.id} className="bg-white rounded-2xl shadow-sm px-4 py-3 flex items-center gap-3">
             <AppIcons.location size={16} className={l.enabled?'text-[var(--c-primary)]':'text-gray-300'}/>
-            <div className="flex-1 min-w-0">
-              {editingId===l.id?(
-                <input autoFocus value={editingName} onChange={e=>setEditingName(e.target.value)}
-                  onBlur={saveRename}
-                  onKeyDown={e=>{if(e.key==='Enter'){e.currentTarget.blur();}}}
-                  className="w-full text-sm font-medium text-gray-800 border-b border-gray-300 outline-none bg-transparent pb-0.5"/>
-              ):(
-                <button onClick={()=>startRename(l)} className="flex items-center gap-1.5 max-w-full py-1 -my-1">
-                  <p className="text-sm font-medium text-gray-800 truncate">{l.name}</p>
-                </button>
-              )}
-              <button onClick={()=>startEditLocation(l)} className="flex items-center gap-1 py-0.5 -my-0.5">
-                <p className="text-xs text-gray-400">半径{l.radius}m・場所を変更</p>
-              </button>
-            </div>
+            <button onClick={()=>startEditLocation(l)} className="flex-1 min-w-0 text-left">
+              <p className="text-sm font-medium text-gray-800 truncate">{l.name}</p>
+              <p className="text-xs text-gray-400">半径{l.radius}m</p>
+            </button>
             <button onClick={()=>toggle(l.id)}
               className={`relative w-10 h-6 rounded-full transition-colors shrink-0 ${l.enabled?'bg-[var(--c-primary)]':'bg-gray-200'}`}>
               <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${l.enabled?'left-[18px]':'left-0.5'}`}/>
