@@ -4279,7 +4279,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
         {subHeader('タスク一括入力')}{proSheet}
         <div className="flex-1 overflow-y-auto px-4 pb-10">
           {!isPremium&&<p className="text-xs text-gray-400 px-1 mt-4 mb-4">月1回まで無料でご利用いただけます。2回目からPROが必要です。</p>}
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2">タスク情報</p>
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-4">タスク情報</p>
           <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
             <div className="flex items-center gap-3 px-4 py-3.5 border-b border-gray-100">
               <button onClick={()=>setBulkIconSheet(true)}
@@ -4557,7 +4557,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
       {subHeader('ファイルタブ')}{proSheet}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
         {!isPremium&&<p className="text-xs text-gray-400 px-1 mt-4 mb-4">1個まで無料でご利用いただけます。2個目からPROが必要です。</p>}
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2">新しいタブ</p>
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-4">新しいタブ</p>
         <div className="bg-white rounded-2xl shadow-sm px-4 py-3">
           <div className="flex gap-2 items-center">
             <input value={tabInput} onChange={e=>setTabInput(e.target.value)}
