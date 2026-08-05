@@ -5087,6 +5087,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                         <p className={`text-[15px] font-medium ${lpActivePat===pat.id?'text-[var(--c-primary)]':'text-gray-900'}`}>{pat.name}</p>
                         <p className="text-xs text-gray-400">{pat.wakeTime} 起床 / {pat.sleepTime} 就寝</p>
                       </div>
+                      {lpActivePat===pat.id&&<AppIcons.checkCircle size={18} className="text-[var(--c-primary)] shrink-0"/>}
                     </button>
                     <button onClick={()=>{setLpEditId(pat.id);setLpEditName(pat.name);setLpEditWake(pat.wakeTime);setLpEditSleep(pat.sleepTime);setLpEditColor(pat.color);}}
                       className="text-xs text-gray-400 font-medium px-2 py-1 shrink-0">編集</button>

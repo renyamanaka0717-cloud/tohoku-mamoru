@@ -90,6 +90,7 @@ import {
   Crosshair,
   Brain,
   Flag,
+  CheckCircle,
 } from '@phosphor-icons/react';
 
 type PhosphorComp = React.ComponentType<{
@@ -200,4 +201,5 @@ export const AppIcons = {
   crosshair:  make(Crosshair, 18),
   brain:      make(Brain, 18),
   deadline:   make(Flag, 18),
+  checkCircle: make(CheckCircle, 18),
 };
