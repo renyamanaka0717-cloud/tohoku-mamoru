@@ -3,10 +3,11 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppIcons } from './Icons';
 
 interface TourStepDef {
-  id: 'add' | 'save' | 'drag';
+  id: 'add' | 'schedule' | 'save' | 'drag';
   selector: string;
-  // 吹き出しの矢印が指す位置。省略時はselectorの対象と同じ（スポットライトの範囲と矢印の指す先が
-  // 異なる場合に使う。例: saveステップはヘッダー全体をスポットライトするが、矢印は「あとで」タブを指す）
+  // 吹き出しの矢印が指す位置・吹き出しの上下配置の基準。省略時はselectorの対象と同じ
+  // （スポットライトの範囲と、矢印が指す/吹き出しが基準にする位置が異なる場合に使う。
+  // 例: saveステップはヘッダー全体をスポットライトするが、矢印・配置は「あとで」タブを基準にする）
   arrowSelector?: string;
   title: string;
   body: string;
@@ -14,17 +15,19 @@ interface TourStepDef {
 
 const STEPS: TourStepDef[] = [
   { id: 'add', selector: '[data-tour="fab-add"]', title: 'タスクを追加してみよう', body: 'ここをタップして、新しいタスクを追加しましょう。' },
+  { id: 'schedule', selector: '[data-tour="modal-card"]', arrowSelector: '[data-tour="start-time-row"]', title: '開始時刻を設定してみよう', body: '開始時刻をタップして、時間をピックアップしてみましょう。' },
   { id: 'save', selector: '[data-tour="modal-header"]', arrowSelector: '[data-tour="tab-later"]', title: '「あとでやる」に保存', body: 'タスク名を入力して保存すると、「あとでやる」にタスクを追加されます。' },
   { id: 'drag', selector: '[data-tour="tour-draggable"]', title: 'タスクをタイムラインに追加', body: 'タスクを長押しして、空いている時間にドラッグしてみましょう。' },
 ];
 
 interface Rect { top: number; left: number; width: number; height: number; }
 
-export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSavedSignal }: {
+export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSavedSignal, timePickedSignal }: {
   onFinish: (skipped: boolean) => void;
   gestureSignal: number;
   modalOpen: boolean;
   taskSavedSignal: number;
+  timePickedSignal: number;
 }) {
   const [stepIndex, setStepIndex] = useState(0);
   const [rect, setRect] = useState<Rect | null>(null);
@@ -33,6 +36,7 @@ export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSa
   const modalOpenBaseline = useRef(modalOpen);
   const taskSavedBaseline = useRef(taskSavedSignal);
   const gestureBaseline = useRef(gestureSignal);
+  const timePickedBaseline = useRef(timePickedSignal);
   const step = STEPS[stepIndex];
 
   const measure = useCallback(() => {
@@ -72,10 +76,14 @@ export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSa
     modalOpenBaseline.current = modalOpen;
     taskSavedBaseline.current = taskSavedSignal;
     gestureBaseline.current = gestureSignal;
+    timePickedBaseline.current = timePickedSignal;
   }, [stepIndex]);
   useEffect(() => {
     if (step.id === 'add' && modalOpen && !modalOpenBaseline.current) goNext();
   }, [modalOpen, step.id, goNext]);
+  useEffect(() => {
+    if (step.id === 'schedule' && timePickedSignal !== timePickedBaseline.current) goNext();
+  }, [timePickedSignal, step.id, goNext]);
   useEffect(() => {
     if (step.id === 'save' && taskSavedSignal !== taskSavedBaseline.current) goNext();
   }, [taskSavedSignal, step.id, goNext]);
@@ -102,16 +110,18 @@ export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSa
 
   const vh = typeof window !== 'undefined' ? window.innerHeight : 812;
   const vw = typeof window !== 'undefined' ? window.innerWidth : 390;
-  const above = rect ? rect.top > vh * 0.55 : false;
-  const bubbleTop = rect
-    ? (above ? Math.max(56, rect.top - 168) : Math.min(vh - 190, rect.top + rect.height + 20))
+  // 吹き出しの上下配置・矢印の水平位置は、スポットライト範囲（rect）ではなく矢印が指すべき対象
+  // （arrowSelectorがあればそちら、無ければスポットライト対象そのもの）を基準にする。
+  // スポットライトが広い範囲（モーダル全体など）の場合、吹き出しがその範囲の端に配置されて
+  // 対象から離れすぎるのを防ぐため
+  const arrowTarget = arrowRect ?? rect;
+  const above = arrowTarget ? arrowTarget.top > vh * 0.55 : false;
+  const bubbleTop = arrowTarget
+    ? (above ? Math.max(56, arrowTarget.top - 168) : Math.min(vh - 190, arrowTarget.top + arrowTarget.height + 20))
     : vh / 2 - 80;
-  // 矢印の水平位置は、吹き出しの範囲（スポットライト対象）ではなく矢印が指すべき対象
-  // （arrowSelectorがあればそちら、無ければスポットライト対象そのもの）の中心に追従させる
   const bubbleContainerLeft = 16, bubbleContainerWidth = vw - 32;
   const bubbleWidth = Math.min(320, bubbleContainerWidth);
   const bubbleLeft = bubbleContainerLeft + (bubbleContainerWidth - bubbleWidth) / 2;
-  const arrowTarget = arrowRect ?? rect;
   const arrowLeft = arrowTarget
     ? Math.min(bubbleWidth - 24, Math.max(24, (arrowTarget.left + arrowTarget.width / 2) - bubbleLeft))
     : bubbleWidth / 2;

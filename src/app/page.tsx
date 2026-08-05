@@ -958,7 +958,7 @@ function PickerCol({items,value,onChange}:{items:string[];value:string;onChange:
 
 // ── TaskModal ─────────────────────────────────────────────────────────────────
 
-function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:initIconSheet,onSave,onUpdate,onDelete,onClose,onBulkInput,globalTags,customTabs,notificationsEnabled,onEnableNotifications,isPremium=true,onOpenTagSettings,atLocationLimit=false}:{
+function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:initIconSheet,onSave,onUpdate,onDelete,onClose,onBulkInput,globalTags,customTabs,notificationsEnabled,onEnableNotifications,isPremium=true,onOpenTagSettings,atLocationLimit=false,onTimePicked}:{
   task:Task|null; currentDate:string; prefillTime?:string; prefillCategory?:string; openIconSheet?:boolean;
   onSave:(tasks:Omit<Task,'id'>[])=>void; onUpdate?:(data:Omit<Task,'id'>)=>void; onDelete?:()=>void; onClose:()=>void; onBulkInput?:()=>void;
   isPremium?:boolean;
@@ -966,6 +966,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
   notificationsEnabled?:boolean; onEnableNotifications?:()=>void;
   onOpenTagSettings?:()=>void;
   atLocationLimit?:boolean;
+  onTimePicked?:()=>void;
 }) {
   const initMode=():TaskMode=>{
     if(!task) return prefillTime?'scheduled':'later';
@@ -1309,7 +1310,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60" onClick={handleClose}>
-      <div className="absolute bottom-0 left-0 right-0 max-w-md mx-auto" onClick={e=>e.stopPropagation()}>
+      <div className="absolute bottom-0 left-0 right-0 max-w-md mx-auto" onClick={e=>e.stopPropagation()} data-tour={!task?'modal-card':undefined}>
         {/* ── Dark header ── */}
         <div className="rounded-t-3xl px-4 pt-4" style={{background:headerBg}}>
         <div data-tour={!task?'modal-header':undefined}>
@@ -1612,7 +1613,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
             {/* 開始時刻 + 終日トグル — scheduled/recurring/allday */}
             {(mode==='scheduled'||mode==='recurring'||mode==='allday')&&(<>
               <div className="h-px bg-gray-100 mx-4"/>
-              <div className="w-full flex items-center gap-3 px-4 py-3.5">
+              <div className="w-full flex items-center gap-3 px-4 py-3.5" data-tour={!task?'start-time-row':undefined}>
                 <AppIcons.clock size={18} className="text-gray-400 shrink-0"/>
                 <span className="text-sm font-medium text-gray-800 shrink-0">開始時刻</span>
                 <button onClick={()=>setMode(m=>m==='allday'?'scheduled':'allday')}
@@ -2032,11 +2033,11 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
       )}
       {timePickerOpen&&(
         <div className="absolute inset-0 z-[105] flex items-center justify-center bg-black/50 rounded-t-3xl"
-          onClick={()=>setTPOpen(false)}>
+          onClick={()=>{setTPOpen(false);onTimePicked?.();}}>
           <div className="bg-white rounded-3xl mx-6 w-full max-w-xs shadow-2xl" onClick={e=>e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 pt-5 pb-3">
               <span className="text-base font-bold text-gray-800">開始時刻</span>
-              <button onClick={()=>setTPOpen(false)}
+              <button onClick={()=>{setTPOpen(false);onTimePicked?.();}}
                 className="px-4 py-1.5 bg-[var(--c-primary)] text-white text-sm font-bold rounded-full">完了</button>
             </div>
             {(()=>{
@@ -5906,6 +5907,7 @@ export default function App() {
   const [showTour,setShowTour] = useState(false);
   const [tourDragSignal,setTourDragSignal] = useState(0);
   const [tourTaskSavedSignal,setTourTaskSavedSignal] = useState(0);
+  const [tourTimePickedSignal,setTourTimePickedSignal] = useState(0);
   const [tourSampleTasks,setTourSampleTasks] = useState<Task[]>([]);
   // プロダクトツアー中だけ表示するサンプルタスク。実データ（tasks/localStorage）には
   // 一切保存せず、表示用にfilteredTasksへ合成するだけなのでツアー終了時に消せば痕跡は残らない
@@ -7015,7 +7017,7 @@ export default function App() {
 
       {/* ── FAB ── */}
       <div className="fixed right-4 z-50" style={{bottom:'calc(3.5rem + env(safe-area-inset-bottom))'}} data-tour="fab-add">
-        <button onClick={()=>openAdd()}
+        <button onClick={()=>openAdd(showTour?nowStr():undefined)}
           className="w-14 h-14 bg-[var(--c-primary)] text-white rounded-full shadow-2xl active:bg-gray-700"
           style={{display:'grid',placeItems:'center'}}>
           <AppIcons.plus size={28} className="block"/>
@@ -7153,7 +7155,8 @@ export default function App() {
           globalTags={globalTags} customTabs={customTabs}
           notificationsEnabled={settings.notificationsEnabled??true}
           onEnableNotifications={()=>setSettings(s=>({...s,notificationsEnabled:true}))}
-          isPremium={isPremium} atLocationLimit={activeLocationRegionCount>=MAX_MONITORED_REGIONS}/>
+          isPremium={isPremium} atLocationLimit={activeLocationRegionCount>=MAX_MONITORED_REGIONS}
+          onTimePicked={()=>{if(showTour&&!modal.task) setTourTimePickedSignal(n=>n+1);}}/>
       )}
 
       {/* ── Settings Screen ── */}
@@ -7317,7 +7320,7 @@ export default function App() {
 
       {/* ── プロダクトツアー ── */}
       {showTour&&!settingsOpen&&!calendarOpen&&!searchOpen&&(
-        <ProductTour gestureSignal={tourDragSignal} modalOpen={modal.open} taskSavedSignal={tourTaskSavedSignal}
+        <ProductTour gestureSignal={tourDragSignal} modalOpen={modal.open} taskSavedSignal={tourTaskSavedSignal} timePickedSignal={tourTimePickedSignal}
           onFinish={(skipped)=>{
             localStorage.setItem(TOUR_COMPLETED_KEY,'1');
             setShowTour(false);
