@@ -4617,9 +4617,8 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   if(sub==='tags') return (
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
       {subHeader('タグ')}{proSheet}
+      <p className="text-xs text-gray-400 bg-white px-5 py-3 shrink-0">2個まで無料でご利用いただけます。3個目からPROが必要です。</p>
       <div className="flex-1 overflow-y-auto px-4 pb-8">
-        <p className="text-xs text-gray-400 px-1 mt-4">2個まで無料でご利用いただけます。3個目からPROが必要です。</p>
-
         {/* New tag */}
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-4">新しいタグ</p>
         <div className="bg-white rounded-2xl shadow-sm px-4 pt-4 pb-3">
@@ -4925,12 +4924,12 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           <SettingsRow icon={<AppIcons.palette/>} iconBg="bg-gray-100"
             title="テーマカラー"
             desc={THEMES.find(t=>t.id===(settings.theme??'mint'))?.name??'ミント'}
-            onClick={()=>setSub('themeColor')} pro/>
+            onClick={()=>setSub('themeColor')}/>
           <div className="h-px bg-gray-100 mx-4"/>
           <SettingsRow icon={<AppIcons.home/>} iconBg="bg-gray-100"
             title="アプリアイコン"
             desc={APP_ICONS.find(t=>t.id===(settings.appIcon??'mint'))?.name??'ミント'}
-            onClick={()=>setSub('appIcon')} pro/>
+            onClick={()=>setSub('appIcon')}/>
           <div className="h-px bg-gray-100 mx-4"/>
           <SettingsRow icon={<AppIcons.freeTime size={18}/>} iconBg="bg-gray-100"
             title="空き時間カード"
@@ -4973,6 +4972,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                   )}
                 </div>
                 <span className={`text-xs text-center leading-tight ${selected?'font-bold text-gray-900':'text-gray-500'}`}>{t.name}</span>
+                {!isFree&&!isPremium&&<span className="text-[8px] font-bold text-gray-400 border border-gray-300 rounded px-1 py-0.5 leading-none">PRO</span>}
               </button>
             );
           });})()}
@@ -5014,6 +5014,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                   )}
                 </div>
                 <span className={`text-xs text-center leading-tight ${selected?'font-bold text-gray-900':'text-gray-500'}`}>{ic.name}</span>
+                {!isFree&&!isPremium&&<span className="text-[8px] font-bold text-gray-400 border border-gray-300 rounded px-1 py-0.5 leading-none">PRO</span>}
               </button>
             );
           })}
