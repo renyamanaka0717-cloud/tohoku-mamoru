@@ -2741,8 +2741,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
                 opacity:isDragging?0.25:1,pointerEvents:isDragging?'none':'auto'}}
               onTouchStart={e=>startLP(task,e)}
               onTouchEnd={cancelLP}
-              onTouchMove={cancelLP}
-              data-tour="tour-draggable">
+              onTouchMove={cancelLP}>
               <TaskCard task={task} onToggle={()=>onToggle(task.id)} onEdit={()=>onEdit(task)} globalTags={globalTags} onSubtaskToggle={(sid)=>onSubtaskToggle(task.id,sid)} tabName={task.category?customTabs.find(t=>t.id===task.category)?.name:undefined}/>
             </div>,
           ];
