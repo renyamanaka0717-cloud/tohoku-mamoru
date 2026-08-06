@@ -15,7 +15,7 @@ interface TourStepDef {
 
 const STEPS: TourStepDef[] = [
   { id: 'add', selector: '[data-tour="fab-add"]', title: 'タスクを追加してみよう', body: 'ここをタップして、新しいタスクを追加しましょう。' },
-  { id: 'schedule', selector: '[data-tour="modal-card"]', arrowSelector: '[data-tour="tab-scheduled"]', title: 'タスクを追加してみましょう。', body: '時間指定のタスクはこちらから追加できます。' },
+  { id: 'schedule', selector: '[data-tour="modal-card"]', arrowSelector: '[data-tour="tab-scheduled"]', title: '時間指定のタスクはこちらから追加できます。', body: '' },
   { id: 'save', selector: '[data-tour="modal-header"]', arrowSelector: '[data-tour="tab-later"]', title: '「あとでやる」に保存', body: 'タスク名を入力して保存すると、「あとでやる」にタスクを追加されます。' },
   { id: 'drag', selector: '[data-tour="tour-draggable"]', title: 'タスクをタイムラインに追加', body: 'タスクを長押しして、空いている時間にドラッグしてみましょう。' },
 ];
@@ -176,8 +176,8 @@ export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSa
               ...(above ? { bottom: -8, borderTop: '8px solid white' } : { top: -8, borderBottom: '8px solid white' }),
               animation: 'tourBlink 1.4s ease-in-out infinite',
             }} />
-            <p className="text-sm font-bold text-gray-900 mb-1">{step.title}</p>
-            <p className="text-xs text-gray-500 leading-relaxed">{step.body}</p>
+            <p className={`text-sm font-bold text-gray-900 ${step.body?'mb-1':''}`}>{step.title}</p>
+            {step.body&&<p className="text-xs text-gray-500 leading-relaxed">{step.body}</p>}
           </div>
         </div>
       )}
