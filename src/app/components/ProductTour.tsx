@@ -15,7 +15,7 @@ interface TourStepDef {
 
 const STEPS: TourStepDef[] = [
   { id: 'add', selector: '[data-tour="fab-add"]', title: 'タスクを追加してみよう', body: 'ここをタップして、新しいタスクを追加しましょう。' },
-  { id: 'schedule', selector: '[data-tour="modal-card"]', arrowSelector: '[data-tour="tab-scheduled"]', title: '開始時刻を設定してみよう', body: '時間指定のタスクはこちらから追加できます。' },
+  { id: 'schedule', selector: '[data-tour="modal-card"]', arrowSelector: '[data-tour="tab-scheduled"]', title: 'タスクを追加してみましょう。', body: '時間指定のタスクはこちらから追加できます。' },
   { id: 'save', selector: '[data-tour="modal-header"]', arrowSelector: '[data-tour="tab-later"]', title: '「あとでやる」に保存', body: 'タスク名を入力して保存すると、「あとでやる」にタスクを追加されます。' },
   { id: 'drag', selector: '[data-tour="tour-draggable"]', title: 'タスクをタイムラインに追加', body: 'タスクを長押しして、空いている時間にドラッグしてみましょう。' },
 ];
@@ -114,7 +114,9 @@ export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSa
   // （arrowSelectorがあればそちら、無ければスポットライト対象そのもの）を基準にする。
   // スポットライトが広い範囲（モーダル全体など）の場合、吹き出しがその範囲の端に配置されて
   // 対象から離れすぎるのを防ぐため
-  const arrowTarget = arrowRect ?? rect;
+  // 稀にレイアウト確定前の一瞬でサイズ0のrectを拾うことがあるため、幅・高さが0の測定結果は無視する
+  const validArrowRect = arrowRect && arrowRect.width > 0 && arrowRect.height > 0 ? arrowRect : null;
+  const arrowTarget = validArrowRect ?? rect;
   const above = arrowTarget ? arrowTarget.top > vh * 0.55 : false;
   const bubbleTop = arrowTarget
     ? (above ? Math.max(56, arrowTarget.top - 168) : Math.min(vh - 190, arrowTarget.top + arrowTarget.height + 20))
@@ -129,8 +131,8 @@ export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSa
   // 下端までで打ち切る（arrowSelectorがある場合のみ）。穴自体は変えずタップ可能範囲を保ったまま、
   // 視覚的な強調だけを対象の近くに絞れる（例: scheduleステップはモーダル全体が操作可能なままだが、
   // 光る枠は「時間指定」タブの少し下までで止める）
-  const highlightRect = rect && arrowRect
-    ? { ...rect, height: Math.max(40, Math.min(rect.height, (arrowRect.top + arrowRect.height) - rect.top + 12)) }
+  const highlightRect = rect && validArrowRect
+    ? { ...rect, height: Math.max(40, Math.min(rect.height, (validArrowRect.top + validArrowRect.height) - rect.top + 12)) }
     : rect;
 
   return (
