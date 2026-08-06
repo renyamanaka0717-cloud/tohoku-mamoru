@@ -19,7 +19,7 @@ interface TourStepDef {
 const STEPS: TourStepDef[] = [
   { id: 'add', selector: '[data-tour="fab-add"]', title: 'タスクを追加してみよう', body: 'ここをタップして、新しいタスクを追加しましょう。' },
   { id: 'schedule', selector: '[data-tour="modal-card"]', arrowSelector: '[data-tour="tab-scheduled"]', title: '時間指定のタスクはこちらから追加できます。', body: '', showNextButton: true },
-  { id: 'save', selector: '[data-tour="modal-header"]', arrowSelector: '[data-tour="tab-later"]', title: '「あとでやる」に保存してみましょう。', body: '' },
+  { id: 'save', selector: '[data-tour="modal-header"]', arrowSelector: '[data-tour="tab-later"]', title: '「あとでやる」に保存してみましょう。', body: 'タスク名を入力して保存すると、「あとでやる」にタスクが追加されます。' },
   { id: 'drag', selector: '[data-tour="tour-draggable"]', title: 'タスクをタイムラインに追加', body: 'タスクを長押しして、空いている時間にドラッグしてみましょう。' },
 ];
 
