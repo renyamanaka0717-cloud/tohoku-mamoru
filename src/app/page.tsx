@@ -958,7 +958,7 @@ function PickerCol({items,value,onChange}:{items:string[];value:string;onChange:
 
 // ── TaskModal ─────────────────────────────────────────────────────────────────
 
-function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:initIconSheet,onSave,onUpdate,onDelete,onClose,onBulkInput,globalTags,customTabs,notificationsEnabled,onEnableNotifications,isPremium=true,onOpenTagSettings,atLocationLimit=false,onTimePicked}:{
+function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:initIconSheet,onSave,onUpdate,onDelete,onClose,onBulkInput,globalTags,customTabs,notificationsEnabled,onEnableNotifications,isPremium=true,onOpenTagSettings,atLocationLimit=false,onTimePicked,forceLaterSignal}:{
   task:Task|null; currentDate:string; prefillTime?:string; prefillCategory?:string; openIconSheet?:boolean;
   onSave:(tasks:Omit<Task,'id'>[])=>void; onUpdate?:(data:Omit<Task,'id'>)=>void; onDelete?:()=>void; onClose:()=>void; onBulkInput?:()=>void;
   isPremium?:boolean;
@@ -967,6 +967,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
   onOpenTagSettings?:()=>void;
   atLocationLimit?:boolean;
   onTimePicked?:()=>void;
+  forceLaterSignal?:number;
 }) {
   const initMode=():TaskMode=>{
     if(!task) return prefillTime?'scheduled':'later';
@@ -977,6 +978,13 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
   };
 
   const [mode,setMode]        = useState<TaskMode>(initMode());
+  const forceLaterBaseline = useRef(forceLaterSignal);
+  useEffect(()=>{
+    if(forceLaterSignal!==undefined && forceLaterSignal!==forceLaterBaseline.current){
+      forceLaterBaseline.current = forceLaterSignal;
+      setMode('later');
+    }
+  },[forceLaterSignal]);
   const [name,setName]        = useState(task?.name??'');
   const [startTime,setST]     = useState(task?.startTime??prefillTime??nowStr());
   const [duration,setDur]     = useState(task?.duration??0);
@@ -5909,6 +5917,7 @@ export default function App() {
   const [tourDragSignal,setTourDragSignal] = useState(0);
   const [tourTaskSavedSignal,setTourTaskSavedSignal] = useState(0);
   const [tourTimePickedSignal,setTourTimePickedSignal] = useState(0);
+  const [tourForceLaterSignal,setTourForceLaterSignal] = useState(0);
   const [tourSampleTasks,setTourSampleTasks] = useState<Task[]>([]);
   // プロダクトツアー中だけ表示するサンプルタスク。実データ（tasks/localStorage）には
   // 一切保存せず、表示用にfilteredTasksへ合成するだけなのでツアー終了時に消せば痕跡は残らない
@@ -7157,7 +7166,8 @@ export default function App() {
           notificationsEnabled={settings.notificationsEnabled??true}
           onEnableNotifications={()=>setSettings(s=>({...s,notificationsEnabled:true}))}
           isPremium={isPremium} atLocationLimit={activeLocationRegionCount>=MAX_MONITORED_REGIONS}
-          onTimePicked={()=>{if(showTour&&!modal.task) setTourTimePickedSignal(n=>n+1);}}/>
+          onTimePicked={()=>{if(showTour&&!modal.task) setTourTimePickedSignal(n=>n+1);}}
+          forceLaterSignal={showTour&&!modal.task?tourForceLaterSignal:undefined}/>
       )}
 
       {/* ── Settings Screen ── */}
@@ -7322,6 +7332,7 @@ export default function App() {
       {/* ── プロダクトツアー ── */}
       {showTour&&!settingsOpen&&!calendarOpen&&!searchOpen&&(
         <ProductTour gestureSignal={tourDragSignal} modalOpen={modal.open} taskSavedSignal={tourTaskSavedSignal} timePickedSignal={tourTimePickedSignal}
+          onEnterSaveStep={()=>setTourForceLaterSignal(n=>n+1)}
           onFinish={(skipped)=>{
             localStorage.setItem(TOUR_COMPLETED_KEY,'1');
             setShowTour(false);

@@ -19,18 +19,19 @@ interface TourStepDef {
 const STEPS: TourStepDef[] = [
   { id: 'add', selector: '[data-tour="fab-add"]', title: 'タスクを追加してみよう', body: 'ここをタップして、新しいタスクを追加しましょう。' },
   { id: 'schedule', selector: '[data-tour="modal-card"]', arrowSelector: '[data-tour="tab-scheduled"]', title: '時間指定のタスクはこちらから追加できます。', body: '', showNextButton: true },
-  { id: 'save', selector: '[data-tour="modal-header"]', arrowSelector: '[data-tour="tab-later"]', title: '「あとでやる」に保存', body: 'タスク名を入力して保存すると、「あとでやる」にタスクを追加されます。' },
+  { id: 'save', selector: '[data-tour="modal-header"]', arrowSelector: '[data-tour="tab-later"]', title: '「あとでやる」に保存してみましょう。', body: '' },
   { id: 'drag', selector: '[data-tour="tour-draggable"]', title: 'タスクをタイムラインに追加', body: 'タスクを長押しして、空いている時間にドラッグしてみましょう。' },
 ];
 
 interface Rect { top: number; left: number; width: number; height: number; }
 
-export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSavedSignal, timePickedSignal }: {
+export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSavedSignal, timePickedSignal, onEnterSaveStep }: {
   onFinish: (skipped: boolean) => void;
   gestureSignal: number;
   modalOpen: boolean;
   taskSavedSignal: number;
   timePickedSignal: number;
+  onEnterSaveStep?: () => void;
 }) {
   const [stepIndex, setStepIndex] = useState(0);
   const [rect, setRect] = useState<Rect | null>(null);
@@ -98,6 +99,11 @@ export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSa
   useEffect(() => {
     if (step.id === 'drag' && gestureSignal !== gestureBaseline.current) goNext();
   }, [gestureSignal, step.id, goNext]);
+
+  // saveステップに入った時点で、モーダルのモードタブを「あとで」に自動で切り替える
+  useEffect(() => {
+    if (step.id === 'save') onEnterSaveStep?.();
+  }, [step.id, onEnterSaveStep]);
 
   const handleSkip = () => onFinish(true);
 
