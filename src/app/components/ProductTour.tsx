@@ -42,17 +42,22 @@ export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSa
   const timePickedBaseline = useRef(timePickedSignal);
   const step = STEPS[stepIndex];
 
+  // getBoundingClientRect()が返すDOMRectはtop/left/width/heightがprototypeのgetterで
+  // own enumerable propertyではないため、{...rect}のスプレッドではこれらがコピーされず失われる
+  // （highlightRectの計算がNaNになり、ブラウザがその不正なスタイル代入を無視して直前の値を
+  // 保持し続ける不具合の原因だった）。stateには必ずプレーンオブジェクトに変換して保存する
+  const toRect = (r: DOMRect): Rect => ({ top: r.top, left: r.left, width: r.width, height: r.height });
+
   const measure = useCallback(() => {
     const el = document.querySelector(step.selector) as HTMLElement | null;
-    if (el) setRect(el.getBoundingClientRect());
-    else setRect(null);
+    setRect(el ? toRect(el.getBoundingClientRect()) : null);
     if (step.arrowSelector) {
       const arrowEl = document.querySelector(step.arrowSelector) as HTMLElement | null;
-      setArrowRect(arrowEl ? arrowEl.getBoundingClientRect() : null);
+      setArrowRect(arrowEl ? toRect(arrowEl.getBoundingClientRect()) : null);
     } else {
       setArrowRect(null);
     }
-  }, [step.selector, step.arrowSelector]);
+  }, [step.selector, step.arrowSelector, step.id]);
 
   useEffect(() => {
     measure();
