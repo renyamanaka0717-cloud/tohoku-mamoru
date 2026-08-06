@@ -152,6 +152,11 @@ export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSa
           <div className="absolute bg-black/60" style={{ top: rect.top + rect.height, left: 0, right: 0, bottom: 0, pointerEvents: 'auto' }} />
           <div className="absolute bg-black/60" style={{ top: rect.top, left: 0, width: Math.max(0, rect.left), height: rect.height, pointerEvents: 'auto' }} />
           <div className="absolute bg-black/60" style={{ top: rect.top, left: rect.left + rect.width, right: 0, height: rect.height, pointerEvents: 'auto' }} />
+          {/* 穴（rect）の中でも、光る枠（highlightRect）より下の部分は暗くして強調する。
+              pointerEvents:noneなのでタップ可能範囲（rect）自体は変わらない */}
+          {highlightRect && highlightRect.height < rect.height && (
+            <div className="absolute bg-black/60" style={{ top: highlightRect.top + highlightRect.height, left: rect.left, width: rect.width, height: rect.top + rect.height - (highlightRect.top + highlightRect.height), pointerEvents: 'none' }} />
+          )}
           {highlightRect && (
             <div className="absolute rounded-2xl border-2 border-white"
               style={{
