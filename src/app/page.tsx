@@ -1366,7 +1366,8 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
           {/* Tabs */}
           <div className="flex bg-white/20 rounded-xl p-1 mb-3">
             {([['later','あとで'],['scheduled','時間指定'],['recurring','繰り返し']] as [TaskMode,string][]).map(([m,l])=>(
-              <button key={m} onClick={()=>setMode(m)} data-tour={!task&&m==='later'?'tab-later':undefined}
+              <button key={m} onClick={()=>setMode(m)}
+                data-tour={!task?(m==='later'?'tab-later':m==='scheduled'?'tab-scheduled':undefined):undefined}
                 className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-colors ${mode===m?'bg-white/90 text-gray-800':'text-white/70'}`}>
                 {l}
               </button>

@@ -15,7 +15,7 @@ interface TourStepDef {
 
 const STEPS: TourStepDef[] = [
   { id: 'add', selector: '[data-tour="fab-add"]', title: 'タスクを追加してみよう', body: 'ここをタップして、新しいタスクを追加しましょう。' },
-  { id: 'schedule', selector: '[data-tour="modal-card"]', arrowSelector: '[data-tour="start-time-row"]', title: '開始時刻を設定してみよう', body: '開始時刻をタップして、時間をピックアップしてみましょう。' },
+  { id: 'schedule', selector: '[data-tour="modal-card"]', arrowSelector: '[data-tour="tab-scheduled"]', title: '開始時刻を設定してみよう', body: '時間指定のタスクはこちらから追加できます。' },
   { id: 'save', selector: '[data-tour="modal-header"]', arrowSelector: '[data-tour="tab-later"]', title: '「あとでやる」に保存', body: 'タスク名を入力して保存すると、「あとでやる」にタスクを追加されます。' },
   { id: 'drag', selector: '[data-tour="tour-draggable"]', title: 'タスクをタイムラインに追加', body: 'タスクを長押しして、空いている時間にドラッグしてみましょう。' },
 ];
@@ -125,6 +125,13 @@ export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSa
   const arrowLeft = arrowTarget
     ? Math.min(bubbleWidth - 24, Math.max(24, (arrowTarget.left + arrowTarget.width / 2) - bubbleLeft))
     : bubbleWidth / 2;
+  // 注目を引く光る枠は、スポットライトの穴（rect、タップ可能な範囲）とは別に、矢印が指す対象の
+  // 下端までで打ち切る（arrowSelectorがある場合のみ）。穴自体は変えずタップ可能範囲を保ったまま、
+  // 視覚的な強調だけを対象の近くに絞れる（例: scheduleステップはモーダル全体が操作可能なままだが、
+  // 光る枠は「時間指定」タブの少し下までで止める）
+  const highlightRect = rect && arrowRect
+    ? { ...rect, height: Math.max(40, Math.min(rect.height, (arrowRect.top + arrowRect.height) - rect.top + 12)) }
+    : rect;
 
   return (
     <div className="fixed inset-0 z-[220]" style={{ pointerEvents: 'none' }}>
@@ -135,11 +142,13 @@ export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSa
           <div className="absolute bg-black/60" style={{ top: rect.top + rect.height, left: 0, right: 0, bottom: 0, pointerEvents: 'auto' }} />
           <div className="absolute bg-black/60" style={{ top: rect.top, left: 0, width: Math.max(0, rect.left), height: rect.height, pointerEvents: 'auto' }} />
           <div className="absolute bg-black/60" style={{ top: rect.top, left: rect.left + rect.width, right: 0, height: rect.height, pointerEvents: 'auto' }} />
-          <div className="absolute rounded-2xl border-2 border-white"
-            style={{
-              top: rect.top - 6, left: rect.left - 6, width: rect.width + 12, height: rect.height + 12,
-              pointerEvents: 'none', animation: 'tourPulse 1.6s ease-in-out infinite, tourScale 1.6s ease-in-out infinite',
-            }} />
+          {highlightRect && (
+            <div className="absolute rounded-2xl border-2 border-white"
+              style={{
+                top: highlightRect.top - 6, left: highlightRect.left - 6, width: highlightRect.width + 12, height: highlightRect.height + 12,
+                pointerEvents: 'none', animation: 'tourPulse 1.6s ease-in-out infinite, tourScale 1.6s ease-in-out infinite',
+              }} />
+          )}
         </>
       ) : (
         <div className="absolute inset-0 bg-black/60" style={{ pointerEvents: 'auto' }} />
