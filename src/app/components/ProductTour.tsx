@@ -31,18 +31,23 @@ const STEPS: TourStepDef[] = [
 
 interface Rect { top: number; left: number; width: number; height: number; }
 
-export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSavedSignal, onEnterLaterNameStep }: {
+export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSavedSignal, isDragging, onEnterLaterNameStep, onSkipLaterName }: {
   onFinish: (skipped: boolean) => void;
   gestureSignal: number;
   modalOpen: boolean;
   taskSavedSignal: number;
+  isDragging?: boolean;
   onEnterLaterNameStep?: () => void;
+  // laterNameステップで名前を入力せず「次へ」を押した場合に、仮の名前を入れてもらうためのコールバック
+  onSkipLaterName?: () => void;
 }) {
   const { tr } = useI18n();
   const [stepIndex, setStepIndex] = useState(0);
   const [rect, setRect] = useState<Rect | null>(null);
   const [arrowRect, setArrowRect] = useState<Rect | null>(null);
   const [showCompletion, setShowCompletion] = useState(false);
+  // ドロップ完了直後は演出用に一旦オーバーレイを消し、2秒待ってから完了ポップアップを出す
+  const [dropped, setDropped] = useState(false);
   const modalOpenBaseline = useRef(modalOpen);
   const taskSavedBaseline = useRef(taskSavedSignal);
   const gestureBaseline = useRef(gestureSignal);
@@ -78,12 +83,14 @@ export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSa
     else setStepIndex(i => i + 1);
   }, [stepIndex]);
 
-  // 対象要素が見つからない場合（該当データが無い等）は少し待って自動的に次へ進む
+  // 対象要素が見つからない場合（該当データが無い等）は少し待って自動的に次へ進む。
+  // ただしdrop直後（dropped）はdragステップの対象が消えるのが正常な結果なので、
+  // このフォールバックではなく専用の2秒待ちタイマー（下記）に処理を任せる
   useEffect(() => {
-    if (rect || showCompletion) return;
+    if (rect || showCompletion || dropped) return;
     const t = setTimeout(() => goNext(), 800);
     return () => clearTimeout(t);
-  }, [rect, showCompletion, goNext]);
+  }, [rect, showCompletion, dropped, goNext]);
 
   // 各ステップに入った時点の値を基準に記録し、実際の操作（タップ・保存・ドラッグ）で自動的に進む
   useEffect(() => {
@@ -104,8 +111,12 @@ export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSa
   useEffect(() => {
     if (step.id === 'laterName') onEnterLaterNameStep?.();
   }, [step.id, onEnterLaterNameStep]);
+  // ドロップした瞬間にオーバーレイを消して結果を見せ、2秒待ってから完了ポップアップに進む
   useEffect(() => {
-    if (step.id === 'drag' && gestureSignal !== gestureBaseline.current) goNext();
+    if (step.id !== 'drag' || gestureSignal === gestureBaseline.current) return;
+    setDropped(true);
+    const t = setTimeout(() => goNext(), 2000);
+    return () => clearTimeout(t);
   }, [gestureSignal, step.id, goNext]);
 
   const handleSkip = () => onFinish(true);
@@ -124,6 +135,10 @@ export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSa
       </div>
     );
   }
+
+  // ドロップ直後は完了ポップアップが出るまでの2秒間、オーバーレイ・吹き出しを消して
+  // タイムラインに追加された結果をそのまま見せる
+  if (dropped) return null;
 
   const vh = typeof window !== 'undefined' ? window.innerHeight : 812;
   const vw = typeof window !== 'undefined' ? window.innerWidth : 390;
@@ -151,20 +166,25 @@ export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSa
   const highlightRect = rect && validArrowRect
     ? { ...rect, height: Math.max(40, Math.min(rect.height, (validArrowRect.top + validArrowRect.height) - rect.top + 12)) }
     : rect;
+  // dragステップは空き時間カード内の他の「あとでやる」タスクも見えた方が分かりやすいため、
+  // 通常より暗さを弱める。さらに実際にドラッグ中は指の下のタイムライン全体が見える必要があるため、
+  // ほぼ暗転無しにする
+  const overlayAlpha = step.id === 'drag' ? (isDragging ? 0.08 : 0.3) : 0.6;
+  const overlayStyle = { background: `rgba(0,0,0,${overlayAlpha})` };
 
   return (
     <div className="fixed inset-0 z-[220]" style={{ pointerEvents: 'none' }}>
       {/* 対象要素の周囲だけを避けて画面を暗くする（4分割の帯） */}
       {rect ? (
         <>
-          <div className="absolute bg-black/60" style={{ top: 0, left: 0, right: 0, height: Math.max(0, rect.top), pointerEvents: 'auto' }} />
-          <div className="absolute bg-black/60" style={{ top: rect.top + rect.height, left: 0, right: 0, bottom: 0, pointerEvents: 'auto' }} />
-          <div className="absolute bg-black/60" style={{ top: rect.top, left: 0, width: Math.max(0, rect.left), height: rect.height, pointerEvents: 'auto' }} />
-          <div className="absolute bg-black/60" style={{ top: rect.top, left: rect.left + rect.width, right: 0, height: rect.height, pointerEvents: 'auto' }} />
+          <div className="absolute" style={{ ...overlayStyle, top: 0, left: 0, right: 0, height: Math.max(0, rect.top), pointerEvents: 'auto' }} />
+          <div className="absolute" style={{ ...overlayStyle, top: rect.top + rect.height, left: 0, right: 0, bottom: 0, pointerEvents: 'auto' }} />
+          <div className="absolute" style={{ ...overlayStyle, top: rect.top, left: 0, width: Math.max(0, rect.left), height: rect.height, pointerEvents: 'auto' }} />
+          <div className="absolute" style={{ ...overlayStyle, top: rect.top, left: rect.left + rect.width, right: 0, height: rect.height, pointerEvents: 'auto' }} />
           {/* 穴（rect）の中でも、光る枠（highlightRect）より下の部分は暗くして強調する。
               pointerEvents:noneなのでタップ可能範囲（rect）自体は変わらない */}
           {highlightRect && highlightRect.height < rect.height && (
-            <div className="absolute bg-black/60" style={{ top: highlightRect.top + highlightRect.height, left: rect.left, width: rect.width, height: rect.top + rect.height - (highlightRect.top + highlightRect.height), pointerEvents: 'none' }} />
+            <div className="absolute" style={{ ...overlayStyle, top: highlightRect.top + highlightRect.height, left: rect.left, width: rect.width, height: rect.top + rect.height - (highlightRect.top + highlightRect.height), pointerEvents: 'none' }} />
           )}
           {highlightRect && (
             <div className="absolute rounded-2xl border-2 border-white"
@@ -175,7 +195,7 @@ export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSa
           )}
         </>
       ) : (
-        <div className="absolute inset-0 bg-black/60" style={{ pointerEvents: 'auto' }} />
+        <div className="absolute inset-0" style={{ ...overlayStyle, pointerEvents: 'auto' }} />
       )}
 
       {/* ページインジケーター＋スキップ */}
@@ -201,7 +221,7 @@ export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSa
             <p className={`text-sm font-bold text-gray-900 ${step.bodyKey?'mb-1':''}`}>{tr(step.titleKey)}</p>
             {step.bodyKey&&<p className="text-xs text-gray-500 leading-relaxed">{tr(step.bodyKey)}</p>}
             {step.showNextButton&&(
-              <button onClick={goNext}
+              <button onClick={()=>{ if(step.id==='laterName') onSkipLaterName?.(); goNext(); }}
                 className="w-full mt-3 py-2.5 rounded-xl text-sm font-bold text-white active:opacity-80"
                 style={{ background: 'var(--c-primary)', pointerEvents: 'auto' }}>
                 {tr('tourNext')}

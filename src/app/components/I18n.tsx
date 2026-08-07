@@ -8,8 +8,8 @@ export type Language = 'ja' | 'en';
 export const STRINGS = {
   welcomeTitle:          { ja: 'BrainBox',                     en: 'BrainBox' },
   welcomeSubtitle:       { ja: '頭の中を、もっとシンプルに。',            en: 'Simplify what’s on your mind.' },
-  welcomeStartTour:      { ja: 'ツアーを始める',                  en: 'Start the tour' },
-  welcomeLater:          { ja: 'あとで見る',                      en: 'Maybe later' },
+  welcomeStartTour:      { ja: '使い方を見る',                     en: 'See how it works' },
+  welcomeLater:          { ja: 'スキップ',                       en: 'Skip' },
 
   tourSkip:              { ja: 'スキップ',                       en: 'Skip' },
   tourAddTitle:          { ja: 'タスクを追加してみよう',             en: 'Let’s add a task' },
@@ -18,9 +18,10 @@ export const STRINGS = {
   tourLaterNameTitle:    { ja: 'タスクを入力してみましょう。',          en: 'Try entering a task name.' },
   tourLaterConfirmTitle: { ja: '保存ボタンを押しましょう。',            en: 'Tap the save button.' },
   tourLaterConfirmBody:  { ja: '「あとでやる」タスク一覧に追加されます。', en: 'It will be added to your "Later" list.' },
-  tourDragTitle:         { ja: 'タスクをタイムラインに追加',            en: 'Add a task to the timeline' },
-  tourDragBody:          { ja: 'タスクを長押しして、空いている時間にドラッグしてみましょう。', en: 'Long-press a task and drag it onto a free slot.' },
+  tourDragTitle:         { ja: 'あとでやるタスクが空き時間カードに表示されます。', en: 'Your "Later" tasks appear on the free-time card.' },
+  tourDragBody:          { ja: 'タスクを長押ししてタイムラインにドラッグしてみましょう。', en: 'Long-press a task and drag it onto the timeline.' },
   tourNext:              { ja: '次へ',                          en: 'Next' },
+  tourDefaultTaskName:   { ja: 'テスト',                        en: 'Test' },
   tourCompleteTitle:     { ja: 'ツアー完了！',                     en: 'Tour complete!' },
   tourCompleteBody:      { ja: 'これでBrainBoxの基本的な使い方はばっちりです。さっそく使ってみましょう。', en: 'You’re all set with the basics of BrainBox. Let’s get started.' },
   tourCompleteStart:     { ja: 'はじめる',                        en: 'Get started' },

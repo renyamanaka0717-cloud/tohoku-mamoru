@@ -960,7 +960,7 @@ function PickerCol({items,value,onChange}:{items:string[];value:string;onChange:
 
 // ── TaskModal ─────────────────────────────────────────────────────────────────
 
-function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:initIconSheet,onSave,onUpdate,onDelete,onClose,onBulkInput,globalTags,customTabs,notificationsEnabled,onEnableNotifications,isPremium=true,onOpenTagSettings,atLocationLimit=false,suppressAutoFocus=false,focusNameSignal}:{
+function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:initIconSheet,onSave,onUpdate,onDelete,onClose,onBulkInput,globalTags,customTabs,notificationsEnabled,onEnableNotifications,isPremium=true,onOpenTagSettings,atLocationLimit=false,suppressAutoFocus=false,focusNameSignal,fillTestNameSignal}:{
   task:Task|null; currentDate:string; prefillTime?:string; prefillCategory?:string; openIconSheet?:boolean;
   onSave:(tasks:Omit<Task,'id'>[])=>void; onUpdate?:(data:Omit<Task,'id'>)=>void; onDelete?:()=>void; onClose:()=>void; onBulkInput?:()=>void;
   isPremium?:boolean;
@@ -972,7 +972,11 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
   // キーボードを出したくないため）。focusNameSignalが変化した時点で改めてフォーカスする
   suppressAutoFocus?:boolean;
   focusNameSignal?:number;
+  // プロダクトツアーでタスク名を入力せず「次へ」を押した場合、この値が変化した時点で
+  // 名前が空ならプレースホルダー名を入れる（保存ボタンがdisabledのままにならないようにする）
+  fillTestNameSignal?:number;
 }) {
+  const { tr } = useI18n();
   const initMode=():TaskMode=>{
     if(!task) return prefillTime?'scheduled':'later';
     if(task.allDay) return 'allday';
@@ -996,6 +1000,14 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
 
   const [mode,setMode]        = useState<TaskMode>(initMode());
   const [name,setName]        = useState(task?.name??'');
+  const fillTestNameBaseline = useRef(fillTestNameSignal);
+  useEffect(()=>{
+    if(fillTestNameSignal!==undefined && fillTestNameSignal!==fillTestNameBaseline.current){
+      fillTestNameBaseline.current = fillTestNameSignal;
+      setName(n=>n.trim()?n:tr('tourDefaultTaskName'));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[fillTestNameSignal]);
   const [startTime,setST]     = useState(task?.startTime??prefillTime??nowStr());
   const [duration,setDur]     = useState(task?.duration??0);
   const [memo,setMemo]        = useState(task?.memo??'');
@@ -5949,6 +5961,7 @@ export default function App() {
   const [tourDragSignal,setTourDragSignal] = useState(0);
   const [tourTaskSavedSignal,setTourTaskSavedSignal] = useState(0);
   const [tourFocusNameSignal,setTourFocusNameSignal] = useState(0);
+  const [tourFillTestNameSignal,setTourFillTestNameSignal] = useState(0);
   const [tourSampleTasks,setTourSampleTasks] = useState<Task[]>([]);
   // プロダクトツアー中だけ表示するサンプルタスク。実データ（tasks/localStorage）には
   // 一切保存せず、表示用にfilteredTasksへ合成するだけなのでツアー終了時に消せば痕跡は残らない
@@ -7201,7 +7214,8 @@ export default function App() {
           onEnableNotifications={()=>setSettings(s=>({...s,notificationsEnabled:true}))}
           isPremium={isPremium} atLocationLimit={activeLocationRegionCount>=MAX_MONITORED_REGIONS}
           suppressAutoFocus={showTour&&!modal.task}
-          focusNameSignal={showTour&&!modal.task?tourFocusNameSignal:undefined}/>
+          focusNameSignal={showTour&&!modal.task?tourFocusNameSignal:undefined}
+          fillTestNameSignal={showTour&&!modal.task?tourFillTestNameSignal:undefined}/>
       )}
 
       {/* ── Settings Screen ── */}
@@ -7382,7 +7396,9 @@ export default function App() {
       {/* ── プロダクトツアー ── */}
       {showTour&&!settingsOpen&&!calendarOpen&&!searchOpen&&(
         <ProductTour gestureSignal={tourDragSignal} modalOpen={modal.open} taskSavedSignal={tourTaskSavedSignal}
+          isDragging={!!dragTask}
           onEnterLaterNameStep={()=>setTourFocusNameSignal(n=>n+1)}
+          onSkipLaterName={()=>setTourFillTestNameSignal(n=>n+1)}
           onFinish={(skipped)=>{
             localStorage.setItem(TOUR_COMPLETED_KEY,'1');
             setShowTour(false);

@@ -22,8 +22,8 @@ export default function Welcome({ onStartTour, onLater }: { onStartTour: () => v
         animation: 'welcomeFadeUp 0.7s ease-out both', animationDelay: '0.4s',
       }}>
         <button onClick={onStartTour}
-          className="w-full py-3.5 rounded-2xl text-[15px] font-bold text-white active:opacity-80 shadow-lg"
-          style={{ background: 'var(--c-primary)' }}>
+          className="w-full py-3.5 rounded-2xl text-[15px] font-bold active:opacity-80 shadow-lg"
+          style={{ background: 'white', color: 'var(--c-primary-dark)' }}>
           {tr('welcomeStartTour')}
         </button>
         <button onClick={onLater} className="w-full py-3 text-sm font-medium text-white/80 active:opacity-60">
