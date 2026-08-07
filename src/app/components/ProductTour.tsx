@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppIcons } from './Icons';
 
 interface TourStepDef {
-  id: 'add' | 'schedule' | 'save' | 'drag';
+  id: 'add' | 'schedule' | 'name' | 'save' | 'drag';
   selector: string;
   // 吹き出しの矢印が指す位置・吹き出しの上下配置の基準。省略時はselectorの対象と同じ
   // （スポットライトの範囲と、矢印が指す/吹き出しが基準にする位置が異なる場合に使う。
@@ -14,24 +14,29 @@ interface TourStepDef {
   // このステップだけは実際の操作を強制せず「次へ」ボタンで進める（例: scheduleステップは
   // 機能の存在を伝える説明のみで、特定の操作を指示しているわけではないため）
   showNextButton?: boolean;
+  // 吹き出しの上下配置を自動判定（対象が画面下半分か）せず固定したい場合に指定する。
+  // nameステップは対象（タスク名入力欄）が画面上部にあるが、吹き出しは上に固定表示したいため使う
+  bubblePosition?: 'above' | 'below';
 }
 
 const STEPS: TourStepDef[] = [
   { id: 'add', selector: '[data-tour="fab-add"]', title: 'タスクを追加してみよう', body: 'ここをタップして、新しいタスクを追加しましょう。' },
   { id: 'schedule', selector: '[data-tour="modal-card"]', arrowSelector: '[data-tour="tab-scheduled"]', title: '時間指定のタスクはこちらのタブから追加できます。', body: '', showNextButton: true },
+  { id: 'name', selector: '[data-tour="modal-card"]', arrowSelector: '[data-tour="name-input-row"]', title: 'タスクを入力してみましょう。', body: '', showNextButton: true, bubblePosition: 'above' },
   { id: 'save', selector: '[data-tour="modal-card"]', arrowSelector: '[data-tour="tab-later"]', title: '「あとでやる」に保存してみましょう。', body: 'タスク名を入力して保存すると、「あとでやる」にタスクが追加されます。' },
   { id: 'drag', selector: '[data-tour="tour-draggable"]', title: 'タスクをタイムラインに追加', body: 'タスクを長押しして、空いている時間にドラッグしてみましょう。' },
 ];
 
 interface Rect { top: number; left: number; width: number; height: number; }
 
-export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSavedSignal, timePickedSignal, onEnterSaveStep }: {
+export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSavedSignal, timePickedSignal, onEnterSaveStep, onEnterNameStep }: {
   onFinish: (skipped: boolean) => void;
   gestureSignal: number;
   modalOpen: boolean;
   taskSavedSignal: number;
   timePickedSignal: number;
   onEnterSaveStep?: () => void;
+  onEnterNameStep?: () => void;
 }) {
   const [stepIndex, setStepIndex] = useState(0);
   const [rect, setRect] = useState<Rect | null>(null);
@@ -105,6 +110,12 @@ export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSa
     if (step.id === 'save') onEnterSaveStep?.();
   }, [step.id, onEnterSaveStep]);
 
+  // nameステップに入った時点で、開始時刻を昼12時に固定する（実際の現在時刻が表示され続けると
+  // ツアーを行うタイミングによって見た目が変わってしまうため）
+  useEffect(() => {
+    if (step.id === 'name') onEnterNameStep?.();
+  }, [step.id, onEnterNameStep]);
+
   const handleSkip = () => onFinish(true);
 
   if (showCompletion) {
@@ -131,7 +142,7 @@ export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSa
   // 稀にレイアウト確定前の一瞬でサイズ0のrectを拾うことがあるため、幅・高さが0の測定結果は無視する
   const validArrowRect = arrowRect && arrowRect.width > 0 && arrowRect.height > 0 ? arrowRect : null;
   const arrowTarget = validArrowRect ?? rect;
-  const above = arrowTarget ? arrowTarget.top > vh * 0.55 : false;
+  const above = step.bubblePosition ? step.bubblePosition === 'above' : (arrowTarget ? arrowTarget.top > vh * 0.55 : false);
   const bubbleTop = arrowTarget
     ? (above ? Math.max(56, arrowTarget.top - 168) : Math.min(vh - 190, arrowTarget.top + arrowTarget.height + 20))
     : vh / 2 - 80;

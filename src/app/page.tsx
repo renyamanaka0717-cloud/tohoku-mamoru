@@ -958,7 +958,7 @@ function PickerCol({items,value,onChange}:{items:string[];value:string;onChange:
 
 // ── TaskModal ─────────────────────────────────────────────────────────────────
 
-function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:initIconSheet,onSave,onUpdate,onDelete,onClose,onBulkInput,globalTags,customTabs,notificationsEnabled,onEnableNotifications,isPremium=true,onOpenTagSettings,atLocationLimit=false,onTimePicked,forceLaterSignal}:{
+function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:initIconSheet,onSave,onUpdate,onDelete,onClose,onBulkInput,globalTags,customTabs,notificationsEnabled,onEnableNotifications,isPremium=true,onOpenTagSettings,atLocationLimit=false,onTimePicked,forceLaterSignal,forceTimeSignal}:{
   task:Task|null; currentDate:string; prefillTime?:string; prefillCategory?:string; openIconSheet?:boolean;
   onSave:(tasks:Omit<Task,'id'>[])=>void; onUpdate?:(data:Omit<Task,'id'>)=>void; onDelete?:()=>void; onClose:()=>void; onBulkInput?:()=>void;
   isPremium?:boolean;
@@ -968,6 +968,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
   atLocationLimit?:boolean;
   onTimePicked?:()=>void;
   forceLaterSignal?:number;
+  forceTimeSignal?:number;
 }) {
   const initMode=():TaskMode=>{
     if(!task) return prefillTime?'scheduled':'later';
@@ -987,6 +988,13 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
   },[forceLaterSignal]);
   const [name,setName]        = useState(task?.name??'');
   const [startTime,setST]     = useState(task?.startTime??prefillTime??nowStr());
+  const forceTimeBaseline = useRef(forceTimeSignal);
+  useEffect(()=>{
+    if(forceTimeSignal!==undefined && forceTimeSignal!==forceTimeBaseline.current){
+      forceTimeBaseline.current = forceTimeSignal;
+      setST('12:00');
+    }
+  },[forceTimeSignal]);
   const [duration,setDur]     = useState(task?.duration??0);
   const [memo,setMemo]        = useState(task?.memo??'');
   const [icon,setIcon]        = useState(()=>{
@@ -1348,7 +1356,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
           </div>
 
           {/* Icon + name */}
-          <div className="flex items-center gap-3 mb-4">
+          <div className="flex items-center gap-3 mb-4" data-tour={!task?'name-input-row':undefined}>
             <button onClick={()=>setIconSheetOpen(true)}
               className="relative w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 text-white bg-white/20 active:bg-white/30 transition-colors"
               style={color?{background:color}:{}}>
@@ -5917,6 +5925,7 @@ export default function App() {
   const [tourTaskSavedSignal,setTourTaskSavedSignal] = useState(0);
   const [tourTimePickedSignal,setTourTimePickedSignal] = useState(0);
   const [tourForceLaterSignal,setTourForceLaterSignal] = useState(0);
+  const [tourForceNoonSignal,setTourForceNoonSignal] = useState(0);
   const [tourSampleTasks,setTourSampleTasks] = useState<Task[]>([]);
   // プロダクトツアー中だけ表示するサンプルタスク。実データ（tasks/localStorage）には
   // 一切保存せず、表示用にfilteredTasksへ合成するだけなのでツアー終了時に消せば痕跡は残らない
@@ -7169,7 +7178,8 @@ export default function App() {
           onEnableNotifications={()=>setSettings(s=>({...s,notificationsEnabled:true}))}
           isPremium={isPremium} atLocationLimit={activeLocationRegionCount>=MAX_MONITORED_REGIONS}
           onTimePicked={()=>{if(showTour&&!modal.task) setTourTimePickedSignal(n=>n+1);}}
-          forceLaterSignal={showTour&&!modal.task?tourForceLaterSignal:undefined}/>
+          forceLaterSignal={showTour&&!modal.task?tourForceLaterSignal:undefined}
+          forceTimeSignal={showTour&&!modal.task?tourForceNoonSignal:undefined}/>
       )}
 
       {/* ── Settings Screen ── */}
@@ -7335,6 +7345,7 @@ export default function App() {
       {showTour&&!settingsOpen&&!calendarOpen&&!searchOpen&&(
         <ProductTour gestureSignal={tourDragSignal} modalOpen={modal.open} taskSavedSignal={tourTaskSavedSignal} timePickedSignal={tourTimePickedSignal}
           onEnterSaveStep={()=>setTourForceLaterSignal(n=>n+1)}
+          onEnterNameStep={()=>setTourForceNoonSignal(n=>n+1)}
           onFinish={(skipped)=>{
             localStorage.setItem(TOUR_COMPLETED_KEY,'1');
             setShowTour(false);
