@@ -1,5 +1,7 @@
 'use client';
 import { registerPlugin } from '@capacitor/core';
+import { logPermissionGrantedOnce } from './Analytics';
+import { checkGeofencePermissions } from './Geofence';
 
 export interface ScheduledAlert { id: string; title: string; body: string; timestamp: number; openShop?: boolean; }
 
@@ -36,15 +38,23 @@ export function notify(title: string, body: string): void {
   }
 }
 
-export function requestNotifyPermission(): void {
+// sourceはどの機能からの許可リクエストか（'onboarding'|'settings'等）をnotification_permission_granted
+// のparamsに残すためのラベル。ネイティブのrequestPermission()はOSダイアログの選択完了後にresolveする
+// ため、resolve後にcheckGeofencePermissions()で結果を読めば実際に許可されたかを確認できる
+export function requestNotifyPermission(source: string): void {
   if (isNative()) {
-    LocalNotifyPlugin.requestPermission().catch(() => {
+    LocalNotifyPlugin.requestPermission().then(async () => {
+      const status = await checkGeofencePermissions();
+      if (status.notifications === 'granted') logPermissionGrantedOnce('notification', { source });
+    }).catch(() => {
       // ネイティブ側プラグイン未導入時はリクエストのみスキップ
     });
     return;
   }
   if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
-    Notification.requestPermission();
+    Notification.requestPermission().then(perm => {
+      if (perm === 'granted') logPermissionGrantedOnce('notification', { source });
+    });
   }
 }
 

@@ -1321,8 +1321,19 @@ native-ios/BridgeViewController.swift … capacitorDidLoad() 内で FirebaseApp.
 | `product_tour_skipped` | `ProductTour`の`onFinish(true)`（「スキップ」ボタン、`handleSkip`） | |
 | `paywall_viewed` | `ProGateSheet`のマウント時、`SettingsScreen`で`sub==='premium'`になった時 | |
 | `subscription_started` | `Premium.tsx`の`purchase()`（購入成功で`ENTITLEMENT_ID`がアクティブになった時のみ） | |
+| `location_reminder_triggered` | `App`の`applyPending()`（`getFiredTaskLocationIds()`で「あとでやる」タスクの場所通知が発火済みと分かった時） | `params.type:'task'`固定。`didEnterRegion`（到着）時点でネイティブ側にfiredフラグが立つ設計のため、通知をタップしたかどうかに関わらず実際に発火したタイミングを計測できる。**買い物リストの場所通知・忘れ物防止アラートは対象外**（ネイティブ側が「タップされたか」しか記録しておらず、「発火したか」自体を読み取るAPIが無いため。追加するにはGeofencePlugin.swiftへのネイティブ変更が必要） |
+| `notification_permission_granted` | `Geofence.ts`の`ensureGeofencePermission(source)`・`LocalNotify.ts`の`requestNotifyPermission(source)`が許可結果を確認した時 | `params.source`: `'onboarding'\|'settings'\|'shop_location'\|'task_location'\|'forget_alert'`。`logPermissionGrantedOnce()`によりインストールごとに1回だけ計測（同じ許可を何度もリクエストするたびに加算されると許可率の指標として意味を持たないため） |
+| `location_permission_granted` | `Geofence.ts`の`ensureGeofencePermission(source)`が位置情報「常に」許可を確認した時 | `params.source`: `'onboarding'\|'shop_location'\|'task_location'\|'forget_alert'`。`notification_permission_granted`と同じく`logPermissionGrantedOnce()`でインストールごとに1回のみ |
 
-**意図的に計測していないもの（スコープ外）:** 繰り返しタスクの一括編集（`editScope==='all'`）保存、「あとでやる」の朝の一括完了（`handleMorningAction`）、繰り返しタスクのドラッグ確認ポップアップ経由の移動。これらは単一操作の裏で複数タスクが変化するバルク処理で、単純な1イベント=1操作の対応にならないため初回実装では対象外にした。
+**意図的に計測していないもの（スコープ外）:** 繰り返しタスクの一括編集（`editScope==='all'`）保存、「あとでやる」の朝の一括完了（`handleMorningAction`）、繰り返しタスクのドラッグ確認ポップアップ経由の移動。これらは単一操作の裏で複数タスクが変化するバルク処理で、単純な1イベント=1操作の対応にならないため初回実装では対象外にした。買い物リストの場所通知・忘れ物防止アラートの`location_reminder_triggered`も同様の理由（ネイティブ側の記録が「タップされたか」止まり）で未対応。
+
+### 権限許可イベントの一元化（`logPermissionGrantedOnce`）
+
+`ensureGeofencePermission()`（位置情報＋通知）・`requestNotifyPermission()`（通知のみ）は、機能を使うたびに何度も呼ばれる（場所通知の追加のたびに`ensureGeofencePermission`が呼ばれる等）。呼ばれるたびに「許可されている」ことを計測すると、許可率という指標として意味を持たなくなる（1人のユーザーが機能を使うたびに加算されてしまう）。そのため`Analytics.ts`の`logPermissionGrantedOnce(kind,params)`が`localStorage`（`tl-analytics-permission-granted-v1`）でインストールごとに1回だけに制限した上で`logAnalyticsEvent`を呼ぶ設計にし、`Geofence.ts`/`LocalNotify.ts`側で一元的に計測する（呼び出し元のpage.tsxは`source`文字列を渡すだけでよい）。
+
+- `ensureGeofencePermission(source)`: `GeofencePlugin.requestPermissions()`の結果（`res.notifications`/`res.location`）を見て、許可されていればそれぞれ`logPermissionGrantedOnce('notification',{source})`/`logPermissionGrantedOnce('location',{source})`を呼ぶ
+- `requestNotifyPermission(source)`: ネイティブの`LocalNotifyPlugin.requestPermission()`はOSダイアログの選択完了後にresolveする（`native-ios/LocalNotifyPlugin.swift`の`call.resolve()`が`requestAuthorization`のcompletion handler内にあるため）。resolve後に`checkGeofencePermissions()`（`Geofence.ts`、位置情報と共通の権限確認API）を呼んで実際の許可状態を確認してから計測する
+- 呼び出し元（TaskModal・ShopLocationPanel・ForgetAlertsPanel・オンボーディングプロンプト・設定画面の通知トグル）は`source`ラベル（`'task_location'`/`'shop_location'`/`'forget_alert'`/`'onboarding'`/`'settings'`）を渡すだけで、計測ロジック自体には触れない
 
 ### Firebase側のセットアップ手順（ユーザー側の作業）
 
@@ -1347,6 +1358,7 @@ native-ios/BridgeViewController.swift … capacitorDidLoad() 内で FirebaseApp.
 - 場所関連イベントに実際の場所の名前やカテゴリ推測ロジックを追加しない（自由入力でカテゴリ分類の仕組みが無いため、何も送らない方針を維持する）
 - `AnalyticsPlugin`をWidget Extensionターゲットなど他ターゲットに追加しない（メインAppターゲットのみ）
 - `AppDelegate.swift`を編集して`FirebaseApp.configure()`を呼ぼうとしない（`BridgeViewController.capacitorDidLoad()`で完結させる設計にしてあるため不要）
+- `notification_permission_granted`/`location_permission_granted`を呼び出し元（page.tsx側）で直接`logAnalyticsEvent()`しない（`ensureGeofencePermission()`/`requestNotifyPermission()`側で`logPermissionGrantedOnce()`により一元管理・重複防止している。呼び出し元は`source`ラベルを渡すだけでよい）
 
 ---
 

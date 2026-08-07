@@ -1210,7 +1210,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
   const locOpenMapMode=()=>{ setLocMapCenter(null); setLocMapMode(true); };
   const locConfirmPending=async()=>{
     if(!locPending) return;
-    const ok=await ensureGeofencePermission();
+    const ok=await ensureGeofencePermission('task_location');
     if(!ok){ setLocError('場所に到着したときに通知するため、位置情報の利用を許可してください。'); return; }
     setTaskLocation({name:locPending.name,lat:locPending.lat,lng:locPending.lng});
     setLocationNotify(true);
@@ -3235,7 +3235,7 @@ function ShopLocationPanel({locations,onChange,isPremium,onProPrompt}:{
   const confirmAdd=async()=>{
     if(!pendingCoord) return;
     if(!isPremium){ onProPrompt('場所で通知'); return; }
-    const ok=await ensureGeofencePermission();
+    const ok=await ensureGeofencePermission('shop_location');
     const status=await checkGeofencePermissions();
     setPermStatus(status);
     if(!ok) return;
@@ -3502,7 +3502,7 @@ function ForgetAlertsPanel({alerts,onChange,isPremium,onProPrompt}:{
   const saveEditing=async()=>{
     if(!editing||!editing.location||!editing.name.trim()||editing.weekdays.length===0||editing.items.length===0) return;
     if(adding&&!isPremium&&alerts.length>=1){ onProPrompt('忘れ物防止アラート（2件目以降）'); return; }
-    const ok=await ensureGeofencePermission();
+    const ok=await ensureGeofencePermission('forget_alert');
     if(!ok){ setPermError('場所を出たときに通知するため、位置情報の利用を許可してください。'); return; }
     const toSave:ForgetAlert={...editing,name:editing.name.trim(),location:editing.location};
     if(adding){ onChange([...alerts,toSave]); logAnalyticsEvent('location_notification_created',{radius:toSave.radius}); }
@@ -4905,7 +4905,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             </div>
             <button onClick={()=>{
                 const next=!(settings.notificationsEnabled??true);
-                if(next) requestNotifyPermission();
+                if(next) requestNotifyPermission('settings');
                 onSettings({...settings,notificationsEnabled:next});
               }}
               className={`relative w-10 h-6 rounded-full transition-colors shrink-0 ${(settings.notificationsEnabled??true)?'bg-[var(--c-primary)]':'bg-gray-200'}`}>
@@ -6036,6 +6036,9 @@ export default function App() {
       const firedIds=await getFiredTaskLocationIds();
       if(firedIds.length>0){
         setTasks(prev=>prev.map(t=>firedIds.includes(t.id)?{...t,locationNotify:false,location:undefined}:t));
+        // 「あとでやる」タスクの場所通知は到着時（didEnterRegion）にfiredフラグが立つため、
+        // タップの有無に関わらず実際に発火したタイミングを正確に計測できる
+        firedIds.forEach(()=>logAnalyticsEvent('location_reminder_triggered',{type:'task'}));
       }
     };
     applyPending();
@@ -6204,7 +6207,7 @@ export default function App() {
     maybeShowLocPrompt();
   };
   const enableNotifFromPrompt=()=>{
-    requestNotifyPermission();
+    requestNotifyPermission('onboarding');
     setSettings(s=>({...s,notificationsEnabled:true}));
     dismissNotifPrompt();
   };
@@ -6214,7 +6217,7 @@ export default function App() {
     maybeShowWakeSleepPrompt();
   };
   const enableLocFromPrompt=()=>{
-    ensureGeofencePermission();
+    ensureGeofencePermission('onboarding');
     dismissLocPrompt();
   };
   const dismissWakeSleepPrompt=()=>{

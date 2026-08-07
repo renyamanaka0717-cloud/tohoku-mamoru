@@ -1,6 +1,7 @@
 'use client';
 import { registerPlugin } from '@capacitor/core';
 import { isDevDenied, DEV_LOCATION_DENIED_KEY, DEV_NOTIF_DENIED_KEY } from './DevMode';
+import { logPermissionGrantedOnce } from './Analytics';
 
 export interface GeofenceLocation { id: string; name: string; lat: number; lng: number; radius: number; }
 export interface GeofencePermissionStatus { location: string; notifications: string; }
@@ -80,12 +81,16 @@ export async function checkGeofencePermissions(): Promise<GeofencePermissionStat
   }
 }
 
-// 位置情報（常に許可）と通知の両方をリクエストし、両方許可されたか返す
-export async function ensureGeofencePermission(): Promise<boolean> {
+// 位置情報（常に許可）と通知の両方をリクエストし、両方許可されたか返す。
+// sourceはどの機能からの許可リクエストか（'onboarding'|'shop_location'|'task_location'|'forget_alert'等）
+// をnotification_permission_granted/location_permission_grantedのparamsに残すためのラベル
+export async function ensureGeofencePermission(source: string): Promise<boolean> {
   if (devPermissionOverride()) return false;
   if (!isNative()) return true;
   try {
     const res = await GeofencePlugin.requestPermissions();
+    if (res.notifications === 'granted') logPermissionGrantedOnce('notification', { source });
+    if (res.location === 'granted') logPermissionGrantedOnce('location', { source });
     return res.location === 'granted' && res.notifications === 'granted';
   } catch {
     return false;

@@ -68,3 +68,17 @@ export async function logAnalyticsEvent(name: string, params?: AnalyticsParams):
     // Analytics送信の失敗はアプリの動作に影響させない
   }
 }
+
+// OS権限（通知・位置情報）の許可確認はensureGeofencePermission()/requestNotifyPermission()経由で
+// 機能を使うたびに何度も呼ばれるため、許可済みだったことを都度計測すると許可率の指標として
+// 意味を持たない（1人が何度も加算されてしまう）。インストールごとに1回だけ計測する
+const PERMISSION_GRANTED_ONCE_KEY = 'tl-analytics-permission-granted-v1';
+export function logPermissionGrantedOnce(kind: 'notification' | 'location', params?: AnalyticsParams): void {
+  if (typeof window === 'undefined') return;
+  let log: Record<string, boolean> = {};
+  try { log = JSON.parse(localStorage.getItem(PERMISSION_GRANTED_ONCE_KEY) ?? '{}'); } catch { /* 破損時は空扱い */ }
+  if (log[kind]) return;
+  log[kind] = true;
+  localStorage.setItem(PERMISSION_GRANTED_ONCE_KEY, JSON.stringify(log));
+  logAnalyticsEvent(kind === 'notification' ? 'notification_permission_granted' : 'location_permission_granted', params);
+}
