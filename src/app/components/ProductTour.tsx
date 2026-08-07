@@ -31,11 +31,12 @@ const STEPS: TourStepDef[] = [
 
 interface Rect { top: number; left: number; width: number; height: number; }
 
-export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSavedSignal }: {
+export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSavedSignal, onEnterLaterNameStep }: {
   onFinish: (skipped: boolean) => void;
   gestureSignal: number;
   modalOpen: boolean;
   taskSavedSignal: number;
+  onEnterLaterNameStep?: () => void;
 }) {
   const { tr } = useI18n();
   const [stepIndex, setStepIndex] = useState(0);
@@ -98,6 +99,11 @@ export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSa
     // どのステップの最中に実際に保存されても即座に反映できるよう、まとめて監視する
     if ((step.id === 'save' || step.id === 'laterName' || step.id === 'laterConfirm') && taskSavedSignal !== taskSavedBaseline.current) goNext();
   }, [taskSavedSignal, step.id, goNext]);
+  // laterNameステップに入った時点でタスク名入力欄にフォーカスし、キーボードを表示する
+  // （それ以外のステップでは自動フォーカスを抑止しているため、ここで明示的に発火させる）
+  useEffect(() => {
+    if (step.id === 'laterName') onEnterLaterNameStep?.();
+  }, [step.id, onEnterLaterNameStep]);
   useEffect(() => {
     if (step.id === 'drag' && gestureSignal !== gestureBaseline.current) goNext();
   }, [gestureSignal, step.id, goNext]);

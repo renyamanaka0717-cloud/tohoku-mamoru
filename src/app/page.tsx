@@ -960,7 +960,7 @@ function PickerCol({items,value,onChange}:{items:string[];value:string;onChange:
 
 // ── TaskModal ─────────────────────────────────────────────────────────────────
 
-function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:initIconSheet,onSave,onUpdate,onDelete,onClose,onBulkInput,globalTags,customTabs,notificationsEnabled,onEnableNotifications,isPremium=true,onOpenTagSettings,atLocationLimit=false}:{
+function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:initIconSheet,onSave,onUpdate,onDelete,onClose,onBulkInput,globalTags,customTabs,notificationsEnabled,onEnableNotifications,isPremium=true,onOpenTagSettings,atLocationLimit=false,suppressAutoFocus=false,focusNameSignal}:{
   task:Task|null; currentDate:string; prefillTime?:string; prefillCategory?:string; openIconSheet?:boolean;
   onSave:(tasks:Omit<Task,'id'>[])=>void; onUpdate?:(data:Omit<Task,'id'>)=>void; onDelete?:()=>void; onClose:()=>void; onBulkInput?:()=>void;
   isPremium?:boolean;
@@ -968,6 +968,10 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
   notificationsEnabled?:boolean; onEnableNotifications?:()=>void;
   onOpenTagSettings?:()=>void;
   atLocationLimit?:boolean;
+  // タスク名入力欄の自動フォーカスを抑止する（プロダクトツアーで、あとで入力ステップに来るまで
+  // キーボードを出したくないため）。focusNameSignalが変化した時点で改めてフォーカスする
+  suppressAutoFocus?:boolean;
+  focusNameSignal?:number;
 }) {
   const initMode=():TaskMode=>{
     if(!task) return prefillTime?'scheduled':'later';
@@ -976,6 +980,19 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
     if(task.isLater) return 'later';
     return 'scheduled';
   };
+
+  const nameInputRef = useRef<HTMLInputElement>(null);
+  useEffect(()=>{
+    if(!suppressAutoFocus) nameInputRef.current?.focus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[]);
+  const focusNameBaseline = useRef(focusNameSignal);
+  useEffect(()=>{
+    if(focusNameSignal!==undefined && focusNameSignal!==focusNameBaseline.current){
+      focusNameBaseline.current = focusNameSignal;
+      nameInputRef.current?.focus();
+    }
+  },[focusNameSignal]);
 
   const [mode,setMode]        = useState<TaskMode>(initMode());
   const [name,setName]        = useState(task?.name??'');
@@ -1357,10 +1374,9 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
               {mode==='allday'&&(
                 <p className="text-xs text-white/60 mb-0.5">終日</p>
               )}
-              <input type="text" value={name} onChange={e=>{const v=e.target.value;setName(v);if(autoIcon)setIcon(defaultIconKey(v));}}
+              <input ref={nameInputRef} type="text" value={name} onChange={e=>{const v=e.target.value;setName(v);if(autoIcon)setIcon(defaultIconKey(v));}}
                 placeholder="タスク名を入力..."
-                className="w-full bg-transparent text-white text-lg font-medium placeholder-white/40 outline-none border-b border-white/30 pb-1"
-                autoFocus/>
+                className="w-full bg-transparent text-white text-lg font-medium placeholder-white/40 outline-none border-b border-white/30 pb-1"/>
             </div>
           </div>
 
@@ -5932,6 +5948,7 @@ export default function App() {
   const [showWelcome,setShowWelcome] = useState(false);
   const [tourDragSignal,setTourDragSignal] = useState(0);
   const [tourTaskSavedSignal,setTourTaskSavedSignal] = useState(0);
+  const [tourFocusNameSignal,setTourFocusNameSignal] = useState(0);
   const [tourSampleTasks,setTourSampleTasks] = useState<Task[]>([]);
   // プロダクトツアー中だけ表示するサンプルタスク。実データ（tasks/localStorage）には
   // 一切保存せず、表示用にfilteredTasksへ合成するだけなのでツアー終了時に消せば痕跡は残らない
@@ -7182,7 +7199,9 @@ export default function App() {
           globalTags={globalTags} customTabs={customTabs}
           notificationsEnabled={settings.notificationsEnabled??true}
           onEnableNotifications={()=>setSettings(s=>({...s,notificationsEnabled:true}))}
-          isPremium={isPremium} atLocationLimit={activeLocationRegionCount>=MAX_MONITORED_REGIONS}/>
+          isPremium={isPremium} atLocationLimit={activeLocationRegionCount>=MAX_MONITORED_REGIONS}
+          suppressAutoFocus={showTour&&!modal.task}
+          focusNameSignal={showTour&&!modal.task?tourFocusNameSignal:undefined}/>
       )}
 
       {/* ── Settings Screen ── */}
@@ -7363,6 +7382,7 @@ export default function App() {
       {/* ── プロダクトツアー ── */}
       {showTour&&!settingsOpen&&!calendarOpen&&!searchOpen&&(
         <ProductTour gestureSignal={tourDragSignal} modalOpen={modal.open} taskSavedSignal={tourTaskSavedSignal}
+          onEnterLaterNameStep={()=>setTourFocusNameSignal(n=>n+1)}
           onFinish={(skipped)=>{
             localStorage.setItem(TOUR_COMPLETED_KEY,'1');
             setShowTour(false);
