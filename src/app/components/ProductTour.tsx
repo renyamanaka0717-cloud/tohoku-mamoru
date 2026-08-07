@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppIcons } from './Icons';
 
 interface TourStepDef {
-  id: 'add' | 'schedule' | 'name' | 'saveScheduled' | 'confirmTimeline' | 'save' | 'drag';
+  id: 'add' | 'schedule' | 'name' | 'saveScheduled' | 'confirmTimeline' | 'save' | 'laterName' | 'laterConfirm' | 'drag';
   selector: string;
   // 吹き出しの矢印が指す位置・吹き出しの上下配置の基準。省略時はselectorの対象と同じ
   // （スポットライトの範囲と、矢印が指す/吹き出しが基準にする位置が異なる場合に使う。
@@ -25,7 +25,9 @@ const STEPS: TourStepDef[] = [
   { id: 'name', selector: '[data-tour="modal-card"]', arrowSelector: '[data-tour="name-input-row"]', title: 'タスクを入力してみましょう。', body: '', showNextButton: true, bubblePosition: 'above' },
   { id: 'saveScheduled', selector: '[data-tour="modal-card"]', arrowSelector: '[data-tour="save-button"]', title: '保存ボタンを押して、タイムラインに追加できます。', body: '' },
   { id: 'confirmTimeline', selector: '[data-tour="tour-new-task"]', title: 'タイムラインに追加されました。', body: '', showNextButton: true },
-  { id: 'save', selector: '[data-tour="modal-card"]', arrowSelector: '[data-tour="tab-later"]', title: '「あとでやる」タスクはこちらのタブから追加できます。', body: '' },
+  { id: 'save', selector: '[data-tour="modal-card"]', arrowSelector: '[data-tour="tab-later"]', title: '「あとでやる」タスクはこちらのタブから追加できます。', body: '', showNextButton: true },
+  { id: 'laterName', selector: '[data-tour="modal-card"]', arrowSelector: '[data-tour="name-input-row"]', title: 'タスクを入力してみましょう。', body: '', showNextButton: true, bubblePosition: 'above' },
+  { id: 'laterConfirm', selector: '[data-tour="modal-card"]', arrowSelector: '[data-tour="name-input-row"]', title: '「あとでやる」タスク一覧に追加されます。', body: '', showNextButton: true, bubblePosition: 'above' },
   { id: 'drag', selector: '[data-tour="tour-draggable"]', title: 'タスクをタイムラインに追加', body: 'タスクを長押しして、空いている時間にドラッグしてみましょう。' },
 ];
 
@@ -109,7 +111,9 @@ export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSa
     if (step.id === 'schedule' && timePickedSignal !== timePickedBaseline.current) goNext();
   }, [timePickedSignal, step.id, goNext]);
   useEffect(() => {
-    if ((step.id === 'save' || step.id === 'saveScheduled') && taskSavedSignal !== taskSavedBaseline.current) goNext();
+    // 「あとでやる」の保存は複数の説明ステップ（save/laterName/laterConfirm）を経てから行われるが、
+    // どのステップの最中に実際に保存されても即座に反映できるよう、まとめて監視する
+    if ((step.id === 'save' || step.id === 'laterName' || step.id === 'laterConfirm' || step.id === 'saveScheduled') && taskSavedSignal !== taskSavedBaseline.current) goNext();
   }, [taskSavedSignal, step.id, goNext]);
   useEffect(() => {
     if (step.id === 'drag' && gestureSignal !== gestureBaseline.current) goNext();
