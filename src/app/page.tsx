@@ -1349,7 +1349,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                     className="px-4 py-1.5 text-sm font-semibold rounded-full bg-white/90 text-gray-800">完了</button>
                 </>
               ) : (
-                <button onClick={save} disabled={!name.trim()}
+                <button onClick={save} disabled={!name.trim()} data-tour="save-button"
                   className={`px-4 py-1.5 text-sm font-semibold rounded-full transition-colors ${name.trim()?'bg-white/90 text-gray-800':'bg-white/20 text-white/40 cursor-not-allowed'}`}>保存</button>
               )}
             </div>
@@ -2298,7 +2298,7 @@ function CompactTaskCard({task,onToggle,onEdit}:{task:Task;onToggle:()=>void;onE
 
 // ── Timeline ──────────────────────────────────────────────────────────────────
 
-function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet,onSchedule,onAddAtTime,onDragStart,dragTaskId,yToTimeRef,layoutYRef,globalTags,todayHistory,onSubtaskToggle,lifePatterns=[],patternOverrides={},onPickColor,onEditTime,customTabs=[]}:{
+function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet,onSchedule,onAddAtTime,onDragStart,dragTaskId,yToTimeRef,layoutYRef,globalTags,todayHistory,onSubtaskToggle,lifePatterns=[],patternOverrides={},onPickColor,onEditTime,customTabs=[],tourNewTaskId}:{
   date:string;tasks:Task[];later:Task[];settings:Settings;now:string;
   onToggle:(id:string)=>void;onEdit:(t:Task)=>void;onEditIconSheet:(t:Task)=>void;
   onSchedule:(t:Task,time:string)=>void;onAddAtTime:(time:string)=>void;
@@ -2313,6 +2313,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
   onEditTime?:(target:'wake'|'sleep')=>void;
   patternOverrides?:Record<string,string>;
   customTabs?:CustomTab[];
+  tourNewTaskId?:string|null;
 }) {
   const [pressingId,setPressingId] = useState<string|null>(null);
   const [historyOpen,setHistoryOpen] = useState(false);
@@ -2749,7 +2750,8 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
                 opacity:isDragging?0.25:1,pointerEvents:isDragging?'none':'auto'}}
               onTouchStart={e=>startLP(task,e)}
               onTouchEnd={cancelLP}
-              onTouchMove={cancelLP}>
+              onTouchMove={cancelLP}
+              data-tour={task.id===tourNewTaskId?'tour-new-task':undefined}>
               <TaskCard task={task} onToggle={()=>onToggle(task.id)} onEdit={()=>onEdit(task)} globalTags={globalTags} onSubtaskToggle={(sid)=>onSubtaskToggle(task.id,sid)} tabName={task.category?customTabs.find(t=>t.id===task.category)?.name:undefined}/>
             </div>,
           ];
@@ -5926,6 +5928,7 @@ export default function App() {
   const [tourTimePickedSignal,setTourTimePickedSignal] = useState(0);
   const [tourForceLaterSignal,setTourForceLaterSignal] = useState(0);
   const [tourForceNoonSignal,setTourForceNoonSignal] = useState(0);
+  const [tourNewTaskId,setTourNewTaskId] = useState<string|null>(null);
   const [tourSampleTasks,setTourSampleTasks] = useState<Task[]>([]);
   // プロダクトツアー中だけ表示するサンプルタスク。実データ（tasks/localStorage）には
   // 一切保存せず、表示用にfilteredTasksへ合成するだけなのでツアー終了時に消せば痕跡は残らない
@@ -6782,7 +6785,10 @@ export default function App() {
         ?prev.map(t=>t.id===modal.task!.id?{...newTasks[0],id:t.id}:t)
         :[...prev,...newTasks]
       );
-      if(showTour&&!modal.task) setTourTaskSavedSignal(n=>n+1);
+      if(showTour&&!modal.task){
+        setTourTaskSavedSignal(n=>n+1);
+        if(newTasks[0].startTime) setTourNewTaskId(newTasks[0].id);
+      }
       if(!modal.task){
         logAnalyticsEvent('task_created',{mode:newTasks[0].isLater?'later':newTasks[0].recurrence?'recurring':'scheduled'});
         if(newTasks[0].isLater) logAnalyticsEvent('later_task_created');
@@ -6974,7 +6980,8 @@ export default function App() {
           lifePatterns={lifePatterns} patternOverrides={patternOverrides}
           onPickColor={(target)=>{if(!isPremium){setAppProPrompt(true);return;}setColorPickTarget(target);}}
           onEditTime={openTimePicker}
-          customTabs={activeCategory===null?customTabs:[]}/>
+          customTabs={activeCategory===null?customTabs:[]}
+          tourNewTaskId={showTour?tourNewTaskId:undefined}/>
       </main>
 
       {/* ── Bottom bar ── */}
@@ -7346,6 +7353,7 @@ export default function App() {
         <ProductTour gestureSignal={tourDragSignal} modalOpen={modal.open} taskSavedSignal={tourTaskSavedSignal} timePickedSignal={tourTimePickedSignal}
           onEnterSaveStep={()=>setTourForceLaterSignal(n=>n+1)}
           onEnterNameStep={()=>setTourForceNoonSignal(n=>n+1)}
+          onReopenForLater={()=>openAdd()}
           onFinish={(skipped)=>{
             localStorage.setItem(TOUR_COMPLETED_KEY,'1');
             setShowTour(false);

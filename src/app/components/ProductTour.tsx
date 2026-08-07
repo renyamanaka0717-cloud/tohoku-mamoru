@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppIcons } from './Icons';
 
 interface TourStepDef {
-  id: 'add' | 'schedule' | 'name' | 'save' | 'drag';
+  id: 'add' | 'schedule' | 'name' | 'saveScheduled' | 'confirmTimeline' | 'save' | 'drag';
   selector: string;
   // 吹き出しの矢印が指す位置・吹き出しの上下配置の基準。省略時はselectorの対象と同じ
   // （スポットライトの範囲と、矢印が指す/吹き出しが基準にする位置が異なる場合に使う。
@@ -23,13 +23,15 @@ const STEPS: TourStepDef[] = [
   { id: 'add', selector: '[data-tour="fab-add"]', title: 'タスクを追加してみよう', body: 'ここをタップして、新しいタスクを追加しましょう。' },
   { id: 'schedule', selector: '[data-tour="modal-card"]', arrowSelector: '[data-tour="tab-scheduled"]', title: '時間指定のタスクはこちらのタブから追加できます。', body: '', showNextButton: true },
   { id: 'name', selector: '[data-tour="modal-card"]', arrowSelector: '[data-tour="name-input-row"]', title: 'タスクを入力してみましょう。', body: '', showNextButton: true, bubblePosition: 'above' },
+  { id: 'saveScheduled', selector: '[data-tour="modal-card"]', arrowSelector: '[data-tour="save-button"]', title: '保存ボタンを押して、タイムラインに追加できます。', body: '' },
+  { id: 'confirmTimeline', selector: '[data-tour="tour-new-task"]', title: 'タイムラインに追加されました。', body: '', showNextButton: true },
   { id: 'save', selector: '[data-tour="modal-card"]', arrowSelector: '[data-tour="tab-later"]', title: '「あとでやる」に保存してみましょう。', body: 'タスク名を入力して保存すると、「あとでやる」にタスクが追加されます。' },
   { id: 'drag', selector: '[data-tour="tour-draggable"]', title: 'タスクをタイムラインに追加', body: 'タスクを長押しして、空いている時間にドラッグしてみましょう。' },
 ];
 
 interface Rect { top: number; left: number; width: number; height: number; }
 
-export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSavedSignal, timePickedSignal, onEnterSaveStep, onEnterNameStep }: {
+export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSavedSignal, timePickedSignal, onEnterSaveStep, onEnterNameStep, onReopenForLater }: {
   onFinish: (skipped: boolean) => void;
   gestureSignal: number;
   modalOpen: boolean;
@@ -37,6 +39,7 @@ export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSa
   timePickedSignal: number;
   onEnterSaveStep?: () => void;
   onEnterNameStep?: () => void;
+  onReopenForLater?: () => void;
 }) {
   const [stepIndex, setStepIndex] = useState(0);
   const [rect, setRect] = useState<Rect | null>(null);
@@ -46,6 +49,7 @@ export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSa
   const taskSavedBaseline = useRef(taskSavedSignal);
   const gestureBaseline = useRef(gestureSignal);
   const timePickedBaseline = useRef(timePickedSignal);
+  const scrolledForStep = useRef<number | null>(null);
   const step = STEPS[stepIndex];
 
   // getBoundingClientRect()が返すDOMRectはtop/left/width/heightがprototypeのgetterで
@@ -63,7 +67,13 @@ export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSa
     } else {
       setArrowRect(null);
     }
-  }, [step.selector, step.arrowSelector, step.id]);
+    // confirmTimelineステップの対象（新規作成したタスクのカード）は12:00付近など
+    // スクロールしないと見えない位置にあり得るため、見つかったタイミングで一度だけ中央に寄せる
+    if (step.id === 'confirmTimeline' && el && scrolledForStep.current !== stepIndex) {
+      scrolledForStep.current = stepIndex;
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [step.selector, step.arrowSelector, step.id, stepIndex]);
 
   useEffect(() => {
     measure();
@@ -99,7 +109,7 @@ export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSa
     if (step.id === 'schedule' && timePickedSignal !== timePickedBaseline.current) goNext();
   }, [timePickedSignal, step.id, goNext]);
   useEffect(() => {
-    if (step.id === 'save' && taskSavedSignal !== taskSavedBaseline.current) goNext();
+    if ((step.id === 'save' || step.id === 'saveScheduled') && taskSavedSignal !== taskSavedBaseline.current) goNext();
   }, [taskSavedSignal, step.id, goNext]);
   useEffect(() => {
     if (step.id === 'drag' && gestureSignal !== gestureBaseline.current) goNext();
@@ -193,7 +203,7 @@ export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSa
             <div key={s.id} className="rounded-full transition-all" style={{ width: i === stepIndex ? 18 : 6, height: 6, background: i === stepIndex ? 'var(--c-primary)' : 'rgba(255,255,255,0.4)' }} />
           ))}
         </div>
-        <button onClick={handleSkip} className="text-xs font-medium text-white bg-black/30 rounded-full px-3 py-1.5 active:opacity-70">スキップ</button>
+        <button onClick={handleSkip} className="text-xs text-white/40 px-2 py-1.5 active:opacity-60">スキップ</button>
       </div>
 
       {/* 吹き出し（説明のみ・ボタンなし。実際に操作すると自動で次に進む） */}
@@ -209,7 +219,7 @@ export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSa
             <p className={`text-sm font-bold text-gray-900 ${step.body?'mb-1':''}`}>{step.title}</p>
             {step.body&&<p className="text-xs text-gray-500 leading-relaxed">{step.body}</p>}
             {step.showNextButton&&(
-              <button onClick={goNext}
+              <button onClick={()=>{ if(step.id==='confirmTimeline') onReopenForLater?.(); goNext(); }}
                 className="w-full mt-3 py-2.5 rounded-xl text-sm font-bold text-white active:opacity-80"
                 style={{ background: 'var(--c-primary)', pointerEvents: 'auto' }}>
                 次へ
