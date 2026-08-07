@@ -25,7 +25,7 @@ const STEPS: TourStepDef[] = [
   { id: 'name', selector: '[data-tour="modal-card"]', arrowSelector: '[data-tour="name-input-row"]', title: 'タスクを入力してみましょう。', body: '', showNextButton: true, bubblePosition: 'above' },
   { id: 'saveScheduled', selector: '[data-tour="modal-card"]', arrowSelector: '[data-tour="save-button"]', title: '保存ボタンを押して、タイムラインに追加できます。', body: '' },
   { id: 'confirmTimeline', selector: '[data-tour="tour-new-task"]', title: 'タイムラインに追加されました。', body: '', showNextButton: true },
-  { id: 'save', selector: '[data-tour="modal-card"]', arrowSelector: '[data-tour="tab-later"]', title: '「あとでやる」に保存してみましょう。', body: 'タスク名を入力して保存すると、「あとでやる」にタスクが追加されます。' },
+  { id: 'save', selector: '[data-tour="modal-card"]', arrowSelector: '[data-tour="tab-later"]', title: '「あとでやる」タスクはこちらのタブから追加できます。', body: '' },
   { id: 'drag', selector: '[data-tour="tour-draggable"]', title: 'タスクをタイムラインに追加', body: 'タスクを長押しして、空いている時間にドラッグしてみましょう。' },
 ];
 
