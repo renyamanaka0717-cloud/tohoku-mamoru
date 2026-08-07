@@ -801,7 +801,7 @@ interface ForgetAlert {
 
 タスク追加→開始時刻をピックアップ→「あとでやる」に保存→ドラッグ＆ドロップの4ステップのスポットライト型ツアー。`App`の`showTour`がtrueの間、メインUIの上に**オーバーレイ表示**する（実際のUIを隠さず、暗転帯の「穴」から直接操作させる設計。`settingsOpen`/`calendarOpen`/`searchOpen`のいずれかがtrueの間は表示しないが、**`modal.open`中は表示し続ける**——ステップ2・3でタスクモーダル自体をスポットライトする必要があるため）。
 
-**基本的に各ステップは実際の操作でのみ進む。** 静的な説明を読んで進むのではなく、実際にタップ・入力・ドラッグしてもらうことでBrainBoxの使い方を体感してもらう設計（読まれにくい説明文・無駄な操作回数を減らす狙い）。**例外**: `TourStepDef.showNextButton`をtrueにしたステップだけは吹き出しに「次へ」ボタンを表示する。ステップ2「時間指定のタスクはこちらから追加できます。」は特定の操作を指示しない説明のみのステップのため、操作を強制せず「次へ」で進められるようにしている（実際に開始時刻をピックアップした場合は`timePickedSignal`の変化で自動的にも進む。ボタンはその代替手段）。
+**基本的に各ステップは実際の操作でのみ進む。** 静的な説明を読んで進むのではなく、実際にタップ・入力・ドラッグしてもらうことでBrainBoxの使い方を体感してもらう設計（読まれにくい説明文・無駄な操作回数を減らす狙い）。**例外**: `TourStepDef.showNextButton`をtrueにしたステップだけは吹き出しに「次へ」ボタンを表示する。ステップ2「時間指定のタスクはこちらのタブから追加できます。」は特定の操作を指示しない説明のみのステップのため、操作を強制せず「次へ」で進められるようにしている（実際に開始時刻をピックアップした場合は`timePickedSignal`の変化で自動的にも進む。ボタンはその代替手段）。
 
 - 各ステップは`data-tour="fab-add"` / `data-tour="modal-card"` / `data-tour="modal-header"` / `data-tour="tour-draggable"`のCSSセレクタで対象DOM要素（スポットライト＝暗転帯に開ける「穴」）を`querySelector`し、`getBoundingClientRect()`で位置を取得（`setInterval(400ms)`＋`resize`/`scroll`で再計測）。
 - **ステップ1「タスクを追加してみよう」**: FABをスポットライト。`modalOpen` propが`false→true`になった時点（＝実際にFABをタップしてモーダルが開いた瞬間）で自動的に次へ進む。ツアー中は`FAB`の`onClick`が`openAdd(nowStr())`を呼ぶ（`showTour`がtrueの時のみ`prefillTime`を渡す）ため、`TaskModal`の`initMode()`（`prefillTime`があれば`'scheduled'`）により**モードが「時間指定」で開く**（通常のFABタップは`openAdd()`で`prefillTime`無し＝「あとで」で開く。ツアー専用の分岐）
