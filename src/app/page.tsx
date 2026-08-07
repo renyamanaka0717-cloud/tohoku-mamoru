@@ -958,7 +958,7 @@ function PickerCol({items,value,onChange}:{items:string[];value:string;onChange:
 
 // ── TaskModal ─────────────────────────────────────────────────────────────────
 
-function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:initIconSheet,onSave,onUpdate,onDelete,onClose,onBulkInput,globalTags,customTabs,notificationsEnabled,onEnableNotifications,isPremium=true,onOpenTagSettings,atLocationLimit=false,onTimePicked,forceLaterSignal,forceTimeSignal}:{
+function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:initIconSheet,onSave,onUpdate,onDelete,onClose,onBulkInput,globalTags,customTabs,notificationsEnabled,onEnableNotifications,isPremium=true,onOpenTagSettings,atLocationLimit=false}:{
   task:Task|null; currentDate:string; prefillTime?:string; prefillCategory?:string; openIconSheet?:boolean;
   onSave:(tasks:Omit<Task,'id'>[])=>void; onUpdate?:(data:Omit<Task,'id'>)=>void; onDelete?:()=>void; onClose:()=>void; onBulkInput?:()=>void;
   isPremium?:boolean;
@@ -966,9 +966,6 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
   notificationsEnabled?:boolean; onEnableNotifications?:()=>void;
   onOpenTagSettings?:()=>void;
   atLocationLimit?:boolean;
-  onTimePicked?:()=>void;
-  forceLaterSignal?:number;
-  forceTimeSignal?:number;
 }) {
   const initMode=():TaskMode=>{
     if(!task) return prefillTime?'scheduled':'later';
@@ -979,22 +976,8 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
   };
 
   const [mode,setMode]        = useState<TaskMode>(initMode());
-  const forceLaterBaseline = useRef(forceLaterSignal);
-  useEffect(()=>{
-    if(forceLaterSignal!==undefined && forceLaterSignal!==forceLaterBaseline.current){
-      forceLaterBaseline.current = forceLaterSignal;
-      setMode('later');
-    }
-  },[forceLaterSignal]);
   const [name,setName]        = useState(task?.name??'');
   const [startTime,setST]     = useState(task?.startTime??prefillTime??nowStr());
-  const forceTimeBaseline = useRef(forceTimeSignal);
-  useEffect(()=>{
-    if(forceTimeSignal!==undefined && forceTimeSignal!==forceTimeBaseline.current){
-      forceTimeBaseline.current = forceTimeSignal;
-      setST('12:00');
-    }
-  },[forceTimeSignal]);
   const [duration,setDur]     = useState(task?.duration??0);
   const [memo,setMemo]        = useState(task?.memo??'');
   const [icon,setIcon]        = useState(()=>{
@@ -1329,7 +1312,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
       <div className="absolute bottom-0 left-0 right-0 max-w-md mx-auto" onClick={e=>e.stopPropagation()} data-tour={!task?'modal-card':undefined}>
         {/* ── Dark header ── */}
         <div className="rounded-t-3xl px-4 pt-4" style={{background:headerBg}}>
-        <div data-tour={!task?'modal-header':undefined}>
+        <div>
           {/* Buttons row */}
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
@@ -1349,7 +1332,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                     className="px-4 py-1.5 text-sm font-semibold rounded-full bg-white/90 text-gray-800">完了</button>
                 </>
               ) : (
-                <button onClick={save} disabled={!name.trim()} data-tour="save-button"
+                <button onClick={save} disabled={!name.trim()}
                   className={`px-4 py-1.5 text-sm font-semibold rounded-full transition-colors ${name.trim()?'bg-white/90 text-gray-800':'bg-white/20 text-white/40 cursor-not-allowed'}`}>保存</button>
               )}
             </div>
@@ -1383,7 +1366,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
           <div className="flex bg-white/20 rounded-xl p-1 mb-3">
             {([['later','あとで'],['scheduled','時間指定'],['recurring','繰り返し']] as [TaskMode,string][]).map(([m,l])=>(
               <button key={m} onClick={()=>setMode(m)}
-                data-tour={!task?(m==='later'?'tab-later':m==='scheduled'?'tab-scheduled':undefined):undefined}
+                data-tour={!task&&m==='later'?'tab-later':undefined}
                 className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-colors ${mode===m?'bg-white/90 text-gray-800':'text-white/70'}`}>
                 {l}
               </button>
@@ -2050,11 +2033,11 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
       )}
       {timePickerOpen&&(
         <div className="absolute inset-0 z-[105] flex items-center justify-center bg-black/50 rounded-t-3xl"
-          onClick={()=>{setTPOpen(false);onTimePicked?.();}}>
+          onClick={()=>setTPOpen(false)}>
           <div className="bg-white rounded-3xl mx-6 w-full max-w-xs shadow-2xl" onClick={e=>e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 pt-5 pb-3">
               <span className="text-base font-bold text-gray-800">開始時刻</span>
-              <button onClick={()=>{setTPOpen(false);onTimePicked?.();}}
+              <button onClick={()=>setTPOpen(false)}
                 className="px-4 py-1.5 bg-[var(--c-primary)] text-white text-sm font-bold rounded-full">完了</button>
             </div>
             {(()=>{
@@ -2298,7 +2281,7 @@ function CompactTaskCard({task,onToggle,onEdit}:{task:Task;onToggle:()=>void;onE
 
 // ── Timeline ──────────────────────────────────────────────────────────────────
 
-function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet,onSchedule,onAddAtTime,onDragStart,dragTaskId,yToTimeRef,layoutYRef,globalTags,todayHistory,onSubtaskToggle,lifePatterns=[],patternOverrides={},onPickColor,onEditTime,customTabs=[],tourNewTaskId}:{
+function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet,onSchedule,onAddAtTime,onDragStart,dragTaskId,yToTimeRef,layoutYRef,globalTags,todayHistory,onSubtaskToggle,lifePatterns=[],patternOverrides={},onPickColor,onEditTime,customTabs=[]}:{
   date:string;tasks:Task[];later:Task[];settings:Settings;now:string;
   onToggle:(id:string)=>void;onEdit:(t:Task)=>void;onEditIconSheet:(t:Task)=>void;
   onSchedule:(t:Task,time:string)=>void;onAddAtTime:(time:string)=>void;
@@ -2313,7 +2296,6 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
   onEditTime?:(target:'wake'|'sleep')=>void;
   patternOverrides?:Record<string,string>;
   customTabs?:CustomTab[];
-  tourNewTaskId?:string|null;
 }) {
   const [pressingId,setPressingId] = useState<string|null>(null);
   const [historyOpen,setHistoryOpen] = useState(false);
@@ -2750,8 +2732,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
                 opacity:isDragging?0.25:1,pointerEvents:isDragging?'none':'auto'}}
               onTouchStart={e=>startLP(task,e)}
               onTouchEnd={cancelLP}
-              onTouchMove={cancelLP}
-              data-tour={task.id===tourNewTaskId?'tour-new-task':undefined}>
+              onTouchMove={cancelLP}>
               <TaskCard task={task} onToggle={()=>onToggle(task.id)} onEdit={()=>onEdit(task)} globalTags={globalTags} onSubtaskToggle={(sid)=>onSubtaskToggle(task.id,sid)} tabName={task.category?customTabs.find(t=>t.id===task.category)?.name:undefined}/>
             </div>,
           ];
@@ -5925,10 +5906,6 @@ export default function App() {
   const [showTour,setShowTour] = useState(false);
   const [tourDragSignal,setTourDragSignal] = useState(0);
   const [tourTaskSavedSignal,setTourTaskSavedSignal] = useState(0);
-  const [tourTimePickedSignal,setTourTimePickedSignal] = useState(0);
-  const [tourForceLaterSignal,setTourForceLaterSignal] = useState(0);
-  const [tourForceNoonSignal,setTourForceNoonSignal] = useState(0);
-  const [tourNewTaskId,setTourNewTaskId] = useState<string|null>(null);
   const [tourSampleTasks,setTourSampleTasks] = useState<Task[]>([]);
   // プロダクトツアー中だけ表示するサンプルタスク。実データ（tasks/localStorage）には
   // 一切保存せず、表示用にfilteredTasksへ合成するだけなのでツアー終了時に消せば痕跡は残らない
@@ -6785,10 +6762,7 @@ export default function App() {
         ?prev.map(t=>t.id===modal.task!.id?{...newTasks[0],id:t.id}:t)
         :[...prev,...newTasks]
       );
-      if(showTour&&!modal.task){
-        setTourTaskSavedSignal(n=>n+1);
-        if(newTasks[0].startTime) setTourNewTaskId(newTasks[0].id);
-      }
+      if(showTour&&!modal.task) setTourTaskSavedSignal(n=>n+1);
       if(!modal.task){
         logAnalyticsEvent('task_created',{mode:newTasks[0].isLater?'later':newTasks[0].recurrence?'recurring':'scheduled'});
         if(newTasks[0].isLater) logAnalyticsEvent('later_task_created');
@@ -6980,8 +6954,7 @@ export default function App() {
           lifePatterns={lifePatterns} patternOverrides={patternOverrides}
           onPickColor={(target)=>{if(!isPremium){setAppProPrompt(true);return;}setColorPickTarget(target);}}
           onEditTime={openTimePicker}
-          customTabs={activeCategory===null?customTabs:[]}
-          tourNewTaskId={showTour?tourNewTaskId:undefined}/>
+          customTabs={activeCategory===null?customTabs:[]}/>
       </main>
 
       {/* ── Bottom bar ── */}
@@ -7045,7 +7018,7 @@ export default function App() {
 
       {/* ── FAB ── */}
       <div className="fixed right-4 z-50" style={{bottom:'calc(3.5rem + env(safe-area-inset-bottom))'}} data-tour="fab-add">
-        <button onClick={()=>openAdd(showTour?nowStr():undefined)}
+        <button onClick={()=>openAdd()}
           className="w-14 h-14 bg-[var(--c-primary)] text-white rounded-full shadow-2xl active:bg-gray-700"
           style={{display:'grid',placeItems:'center'}}>
           <AppIcons.plus size={28} className="block"/>
@@ -7183,10 +7156,7 @@ export default function App() {
           globalTags={globalTags} customTabs={customTabs}
           notificationsEnabled={settings.notificationsEnabled??true}
           onEnableNotifications={()=>setSettings(s=>({...s,notificationsEnabled:true}))}
-          isPremium={isPremium} atLocationLimit={activeLocationRegionCount>=MAX_MONITORED_REGIONS}
-          onTimePicked={()=>{if(showTour&&!modal.task) setTourTimePickedSignal(n=>n+1);}}
-          forceLaterSignal={showTour&&!modal.task?tourForceLaterSignal:undefined}
-          forceTimeSignal={showTour&&!modal.task?tourForceNoonSignal:undefined}/>
+          isPremium={isPremium} atLocationLimit={activeLocationRegionCount>=MAX_MONITORED_REGIONS}/>
       )}
 
       {/* ── Settings Screen ── */}
@@ -7350,10 +7320,7 @@ export default function App() {
 
       {/* ── プロダクトツアー ── */}
       {showTour&&!settingsOpen&&!calendarOpen&&!searchOpen&&(
-        <ProductTour gestureSignal={tourDragSignal} modalOpen={modal.open} taskSavedSignal={tourTaskSavedSignal} timePickedSignal={tourTimePickedSignal}
-          onEnterSaveStep={()=>setTourForceLaterSignal(n=>n+1)}
-          onEnterNameStep={()=>setTourForceNoonSignal(n=>n+1)}
-          onReopenForLater={()=>openAdd()}
+        <ProductTour gestureSignal={tourDragSignal} modalOpen={modal.open} taskSavedSignal={tourTaskSavedSignal}
           onFinish={(skipped)=>{
             localStorage.setItem(TOUR_COMPLETED_KEY,'1');
             setShowTour(false);

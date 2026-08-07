@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppIcons } from './Icons';
 
 interface TourStepDef {
-  id: 'add' | 'schedule' | 'name' | 'saveScheduled' | 'confirmTimeline' | 'save' | 'laterName' | 'laterConfirm' | 'drag';
+  id: 'add' | 'save' | 'laterName' | 'laterConfirm' | 'drag';
   selector: string;
   // 吹き出しの矢印が指す位置・吹き出しの上下配置の基準。省略時はselectorの対象と同じ
   // （スポットライトの範囲と、矢印が指す/吹き出しが基準にする位置が異なる場合に使う。
@@ -11,20 +11,17 @@ interface TourStepDef {
   arrowSelector?: string;
   title: string;
   body: string;
-  // このステップだけは実際の操作を強制せず「次へ」ボタンで進める（例: scheduleステップは
+  // このステップだけは実際の操作を強制せず「次へ」ボタンで進める（例: saveステップは
   // 機能の存在を伝える説明のみで、特定の操作を指示しているわけではないため）
   showNextButton?: boolean;
   // 吹き出しの上下配置を自動判定（対象が画面下半分か）せず固定したい場合に指定する。
-  // nameステップは対象（タスク名入力欄）が画面上部にあるが、吹き出しは上に固定表示したいため使う
+  // laterName/laterConfirmステップは対象（タスク名入力欄）が画面上部にあるが、
+  // 吹き出しは上に固定表示したいため使う
   bubblePosition?: 'above' | 'below';
 }
 
 const STEPS: TourStepDef[] = [
   { id: 'add', selector: '[data-tour="fab-add"]', title: 'タスクを追加してみよう', body: 'ここをタップして、新しいタスクを追加しましょう。' },
-  { id: 'schedule', selector: '[data-tour="modal-card"]', arrowSelector: '[data-tour="tab-scheduled"]', title: '時間指定のタスクはこちらのタブから追加できます。', body: '', showNextButton: true },
-  { id: 'name', selector: '[data-tour="modal-card"]', arrowSelector: '[data-tour="name-input-row"]', title: 'タスクを入力してみましょう。', body: '', showNextButton: true, bubblePosition: 'above' },
-  { id: 'saveScheduled', selector: '[data-tour="modal-card"]', arrowSelector: '[data-tour="save-button"]', title: '保存ボタンを押して、タイムラインに追加できます。', body: '' },
-  { id: 'confirmTimeline', selector: '[data-tour="tour-new-task"]', title: 'タイムラインに追加されました。', body: '', showNextButton: true },
   { id: 'save', selector: '[data-tour="modal-card"]', arrowSelector: '[data-tour="tab-later"]', title: '「あとでやる」タスクはこちらのタブから追加できます。', body: '', showNextButton: true },
   { id: 'laterName', selector: '[data-tour="modal-card"]', arrowSelector: '[data-tour="name-input-row"]', title: 'タスクを入力してみましょう。', body: '', showNextButton: true, bubblePosition: 'above' },
   { id: 'laterConfirm', selector: '[data-tour="modal-card"]', arrowSelector: '[data-tour="name-input-row"]', title: '「あとでやる」タスク一覧に追加されます。', body: '', showNextButton: true, bubblePosition: 'above' },
@@ -33,15 +30,11 @@ const STEPS: TourStepDef[] = [
 
 interface Rect { top: number; left: number; width: number; height: number; }
 
-export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSavedSignal, timePickedSignal, onEnterSaveStep, onEnterNameStep, onReopenForLater }: {
+export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSavedSignal }: {
   onFinish: (skipped: boolean) => void;
   gestureSignal: number;
   modalOpen: boolean;
   taskSavedSignal: number;
-  timePickedSignal: number;
-  onEnterSaveStep?: () => void;
-  onEnterNameStep?: () => void;
-  onReopenForLater?: () => void;
 }) {
   const [stepIndex, setStepIndex] = useState(0);
   const [rect, setRect] = useState<Rect | null>(null);
@@ -50,8 +43,6 @@ export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSa
   const modalOpenBaseline = useRef(modalOpen);
   const taskSavedBaseline = useRef(taskSavedSignal);
   const gestureBaseline = useRef(gestureSignal);
-  const timePickedBaseline = useRef(timePickedSignal);
-  const scrolledForStep = useRef<number | null>(null);
   const step = STEPS[stepIndex];
 
   // getBoundingClientRect()が返すDOMRectはtop/left/width/heightがprototypeのgetterで
@@ -69,13 +60,7 @@ export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSa
     } else {
       setArrowRect(null);
     }
-    // confirmTimelineステップの対象（新規作成したタスクのカード）は12:00付近など
-    // スクロールしないと見えない位置にあり得るため、見つかったタイミングで一度だけ中央に寄せる
-    if (step.id === 'confirmTimeline' && el && scrolledForStep.current !== stepIndex) {
-      scrolledForStep.current = stepIndex;
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-  }, [step.selector, step.arrowSelector, step.id, stepIndex]);
+  }, [step.selector, step.arrowSelector]);
 
   useEffect(() => {
     measure();
@@ -102,33 +87,18 @@ export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSa
     modalOpenBaseline.current = modalOpen;
     taskSavedBaseline.current = taskSavedSignal;
     gestureBaseline.current = gestureSignal;
-    timePickedBaseline.current = timePickedSignal;
   }, [stepIndex]);
   useEffect(() => {
     if (step.id === 'add' && modalOpen && !modalOpenBaseline.current) goNext();
   }, [modalOpen, step.id, goNext]);
   useEffect(() => {
-    if (step.id === 'schedule' && timePickedSignal !== timePickedBaseline.current) goNext();
-  }, [timePickedSignal, step.id, goNext]);
-  useEffect(() => {
     // 「あとでやる」の保存は複数の説明ステップ（save/laterName/laterConfirm）を経てから行われるが、
     // どのステップの最中に実際に保存されても即座に反映できるよう、まとめて監視する
-    if ((step.id === 'save' || step.id === 'laterName' || step.id === 'laterConfirm' || step.id === 'saveScheduled') && taskSavedSignal !== taskSavedBaseline.current) goNext();
+    if ((step.id === 'save' || step.id === 'laterName' || step.id === 'laterConfirm') && taskSavedSignal !== taskSavedBaseline.current) goNext();
   }, [taskSavedSignal, step.id, goNext]);
   useEffect(() => {
     if (step.id === 'drag' && gestureSignal !== gestureBaseline.current) goNext();
   }, [gestureSignal, step.id, goNext]);
-
-  // saveステップに入った時点で、モーダルのモードタブを「あとで」に自動で切り替える
-  useEffect(() => {
-    if (step.id === 'save') onEnterSaveStep?.();
-  }, [step.id, onEnterSaveStep]);
-
-  // nameステップに入った時点で、開始時刻を昼12時に固定する（実際の現在時刻が表示され続けると
-  // ツアーを行うタイミングによって見た目が変わってしまうため）
-  useEffect(() => {
-    if (step.id === 'name') onEnterNameStep?.();
-  }, [step.id, onEnterNameStep]);
 
   const handleSkip = () => onFinish(true);
 
@@ -151,8 +121,8 @@ export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSa
   const vw = typeof window !== 'undefined' ? window.innerWidth : 390;
   // 吹き出しの上下配置・矢印の水平位置は、スポットライト範囲（rect）ではなく矢印が指すべき対象
   // （arrowSelectorがあればそちら、無ければスポットライト対象そのもの）を基準にする。
-  // スポットライトが広い範囲（モーダル全体など）の場合、吹き出しがその範囲の端に配置されて
-  // 対象から離れすぎるのを防ぐため
+  // スポットライトが広い範囲（モーダル全体・ヘッダー全体など）の場合、rectそのものを基準にすると
+  // 吹き出しがその範囲の端に配置されて対象から離れすぎるのを防ぐため
   // 稀にレイアウト確定前の一瞬でサイズ0のrectを拾うことがあるため、幅・高さが0の測定結果は無視する
   const validArrowRect = arrowRect && arrowRect.width > 0 && arrowRect.height > 0 ? arrowRect : null;
   const arrowTarget = validArrowRect ?? rect;
@@ -168,8 +138,8 @@ export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSa
     : bubbleWidth / 2;
   // 注目を引く光る枠は、スポットライトの穴（rect、タップ可能な範囲）とは別に、矢印が指す対象の
   // 下端までで打ち切る（arrowSelectorがある場合のみ）。穴自体は変えずタップ可能範囲を保ったまま、
-  // 視覚的な強調だけを対象の近くに絞れる（例: scheduleステップはモーダル全体が操作可能なままだが、
-  // 光る枠は「時間指定」タブの少し下までで止める）
+  // 視覚的な強調だけを対象の近くに絞れる（例: saveステップはモーダル全体が操作可能なままだが、
+  // 光る枠は「あとで」タブの少し下までで止める）
   const highlightRect = rect && validArrowRect
     ? { ...rect, height: Math.max(40, Math.min(rect.height, (validArrowRect.top + validArrowRect.height) - rect.top + 12)) }
     : rect;
@@ -210,7 +180,7 @@ export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSa
         <button onClick={handleSkip} className="text-xs text-white/40 px-2 py-1.5 active:opacity-60">スキップ</button>
       </div>
 
-      {/* 吹き出し（説明のみ・ボタンなし。実際に操作すると自動で次に進む） */}
+      {/* 吹き出し（説明のみ・ボタンなし／一部ステップのみ「次へ」ボタン） */}
       {rect && (
         <div className="fixed left-4 right-4" style={{ top: bubbleTop, pointerEvents: 'none' }}>
           <div className="relative bg-white rounded-2xl px-5 py-4 shadow-2xl max-w-xs mx-auto">
@@ -223,7 +193,7 @@ export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSa
             <p className={`text-sm font-bold text-gray-900 ${step.body?'mb-1':''}`}>{step.title}</p>
             {step.body&&<p className="text-xs text-gray-500 leading-relaxed">{step.body}</p>}
             {step.showNextButton&&(
-              <button onClick={()=>{ if(step.id==='confirmTimeline') onReopenForLater?.(); goNext(); }}
+              <button onClick={goNext}
                 className="w-full mt-3 py-2.5 rounded-xl text-sm font-bold text-white active:opacity-80"
                 style={{ background: 'var(--c-primary)', pointerEvents: 'auto' }}>
                 次へ
