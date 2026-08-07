@@ -48,6 +48,8 @@ export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSa
   const [showCompletion, setShowCompletion] = useState(false);
   // ドロップ完了直後は演出用に一旦オーバーレイを消し、2秒待ってから完了ポップアップを出す
   const [dropped, setDropped] = useState(false);
+  // laterNameステップの「次へ」は、名前が入力されるまで表示しない
+  const [hasName, setHasName] = useState(false);
   const modalOpenBaseline = useRef(modalOpen);
   const taskSavedBaseline = useRef(taskSavedSignal);
   const gestureBaseline = useRef(gestureSignal);
@@ -107,10 +109,23 @@ export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSa
     if ((step.id === 'save' || step.id === 'laterName' || step.id === 'laterConfirm') && taskSavedSignal !== taskSavedBaseline.current) goNext();
   }, [taskSavedSignal, step.id, goNext]);
   // laterNameステップに入った時点でタスク名入力欄にフォーカスし、キーボードを表示する
-  // （それ以外のステップでは自動フォーカスを抑止しているため、ここで明示的に発火させる）
+  // （それ以外のステップでは自動フォーカスを抑止しているため、ここで明示的に発火させる。
+  // 実際のキーボード表示は「次へ」ボタンのonClick内での直接focus()が主で、これは保険）
   useEffect(() => {
     if (step.id === 'laterName') onEnterLaterNameStep?.();
   }, [step.id, onEnterLaterNameStep]);
+  // laterNameステップの間、名前入力欄の値を直接監視して「次へ」ボタンの表示を切り替える
+  // （最初は非表示・文字が入力された時点で表示。TaskModalの`name` stateは兄弟コンポーネントから
+  // 直接見えないため、実DOMのinputに'input'イベントリスナーを付けて追従する）
+  useEffect(() => {
+    if (step.id !== 'laterName') { setHasName(false); return; }
+    const el = document.querySelector('[data-tour="name-input-row"] input') as HTMLInputElement | null;
+    if (!el) return;
+    const update = () => setHasName(!!el.value.trim());
+    update();
+    el.addEventListener('input', update);
+    return () => el.removeEventListener('input', update);
+  }, [step.id]);
   // ドロップした瞬間にオーバーレイを消して結果を見せ、2秒待ってから完了ポップアップに進む
   useEffect(() => {
     if (step.id !== 'drag' || gestureSignal === gestureBaseline.current) return;
@@ -220,8 +235,17 @@ export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSa
             }} />
             <p className={`text-sm font-bold text-gray-900 ${step.bodyKey?'mb-1':''}`}>{tr(step.titleKey)}</p>
             {step.bodyKey&&<p className="text-xs text-gray-500 leading-relaxed">{tr(step.bodyKey)}</p>}
-            {step.showNextButton&&(
-              <button onClick={()=>{ if(step.id==='laterName') onSkipLaterName?.(); goNext(); }}
+            {step.showNextButton&&(step.id!=='laterName'||hasName)&&(
+              <button onClick={()=>{
+                if(step.id==='laterName') onSkipLaterName?.();
+                // saveステップから抜ける瞬間、タップのユーザー操作と同じ呼び出しスタック内でfocus()する。
+                // useEffect経由（onEnterLaterNameStep）だと描画後の非同期タイミングになりiOSでキーボードが
+                // 開かないため、ここで実DOMのinputを直接focusする
+                if(step.id==='save'){
+                  (document.querySelector('[data-tour="name-input-row"] input') as HTMLInputElement|null)?.focus();
+                }
+                goNext();
+              }}
                 className="w-full mt-3 py-2.5 rounded-xl text-sm font-bold text-white active:opacity-80"
                 style={{ background: 'var(--c-primary)', pointerEvents: 'auto' }}>
                 {tr('tourNext')}
