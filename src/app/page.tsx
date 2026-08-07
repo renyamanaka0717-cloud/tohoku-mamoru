@@ -13,6 +13,7 @@ import { logAnalyticsEvent } from './components/Analytics';
 import { isDevModeUnlocked, DEV_MODE_UNLOCKED_KEY, getDevPremiumOverride, setDevPremiumOverride, isDevDenied, DEV_LOCATION_DENIED_KEY, DEV_NOTIF_DENIED_KEY } from './components/DevMode';
 import { App as CapApp } from '@capacitor/app';
 import ProductTour from './components/ProductTour';
+import Welcome from './components/Welcome';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -5904,6 +5905,7 @@ export default function App() {
   const [showNotifPrompt,setShowNotifPrompt] = useState(false);
   const [showLocPrompt,setShowLocPrompt] = useState(false);
   const [showTour,setShowTour] = useState(false);
+  const [showWelcome,setShowWelcome] = useState(false);
   const [tourDragSignal,setTourDragSignal] = useState(0);
   const [tourTaskSavedSignal,setTourTaskSavedSignal] = useState(0);
   const [tourSampleTasks,setTourSampleTasks] = useState<Task[]>([]);
@@ -5979,7 +5981,7 @@ export default function App() {
     }catch{}
     setLoaded(true);
     if(!localStorage.getItem(TOUR_COMPLETED_KEY)){
-      setTimeout(()=>{setShowTour(true);logAnalyticsEvent('product_tour_started');},1000);
+      setTimeout(()=>setShowWelcome(true),1000);
     } else if(!localStorage.getItem(NOTIF_ASKED_KEY)){
       setTimeout(()=>maybeShowNotifPrompt(),800);
     } else if(!localStorage.getItem(LOCATION_ASKED_KEY)){
@@ -6171,7 +6173,7 @@ export default function App() {
 
   const maybeShowProductTour=()=>{
     if(localStorage.getItem(TOUR_COMPLETED_KEY)){ maybeShowNotifPrompt(); return; }
-    setTimeout(()=>{setShowTour(true);logAnalyticsEvent('product_tour_started');},600);
+    setTimeout(()=>setShowWelcome(true),600);
   };
   // 起床・就寝設定は導線の最後（通知・位置情報許可の後）に確認する
   const maybeShowWakeSleepPrompt=()=>{
@@ -7316,6 +7318,22 @@ export default function App() {
               className="w-full py-2.5 text-sm font-medium text-gray-400">あとで</button>
           </div>
         </div>
+      )}
+
+      {/* ── ウェルカム画面（初回起動時、プロダクトツアーの前） ── */}
+      {showWelcome&&(
+        <Welcome
+          onStartTour={()=>{
+            setShowWelcome(false);
+            setShowTour(true);
+            logAnalyticsEvent('product_tour_started');
+          }}
+          onLater={()=>{
+            setShowWelcome(false);
+            localStorage.setItem(TOUR_COMPLETED_KEY,'1');
+            logAnalyticsEvent('product_tour_skipped');
+            maybeShowNotifPrompt();
+          }}/>
       )}
 
       {/* ── プロダクトツアー ── */}
