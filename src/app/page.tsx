@@ -14,6 +14,7 @@ import { isDevModeUnlocked, DEV_MODE_UNLOCKED_KEY, getDevPremiumOverride, setDev
 import { App as CapApp } from '@capacitor/app';
 import ProductTour from './components/ProductTour';
 import Welcome from './components/Welcome';
+import { useI18n, type Language, type StringKey } from './components/I18n';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -1333,7 +1334,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                     className="px-4 py-1.5 text-sm font-semibold rounded-full bg-white/90 text-gray-800">完了</button>
                 </>
               ) : (
-                <button onClick={save} disabled={!name.trim()}
+                <button onClick={save} disabled={!name.trim()} data-tour={!task?'save-button':undefined}
                   className={`px-4 py-1.5 text-sm font-semibold rounded-full transition-colors ${name.trim()?'bg-white/90 text-gray-800':'bg-white/20 text-white/40 cursor-not-allowed'}`}>保存</button>
               )}
             </div>
@@ -4075,6 +4076,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   initialSub?:string;
   tasks:Task[]; onEditTask:(t:Task)=>void;
 }) {
+  const { tr, language, setLanguage } = useI18n();
   const [sub,setSubRaw]        = useState<string|null>(initialSub??null);
   // 戻る操作で常にメイン設定画面まで戻ってしまわないよう、遷移履歴をスタックで保持する。
   // setSub(次の画面) で現在地をスタックに積み、back() でスタックから1つ戻す
@@ -4960,7 +4962,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
 
   if(sub==='display') return (
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
-      {subHeader('表示設定')}
+      {subHeader(tr('settingsDisplayTitle'))}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm mt-6">
           <SettingsRow icon={<AppIcons.palette/>} iconBg="bg-gray-100"
@@ -4979,7 +4981,29 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             onClick={()=>setSub('freeCard')}/>
           <div className="h-px bg-gray-100 mx-4"/>
           <SettingsRow icon={<AppIcons.book size={18}/>} iconBg="bg-gray-100"
-            title="言語" desc="日本語" onClick={()=>{}} isLast/>
+            title="言語 / Language"
+            desc={language==='ja'?tr('settingsLanguageJa'):tr('settingsLanguageEn')}
+            onClick={()=>setSub('language')} isLast/>
+        </div>
+      </div>
+    </div>
+  );
+
+  if(sub==='language') return (
+    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
+      {subHeader('言語 / Language')}
+      <div className="flex-1 overflow-y-auto px-4 pb-8">
+        <div className="bg-white rounded-2xl overflow-hidden shadow-sm mt-6">
+          {([['ja','settingsLanguageJa'],['en','settingsLanguageEn']] as [Language,StringKey][]).map(([code,labelKey],i)=>(
+            <div key={code}>
+              {i>0&&<div className="h-px bg-gray-100 mx-4"/>}
+              <button onClick={()=>setLanguage(code)}
+                className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50">
+                <span className="flex-1 text-left text-sm font-medium text-gray-800">{tr(labelKey)}</span>
+                {language===code&&<AppIcons.checkSquare size={18} className="text-[var(--c-primary)]"/>}
+              </button>
+            </div>
+          ))}
         </div>
       </div>
     </div>

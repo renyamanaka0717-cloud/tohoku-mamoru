@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import Script from 'next/script'
 import './globals.css'
 import { PremiumProvider } from './components/Premium'
+import { I18nProvider } from './components/I18n'
 
 export const metadata: Metadata = {
   title: '1日タイムライン | 今日のやることを見える化',
@@ -21,9 +22,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="ja">
       <body className="bg-gray-50 text-gray-900 antialiased overscroll-none">
         <Script src="https://appleid.cdn-apple.com/appleauth/static/jsapi/appleid/1/en_US/appleid.auth.js" strategy="afterInteractive"/>
-        <PremiumProvider>
-          {children}
-        </PremiumProvider>
+        <I18nProvider>
+          <PremiumProvider>
+            {children}
+          </PremiumProvider>
+        </I18nProvider>
       </body>
     </html>
   )

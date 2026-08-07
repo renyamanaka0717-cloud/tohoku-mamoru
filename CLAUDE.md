@@ -784,7 +784,7 @@ interface ForgetAlert {
 
 初回起動時、プロダクトツアーより前に表示する単一画面。背景画像（`public/welcome-bg.png`、ロゴマーク入りのブランドカラー背景）の上に、タイトル「BrainBox」・サブタイトル「頭の中を、もっとシンプルに。」・ボタン2つ（「ツアーを始める」「あとで見る」）を重ねる。
 
-- 表示文言は`Welcome.tsx`の`WELCOME_TEXT`定数に集約している（将来の多言語対応時はこのオブジェクトを言語ごとに差し替える想定。コンポーネント内に文字列を直書きしない）
+- 表示文言は`useI18n()`の`tr()`経由で取得する（`src/app/components/I18n.tsx`の`STRINGS`に集約済み。多言語対応の詳細は後述の「多言語対応（i18n）」節を参照）
 - 背景画像はロゴマークが画面上部〜中央（縦48%あたりまで）にあるため、タイトル以降のテキストは`height:'48vh'`のスペーサーで画像のロゴと重ならない位置まで下げてから配置している。画像の構図を変える場合はこの値も合わせて調整すること
 - タイトル・サブタイトル・ボタン列はそれぞれ`welcomeFadeUp`（`globals.css`、フェード＋下から16px分の移動）を`animationDelay`をずらして適用し、上から順に浮かび上がるフェードイン演出にしている
 - 「ツアーを始める」→`App`側で`setShowWelcome(false)`→`setShowTour(true)`→`product_tour_started`を計測してプロダクトツアーへ
@@ -1391,6 +1391,32 @@ native-ios/BridgeViewController.swift … capacitorDidLoad() 内で FirebaseApp.
 - `AXIS_X=72`・`CARD_LEFT=108` — ハードコードせず定数から導出すること
 - **タスクごとのアラート（`Task.notifications: number[]`、開始時・何分前・前日）は `syncTaskAlerts()` でネイティブに事前予約している**（App コンポーネント、`tasks` 変更のたびに未来の直近60件を計算して `LocalNotifyPlugin.syncTaskAlerts` に渡す）。バックグラウンド/未起動でも発火する。旧来の `now` ポーリング＋即時 `notify()` の `useEffect`（`TASK_ALERT_FIRED_KEY` 使用）はWeb/開発環境専用フォールバックとして残っており、ネイティブでは `isNative()` で早期returnする。新しい通知チェックを追加する際は必ずこの `useEffect` 一覧（複数ある。起床チェックイン・買い物リスト・放置タスク・空き時間提案・タスクアラート（Web fallback）・タスクアラート（ネイティブ事前予約））を grep してから既存パターンに倣うこと
 - **アプリ内の全通知は `src/app/components/LocalNotify.ts` の `notify(title, body)` を呼ぶこと。`new Notification(...)` を直接呼ばない。** WKWebViewはWeb Notifications API（`window.Notification`）を実装しておらず、実機では `new Notification(...)` は何も起きずに失敗する（設定アプリのBrainBoxページに「通知」の許可項目自体が出ない＝一度もネイティブの通知許可がリクエストされていない、という形で発覚した実際の不具合）。`notify()` はネイティブでは `LocalNotifyPlugin` 経由で `UNUserNotificationCenter` に直接通知を出し、Web/開発環境では従来通り `window.Notification` にフォールバックする。ただし `notify()` 自体は即時発火なので、呼び出し元の発火判定が `now` ベースのポーリングのままだと**アプリがフォアグラウンドで開かれている間しか動かない**（バックグラウンド/未起動では動かない。それが必要な機能は場所通知・アプリ起動リマインダー・タスクアラートのように専用のネイティブスケジューリング（`syncTaskAlerts`/`GeofencePlugin`/`InactivityPlugin`）が必要）
+
+---
+
+## 多言語対応（i18n、`src/app/components/I18n.tsx`）
+
+**現状は基盤のみ実装済みで、アプリ全体の文言を移行し終えているわけではない。** 移行済みなのはウェルカム画面（`Welcome.tsx`）・プロダクトツアー（`ProductTour.tsx`）・設定 → 表示設定の「言語」行とその選択画面のみ。`page.tsx`本体の大部分（タイムライン・タスクモーダル・設定画面の各項目など）は今も日本語ハードコードのままで、対象を広げる時は同じ`STRINGS`/`tr()`の仕組みに1文言ずつ追加していく想定（一気に全部を移行しようとしない）。
+
+### アーキテクチャ
+
+- `STRINGS`（`I18n.tsx`）— `{ キー: {ja, en} }`の形で全文言を1ファイルに集約する。ja/enを同じオブジェクトの隣同士に書くことで、後から翻訳を見比べて確認・修正しやすくしている（ja用ファイル・en用ファイルを分けない設計）
+- `I18nProvider`（`layout.tsx`で`PremiumProvider`の外側にラップ）— 現在の言語stateと`tr(key)`関数をReact Contextで配る
+- `useI18n()`フックが`{ language, setLanguage, tr }`を返す。**翻訳関数はここでは`t`ではなく`tr`という名前にしている**（`page.tsx`本体で`t`はタスク・タグ・テーマ等のループ変数として広く使われており衝突するため。新しく`page.tsx`に文言を移行する時も`tr`のまま使うこと。`t`にリネームしない）
+- 言語判定の優先順位: ① `localStorage`の`tl-language-v1`（ユーザーが手動選択済みならこれを最優先）→ ② 端末/ブラウザの言語（`navigator.languages`）が`ja`で始まれば`ja`、それ以外（`en`を含む未対応言語すべて）は`en`にフォールバック。**自動判定はあくまで初回のデフォルト決定用**で、一度でも設定画面から手動選択すると`tl-language-v1`が優先され、以後は端末設定を変えても上書きされない
+- `setLanguage(lang)`は即座に`localStorage`へ保存しつつReact stateも更新するため、画面を閉じずにその場で表示言語が切り替わる（リロード不要）
+- `I18nProvider`は`language`が変わるたびに`document.documentElement.lang`も同期する
+
+### 設定画面への組み込み
+
+設定 → 表示設定 → 「言語 / Language」行（`sub==='display'`画面の最後の行）から`sub==='language'`のピッカー画面に遷移し、「日本語」「English」の2択から選ぶ（選択中の項目に`AppIcons.checkSquare`のチェックマーク）。**この行・ピッカー画面のヘッダーは常に固定文言`"言語 / Language"`**（`tr()`を通さない）——どちらの言語で使っていても迷わずこの項目を見つけられるようにするための意図的なバイリンガル表記であり、`tr('settingsLanguage')`のように動的に翻訳すると英語モード時に`"Language / Language"`という重複表示になる不具合が実際にあったため、静的文字列に固定した。
+
+### 避けるパターン
+
+- `I18n.tsx`の`STRINGS`に新しいキーを追加する時、ja/enの片方だけ埋めない（型は`{ja,en}`両方必須になっているので忘れるとビルドエラーになるが、意味のある翻訳を入れずに同じ文字列を両方に貼り付けない）
+- `page.tsx`側で翻訳関数を`t`という変数名で受け取らない（`tasks`/`tags`/`themes`等の`.map(t=>...)`ループ変数と衝突する。必ず`tr`のまま使う）
+- 設定の「言語 / Language」行・ピッカー画面のヘッダー文言を`tr()`経由の動的翻訳に変えない（英語モード時に"Language / Language"のような重複が起きる。意図的な固定バイリンガル表記）
+- 基盤ができた勢いで`page.tsx`全体の文言を一度に移行しようとしない（意図的に段階移行にしている。既存のJSXへの影響範囲が広すぎるリスクを避けるため）
 
 ---
 

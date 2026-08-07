@@ -1,6 +1,7 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppIcons } from './Icons';
+import { useI18n, type StringKey } from './I18n';
 
 interface TourStepDef {
   id: 'add' | 'save' | 'laterName' | 'laterConfirm' | 'drag';
@@ -9,8 +10,8 @@ interface TourStepDef {
   // （スポットライトの範囲と、矢印が指す/吹き出しが基準にする位置が異なる場合に使う。
   // 例: saveステップはヘッダー全体をスポットライトするが、矢印・配置は「あとで」タブを基準にする）
   arrowSelector?: string;
-  title: string;
-  body: string;
+  titleKey: StringKey;
+  bodyKey?: StringKey;
   // このステップだけは実際の操作を強制せず「次へ」ボタンで進める（例: saveステップは
   // 機能の存在を伝える説明のみで、特定の操作を指示しているわけではないため）
   showNextButton?: boolean;
@@ -21,11 +22,11 @@ interface TourStepDef {
 }
 
 const STEPS: TourStepDef[] = [
-  { id: 'add', selector: '[data-tour="fab-add"]', title: 'タスクを追加してみよう', body: 'ここをタップして、新しいタスクを追加しましょう。' },
-  { id: 'save', selector: '[data-tour="modal-card"]', arrowSelector: '[data-tour="tab-later"]', title: '「あとでやる」タスクはこちらのタブから追加できます。', body: '', showNextButton: true },
-  { id: 'laterName', selector: '[data-tour="modal-card"]', arrowSelector: '[data-tour="name-input-row"]', title: 'タスクを入力してみましょう。', body: '', showNextButton: true, bubblePosition: 'above' },
-  { id: 'laterConfirm', selector: '[data-tour="modal-card"]', arrowSelector: '[data-tour="name-input-row"]', title: '「あとでやる」タスク一覧に追加されます。', body: '', showNextButton: true, bubblePosition: 'above' },
-  { id: 'drag', selector: '[data-tour="tour-draggable"]', title: 'タスクをタイムラインに追加', body: 'タスクを長押しして、空いている時間にドラッグしてみましょう。' },
+  { id: 'add', selector: '[data-tour="fab-add"]', titleKey: 'tourAddTitle', bodyKey: 'tourAddBody' },
+  { id: 'save', selector: '[data-tour="modal-card"]', arrowSelector: '[data-tour="tab-later"]', titleKey: 'tourSaveTitle', showNextButton: true },
+  { id: 'laterName', selector: '[data-tour="modal-card"]', arrowSelector: '[data-tour="name-input-row"]', titleKey: 'tourLaterNameTitle', showNextButton: true, bubblePosition: 'above' },
+  { id: 'laterConfirm', selector: '[data-tour="modal-card"]', arrowSelector: '[data-tour="save-button"]', titleKey: 'tourLaterConfirmTitle', bodyKey: 'tourLaterConfirmBody' },
+  { id: 'drag', selector: '[data-tour="tour-draggable"]', titleKey: 'tourDragTitle', bodyKey: 'tourDragBody' },
 ];
 
 interface Rect { top: number; left: number; width: number; height: number; }
@@ -36,6 +37,7 @@ export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSa
   modalOpen: boolean;
   taskSavedSignal: number;
 }) {
+  const { tr } = useI18n();
   const [stepIndex, setStepIndex] = useState(0);
   const [rect, setRect] = useState<Rect | null>(null);
   const [arrowRect, setArrowRect] = useState<Rect | null>(null);
@@ -109,9 +111,9 @@ export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSa
           <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{ background: 'color-mix(in srgb, var(--c-primary) 14%, white)' }}>
             <AppIcons.checkSquare size={30} className="text-[var(--c-primary)]" />
           </div>
-          <p className="text-lg font-bold text-gray-900 mb-2">ツアー完了！</p>
-          <p className="text-sm text-gray-500 leading-relaxed mb-6">これでBrainBoxの基本的な使い方はばっちりです。さっそく使ってみましょう。</p>
-          <button onClick={() => onFinish(false)} className="w-full py-3 rounded-2xl text-[15px] font-bold text-white" style={{ background: 'var(--c-primary)' }}>はじめる</button>
+          <p className="text-lg font-bold text-gray-900 mb-2">{tr('tourCompleteTitle')}</p>
+          <p className="text-sm text-gray-500 leading-relaxed mb-6">{tr('tourCompleteBody')}</p>
+          <button onClick={() => onFinish(false)} className="w-full py-3 rounded-2xl text-[15px] font-bold text-white" style={{ background: 'var(--c-primary)' }}>{tr('tourCompleteStart')}</button>
         </div>
       </div>
     );
@@ -177,7 +179,7 @@ export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSa
             <div key={s.id} className="rounded-full transition-all" style={{ width: i === stepIndex ? 18 : 6, height: 6, background: i === stepIndex ? 'var(--c-primary)' : 'rgba(255,255,255,0.4)' }} />
           ))}
         </div>
-        <button onClick={handleSkip} className="text-xs text-white/40 px-2 py-1.5 active:opacity-60">スキップ</button>
+        <button onClick={handleSkip} className="text-xs text-white/40 px-2 py-1.5 active:opacity-60">{tr('tourSkip')}</button>
       </div>
 
       {/* 吹き出し（説明のみ・ボタンなし／一部ステップのみ「次へ」ボタン） */}
@@ -190,13 +192,13 @@ export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSa
               ...(above ? { bottom: -8, borderTop: '8px solid white' } : { top: -8, borderBottom: '8px solid white' }),
               animation: 'tourBlink 1.4s ease-in-out infinite',
             }} />
-            <p className={`text-sm font-bold text-gray-900 ${step.body?'mb-1':''}`}>{step.title}</p>
-            {step.body&&<p className="text-xs text-gray-500 leading-relaxed">{step.body}</p>}
+            <p className={`text-sm font-bold text-gray-900 ${step.bodyKey?'mb-1':''}`}>{tr(step.titleKey)}</p>
+            {step.bodyKey&&<p className="text-xs text-gray-500 leading-relaxed">{tr(step.bodyKey)}</p>}
             {step.showNextButton&&(
               <button onClick={goNext}
                 className="w-full mt-3 py-2.5 rounded-xl text-sm font-bold text-white active:opacity-80"
                 style={{ background: 'var(--c-primary)', pointerEvents: 'auto' }}>
-                次へ
+                {tr('tourNext')}
               </button>
             )}
           </div>
