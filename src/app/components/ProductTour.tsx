@@ -225,7 +225,7 @@ export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSa
             <div style={{
               position: 'absolute', left: arrowLeft, width: 0, height: 0,
               borderLeft: '8px solid transparent', borderRight: '8px solid transparent',
-              ...(above ? { bottom: -8, borderTop: '8px solid white' } : { top: -8, borderBottom: '8px solid white' }),
+              ...(above ? { bottom: -8, borderBottom: '8px solid white' } : { top: -8, borderTop: '8px solid white' }),
               animation: 'tourBlink 1.4s ease-in-out infinite',
             }} />
             <p className={`text-sm font-bold text-gray-900 ${step.bodyKey?'mb-1':''}`}>{tr(step.titleKey)}</p>
