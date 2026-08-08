@@ -56,6 +56,11 @@ export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSa
   // 吹き出しが迫って隠れ、108pxだとキーボード非表示時にヘッダーに重なりすぎた。
   // デバイスのセーフエリアやキーボード有無に関わらず自然に避けられるよう実測値に変更）
   const [indicatorBottom, setIndicatorBottom] = useState(56);
+  const bubbleBoxRef = useRef<HTMLDivElement>(null);
+  // 「上固定」吹き出しの高さも固定pxで見積もらず実測する（過去の不具合: 「次へ」ボタンの
+  // 有無やタイトル文の長さで吹き出しの実際の高さは変わるのに、固定168pxで見積もっていたため、
+  // ボタン表示時に吹き出しの下端がタスク名入力欄に重なることがあった）
+  const [bubbleHeight, setBubbleHeight] = useState(120);
   // iOSのWKWebViewはキーボード表示時に「レイアウトビューポート」と「実際に見えている範囲
   // （visualViewport）」がズレる既知の挙動があり、position:fixedの要素がそのズレの影響で
   // 画面外に消えてしまう不具合があった（吹き出しだけでなくページインジケーター行ごと見えなく
@@ -98,6 +103,7 @@ export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSa
       setArrowRect(null);
     }
     if (indicatorRef.current) setIndicatorBottom(indicatorRef.current.getBoundingClientRect().bottom);
+    if (bubbleBoxRef.current) setBubbleHeight(bubbleBoxRef.current.getBoundingClientRect().height);
   }, [step.selector, step.arrowSelector]);
 
   useEffect(() => {
@@ -115,6 +121,9 @@ export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSa
       window.visualViewport?.removeEventListener('scroll', measure);
     };
   }, [measure]);
+  // 「次へ」ボタンの表示切り替え（hasName）で吹き出しの高さが変わるため、次の400msポーリングを
+  // 待たずに即座に再計測する
+  useEffect(() => { measure(); }, [hasName, measure]);
 
   const goNext = useCallback(() => {
     if (stepIndex >= STEPS.length - 1) setShowCompletion(true);
@@ -202,7 +211,7 @@ export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSa
   const arrowTarget = validArrowRect ?? rect;
   const above = step.bubblePosition ? step.bubblePosition === 'above' : (arrowTarget ? arrowTarget.top > vh * 0.55 : false);
   const bubbleTop = arrowTarget
-    ? (above ? Math.max(indicatorBottom + 12, arrowTarget.top - 168) : Math.min(vh - 190, arrowTarget.top + arrowTarget.height + 20))
+    ? (above ? Math.max(indicatorBottom + 12, arrowTarget.top - bubbleHeight - 20) : Math.min(vh - 190, arrowTarget.top + arrowTarget.height + 20))
     : vh / 2 - 80;
   const bubbleContainerLeft = 16, bubbleContainerWidth = vw - 32;
   const bubbleWidth = Math.min(320, bubbleContainerWidth);
@@ -257,7 +266,7 @@ export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSa
       {/* 吹き出し（説明のみ・ボタンなし／一部ステップのみ「次へ」ボタン） */}
       {rect && (
         <div className="fixed left-4 right-4" style={{ top: bubbleTop, pointerEvents: 'none' }}>
-          <div className="relative bg-white rounded-2xl px-5 py-4 shadow-2xl max-w-xs mx-auto">
+          <div ref={bubbleBoxRef} className="relative bg-white rounded-2xl px-5 py-4 shadow-2xl max-w-xs mx-auto">
             <div style={{
               position: 'absolute', left: arrowLeft, width: 0, height: 0,
               borderLeft: '8px solid transparent', borderRight: '8px solid transparent',
