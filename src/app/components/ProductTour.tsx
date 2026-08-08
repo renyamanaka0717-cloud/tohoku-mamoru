@@ -166,7 +166,7 @@ export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSa
   const arrowTarget = validArrowRect ?? rect;
   const above = step.bubblePosition ? step.bubblePosition === 'above' : (arrowTarget ? arrowTarget.top > vh * 0.55 : false);
   const bubbleTop = arrowTarget
-    ? (above ? Math.max(56, arrowTarget.top - 168) : Math.min(vh - 190, arrowTarget.top + arrowTarget.height + 20))
+    ? (above ? Math.max(108, arrowTarget.top - 168) : Math.min(vh - 190, arrowTarget.top + arrowTarget.height + 20))
     : vh / 2 - 80;
   const bubbleContainerLeft = 16, bubbleContainerWidth = vw - 32;
   const bubbleWidth = Math.min(320, bubbleContainerWidth);
@@ -189,25 +189,20 @@ export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSa
 
   return (
     <div className="fixed inset-0 z-[220]" style={{ pointerEvents: 'none' }}>
-      {/* 対象要素の周囲だけを避けて画面を暗くする（4分割の帯） */}
-      {rect ? (
+      {/* タップ可能な「穴」は光る枠（highlightRect）と一致させる。それ以外（rectのうち
+          highlightRectより下の部分も含む）はすべて暗転でタップを吸収し、操作できるのは
+          光っている場所と吹き出し（ボタン）だけにする */}
+      {highlightRect ? (
         <>
-          <div className="absolute" style={{ ...overlayStyle, top: 0, left: 0, right: 0, height: Math.max(0, rect.top), pointerEvents: 'auto' }} />
-          <div className="absolute" style={{ ...overlayStyle, top: rect.top + rect.height, left: 0, right: 0, bottom: 0, pointerEvents: 'auto' }} />
-          <div className="absolute" style={{ ...overlayStyle, top: rect.top, left: 0, width: Math.max(0, rect.left), height: rect.height, pointerEvents: 'auto' }} />
-          <div className="absolute" style={{ ...overlayStyle, top: rect.top, left: rect.left + rect.width, right: 0, height: rect.height, pointerEvents: 'auto' }} />
-          {/* 穴（rect）の中でも、光る枠（highlightRect）より下の部分は暗くして強調する。
-              pointerEvents:noneなのでタップ可能範囲（rect）自体は変わらない */}
-          {highlightRect && highlightRect.height < rect.height && (
-            <div className="absolute" style={{ ...overlayStyle, top: highlightRect.top + highlightRect.height, left: rect.left, width: rect.width, height: rect.top + rect.height - (highlightRect.top + highlightRect.height), pointerEvents: 'none' }} />
-          )}
-          {highlightRect && (
-            <div className="absolute rounded-2xl border-2 border-white"
-              style={{
-                top: highlightRect.top - 6, left: highlightRect.left - 6, width: highlightRect.width + 12, height: highlightRect.height + 12,
-                pointerEvents: 'none', animation: 'tourPulse 1.6s ease-in-out infinite, tourScale 1.6s ease-in-out infinite',
-              }} />
-          )}
+          <div className="absolute" style={{ ...overlayStyle, top: 0, left: 0, right: 0, height: Math.max(0, highlightRect.top), pointerEvents: 'auto' }} />
+          <div className="absolute" style={{ ...overlayStyle, top: highlightRect.top + highlightRect.height, left: 0, right: 0, bottom: 0, pointerEvents: 'auto' }} />
+          <div className="absolute" style={{ ...overlayStyle, top: highlightRect.top, left: 0, width: Math.max(0, highlightRect.left), height: highlightRect.height, pointerEvents: 'auto' }} />
+          <div className="absolute" style={{ ...overlayStyle, top: highlightRect.top, left: highlightRect.left + highlightRect.width, right: 0, height: highlightRect.height, pointerEvents: 'auto' }} />
+          <div className="absolute rounded-2xl border-2 border-white"
+            style={{
+              top: highlightRect.top - 6, left: highlightRect.left - 6, width: highlightRect.width + 12, height: highlightRect.height + 12,
+              pointerEvents: 'none', animation: 'tourPulse 1.6s ease-in-out infinite, tourScale 1.6s ease-in-out infinite',
+            }} />
         </>
       ) : (
         <div className="absolute inset-0" style={{ ...overlayStyle, pointerEvents: 'auto' }} />
