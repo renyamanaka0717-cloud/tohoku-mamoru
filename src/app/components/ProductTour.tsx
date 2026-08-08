@@ -50,6 +50,12 @@ export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSa
   const [dropped, setDropped] = useState(false);
   // laterNameステップの「次へ」は、名前が入力されるまで表示しない
   const [hasName, setHasName] = useState(false);
+  const indicatorRef = useRef<HTMLDivElement>(null);
+  // 「上固定」吹き出しの最小位置は固定pxではなく、実際に描画されたページインジケーター行の
+  // 下端を実測して使う（過去の不具合: 固定56pxだとキーボード表示時にステータスバー付近まで
+  // 吹き出しが迫って隠れ、108pxだとキーボード非表示時にヘッダーに重なりすぎた。
+  // デバイスのセーフエリアやキーボード有無に関わらず自然に避けられるよう実測値に変更）
+  const [indicatorBottom, setIndicatorBottom] = useState(56);
   const modalOpenBaseline = useRef(modalOpen);
   const taskSavedBaseline = useRef(taskSavedSignal);
   const gestureBaseline = useRef(gestureSignal);
@@ -70,6 +76,7 @@ export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSa
     } else {
       setArrowRect(null);
     }
+    if (indicatorRef.current) setIndicatorBottom(indicatorRef.current.getBoundingClientRect().bottom);
   }, [step.selector, step.arrowSelector]);
 
   useEffect(() => {
@@ -166,7 +173,7 @@ export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSa
   const arrowTarget = validArrowRect ?? rect;
   const above = step.bubblePosition ? step.bubblePosition === 'above' : (arrowTarget ? arrowTarget.top > vh * 0.55 : false);
   const bubbleTop = arrowTarget
-    ? (above ? Math.max(56, arrowTarget.top - 168) : Math.min(vh - 190, arrowTarget.top + arrowTarget.height + 20))
+    ? (above ? Math.max(indicatorBottom + 12, arrowTarget.top - 168) : Math.min(vh - 190, arrowTarget.top + arrowTarget.height + 20))
     : vh / 2 - 80;
   const bubbleContainerLeft = 16, bubbleContainerWidth = vw - 32;
   const bubbleWidth = Math.min(320, bubbleContainerWidth);
@@ -209,7 +216,7 @@ export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSa
       )}
 
       {/* ページインジケーター＋スキップ */}
-      <div className="fixed left-0 right-0 flex items-center justify-between px-5" style={{ top: 'calc(1rem + env(safe-area-inset-top))', pointerEvents: 'auto' }}>
+      <div ref={indicatorRef} className="fixed left-0 right-0 flex items-center justify-between px-5" style={{ top: 'calc(1rem + env(safe-area-inset-top))', pointerEvents: 'auto' }}>
         <div className="flex items-center gap-1.5">
           {STEPS.map((s, i) => (
             <div key={s.id} className="rounded-full transition-all" style={{ width: i === stepIndex ? 18 : 6, height: 6, background: i === stepIndex ? 'var(--c-primary)' : 'rgba(255,255,255,0.4)' }} />
