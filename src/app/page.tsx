@@ -234,8 +234,11 @@ const inSleepWindow = (nowM: number, wakeM: number, sleepM: number): boolean => 
   return nowM>=sleepM&&nowM<wakeM;
 };
 
-// 発火予定時刻(ms)が就寝時間帯に重なる場合、起床時刻まで後ろ倒しする
-const adjustFireForSleep = (fireMs: number, wakeTime: string, sleepTime: string): number => {
+// 発火予定時刻(ms)が就寝時間帯に重なる場合、起床時刻ちょうどに前倒しするのではなく、
+// 起床時刻を起点として改めてhours時間分カウントし直す（就寝中はカウントが止まるイメージ。
+// アプリ放置アラートと同じ設計。起床時刻ちょうどに前倒しすると、起床直後に間髪入れず
+// 通知が来てしまい、また朝イチの起床チェックイン通知と同時刻に重なってしまうため）
+const adjustFireForSleep = (fireMs: number, hours: number, wakeTime: string, sleepTime: string): number => {
   const d=new Date(fireMs);
   const m=d.getHours()*60+d.getMinutes();
   const wakeM=toMin(wakeTime), sleepM=toMin(sleepTime);
@@ -243,7 +246,13 @@ const adjustFireForSleep = (fireMs: number, wakeTime: string, sleepTime: string)
   const wakeDate=new Date(d);
   wakeDate.setHours(Math.floor(wakeM/60),wakeM%60,0,0);
   if(wakeDate.getTime()<=fireMs) wakeDate.setDate(wakeDate.getDate()+1);
-  return wakeDate.getTime();
+  const adjusted=wakeDate.getTime()+hours*3600000;
+  // hoursが起床〜就寝の間隔より長い設定だと、加算後もまだ就寝時間帯に重なることがある
+  // （wakeTime+hoursの時刻は毎回同じなので、同じ調整を繰り返しても変わらない）。
+  // その場合は起床時刻そのものにフォールバックする
+  const adjD=new Date(adjusted);
+  const adjM=adjD.getHours()*60+adjD.getMinutes();
+  return inSleepWindow(adjM,wakeM,sleepM) ? wakeDate.getTime() : adjusted;
 };
 
 // 放置アラート（タスク放置・アプリ放置 共通）: 未解決なら何時間おきに再通知するか、最大何回まで予約するか
@@ -6112,22 +6121,7 @@ export default function App() {
           // 以降の再通知（STALE_REPEAT_HOURSごと）はこの基準時刻からの固定間隔で予約する
           const nowMs=Date.now();
           const rawBaseMs=nowMs+hours*3600*1000;
-          let baseFireMs=rawBaseMs;
-          const baseDate=new Date(rawBaseMs);
-          const baseM=baseDate.getHours()*60+baseDate.getMinutes();
-          if(inSleepWindow(baseM,toMin(settings.wakeTime),toMin(settings.sleepTime))){
-            const wakeM=toMin(settings.wakeTime);
-            const wakeDate=new Date(baseDate);
-            wakeDate.setHours(Math.floor(wakeM/60),wakeM%60,0,0);
-            if(wakeDate.getTime()<=rawBaseMs) wakeDate.setDate(wakeDate.getDate()+1);
-            baseFireMs=wakeDate.getTime()+hours*3600000;
-            // 起床〜就寝の間隔よりhoursが長い設定だと、後ろ倒し後の時刻がまだ就寝時間帯に
-            // 重なることがある（wakeTime+hoursの時刻は毎回同じなので、同じ調整を繰り返しても
-            // 変わらず無限ループになる）。その場合は起床時刻そのものにフォールバックする
-            const adjD=new Date(baseFireMs);
-            const adjM=adjD.getHours()*60+adjD.getMinutes();
-            if(inSleepWindow(adjM,wakeM,toMin(settings.sleepTime))) baseFireMs=wakeDate.getTime();
-          }
+          const baseFireMs=adjustFireForSleep(rawBaseMs,hours,settings.wakeTime,settings.sleepTime);
           const hoursList:number[]=[];
           for(let i=0;i<STALE_MAX_REPEATS;i++){
             const fireMs=baseFireMs+i*STALE_REPEAT_HOURS*3600000;
@@ -6589,7 +6583,7 @@ export default function App() {
       for(let i=0;i<STALE_MAX_REPEATS;i++){
         const rawFireMs=baseMs+i*STALE_REPEAT_HOURS*3600000;
         if(rawFireMs<=nowMs) continue;
-        const fireMs=adjustFireForSleep(rawFireMs,settings.wakeTime,settings.sleepTime);
+        const fireMs=adjustFireForSleep(rawFireMs,hours,settings.wakeTime,settings.sleepTime);
         // 就寝時間帯を挟むSTALE_REPEAT_HOURS間隔の複数回が同じ起床時刻に後ろ倒しされると、
         // 同じタスクについて全く同じ内容の通知が同時刻に重複してしまうため、直前と同じ時刻ならスキップする
         if(fireMs===lastFireMs) continue;
