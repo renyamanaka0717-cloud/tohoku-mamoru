@@ -166,7 +166,7 @@ export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSa
   const arrowTarget = validArrowRect ?? rect;
   const above = step.bubblePosition ? step.bubblePosition === 'above' : (arrowTarget ? arrowTarget.top > vh * 0.55 : false);
   const bubbleTop = arrowTarget
-    ? (above ? Math.max(108, arrowTarget.top - 168) : Math.min(vh - 190, arrowTarget.top + arrowTarget.height + 20))
+    ? (above ? Math.max(56, arrowTarget.top - 168) : Math.min(vh - 190, arrowTarget.top + arrowTarget.height + 20))
     : vh / 2 - 80;
   const bubbleContainerLeft = 16, bubbleContainerWidth = vw - 32;
   const bubbleWidth = Math.min(320, bubbleContainerWidth);
