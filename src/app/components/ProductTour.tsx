@@ -56,6 +56,27 @@ export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSa
   // 吹き出しが迫って隠れ、108pxだとキーボード非表示時にヘッダーに重なりすぎた。
   // デバイスのセーフエリアやキーボード有無に関わらず自然に避けられるよう実測値に変更）
   const [indicatorBottom, setIndicatorBottom] = useState(56);
+  // iOSのWKWebViewはキーボード表示時に「レイアウトビューポート」と「実際に見えている範囲
+  // （visualViewport）」がズレる既知の挙動があり、position:fixedの要素がそのズレの影響で
+  // 画面外に消えてしまう不具合があった（吹き出しだけでなくページインジケーター行ごと見えなく
+  // なっていたことから判明）。visualViewportの実際のオフセット・高さを追従し、オーバーレイ
+  // 全体をそのぶんだけ補正することで、キーボード表示中も正しい位置に表示させる
+  const [vv, setVv] = useState<{ top: number; height: number }>({ top: 0, height: typeof window !== 'undefined' ? window.innerHeight : 812 });
+  useEffect(() => {
+    const update = () => {
+      const v = window.visualViewport;
+      setVv(v ? { top: v.offsetTop, height: v.height } : { top: 0, height: window.innerHeight });
+    };
+    update();
+    window.visualViewport?.addEventListener('resize', update);
+    window.visualViewport?.addEventListener('scroll', update);
+    window.addEventListener('resize', update);
+    return () => {
+      window.visualViewport?.removeEventListener('resize', update);
+      window.visualViewport?.removeEventListener('scroll', update);
+      window.removeEventListener('resize', update);
+    };
+  }, []);
   const modalOpenBaseline = useRef(modalOpen);
   const taskSavedBaseline = useRef(taskSavedSignal);
   const gestureBaseline = useRef(gestureSignal);
@@ -84,7 +105,15 @@ export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSa
     const iv = setInterval(measure, 400);
     window.addEventListener('resize', measure);
     window.addEventListener('scroll', measure, true);
-    return () => { clearInterval(iv); window.removeEventListener('resize', measure); window.removeEventListener('scroll', measure, true); };
+    window.visualViewport?.addEventListener('resize', measure);
+    window.visualViewport?.addEventListener('scroll', measure);
+    return () => {
+      clearInterval(iv);
+      window.removeEventListener('resize', measure);
+      window.removeEventListener('scroll', measure, true);
+      window.visualViewport?.removeEventListener('resize', measure);
+      window.visualViewport?.removeEventListener('scroll', measure);
+    };
   }, [measure]);
 
   const goNext = useCallback(() => {
@@ -162,7 +191,7 @@ export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSa
   // タイムラインに追加された結果をそのまま見せる
   if (dropped) return null;
 
-  const vh = typeof window !== 'undefined' ? window.innerHeight : 812;
+  const vh = vv.height;
   const vw = typeof window !== 'undefined' ? window.innerWidth : 390;
   // 吹き出しの上下配置・矢印の水平位置は、スポットライト範囲（rect）ではなく矢印が指すべき対象
   // （arrowSelectorがあればそちら、無ければスポットライト対象そのもの）を基準にする。
@@ -195,7 +224,7 @@ export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSa
   const overlayStyle = { background: `rgba(0,0,0,${overlayAlpha})` };
 
   return (
-    <div className="fixed inset-0 z-[220]" style={{ pointerEvents: 'none' }}>
+    <div className="fixed inset-0 z-[220]" style={{ pointerEvents: 'none', transform: vv.top ? `translateY(${vv.top}px)` : undefined }}>
       {/* タップ可能な「穴」は光る枠（highlightRect）と一致させる。それ以外（rectのうち
           highlightRectより下の部分も含む）はすべて暗転でタップを吸収し、操作できるのは
           光っている場所と吹き出し（ボタン）だけにする */}
