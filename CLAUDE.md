@@ -158,6 +158,8 @@ const roRef = useRef<ResizeObserver|null>(null);
 | `task.id` | 同一時刻グループ内の各タスクカード |
 | `free-${slot.start}` | 空き時間カード |
 
+**空き時間カードの後続カード位置にも `measuredH` を反映すること（過去の不具合）:** タイムラインの詰めレイアウト（`dayItems`/`dayPrevBottom`の積み上げ、Timeline内）で、空き時間カードの高さ`h`に`calcFreeContentH(laterPool)`の**見積り値のみ**を使い`measuredH['free-${slot.start}']`を見ていなかったため、「あとでやる」の件数が多くチップが折り返す行数の見積りが実際のflex-wrapレイアウトとズレると、後続カード（次のタスクや就寝カード）が本来より上に配置され、空き時間カードの実際の描画（`minHeight`なので内容に応じて自然に伸びる）と重なってしまう不具合があった。`h:measuredH[`free-${s.start}`]??calcFreeContentH(laterPool)`のように、taskGroupListの`g.h`（`measuredH[g.startTime]??g.h`等）と同じ「実測優先・見積りはフォールバック」パターンに統一して修正済み。空き時間カードのレイアウトに手を入れる時はこの`dayItems`内の`freeSlots.map`箇所を確認すること。
+
 ### taskGroupList の高さ計算（`g.h`）
 
 ```typescript

@@ -2459,7 +2459,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
       .filter(g=>{const m=adjM(g.startTime);return m>=wakeMin&&m<=sleepMinEff;})
       .map(g=>({kind:'task' as const,g,startMin:adjM(g.startTime),h:g.h})),
     ...freeSlots.map(s=>({kind:'free' as const,slot:s,startMin:adjM(s.start),
-      h:calcFreeContentH(laterPool)})),
+      h:measuredH[`free-${s.start}`]??calcFreeContentH(laterPool)})),
   ].sort((a,b)=>a.startMin-b.startMin);
 
   type Anchor={min:number;y:number};
