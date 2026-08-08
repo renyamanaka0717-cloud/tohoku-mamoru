@@ -365,6 +365,7 @@ notify('おはようございます', body);
 - `src/app/components/LocalNotify.ts` の `syncLaterStaleAlerts(alerts)` — ネイティブでのみ動作
 - `src/app/page.tsx` の App コンポーネントに、`tasks`/`laterReminderHours` が変わるたびに、`isLater`かつ未完了の各タスクについて `laterSince + 設定時間` の絶対時刻で予約する `useEffect` がある。識別子は `later-stale-${taskId}-${repeatIndex}`
 - 発火予定時刻が就寝時間帯に重なる場合は `adjustFireForSleep()` で起床時刻まで後ろ倒しする
+- **同じタスクの再通知（`STALE_REPEAT_HOURS`＝6時間おき）が2回とも同じ就寝時間帯に重なると、どちらも同じ起床時刻に後ろ倒しされて全く同じ内容の通知が同時刻に重複する不具合があった。** タスクごとのループ内で直前の（調整後の）発火時刻を記録し、今回の発火時刻がそれと同じならスキップして重複登録しないよう修正済み。就寝時間帯が長い設定（`STALE_REPEAT_HOURS`の6時間より長い）だとこの重複が起きやすいため、`adjustFireForSleep()`を絡めた繰り返し通知を新しく追加する時は同じ重複チェックが必要かどうか確認すること
 - タスク単位で個別に通知する設計に変更した（旧JS版は複数の放置タスクを1通知にまとめていたが、ネイティブ事前予約では内容を後から動的に合成できないため）
 - **未解決なら再通知する（`STALE_REPEAT_HOURS`/`STALE_MAX_REPEATS`）:** タスクが完了しないままだと、最初の通知に加えて `STALE_REPEAT_HOURS`（6時間）おきに最大 `STALE_MAX_REPEATS`（5回）まで追加の通知を事前予約する（`later-stale-${taskId}-0`が最初の通知、`-1`以降が再通知）。タスクが完了すれば次回の`tasks`変更時にまとめて全解除されるため、それ以上再通知されない。バックグラウンド/未起動のままアプリが開かれなくても、事前予約した分は届く（未来永劫ではなく `STALE_MAX_REPEATS` 回で打ち止め）
 - 旧来の `now` ポーリング＋即時 `notify()` の `useEffect`（`LATER_NOTIFIED_KEY`使用）はWeb/開発環境専用フォールバックとして残っており、ネイティブでは `isNative()` で早期returnする

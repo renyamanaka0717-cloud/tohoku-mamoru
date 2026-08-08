@@ -6585,10 +6585,15 @@ export default function App() {
     tasks.forEach(t=>{
       if(!t.isLater||t.completed||!t.laterSince) return;
       const baseMs=new Date(t.laterSince).getTime()+hours*3600*1000;
+      let lastFireMs=-1;
       for(let i=0;i<STALE_MAX_REPEATS;i++){
         const rawFireMs=baseMs+i*STALE_REPEAT_HOURS*3600000;
         if(rawFireMs<=nowMs) continue;
         const fireMs=adjustFireForSleep(rawFireMs,settings.wakeTime,settings.sleepTime);
+        // 就寝時間帯を挟むSTALE_REPEAT_HOURS間隔の複数回が同じ起床時刻に後ろ倒しされると、
+        // 同じタスクについて全く同じ内容の通知が同時刻に重複してしまうため、直前と同じ時刻ならスキップする
+        if(fireMs===lastFireMs) continue;
+        lastFireMs=fireMs;
         alerts.push({id:`later-stale-${t.id}-${i}`,title:'あとでやるが溜まっています',body:`「${t.name}」が長時間放置されています`,timestamp:Math.floor(fireMs/1000)});
       }
     });
