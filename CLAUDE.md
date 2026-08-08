@@ -230,9 +230,11 @@ const groupIconTop = (g) => g.tasks.length > 1 ? DUP_LABEL_H : 0;
 `src/app/components/Premium.tsx` で RevenueCat SDK を管理する。
 
 ```typescript
-const RC_API_KEY = 'appl_zyfcgKyGH0RBKcOppeougWslCRP';
+const RC_API_KEY = 'appl_zyfcgKyGHORBKcOppeougWslCRP';
 const ENTITLEMENT_ID = 'BrainBox Pro';
 ```
+
+**`GHORB`の`O`は英字のO（ゼロではない）。** 過去に`GH0RB`（ゼロ）と誤記して`Invalid API Key`エラーになった実績があり修正済み（コミット`b8e9dc0`）。このドキュメントの値をコード側の正としてコピー元にすること（逆に、もしこの値を見て「ゼロの方が正しそう」と推測でコード側を書き換えると、この不具合が再発する）。
 
 - **ブラウザ・開発環境**: `isNative()` が false → `isPremium = true`（全機能解放）
 - **iOS ネイティブ**: RevenueCat SDK を動的 import し、エンタイトルメント `BrainBox Pro` を確認

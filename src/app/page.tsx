@@ -6121,6 +6121,12 @@ export default function App() {
             wakeDate.setHours(Math.floor(wakeM/60),wakeM%60,0,0);
             if(wakeDate.getTime()<=rawBaseMs) wakeDate.setDate(wakeDate.getDate()+1);
             baseFireMs=wakeDate.getTime()+hours*3600000;
+            // 起床〜就寝の間隔よりhoursが長い設定だと、後ろ倒し後の時刻がまだ就寝時間帯に
+            // 重なることがある（wakeTime+hoursの時刻は毎回同じなので、同じ調整を繰り返しても
+            // 変わらず無限ループになる）。その場合は起床時刻そのものにフォールバックする
+            const adjD=new Date(baseFireMs);
+            const adjM=adjD.getHours()*60+adjD.getMinutes();
+            if(inSleepWindow(adjM,wakeM,toMin(settings.sleepTime))) baseFireMs=wakeDate.getTime();
           }
           const hoursList:number[]=[];
           for(let i=0;i<STALE_MAX_REPEATS;i++){
@@ -6144,8 +6150,12 @@ export default function App() {
   useEffect(()=>{ if(loaded) localStorage.setItem(FORGET_ALERTS_KEY,JSON.stringify(forgetAlerts)); },[forgetAlerts,loaded]);
   useEffect(()=>{
     if(!loaded) return;
-    setShopGeofences(shopLocations.filter(l=>l.enabled).map(l=>({id:l.id,name:l.name,lat:l.lat,lng:l.lng,radius:l.radius})));
-  },[shopLocations,loaded]);
+    const activeTaskLocCount=tasks.filter(t=>!t.completed&&t.locationNotify&&t.location).length;
+    const enabledForgetCount=forgetAlerts.filter(a=>a.enabled).length;
+    const budget=Math.max(0,MAX_MONITORED_REGIONS-activeTaskLocCount-enabledForgetCount);
+    const shopLocs=shopLocations.filter(l=>l.enabled).slice(0,budget);
+    setShopGeofences(shopLocs.map(l=>({id:l.id,name:l.name,lat:l.lat,lng:l.lng,radius:l.radius})));
+  },[shopLocations,tasks,forgetAlerts,loaded]);
   // 「あとでやる」タスクの場所通知。タイムラインにドロップされて時間指定タスクになっても
   // （isLaterがfalseになっても）locationNotifyは維持され続けるので isLater では絞り込まない。
   // 完了・削除したタスクは tasks から外れる（または completed になる）ことで自動的に解除される
