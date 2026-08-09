@@ -2242,10 +2242,11 @@ function TaskCard({task,onToggle,onEdit,globalTags,onSubtaskToggle,tabName}:{tas
 
 // ── FreeTimeCard ──────────────────────────────────────────────────────────────
 
-function FreeTimeCard({slot,fits,height,onSchedule,onDragStart}:{
+function FreeTimeCard({slot,fits,height,onSchedule,onDragStart,measureRef}:{
   slot:FreeSlot;fits:Task[];height:number;
   onSchedule:(t:Task,time:string)=>void;
   onDragStart:(t:Task,x:number,y:number)=>void;
+  measureRef?:(el:HTMLDivElement|null)=>void;
 }) {
   const [pressingId,setPressingId] = useState<string|null>(null);
   const lpTimer = useRef<ReturnType<typeof setTimeout>|null>(null);
@@ -2269,29 +2270,34 @@ function FreeTimeCard({slot,fits,height,onSchedule,onDragStart}:{
   const h=Math.floor(slot.min/60), m=slot.min%60;
   return (
     <div className="bg-gray-50 rounded-2xl px-3 pt-3 pb-3 flex flex-col border border-gray-100" style={{minHeight:`${height}px`}} data-tour="free-time-card">
-      <div className="flex items-center gap-1 mb-1">
-        <AppIcons.freeTime size={12} className="text-gray-400"/>
-        <span className="text-xs text-gray-400 font-medium">空き時間 {slot.start}〜{slot.end}</span>
-      </div>
-      <p className="font-medium text-gray-600 leading-none">
-        {h>0&&<><span className="text-lg">{h}</span><span className="text-xs ml-0.5">時間</span></>}
-        {m>0&&<><span className="text-lg ml-1">{m}</span><span className="text-xs ml-0.5">分</span></>}
-      </p>
-      {fits.length>0&&(
-        <div className="flex flex-wrap gap-1.5 mt-2">
-          {fits.map(t=>(
-            <button key={t.id}
-              onClick={()=>{if(didDrag.current){didDrag.current=false;return;}onSchedule(t,slot.start);}}
-              onTouchStart={e=>startLP(t,e)}
-              onTouchEnd={cancelLP}
-              onTouchMove={cancelLP}
-              data-tour="tour-draggable"
-              className={`inline-flex items-center bg-gray-100 rounded-full px-2.5 py-1 text-xs font-medium text-gray-500 select-none transition-transform${pressingId===t.id?' scale-95':''}`}>
-              <span>{t.name}</span>
-            </button>
-          ))}
+      {/* 実測はこの内側のcontentRefで行う（外側のminHeightに引きずられると、一度でも見積りが
+          過大になった時に測定値がその過大なサイズで固定されてしまい、あとで縮まなくなる不具合が
+          あったため。ここは中身の自然な高さだけを反映する） */}
+      <div ref={measureRef}>
+        <div className="flex items-center gap-1 mb-1">
+          <AppIcons.freeTime size={12} className="text-gray-400"/>
+          <span className="text-xs text-gray-400 font-medium">空き時間 {slot.start}〜{slot.end}</span>
         </div>
-      )}
+        <p className="font-medium text-gray-600 leading-none">
+          {h>0&&<><span className="text-lg">{h}</span><span className="text-xs ml-0.5">時間</span></>}
+          {m>0&&<><span className="text-lg ml-1">{m}</span><span className="text-xs ml-0.5">分</span></>}
+        </p>
+        {fits.length>0&&(
+          <div className="flex flex-wrap gap-1.5 mt-2">
+            {fits.map(t=>(
+              <button key={t.id}
+                onClick={()=>{if(didDrag.current){didDrag.current=false;return;}onSchedule(t,slot.start);}}
+                onTouchStart={e=>startLP(t,e)}
+                onTouchEnd={cancelLP}
+                onTouchMove={cancelLP}
+                data-tour="tour-draggable"
+                className={`inline-flex items-center bg-gray-100 rounded-full px-2.5 py-1 text-xs font-medium text-gray-500 select-none transition-transform${pressingId===t.id?' scale-95':''}`}>
+                <span>{t.name}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -2841,9 +2847,9 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
       {freeLayout.map(({slot,freeY,finalH},i)=>{
         const fits=laterPool;
         return (
-          <div key={i} className="absolute z-10" style={{top:`${freeY}px`,left:`${CARD_LEFT}px`,right:'0px'}}
-            ref={el=>{if(el){el.dataset.gk=`free-${slot.start}`;roRef.current?.observe(el);}}}>
-            <FreeTimeCard slot={slot} fits={fits} height={finalH} onSchedule={onSchedule} onDragStart={onDragStart}/>
+          <div key={i} className="absolute z-10" style={{top:`${freeY}px`,left:`${CARD_LEFT}px`,right:'0px'}}>
+            <FreeTimeCard slot={slot} fits={fits} height={finalH} onSchedule={onSchedule} onDragStart={onDragStart}
+              measureRef={el=>{if(el){el.dataset.gk=`free-${slot.start}`;roRef.current?.observe(el);}}}/>
           </div>
         );
       })}

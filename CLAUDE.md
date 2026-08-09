@@ -160,6 +160,8 @@ const roRef = useRef<ResizeObserver|null>(null);
 
 **空き時間カードの後続カード位置にも `measuredH` を反映すること（過去の不具合）:** タイムラインの詰めレイアウト（`dayItems`/`dayPrevBottom`の積み上げ、Timeline内）で、空き時間カードの高さ`h`に`calcFreeContentH(laterPool)`の**見積り値のみ**を使い`measuredH['free-${slot.start}']`を見ていなかったため、「あとでやる」の件数が多くチップが折り返す行数の見積りが実際のflex-wrapレイアウトとズレると、後続カード（次のタスクや就寝カード）が本来より上に配置され、空き時間カードの実際の描画（`minHeight`なので内容に応じて自然に伸びる）と重なってしまう不具合があった。`h:measuredH[`free-${s.start}`]??calcFreeContentH(laterPool)`のように、taskGroupListの`g.h`（`measuredH[g.startTime]??g.h`等）と同じ「実測優先・見積りはフォールバック」パターンに統一して修正済み。空き時間カードのレイアウトに手を入れる時はこの`dayItems`内の`freeSlots.map`箇所を確認すること。
 
+**上記修正が新たな不具合を生んでいた（測定値が過大なまま固定される）:** `data-gk="free-${slot.start}"`のResizeObserver refを、`FreeTimeCard`の**外側**（`minHeight`が適用されている`bg-gray-50`のdivを包む位置）に付けていたため、一度でも`calcFreeContentH`の見積りが実際より大きくなると（「あとでやる」が多く、チップの折り返し行数の見積りが実際のflex-wrapとズレるケースで発生）、測定される高さ自体が`minHeight`で強制的に押し上げられた値になり、それが`measuredH`に記録され、次回以降もその過大な値が「実測値」として優先され続ける自己再生産ループになっていた（見積りが縮んでも二度と縮まらず、カード下部に無駄な空白が残る）。**この種の「見積り→minHeightで反映→その要素自体を測定→見積りにフィードバック」という構成は、見積りが一度でも過大になると実測で下方修正できない構造的な罠になるため、新しく類似の自動調整ロジックを書く時は、必ずminHeightの影響を受けない内側の要素（コンテンツの自然な高さそのもの）を測定対象にすること。** `FreeTimeCard`に`measureRef`propを追加し、`minHeight`を持つ外側のdivではなく中身（アイコン行・時間表示・チップ群）だけを包む内側のdivをResizeObserverの対象にして修正した。
+
 ### taskGroupList の高さ計算（`g.h`）
 
 ```typescript
