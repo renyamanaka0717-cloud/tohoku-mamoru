@@ -800,7 +800,9 @@ interface ForgetAlert {
 
 ### プロダクトツアー → 通知・位置情報プロンプト → 起床・就寝プロンプトの連鎖
 
-初回ロードの`useEffect`は`TOUR_COMPLETED_KEY`が無ければウェルカム画面を表示するところから始まる（これが初回起動時の最初の画面になる）。
+初回ロードの`useEffect`は`TOUR_COMPLETED_KEY`が無ければウェルカム画面を表示するところから始まる（これが初回起動時の最初の画面になる）。**`setShowWelcome(true)`は`setLoaded(true)`と同じ効果内で同期的に呼ぶこと（`setTimeout`で遅らせない）。** 過去に`setTimeout(()=>setShowWelcome(true),1000)`としていたことがあり、`loaded`が先に`true`になってからこのタイマーが発火するまでの1秒間、ウェルカム画面より先に（裏にあるはずの）タイムライン本体が一瞬見えてしまう不具合があった。初回起動時はタイムラインに表示すべき既存データが無いため、この一瞬の表示が特に目立って不具合に見える。`loaded`と同時にセットすれば、`読み込み中…`画面から一度のレンダーで直接ウェルカム画面に切り替わり、タイムラインが挟まらない。
+
+
 
 `Welcome`の「あとで見る」・`ProductTour`の`onFinish`（どちらも`TOUR_COMPLETED_KEY`をセットする箇所）から`maybeShowNotifPrompt()`を呼ぶ——**ツアーを「スキップ」した場合も「あとで見る」を選んだ場合も同じ連鎖に入る**。ツアーが既に完了しているユーザーの入口である`maybeShowProductTour()`も、`TOUR_COMPLETED_KEY`があれば同様に`maybeShowNotifPrompt()`を呼び、無ければウェルカム画面を表示する。
 

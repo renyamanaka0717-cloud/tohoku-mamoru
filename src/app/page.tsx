@@ -6050,7 +6050,11 @@ export default function App() {
     }catch{}
     setLoaded(true);
     if(!localStorage.getItem(TOUR_COMPLETED_KEY)){
-      setTimeout(()=>setShowWelcome(true),1000);
+      // setTimeoutで遅延させると、loaded=trueになった直後からこのタイマーが発火するまでの間、
+      // ウェルカム画面より先にタイムライン本体が一瞬見えてしまう不具合があった（初回起動時は
+      // 裏に見せるべき既存のタイムラインが存在しないため、この一瞬の表示が特に目立つ）。
+      // loadedと同じタイミングで即座にセットし、隙間なくウェルカム画面へ切り替える
+      setShowWelcome(true);
     } else if(!localStorage.getItem(NOTIF_ASKED_KEY)){
       setTimeout(()=>maybeShowNotifPrompt(),800);
     } else if(!localStorage.getItem(LOCATION_ASKED_KEY)){
