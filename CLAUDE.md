@@ -1028,10 +1028,11 @@ Capacitor（WKWebView）でネイティブ表示するため、すべてのフ�
 
 ### FreeTimeCard（空き時間カード）
 
-- 高さは時間軸に依存しない。`calcFreeContentH(laterPool)` で「あとでやる」リストを全件表示できる最小高さを計算
+- 高さは時間軸に依存しない。`calcFreeContentH(laterPoolForEstimate)` で表示するチップを全件表示できる最小高さを計算
 - `calcFreeContentH` は全角文字（CJK等）を14px、半角を7px として折り返し行数を計算する
 - `ResizeObserver` で実測した高さを `measuredH['free-${slot.start}']` に保存し、次フレームのレイアウトに反映
 - スタイル: `<div style={{minHeight:'${height}px'}}>` — クリップなし、内容に応じて伸長可
+- **チップ表示数の上限（`FREE_CARD_MAX_CHIPS=8`、Timeline内）:** 「あとでやる」が多いとカードが際限なく巨大化するため、先頭8件のみ`fits`（実際にスケジュール・ドラッグ可能なチップ）として`FreeTimeCard`に渡し、残りは件数を`moreCount` propで渡して非インタラクティブな「+N件」チップ（`onSchedule`もドラッグも効かない、ただのラベル）として末尾に表示する。全件は「あとでやる」タブ（BottomTabs）で見られるため、ここでは全件表示にこだわらない設計。`calcFreeContentH`の見積りにも「+N件」チップぶんの疑似要素を足した`laterPoolForEstimate`を渡し、見積りと実際の表示のズレを防ぐ
 
 ### TaskModal（タスク詳細画面）
 

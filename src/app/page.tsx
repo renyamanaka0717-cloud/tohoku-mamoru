@@ -2242,8 +2242,8 @@ function TaskCard({task,onToggle,onEdit,globalTags,onSubtaskToggle,tabName}:{tas
 
 // ── FreeTimeCard ──────────────────────────────────────────────────────────────
 
-function FreeTimeCard({slot,fits,height,onSchedule,onDragStart,measureRef}:{
-  slot:FreeSlot;fits:Task[];height:number;
+function FreeTimeCard({slot,fits,moreCount=0,height,onSchedule,onDragStart,measureRef}:{
+  slot:FreeSlot;fits:Task[];moreCount?:number;height:number;
   onSchedule:(t:Task,time:string)=>void;
   onDragStart:(t:Task,x:number,y:number)=>void;
   measureRef?:(el:HTMLDivElement|null)=>void;
@@ -2282,7 +2282,7 @@ function FreeTimeCard({slot,fits,height,onSchedule,onDragStart,measureRef}:{
           {h>0&&<><span className="text-lg">{h}</span><span className="text-xs ml-0.5">時間</span></>}
           {m>0&&<><span className="text-lg ml-1">{m}</span><span className="text-xs ml-0.5">分</span></>}
         </p>
-        {fits.length>0&&(
+        {(fits.length>0||moreCount>0)&&(
           <div className="flex flex-wrap gap-1.5 mt-2">
             {fits.map(t=>(
               <button key={t.id}
@@ -2295,6 +2295,11 @@ function FreeTimeCard({slot,fits,height,onSchedule,onDragStart,measureRef}:{
                 <span>{t.name}</span>
               </button>
             ))}
+            {moreCount>0&&(
+              <span className="inline-flex items-center bg-gray-100 rounded-full px-2.5 py-1 text-xs font-medium text-gray-400 select-none">
+                +{moreCount}件
+              </span>
+            )}
           </div>
         )}
       </div>
@@ -2385,6 +2390,13 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
   const freeCardMinMin=settings.freeCardMinMin??120;
   const freeSlots=(settings.showFreeCard===false)?[]:calcFreeSlots(tasks,date,settings).filter(sl=>sl.min>=freeCardMinMin);
   const laterPool=later.filter(t=>!t.completed);
+  // 「あとでやる」が多いと空き時間カードが際限なく巨大化するため、表示は先頭8件までにし、
+  // 残りは「+N件」の非インタラクティブなチップでまとめる（全件は「あとでやる」タブで見られる）
+  const FREE_CARD_MAX_CHIPS=8;
+  const laterPoolMoreCount=Math.max(0,laterPool.length-FREE_CARD_MAX_CHIPS);
+  const laterPoolVisible=laterPool.slice(0,FREE_CARD_MAX_CHIPS);
+  // calcFreeContentHの見積りにも「+N件」チップぶんの幅を反映させるため、見積り専用の疑似チップを足したリストを使う
+  const laterPoolForEstimate:Task[]=laterPoolMoreCount>0?[...laterPoolVisible,{name:`+${laterPoolMoreCount}件`} as Task]:laterPoolVisible;
 
   const MIN_CARD_H = 60;
   const WAKE_CARD_H=52, SLEEP_CARD_H=52;
@@ -2474,7 +2486,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
       .filter(g=>{const m=adjM(g.startTime);return m>=wakeMin&&m<=sleepMinEff;})
       .map(g=>({kind:'task' as const,g,startMin:adjM(g.startTime),h:g.h})),
     ...freeSlots.map(s=>({kind:'free' as const,slot:s,startMin:adjM(s.start),
-      h:measuredH[`free-${s.start}`]??calcFreeContentH(laterPool)})),
+      h:measuredH[`free-${s.start}`]??calcFreeContentH(laterPoolForEstimate)})),
   ].sort((a,b)=>a.startMin-b.startMin);
 
   type Anchor={min:number;y:number};
@@ -2845,10 +2857,10 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
 
       {/* free time cards */}
       {freeLayout.map(({slot,freeY,finalH},i)=>{
-        const fits=laterPool;
+        const fits=laterPoolVisible;
         return (
           <div key={i} className="absolute z-10" style={{top:`${freeY}px`,left:`${CARD_LEFT}px`,right:'0px'}}>
-            <FreeTimeCard slot={slot} fits={fits} height={finalH} onSchedule={onSchedule} onDragStart={onDragStart}
+            <FreeTimeCard slot={slot} fits={fits} moreCount={laterPoolMoreCount} height={finalH} onSchedule={onSchedule} onDragStart={onDragStart}
               measureRef={el=>{if(el){el.dataset.gk=`free-${slot.start}`;roRef.current?.observe(el);}}}/>
           </div>
         );
