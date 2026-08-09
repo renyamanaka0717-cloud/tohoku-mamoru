@@ -16,15 +16,16 @@ interface TourStepDef {
   // 機能の存在を伝える説明のみで、特定の操作を指示しているわけではないため）
   showNextButton?: boolean;
   // 吹き出しの上下配置を自動判定（対象が画面下半分か）せず固定したい場合に指定する。
-  // laterName/laterConfirmステップは対象（タスク名入力欄）が画面上部にあるが、
-  // 吹き出しは上に固定表示したいため使う
+  // laterNameステップは対象（タスク名入力欄）が画面上部にあり自動判定だと'above'になるが、
+  // 「次へ」ボタンの有無で吹き出しの高さが変わるため'above'は避け、常に'below'固定にしている
+  // （'below'はtarget.bottomを起点に下へ伸びるだけなので、吹き出しの高さに関わらず対象と重ならない）
   bubblePosition?: 'above' | 'below';
 }
 
 const STEPS: TourStepDef[] = [
   { id: 'add', selector: '[data-tour="fab-add"]', titleKey: 'tourAddTitle', bodyKey: 'tourAddBody' },
   { id: 'save', selector: '[data-tour="modal-card"]', arrowSelector: '[data-tour="tab-later"]', titleKey: 'tourSaveTitle', showNextButton: true },
-  { id: 'laterName', selector: '[data-tour="modal-card"]', arrowSelector: '[data-tour="name-input-row"]', titleKey: 'tourLaterNameTitle', showNextButton: true, bubblePosition: 'above' },
+  { id: 'laterName', selector: '[data-tour="modal-card"]', arrowSelector: '[data-tour="name-input-row"]', titleKey: 'tourLaterNameTitle', showNextButton: true, bubblePosition: 'below' },
   { id: 'laterConfirm', selector: '[data-tour="modal-card"]', arrowSelector: '[data-tour="save-button"]', titleKey: 'tourLaterConfirmTitle', bodyKey: 'tourLaterConfirmBody' },
   { id: 'drag', selector: '[data-tour="tour-draggable"]', titleKey: 'tourDragTitle', bodyKey: 'tourDragBody' },
 ];
