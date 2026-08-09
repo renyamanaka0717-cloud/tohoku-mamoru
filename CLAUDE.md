@@ -813,6 +813,8 @@ interface ForgetAlert {
 
 **起床・就寝プロンプト（連鎖の最後）:** `maybeShowWakeSleepPrompt()`は`WAKESLEEP_ASKED_KEY`が既にあれば何もせず終了する（＝この連鎖はここで終わり、次のプロンプトへは繋がらない）。`dismissWakeSleepPrompt()`（`confirmWakeSleepPrompt()`もこれを呼ぶ）は`WAKESLEEP_ASKED_KEY`をセットして閉じるだけで、以降何も呼ばない。
 
+**【重要・実機不具合】上記の連鎖より前に、アプリ起動直後にOSの通知許可ダイアログが勝手に出てしまう不具合があった。** 原因はJS側ではなくネイティブ側（`LocalNotifyPlugin.swift`/`InactivityPlugin.swift`）。`syncWakeCheckins`（起床時チェックイン）等のバックグラウンド事前予約系関数は、デフォルトの起床時刻設定だけで発火条件を満たすため、初回起動直後・ツアーより前に`tasks`/`settings`のuseEffectから呼ばれてしまう。これらネイティブ側の`scheduleAlerts()`/`scheduleReminder()`が`UNUserNotificationCenter.requestAuthorization()`を無条件に呼んでいたため、オンボーディングの「通知プロンプト」（意図的に許可を求めるタイミング）より先にOSダイアログが表示されてしまっていた。**修正: `requestAuthorization`ではなく`getNotificationSettings`で現在の許可状態を確認し、既に許可済みの場合のみ予約する（未確定/拒否なら何もせず静かに終了）よう変更した。** これにより、OSダイアログを実際に出すのは`requestPermission()`経由のオンボーディングフロー（意図的なタイミング）だけになる。新しくバックグラウンド事前予約系のネイティブ関数を追加する時は、`requestAuthorization`を直接呼ばず必ずこのパターン（`getNotificationSettings`で確認してから予約）に倣うこと。
+
 **既存ユーザー（この導線変更前からのユーザー）向けフォールバック:** 初回ロードの`useEffect`は`TOUR_COMPLETED_KEY`→`NOTIF_ASKED_KEY`→`LOCATION_ASKED_KEY`→`WAKESLEEP_ASKED_KEY`の順で「まだ済んでいない最初の段階」を判定し、そこから連鎖を再開する（各段階の関数が「次の段階が済んでいなければ呼ぶ」を内包しているため、この判定は開始地点を決めるだけでよい）。
 
 ### プロダクトツアー（`src/app/components/ProductTour.tsx`）

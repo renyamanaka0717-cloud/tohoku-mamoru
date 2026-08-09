@@ -15,8 +15,13 @@ public class InactivityPlugin: CAPPlugin {
             let staleIds = requests.map { $0.identifier }.filter { $0.hasPrefix(InactivityPlugin.prefix) }
             center.removePendingNotificationRequests(withIdentifiers: staleIds)
             guard !hoursList.isEmpty else { call.resolve(); return }
-            center.requestAuthorization(options: [.alert, .sound, .badge]) { granted, _ in
-                guard granted else { call.resolve(); return }
+            // LocalNotifyPluginと同じ理由でrequestAuthorizationは使わない：バックグラウンド
+            // 移行のたびに走るこの事前予約が、オンボーディングの通知プロンプトより前に勝手に
+            // システムの許可ダイアログを出してしまうため、既に許可済みの場合のみ予約する
+            center.getNotificationSettings { settings in
+                guard settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional else {
+                    call.resolve(); return
+                }
                 for (index, hours) in hoursList.enumerated() where hours > 0 {
                     let content = UNMutableNotificationContent()
                     content.title = "しばらく開いていません"

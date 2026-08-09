@@ -81,8 +81,16 @@ public class LocalNotifyPlugin: CAPPlugin {
             let staleIds = requests.map { $0.identifier }.filter { $0.hasPrefix(prefix) }
             center.removePendingNotificationRequests(withIdentifiers: staleIds)
             guard !alerts.isEmpty else { call.resolve(); return }
-            center.requestAuthorization(options: [.alert, .sound, .badge]) { granted, _ in
-                guard granted else { call.resolve(); return }
+            // ここでrequestAuthorizationを呼ぶと、オンボーディングの通知プロンプト（ユーザーが
+            // 意図的に許可を求めるタイミング）より前に、アプリ起動直後のバックグラウンド事前予約
+            // （起床時チェックイン等、デフォルト設定だけで発火条件を満たしてしまうもの）が勝手に
+            // システムの許可ダイアログを出してしまう不具合があった。ここでは既に許可されている
+            // 場合のみ予約し、未確定/拒否の場合は何もせず静かに終了する（許可を求めるのは
+            // requestPermission()経由のオンボーディングフローの役目）
+            center.getNotificationSettings { settings in
+                guard settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional else {
+                    call.resolve(); return
+                }
                 for alert in alerts {
                     let content = UNMutableNotificationContent()
                     content.title = alert.title
