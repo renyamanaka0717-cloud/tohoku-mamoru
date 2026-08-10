@@ -3,6 +3,8 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import { setAnalyticsUserProperty } from './Analytics';
 
 export type Language = 'ja' | 'en';
+// 言語ピッカーで選べる選択肢。'auto'は端末のシステム言語設定に追従する（明示的に選んだ場合のみlocalStorageに固定される）
+export type LanguagePref = Language | 'auto';
 
 // 文言はここに集約する。新しい文言を追加する時は必ずja/en両方を埋めること。
 // 英語文言は初期実装時点の仮訳。ネイティブチェック前提で、後日まとめて見直す。
@@ -28,6 +30,8 @@ export const STRINGS = {
   tourCompleteStart:     { ja: 'はじめる',                        en: 'Get started' },
 
   settingsDisplayTitle:  { ja: '表示設定',                        en: 'Display' },
+  languageAutoLabel:     { ja: '自動',                          en: 'Automatic' },
+  languageAutoDesc:      { ja: 'システム設定に従う',                  en: 'Match system setting' },
 
   // Timeline / FreeTimeCard（{n}/{start}/{end}等はcall側でreplace()する簡易プレースホルダー）
   timelineWake:              { ja: '起床',                        en: 'Wake up' },
@@ -416,7 +420,10 @@ export function getStoredLanguage(): Language | null {
 
 interface I18nContextValue {
   language: Language;
-  setLanguage: (lang: Language) => void;
+  // 言語ピッカーでチェックマークを表示する対象。'auto'の間はlocalStorageに何も保存されておらず、
+  // 端末のシステム言語が変わればlanguageも次回起動時に追従する
+  languagePref: LanguagePref;
+  setLanguage: (lang: LanguagePref) => void;
   // page.tsxでは`t`がループ変数（タスク・タグ等）として頻繁に使われるため、
   // 衝突を避けて翻訳関数は`tr`という名前にしている
   tr: (key: StringKey) => string;
@@ -424,19 +431,23 @@ interface I18nContextValue {
 
 const I18nContext = createContext<I18nContextValue>({
   language: 'ja',
+  languagePref: 'auto',
   setLanguage: () => {},
   tr: (key) => STRINGS[key].ja,
 });
 
 export function I18nProvider({ children }: { children: ReactNode }) {
   const [language, setLanguageState] = useState<Language>('ja');
+  const [languagePref, setLanguagePrefState] = useState<LanguagePref>('auto');
 
   // 初回マウント時のみ判定する。保存済みの言語があればそれを、無ければ端末の言語設定から判定する。
   // 初期stateの'ja'デフォルトはSSR/hydration対策の仮値でしかないため、ここで確定した言語だけを
   // app_languageユーザープロパティに記録する（仮値の'ja'を一瞬でも計測してしまわないように）
   useEffect(() => {
-    const lang = getStoredLanguage() ?? detectLanguage();
+    const stored = getStoredLanguage();
+    const lang = stored ?? detectLanguage();
     setLanguageState(lang);
+    setLanguagePrefState(stored ?? 'auto');
     setAnalyticsUserProperty('app_language', lang);
   }, []);
 
@@ -444,15 +455,24 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     document.documentElement.lang = language;
   }, [language]);
 
-  const setLanguage = (lang: Language) => {
-    setLanguageState(lang);
-    localStorage.setItem(LANG_KEY, lang);
-    setAnalyticsUserProperty('app_language', lang);
+  const setLanguage = (pref: LanguagePref) => {
+    if (pref === 'auto') {
+      localStorage.removeItem(LANG_KEY);
+      const detected = detectLanguage();
+      setLanguageState(detected);
+      setLanguagePrefState('auto');
+      setAnalyticsUserProperty('app_language', detected);
+      return;
+    }
+    setLanguageState(pref);
+    setLanguagePrefState(pref);
+    localStorage.setItem(LANG_KEY, pref);
+    setAnalyticsUserProperty('app_language', pref);
   };
 
   const tr = (key: StringKey) => STRINGS[key][language];
 
-  return <I18nContext.Provider value={{ language, setLanguage, tr }}>{children}</I18nContext.Provider>;
+  return <I18nContext.Provider value={{ language, languagePref, setLanguage, tr }}>{children}</I18nContext.Provider>;
 }
 
 export function useI18n() {

@@ -14,7 +14,7 @@ import { isDevModeUnlocked, DEV_MODE_UNLOCKED_KEY, getDevPremiumOverride, setDev
 import { App as CapApp } from '@capacitor/app';
 import ProductTour from './components/ProductTour';
 import Welcome from './components/Welcome';
-import { useI18n, type Language, type StringKey } from './components/I18n';
+import { useI18n, type Language, type LanguagePref, type StringKey } from './components/I18n';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -4298,7 +4298,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   initialSub?:string;
   tasks:Task[]; onEditTask:(t:Task)=>void;
 }) {
-  const { tr, language, setLanguage } = useI18n();
+  const { tr, language, languagePref, setLanguage } = useI18n();
   const [sub,setSubRaw]        = useState<string|null>(initialSub??null);
   // 戻る操作で常にメイン設定画面まで戻ってしまわないよう、遷移履歴をスタックで保持する。
   // setSub(次の画面) で現在地をスタックに積み、back() でスタックから1つ戻す
@@ -5216,13 +5216,16 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
       {subHeader('言語 / Language')}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm mt-6">
-          {([['ja','日本語'],['en','English']] as [Language,string][]).map(([code,label],i)=>(
+          {(['auto','ja','en'] as LanguagePref[]).map((code,i)=>(
             <div key={code}>
               {i>0&&<div className="h-px bg-gray-100 mx-4"/>}
               <button onClick={()=>setLanguage(code)}
                 className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50">
-                <span className="flex-1 text-left text-sm font-medium text-gray-800">{label}</span>
-                {language===code&&<AppIcons.checkSquare size={18} className="text-[var(--c-primary)]"/>}
+                <div className="flex-1 text-left">
+                  <p className="text-sm font-medium text-gray-800">{code==='auto'?tr('languageAutoLabel'):code==='ja'?'日本語':'English'}</p>
+                  {code==='auto'&&<p className="text-xs text-gray-400 mt-0.5">{tr('languageAutoDesc')}</p>}
+                </div>
+                {languagePref===code&&<AppIcons.checkSquare size={18} className="text-[var(--c-primary)] shrink-0"/>}
               </button>
             </div>
           ))}
