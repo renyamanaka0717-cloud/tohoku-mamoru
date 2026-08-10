@@ -2242,10 +2242,11 @@ function TaskCard({task,onToggle,onEdit,globalTags,onSubtaskToggle,tabName}:{tas
 
 // ── FreeTimeCard ──────────────────────────────────────────────────────────────
 
-function FreeTimeCard({slot,fits,moreCount=0,height,onSchedule,onDragStart,measureRef}:{
+function FreeTimeCard({slot,fits,moreCount=0,height,onSchedule,onDragStart,onMoreClick,measureRef}:{
   slot:FreeSlot;fits:Task[];moreCount?:number;height:number;
   onSchedule:(t:Task,time:string)=>void;
   onDragStart:(t:Task,x:number,y:number)=>void;
+  onMoreClick?:()=>void;
   measureRef?:(el:HTMLDivElement|null)=>void;
 }) {
   const [pressingId,setPressingId] = useState<string|null>(null);
@@ -2296,9 +2297,10 @@ function FreeTimeCard({slot,fits,moreCount=0,height,onSchedule,onDragStart,measu
               </button>
             ))}
             {moreCount>0&&(
-              <span className="inline-flex items-center bg-gray-100 rounded-full px-2.5 py-1 text-xs font-medium text-gray-400 select-none">
+              <button onClick={onMoreClick}
+                className="inline-flex items-center bg-gray-100 rounded-full px-2.5 py-1 text-xs font-medium text-gray-400 select-none active:bg-gray-200">
                 +{moreCount}件
-              </span>
+              </button>
             )}
           </div>
         )}
@@ -2331,7 +2333,7 @@ function CompactTaskCard({task,onToggle,onEdit}:{task:Task;onToggle:()=>void;onE
 
 // ── Timeline ──────────────────────────────────────────────────────────────────
 
-function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet,onSchedule,onAddAtTime,onDragStart,dragTaskId,yToTimeRef,layoutYRef,globalTags,todayHistory,onSubtaskToggle,lifePatterns=[],patternOverrides={},onPickColor,onEditTime,customTabs=[]}:{
+function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet,onSchedule,onAddAtTime,onDragStart,dragTaskId,yToTimeRef,layoutYRef,globalTags,todayHistory,onSubtaskToggle,lifePatterns=[],patternOverrides={},onPickColor,onEditTime,onOpenLater,customTabs=[]}:{
   date:string;tasks:Task[];later:Task[];settings:Settings;now:string;
   onToggle:(id:string)=>void;onEdit:(t:Task)=>void;onEditIconSheet:(t:Task)=>void;
   onSchedule:(t:Task,time:string)=>void;onAddAtTime:(time:string)=>void;
@@ -2344,6 +2346,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
   lifePatterns?:LifePattern[];
   onPickColor?:(target:'wake'|'sleep')=>void;
   onEditTime?:(target:'wake'|'sleep')=>void;
+  onOpenLater?:()=>void;
   patternOverrides?:Record<string,string>;
   customTabs?:CustomTab[];
 }) {
@@ -2865,7 +2868,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
         const fits=laterPoolVisible;
         return (
           <div key={i} className="absolute z-10" style={{top:`${freeY}px`,left:`${CARD_LEFT}px`,right:'0px'}}>
-            <FreeTimeCard slot={slot} fits={fits} moreCount={laterPoolMoreCount} height={finalH} onSchedule={onSchedule} onDragStart={onDragStart}
+            <FreeTimeCard slot={slot} fits={fits} moreCount={laterPoolMoreCount} height={finalH} onSchedule={onSchedule} onDragStart={onDragStart} onMoreClick={onOpenLater}
               measureRef={el=>{if(el){el.dataset.gk=`free-${slot.start}`;roRef.current?.observe(el);}}}/>
           </div>
         );
@@ -7046,6 +7049,7 @@ export default function App() {
           lifePatterns={lifePatterns} patternOverrides={patternOverrides}
           onPickColor={(target)=>{if(!isPremium){setAppProPrompt(true);return;}setColorPickTarget(target);}}
           onEditTime={openTimePicker}
+          onOpenLater={()=>setActiveTab('later')}
           customTabs={activeCategory===null?customTabs:[]}/>
       </main>
 
