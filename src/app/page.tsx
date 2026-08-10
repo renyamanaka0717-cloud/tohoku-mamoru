@@ -1882,7 +1882,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                       </div>
                       {/* w-fullだとネイティブの日付・時刻UIが実際の値に対して横に間延びして
                           見えたため、値の表示に必要な分だけの幅（カード幅の半分程度）に
-                          縮めている */}
+                          縮めている。時刻は日付と同じ幅に揃える */}
                       <div className="relative mb-2" style={{width:'55%'}}>
                         <input type="date" value={deadlineDate} onChange={e=>setDeadlineDate(e.target.value)}
                           className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-gray-50 outline-none" style={{boxSizing:'border-box'}}/>
@@ -1893,7 +1893,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                         )}
                       </div>
                       <input type="time" value={deadlineTime} onChange={e=>setDeadlineTime(e.target.value)}
-                        className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-gray-50 outline-none mb-4" style={{boxSizing:'border-box',width:'45%'}}/>
+                        className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-gray-50 outline-none mb-4" style={{boxSizing:'border-box',width:'55%'}}/>
                       {deadlineDate&&(
                         <>
                           <p className="text-xs text-gray-400 mb-1.5">{tr('deadlineNotifyTiming')}</p>
