@@ -168,7 +168,14 @@ const DUR_OPTS     = [
   {v:60,l:'1時間'},{v:90,l:'1時間半'},{v:120,l:'2時間'},
   {v:180,l:'3時間'},{v:240,l:'4時間'},{v:300,l:'5時間'},
 ];
+const DUR_OPTS_EN  = [
+  {v:0,l:'None'},
+  {v:5,l:'5m'},{v:10,l:'10m'},{v:15,l:'15m'},{v:30,l:'30m'},{v:45,l:'45m'},
+  {v:60,l:'1h'},{v:90,l:'1.5h'},{v:120,l:'2h'},
+  {v:180,l:'3h'},{v:240,l:'4h'},{v:300,l:'5h'},
+];
 const NOTIF_OPTS   = [{v:0,l:'開始時'},{v:5,l:'5分前'},{v:10,l:'10分前'},{v:15,l:'15分前'},{v:30,l:'30分前'},{v:60,l:'1時間前'},{v:1440,l:'前日'}];
+const NOTIF_OPTS_EN= [{v:0,l:'At start'},{v:5,l:'5m before'},{v:10,l:'10m before'},{v:15,l:'15m before'},{v:30,l:'30m before'},{v:60,l:'1h before'},{v:1440,l:'1 day before'}];
 
 const taskAlertBody = (startTime: string, offset: number): string => {
   if(offset===0) return `そろそろ始めましょう（${startTime}〜）`;
@@ -181,6 +188,9 @@ const taskAlertBody = (startTime: string, offset: number): string => {
 type DeadlineNotifyOpt = NonNullable<Task['deadlineNotify']>;
 const DEADLINE_NOTIFY_OPTS: {v:DeadlineNotifyOpt;l:string}[] = [
   {v:'auto',l:'おまかせ'},{v:'week',l:'1週間前'},{v:'3days',l:'3日前'},{v:'dayBefore',l:'前日'},{v:'sameDay',l:'当日'},
+];
+const DEADLINE_NOTIFY_OPTS_EN: {v:DeadlineNotifyOpt;l:string}[] = [
+  {v:'auto',l:'Auto'},{v:'week',l:'1 week before'},{v:'3days',l:'3 days before'},{v:'dayBefore',l:'The day before'},{v:'sameDay',l:'Same day'},
 ];
 // 「当日」通知を出す時刻（締切当日の朝）
 const DEADLINE_SAMEDAY_HOUR = 9;
@@ -1020,7 +1030,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
   // 名前が空ならプレースホルダー名を入れる（保存ボタンがdisabledのままにならないようにする）
   fillTestNameSignal?:number;
 }) {
-  const { tr } = useI18n();
+  const { tr, language } = useI18n();
   const initMode=():TaskMode=>{
     if(!task) return prefillTime?'scheduled':'later';
     if(task.allDay) return 'allday';
@@ -1243,6 +1253,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
     const today=todayStr();
     const dt=new Date(taskDate+'T12:00:00');
     const m=dt.getMonth()+1, d=dt.getDate(), dow=DAY_NAMES[dt.getDay()];
+    if(language==='en') return `${taskDate===today?'Today, ':''}${MONTH_NAMES_EN[dt.getMonth()].slice(0,3)} ${d} (${DAY_NAMES_EN[dt.getDay()]})`;
     return `${taskDate===today?'今日 ':''}${m}月${d}日（${dow}）`;
   };
 
@@ -1398,7 +1409,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <button onClick={handleClose} className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center text-white">×</button>
-              {!task&&onBulkInput&&<button onClick={onBulkInput} className="px-3 py-1.5 text-sm font-semibold rounded-full bg-white/20 text-white flex items-center gap-1">一括入力<AppIcons.caretRight size={12}/></button>}
+              {!task&&onBulkInput&&<button onClick={onBulkInput} className="px-3 py-1.5 text-sm font-semibold rounded-full bg-white/20 text-white flex items-center gap-1">{tr('taskModalBulkInput')}<AppIcons.caretRight size={12}/></button>}
             </div>
             <div className="flex items-center gap-3">
               {task ? (
@@ -1406,15 +1417,15 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                   {saveStatus!=='idle'&&(
                     <span style={{transition:'opacity 0.3s',opacity:saveFading?0:1}}
                       className={`text-xs ${saveStatus==='error'?'text-[#D97A7A]':saveStatus==='saved'?'text-white/80':'text-white/50'}`}>
-                      {saveStatus==='saving'?'保存中…':saveStatus==='saved'?'✓ 保存済み':'保存に失敗しました'}
+                      {saveStatus==='saving'?tr('taskModalSaving'):saveStatus==='saved'?tr('taskModalSaved'):tr('taskModalSaveFailed')}
                     </span>
                   )}
                   <button onClick={flushAndClose}
-                    className="px-4 py-1.5 text-sm font-semibold rounded-full bg-white/90 text-gray-800">完了</button>
+                    className="px-4 py-1.5 text-sm font-semibold rounded-full bg-white/90 text-gray-800">{tr('taskModalDone')}</button>
                 </>
               ) : (
                 <button onClick={save} disabled={!name.trim()} data-tour={!task?'save-button':undefined}
-                  className={`px-4 py-1.5 text-sm font-semibold rounded-full transition-colors ${name.trim()?'bg-white/90 text-gray-800':'bg-white/20 text-white/40 cursor-not-allowed'}`}>保存</button>
+                  className={`px-4 py-1.5 text-sm font-semibold rounded-full transition-colors ${name.trim()?'bg-white/90 text-gray-800':'bg-white/20 text-white/40 cursor-not-allowed'}`}>{tr('taskModalSave')}</button>
               )}
             </div>
           </div>
@@ -1431,20 +1442,20 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
             </button>
             <div className="flex-1 min-w-0">
               {(mode==='scheduled'||mode==='recurring')&&startTime&&(
-                <p className="text-xs text-white/60 mb-0.5">{startTime}{computedEnd?`〜${computedEnd}`:''}{mode==='recurring'&&' · 繰り返し'}</p>
+                <p className="text-xs text-white/60 mb-0.5">{startTime}{computedEnd?`〜${computedEnd}`:''}{mode==='recurring'&&` · ${tr('taskModalRecurringSuffix')}`}</p>
               )}
               {mode==='allday'&&(
-                <p className="text-xs text-white/60 mb-0.5">終日</p>
+                <p className="text-xs text-white/60 mb-0.5">{tr('taskModalAllDay')}</p>
               )}
               <input ref={nameInputRef} type="text" value={name} onChange={e=>{const v=e.target.value;setName(v);if(autoIcon)setIcon(defaultIconKey(v));}}
-                placeholder="タスク名を入力..."
+                placeholder={tr('taskModalNamePlaceholder')}
                 className="w-full bg-transparent text-white text-lg font-medium placeholder-white/40 outline-none border-b border-white/30 pb-1"/>
             </div>
           </div>
 
           {/* Tabs */}
           <div className="flex bg-white/20 rounded-xl p-1 mb-3">
-            {([['later','あとで'],['scheduled','時間指定'],['recurring','繰り返し']] as [TaskMode,string][]).map(([m,l])=>(
+            {([['later',tr('modeLater')],['scheduled',tr('modeScheduled')],['recurring',tr('modeRecurring')]] as [TaskMode,string][]).map(([m,l])=>(
               <button key={m} onClick={()=>setMode(m)}
                 data-tour={!task&&m==='later'?'tab-later':undefined}
                 className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-colors ${mode===m?'bg-white/90 text-gray-800':'text-white/70'}`}>
@@ -1456,7 +1467,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
 
           {/* Category file tabs */}
           <div className="tabs-scroll flex items-end" style={{overflowX:'auto',WebkitOverflowScrolling:'touch',touchAction:'pan-x',marginLeft:'-16px',marginRight:'-16px',paddingLeft:'16px'}}>
-            {([{id:null as string|null,name:'すべて'},...customTabs]).map(tab=>{
+            {([{id:null as string|null,name:tr('fileTabAll')},...customTabs]).map(tab=>{
               const active=category===tab.id;
               return (
                 <button key={tab.id??'all'} onClick={()=>setCategory(tab.id)}
@@ -1483,13 +1494,13 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
               <div className="bg-white mx-3 mt-3 rounded-2xl p-4">
                 <div className="flex items-center gap-2 mb-3">
                   <AppIcons.repeat size={18} className="text-gray-600"/>
-                  <span className="text-sm font-semibold text-gray-800">繰り返し</span>
+                  <span className="text-sm font-semibold text-gray-800">{tr('modeRecurring')}</span>
                 </div>
                 <div className="flex gap-2 overflow-x-auto pb-0.5" style={{scrollbarWidth:'none',WebkitOverflowScrolling:'touch'} as React.CSSProperties}>
                   {(['daily','weekly','monthly','yearly','custom'] as const).map((r,i)=>(
                     <button key={r} onClick={()=>{if(r==='custom'&&!isPremium){setModalProPrompt('繰り返しのカスタム設定');return;}setRecur(r);}}
                       className={`shrink-0 px-4 py-2 rounded-full text-sm font-semibold inline-flex items-center gap-1.5 ${recur===r?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
-                      {['毎日','毎週','毎月','毎年','カスタム'][i]}
+                      {[tr('recPresetDaily'),tr('recPresetWeekly'),tr('recPresetMonthly'),tr('recPresetYearly'),tr('recPresetCustom')][i]}
                       {r==='custom'&&<span className={`inline-flex items-center border rounded px-1 py-0.5 text-[9px] font-bold leading-none tracking-wide ${recur===r?'border-white/60 text-white/80':'border-gray-300 text-gray-400'}`}>PRO</span>}
                     </button>
                   ))}
@@ -1661,7 +1672,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                 {dateOpen&&(
                   <div className="border-t border-gray-100 px-3 pb-3">
                     <div className="flex items-center justify-between py-2">
-                      <span className="text-sm font-bold text-gray-800">{calVm.year}年{calVm.month+1}月</span>
+                      <span className="text-sm font-bold text-gray-800">{language==='ja'?`${calVm.year}年${calVm.month+1}月`:`${MONTH_NAMES_EN[calVm.month]} ${calVm.year}`}</span>
                       <div className="flex gap-1">
                         <button onClick={()=>setCalVm(m=>shiftMonth(m.year,m.month,-1))} className="w-7 h-7 flex items-center justify-center text-gray-500 rounded-lg bg-gray-100"><AppIcons.caretLeft size={14}/></button>
                         <button onClick={()=>setCalVm(m=>shiftMonth(m.year,m.month,1))} className="w-7 h-7 flex items-center justify-center text-gray-500 rounded-lg bg-gray-100"><AppIcons.caretRight size={14}/></button>
@@ -1669,7 +1680,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                     </div>
                     <div className="grid grid-cols-7 mb-1">
                       {DAY_NAMES.map((n,i)=>(
-                        <div key={i} className={`text-center text-[11px] font-semibold py-1 text-gray-400`}>{n}</div>
+                        <div key={i} className={`text-center text-[11px] font-semibold py-1 text-gray-400`}>{language==='ja'?n:DAY_NAMES_EN[i]}</div>
                       ))}
                     </div>
                     <div className="grid grid-cols-7">
@@ -1695,12 +1706,12 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
               <div className="h-px bg-gray-100 mx-4"/>
               <div className="w-full flex items-center gap-3 px-4 py-3.5" data-tour={!task?'start-time-row':undefined}>
                 <AppIcons.clock size={18} className="text-gray-400 shrink-0"/>
-                <span className="text-sm font-medium text-gray-800 shrink-0">開始時刻</span>
+                <span className="text-sm font-medium text-gray-800 shrink-0">{tr('fieldStartTime')}</span>
                 <button onClick={()=>setMode(m=>m==='allday'?'scheduled':'allday')}
                   className={`w-10 h-5 rounded-full transition-colors relative shrink-0 ${mode==='allday'?'bg-[var(--c-primary)]':'bg-gray-200'}`}>
                   <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${mode==='allday'?'left-[22px]':'left-0.5'}`}/>
                 </button>
-                <span className="text-xs text-gray-400 shrink-0">終日</span>
+                <span className="text-xs text-gray-400 shrink-0">{tr('taskModalAllDay')}</span>
                 {mode!=='allday'&&(
                   <button className="flex-1 flex items-center justify-end gap-1" onClick={()=>setTPOpen(true)}>
                     <span className="text-sm text-gray-500">{startTime}{computedEnd?`〜${computedEnd}`:''}</span>
@@ -1715,9 +1726,9 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
               <div className="h-px bg-gray-100 mx-4"/>
               <div className="w-full flex items-center gap-3 px-4 py-2.5">
                 <AppIcons.clock size={18} className="text-gray-400 shrink-0"/>
-                <span className="text-sm font-medium text-gray-800 shrink-0">所要時間</span>
+                <span className="text-sm font-medium text-gray-800 shrink-0">{tr('fieldDuration')}</span>
                 <div className="flex gap-1.5 overflow-x-auto" style={{scrollbarWidth:'none',WebkitOverflowScrolling:'touch'} as React.CSSProperties}>
-                  {DUR_OPTS.map(({v,l})=>(
+                  {(language==='ja'?DUR_OPTS:DUR_OPTS_EN).map(({v,l})=>(
                     <button key={v} onClick={()=>{setDur(v);setCDurOpen(false);}}
                       className={`shrink-0 px-3 py-1 rounded-full text-xs font-semibold ${duration===v&&!custDurOpen?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
                       {l}
@@ -1725,7 +1736,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                   ))}
                   <button onClick={()=>setCDurOpen(o=>!o)}
                     className={`shrink-0 px-3 py-1 rounded-full text-xs font-semibold ${custDurOpen?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
-                    カスタム
+                    {tr('recPresetCustom')}
                   </button>
                 </div>
               </div>
@@ -1734,9 +1745,9 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                   <input type="number" value={custDurMin} min={1}
                     onChange={e=>setCDurMin(Math.max(1,Number(e.target.value)))}
                     className="w-20 border border-gray-200 rounded-xl px-3 py-2 text-sm text-center outline-none"/>
-                  <span className="text-sm text-gray-600">分</span>
+                  <span className="text-sm text-gray-600">{tr('timeUnitMin')}</span>
                   <button onClick={()=>{setDur(custDurMin);setCDurOpen(false);}}
-                    className="px-4 py-2 bg-[var(--c-primary)] text-white rounded-xl text-sm font-semibold">設定</button>
+                    className="px-4 py-2 bg-[var(--c-primary)] text-white rounded-xl text-sm font-semibold">{tr('setButton')}</button>
                 </div>
               )}
             </>)}
@@ -1747,9 +1758,9 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                 <div className="h-px bg-gray-100 mx-4"/>
                 <div className="w-full flex items-center gap-3 px-4 py-2.5">
                   <AppIcons.bell size={18} className="text-gray-400 shrink-0"/>
-                  <span className="text-sm font-medium text-gray-800 shrink-0">アラート</span>
+                  <span className="text-sm font-medium text-gray-800 shrink-0">{tr('fieldAlert')}</span>
                   <div className="flex gap-1.5 overflow-x-auto" style={{scrollbarWidth:'none',WebkitOverflowScrolling:'touch'} as React.CSSProperties}>
-                    {NOTIF_OPTS.map(({v,l})=>(
+                    {(language==='ja'?NOTIF_OPTS:NOTIF_OPTS_EN).map(({v,l})=>(
                       <button key={v} onClick={()=>toggleNotif(v)}
                         className={`shrink-0 px-3 py-1 rounded-full text-xs font-semibold ${notifications.includes(v)?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
                         {l}
@@ -1757,7 +1768,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                     ))}
                     <button onClick={()=>setCNOpen(o=>!o)}
                       className={`shrink-0 px-3 py-1 rounded-full text-xs font-semibold ${custNotifOpen?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
-                      カスタム
+                      {tr('recPresetCustom')}
                     </button>
                   </div>
                 </div>
@@ -1766,15 +1777,15 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                     <input type="number" value={custNotifMin} min={1}
                       onChange={e=>setCNMin(Math.max(1,Number(e.target.value)))}
                       className="w-20 border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none text-center"/>
-                    <span className="text-sm text-gray-600">分前</span>
-                    <button onClick={addCustNotif} className="px-3 py-2 bg-[var(--c-primary)] text-white rounded-xl text-sm font-semibold">追加</button>
+                    <span className="text-sm text-gray-600">{language==='ja'?'分前':'min before'}</span>
+                    <button onClick={addCustNotif} className="px-3 py-2 bg-[var(--c-primary)] text-white rounded-xl text-sm font-semibold">{tr('addButton')}</button>
                   </div>
                 )}
                 {notifications.filter(v=>!NOTIF_OPTS.find(o=>o.v===v)).length>0&&(
                   <div className="flex flex-wrap gap-2 px-4 pb-3">
                     {notifications.filter(v=>!NOTIF_OPTS.find(o=>o.v===v)).map(v=>(
                       <span key={v} className="inline-flex items-center gap-1 bg-[var(--c-primary)] text-white text-xs font-semibold px-2.5 py-1.5 rounded-full">
-                        {v}分前<button onClick={()=>setNotifs(prev=>prev.filter(x=>x!==v))} className="opacity-70 leading-none ml-0.5">×</button>
+                        {language==='ja'?`${v}分前`:`${v}m before`}<button onClick={()=>setNotifs(prev=>prev.filter(x=>x!==v))} className="opacity-70 leading-none ml-0.5">×</button>
                       </span>
                     ))}
                   </div>
@@ -1790,7 +1801,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                   onClick={()=>{ if(!isPremium){setModalProPrompt('締切管理');return;} setDeadlineOpen(o=>!o); }}>
                   <AppIcons.deadline size={18} className="text-gray-400 shrink-0"/>
                   <span className="flex-1 text-left text-sm font-medium text-gray-800 flex items-center gap-1.5">
-                    締切
+                    {tr('fieldDeadline')}
                     {!isPremium&&<AppIcons.lock size={11} className="text-gray-300"/>}
                   </span>
                   {deadlineDate&&<span className="text-xs text-gray-400">{deadlineDate.slice(5).replace('-','/')} {deadlineTime}</span>}
@@ -1805,20 +1816,20 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                         {/* iOS(WebKit)のtype="date"はplaceholder属性を表示しないため、
                             未入力時だけ重ねて表示する（クリックは下の実inputに通す） */}
                         {!deadlineDate&&(
-                          <span className="absolute inset-y-0 left-3 flex items-center text-sm text-gray-400 pointer-events-none">日付を選択する</span>
+                          <span className="absolute inset-y-0 left-3 flex items-center text-sm text-gray-400 pointer-events-none">{tr('deadlineDatePlaceholder')}</span>
                         )}
                       </div>
                       <input type="time" value={deadlineTime} onChange={e=>setDeadlineTime(e.target.value)}
                         className="border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50 outline-none"/>
                       {deadlineDate&&(
-                        <button onClick={()=>setDeadlineDate('')} className="text-xs text-gray-400 px-2 shrink-0">解除</button>
+                        <button onClick={()=>setDeadlineDate('')} className="text-xs text-gray-400 px-2 shrink-0">{tr('clearButton')}</button>
                       )}
                     </div>
                     {deadlineDate&&(
                       <>
-                        <p className="text-xs text-gray-400 mb-1.5">通知タイミング</p>
+                        <p className="text-xs text-gray-400 mb-1.5">{tr('deadlineNotifyTiming')}</p>
                         <div className="flex flex-wrap gap-1.5 pb-1">
-                          {DEADLINE_NOTIFY_OPTS.map(({v,l})=>(
+                          {(language==='ja'?DEADLINE_NOTIFY_OPTS:DEADLINE_NOTIFY_OPTS_EN).map(({v,l})=>(
                             <button key={v} onClick={()=>setDeadlineNotify(v)}
                               className={`px-3 py-1 rounded-full text-xs font-semibold ${deadlineNotify===v?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>{l}</button>
                           ))}
@@ -1860,7 +1871,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                   }}>
                   <AppIcons.location size={18} className="text-gray-400 shrink-0"/>
                   <span className="flex-1 text-left text-sm font-medium text-gray-800 flex items-center gap-1.5">
-                    場所で通知
+                    {tr('fieldLocationNotify')}
                     {!isPremium&&<AppIcons.lock size={11} className="text-gray-300"/>}
                   </span>
                   {taskLocation&&<span className="text-xs text-gray-400 truncate max-w-[140px]">{taskLocation.name}</span>}
@@ -1965,7 +1976,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
             <div className="h-px bg-gray-100 mx-4"/>
             <button className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50" onClick={()=>setTagOpen(o=>!o)}>
               <AppIcons.tag size={18} className="text-gray-400 shrink-0"/>
-              <span className="flex-1 text-left text-sm font-medium text-gray-800">タグ</span>
+              <span className="flex-1 text-left text-sm font-medium text-gray-800">{tr('fieldTags')}</span>
               {tags.length>0&&(
                 <div className="flex gap-1 shrink-0 max-w-[120px] overflow-hidden">
                   {tags.slice(0,2).map(t=>{
@@ -2002,7 +2013,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                     onOpenTagSettings?.();
                   }}
                   className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--c-primary)] px-3 py-1.5 rounded-full bg-gray-50">
-                  <AppIcons.plus size={12}/>タグを追加
+                  <AppIcons.plus size={12}/>{tr('addTagButton')}
                 </button>
               </div>
             )}
@@ -2014,13 +2025,13 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                 <AppIcons.checkSquare size={18} className="text-gray-400 shrink-0"/>
                 <input type="text" value={subtaskInput} onChange={e=>setSubtaskInput(e.target.value)}
                   onKeyDown={e=>{if(e.key==='Enter'&&subtaskInput.trim()){setSubtasks(prev=>[...prev,{id:Date.now().toString(),name:subtaskInput.trim(),completed:false}]);setSubtaskInput('');}}}
-                  placeholder="サブタスクを追加"
+                  placeholder={tr('subtaskPlaceholder')}
                   className="flex-1 text-sm text-gray-700 placeholder-gray-400 outline-none bg-gray-100 rounded-lg px-3 py-1.5"/>
                 <button
                   disabled={!subtaskInput.trim()}
                   onClick={()=>{if(subtaskInput.trim()){setSubtasks(prev=>[...prev,{id:Date.now().toString(),name:subtaskInput.trim(),completed:false}]);setSubtaskInput('');}}}
                   className={`text-sm font-semibold shrink-0 px-3 py-1.5 rounded-lg transition-colors ${subtaskInput.trim()?'bg-gray-700 text-white active:bg-[#6a9677]':'bg-gray-100 text-gray-300'}`}>
-                  追加
+                  {tr('addButton')}
                 </button>
               </div>
               {subtasks.length>0&&(
@@ -2044,7 +2055,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
           {/* Memo */}
           <div className="bg-white mx-3 mt-3 rounded-2xl p-4">
             <textarea value={memo} onChange={e=>setMemo(e.target.value)}
-              placeholder="メモを追加..." rows={3}
+              placeholder={tr('memoPlaceholder')} rows={3}
               className="w-full text-sm text-gray-700 placeholder-gray-400 outline-none resize-none bg-transparent"/>
           </div>
 
@@ -2052,7 +2063,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
           {task&&onDelete&&(
             <button onClick={()=>setDeleteConfirm(true)}
               className="w-full mt-3 mb-2 py-3 text-sm text-[#D97A7A] font-medium">
-              削除する
+              {tr('deleteTaskButton')}
             </button>
           )}
           <div className="h-6"/>
@@ -2064,9 +2075,9 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
           <div className="bg-white rounded-t-3xl max-h-[78vh] flex flex-col w-full max-w-md mx-auto" onClick={e=>e.stopPropagation()}>
             <div className="flex justify-center pt-3 shrink-0"><div className="w-10 h-1 bg-gray-200 rounded-full"/></div>
             <div className="flex items-center justify-between px-5 pt-3 pb-2 shrink-0">
-              <span className="text-base font-bold text-gray-900">アイコンとカラー</span>
+              <span className="text-base font-bold text-gray-900">{tr('iconColorSheetTitle')}</span>
               <div className="flex items-center gap-2">
-                <button onClick={()=>{setIconSheetOpen(false);setAutoIcon(false);}} className="px-4 py-1.5 bg-gray-700 text-white text-sm font-semibold rounded-full">保存</button>
+                <button onClick={()=>{setIconSheetOpen(false);setAutoIcon(false);}} className="px-4 py-1.5 bg-gray-700 text-white text-sm font-semibold rounded-full">{tr('taskModalSave')}</button>
               </div>
             </div>
             <div className="overflow-y-auto px-5 pb-10 flex-1">
@@ -2074,21 +2085,21 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
               <div className="relative mb-4">
                 <AppIcons.search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"/>
                 <input type="text" value={iconQuery} onChange={e=>setIconQuery(e.target.value)}
-                  placeholder="アイコンを検索"
+                  placeholder={tr('iconSearchPlaceholder')}
                   className="w-full bg-gray-50 rounded-xl pl-9 pr-3 py-2.5 text-sm outline-none"/>
               </div>
               {iconQuery.trim()?(
                 <div className="mb-5">
-                  <p className="text-xs font-bold text-gray-400 mb-2">検索結果</p>
+                  <p className="text-xs font-bold text-gray-400 mb-2">{tr('iconSearchResults')}</p>
                   {(()=>{
                     const results=ICON_OPTIONS.filter(o=>o.label.includes(iconQuery.trim()));
-                    if(results.length===0) return <p className="text-sm text-gray-400 text-center py-6">見つかりませんでした</p>;
+                    if(results.length===0) return <p className="text-sm text-gray-400 text-center py-6">{tr('iconSearchEmpty')}</p>;
                     return <div className="grid grid-cols-5 gap-2">{results.map(renderIconBtn)}</div>;
                   })()}
                 </div>
               ):(<>
                 {/* Color */}
-                <p className="text-xs font-bold text-gray-400 mb-2 mt-1">カラー</p>
+                <p className="text-xs font-bold text-gray-400 mb-2 mt-1">{tr('colorSectionLabel')}</p>
                 <div className="tabs-scroll flex gap-2 mb-4"
                   style={{overflowX:'auto',WebkitOverflowScrolling:'touch',overflowY:'visible',touchAction:'pan-x',paddingTop:'5px',paddingBottom:'5px',marginLeft:'-20px',marginRight:'-20px',paddingLeft:'20px',paddingRight:'20px'}}>
                   {TASK_COLORS.map((c,i)=>(
@@ -2100,7 +2111,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                 {/* Recent */}
                 {recentIcons.length>0&&(
                   <>
-                    <p className="text-xs font-bold text-gray-400 mb-2">最近使ったアイコン</p>
+                    <p className="text-xs font-bold text-gray-400 mb-2">{tr('recentIconsLabel')}</p>
                     <div className="grid grid-cols-5 gap-2 mb-5">
                       {recentIcons.map(key=>{
                         const opt=ICON_OPTIONS.find(o=>o.key===key);
@@ -2129,9 +2140,9 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
           onClick={()=>setTPOpen(false)}>
           <div className="bg-white rounded-3xl mx-6 w-full max-w-xs shadow-2xl" onClick={e=>e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 pt-5 pb-3">
-              <span className="text-base font-bold text-gray-800">開始時刻</span>
+              <span className="text-base font-bold text-gray-800">{tr('fieldStartTime')}</span>
               <button onClick={()=>setTPOpen(false)}
-                className="px-4 py-1.5 bg-[var(--c-primary)] text-white text-sm font-bold rounded-full">完了</button>
+                className="px-4 py-1.5 bg-[var(--c-primary)] text-white text-sm font-bold rounded-full">{tr('taskModalDone')}</button>
             </div>
             {(()=>{
               const [hStr,mStr]=startTime.split(':');
@@ -2140,9 +2151,9 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                 <>
                   <div className="flex items-center justify-center gap-2 px-5 pb-3 pt-2">
                     <PickerCol items={HOURS} value={hStr} onChange={v=>setST(`${v}:${normM}`)}/>
-                    <span className="text-base font-medium text-gray-500 w-5 text-center">時</span>
+                    <span className="text-base font-medium text-gray-500 w-5 text-center">{tr('timeUnitHour')}</span>
                     <PickerCol items={MINS} value={normM} onChange={v=>setST(`${hStr}:${v}`)}/>
-                    <span className="text-base font-medium text-gray-500 w-5 text-center">分</span>
+                    <span className="text-base font-medium text-gray-500 w-5 text-center">{tr('timeUnitMin')}</span>
                   </div>
                   <div className="flex justify-center gap-3 pb-6">
                     {['00','15','30','45'].map(m=>(
@@ -2162,13 +2173,13 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
       {showDiscard&&(
         <div className="absolute inset-0 z-[110] flex items-center justify-center px-6" onClick={e=>e.stopPropagation()}>
           <div className="bg-white rounded-2xl p-5 shadow-xl w-full max-w-xs">
-            <h3 className="text-base font-bold text-gray-900 mb-1">入力内容を破棄しますか？</h3>
-            <p className="text-sm text-gray-500 mb-5">保存していない内容は失われます。</p>
+            <h3 className="text-base font-bold text-gray-900 mb-1">{tr('discardConfirmTitle')}</h3>
+            <p className="text-sm text-gray-500 mb-5">{tr('discardConfirmBody')}</p>
             <div className="flex gap-3">
               <button onClick={()=>setShowDiscard(false)}
-                className="flex-1 py-2.5 bg-gray-100 text-gray-900 rounded-xl text-sm font-semibold">キャンセル</button>
+                className="flex-1 py-2.5 bg-gray-100 text-gray-900 rounded-xl text-sm font-semibold">{tr('cancelButton')}</button>
               <button onClick={()=>{setShowDiscard(false);onClose();}}
-                className="flex-1 py-2.5 bg-[#D97A7A] text-white rounded-xl text-sm font-semibold">破棄する</button>
+                className="flex-1 py-2.5 bg-[#D97A7A] text-white rounded-xl text-sm font-semibold">{tr('discardButton')}</button>
             </div>
           </div>
         </div>
@@ -2176,15 +2187,15 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
       {tagNavConfirm&&(
         <div className="absolute inset-0 z-[110] flex items-center justify-center px-6" onClick={e=>e.stopPropagation()}>
           <div className="bg-white rounded-2xl p-5 shadow-xl w-full max-w-xs">
-            <h3 className="text-base font-bold text-gray-900 mb-1">入力内容を保存しますか？</h3>
-            <p className="text-sm text-gray-500 mb-5">タグ設定画面に移動する前に、入力中の内容を保存するか選んでください。</p>
+            <h3 className="text-base font-bold text-gray-900 mb-1">{tr('saveBeforeMoveTitle')}</h3>
+            <p className="text-sm text-gray-500 mb-5">{tr('saveBeforeMoveBody')}</p>
             <div className="flex flex-col gap-2">
               <button onClick={()=>{setTagNavConfirm(false);save();onOpenTagSettings?.();}} disabled={!name.trim()}
-                className={`py-2.5 rounded-xl text-sm font-semibold ${name.trim()?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-300 cursor-not-allowed'}`}>保存して移動</button>
+                className={`py-2.5 rounded-xl text-sm font-semibold ${name.trim()?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-300 cursor-not-allowed'}`}>{tr('saveAndMoveButton')}</button>
               <button onClick={()=>{setTagNavConfirm(false);onOpenTagSettings?.();}}
-                className="py-2.5 bg-[#D97A7A] text-white rounded-xl text-sm font-semibold">破棄して移動</button>
+                className="py-2.5 bg-[#D97A7A] text-white rounded-xl text-sm font-semibold">{tr('discardAndMoveButton')}</button>
               <button onClick={()=>setTagNavConfirm(false)}
-                className="py-2.5 bg-gray-100 text-gray-900 rounded-xl text-sm font-semibold">キャンセル</button>
+                className="py-2.5 bg-gray-100 text-gray-900 rounded-xl text-sm font-semibold">{tr('cancelButton')}</button>
             </div>
           </div>
         </div>
@@ -2193,13 +2204,13 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
       {deleteConfirm&&(
         <div className="absolute inset-0 z-[110] flex items-center justify-center px-6" onClick={e=>e.stopPropagation()}>
           <div className="bg-white rounded-2xl p-5 shadow-xl w-full max-w-xs">
-            <h3 className="text-base font-bold text-gray-900 mb-1">このタスクを削除しますか？</h3>
-            <p className="text-sm text-gray-500 mb-5">この操作は取り消せません。</p>
+            <h3 className="text-base font-bold text-gray-900 mb-1">{tr('deleteTaskConfirmTitle')}</h3>
+            <p className="text-sm text-gray-500 mb-5">{tr('deleteTaskConfirmBody')}</p>
             <div className="flex flex-col gap-2">
               <button onClick={()=>{onDelete?.();onClose();}}
-                className="py-2.5 bg-[#D97A7A] text-white rounded-xl text-sm font-semibold">削除する</button>
+                className="py-2.5 bg-[#D97A7A] text-white rounded-xl text-sm font-semibold">{tr('deleteTaskButton')}</button>
               <button onClick={()=>setDeleteConfirm(false)}
-                className="py-2.5 bg-gray-100 text-gray-900 rounded-xl text-sm font-semibold">キャンセル</button>
+                className="py-2.5 bg-gray-100 text-gray-900 rounded-xl text-sm font-semibold">{tr('cancelButton')}</button>
             </div>
           </div>
         </div>
