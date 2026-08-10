@@ -128,7 +128,8 @@ export const STRINGS = {
 
   // SettingsScreen（トップレベルのメニュー一覧）
   settingsTitle:             { ja: '設定',                        en: 'Settings' },
-  sectionFeatures:           { ja: '機能',                        en: 'Features' },
+  sectionFeatures:           { ja: '基本機能',                     en: 'Basic features' },
+  sectionNotifications:      { ja: '通知',                        en: 'Notifications' },
   sectionGeneral:            { ja: '一般',                        en: 'General' },
   sectionIntegration:        { ja: '連携',                        en: 'Integrations' },
   sectionSubscription:       { ja: 'サブスクリプション',              en: 'Subscription' },
@@ -148,9 +149,9 @@ export const STRINGS = {
   rowWakeSleepDesc:          { ja: '起床時間、就寝時間を設定',          en: 'Set your wake and sleep times' },
   rowShopNotifTitle:         { ja: '買い物リスト通知',                en: 'Shopping list alerts' },
   rowShopNotifDesc:          { ja: '時間や場所で買い物リストを通知',      en: 'Get notified by time or location' },
-  rowLaterAlertTitle:        { ja: '放置アラート',                   en: 'Inactivity alerts' },
+  rowLaterAlertTitle:        { ja: '思い出し通知',                   en: 'Inactivity alerts' },
   rowLaterAlertDesc:         { ja: 'タスクやアプリの放置を通知',         en: 'Get reminded about neglected tasks or the app' },
-  rowForgetAlertTitle:       { ja: '忘れ物防止アラート',               en: 'Forgotten item alerts' },
+  rowForgetAlertTitle:       { ja: '忘れ物防止通知',                  en: 'Forgotten item alerts' },
   rowForgetAlertDesc:        { ja: '場所を出るときに持ち物を確認',        en: 'Check your belongings when leaving a place' },
   rowNotificationsTitle:     { ja: '通知',                        en: 'Notifications' },
   rowNotificationsDesc:      { ja: '通知設定',                      en: 'Notification settings' },

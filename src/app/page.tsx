@@ -5943,12 +5943,16 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
 
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">{tr('sectionFeatures')}</p>
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
+          <SettingsRow icon={<AppIcons.wake size={18}/>} iconBg="bg-gray-100" title={tr('rowWakeSleepTitle')} desc={tr('rowWakeSleepDesc')} onClick={()=>setSub('wakeSleep')}/>
+          <SettingsRow icon={<AppIcons.repeat size={18}/>} iconBg="bg-gray-100" title={tr('rowRecurringTitle')} desc={tr('rowRecurringDesc')} onClick={()=>setSub('recurring')}/>
+          <SettingsRow icon={<AppIcons.calendar size={18}/>} iconBg="bg-gray-100" title={tr('rowLifePatternsTitle')} desc={tr('rowLifePatternsDesc')} onClick={()=>setSub('lifePatterns')}/>
           <SettingsRow icon={<AppIcons.tag/>} iconBg="bg-gray-100" title={tr('rowTagsTitle')} desc={tr('rowTagsDesc')} onClick={()=>setSub('tags')}/>
           <SettingsRow icon={<AppIcons.caretRight/>} iconBg="bg-gray-100" title={tr('rowTabsTitle')} desc={tr('rowTabsDesc')} onClick={()=>setSub('tabs')}/>
-          <SettingsRow icon={<AppIcons.pencil size={18}/>} iconBg="bg-gray-100" title={tr('rowBulkInputTitle')} desc={tr('rowBulkInputDesc')} onClick={()=>setSub('bulkInput')}/>
-          <SettingsRow icon={<AppIcons.calendar size={18}/>} iconBg="bg-gray-100" title={tr('rowLifePatternsTitle')} desc={tr('rowLifePatternsDesc')} onClick={()=>setSub('lifePatterns')}/>
-          <SettingsRow icon={<AppIcons.repeat size={18}/>} iconBg="bg-gray-100" title={tr('rowRecurringTitle')} desc={tr('rowRecurringDesc')} onClick={()=>setSub('recurring')}/>
-          <SettingsRow icon={<AppIcons.wake size={18}/>} iconBg="bg-gray-100" title={tr('rowWakeSleepTitle')} desc={tr('rowWakeSleepDesc')} onClick={()=>setSub('wakeSleep')}/>
+          <SettingsRow icon={<AppIcons.pencil size={18}/>} iconBg="bg-gray-100" title={tr('rowBulkInputTitle')} desc={tr('rowBulkInputDesc')} onClick={()=>setSub('bulkInput')} isLast/>
+        </div>
+
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">{tr('sectionNotifications')}</p>
+        <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
           <SettingsRow icon={<AppIcons.shopping size={18}/>} iconBg="bg-gray-100" title={tr('rowShopNotifTitle')}
             desc={tr('rowShopNotifDesc')}
             onClick={()=>setSub('notifications-shop')}/>
