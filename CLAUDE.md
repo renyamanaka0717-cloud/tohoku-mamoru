@@ -387,7 +387,7 @@ notify('おはようございます', body);
 
 - `page.tsx` の `computeDeadlineFires(deadlineAt, opt)` が通知タイミング設定から実際の発火時刻一覧（`DeadlineFire[]`）を計算する。`week`/`3days`/`dayBefore`は締切のN日前、`sameDay`は締切当日の朝9時（`DEADLINE_SAMEDAY_HOUR`）、`auto`（おまかせ）は1週間前・3日前・前日・当日・5時間前・3時間前・1時間前・締切ちょうど、の8件をまとめて予約する
 - `deadlineAlertBody(taskName, fire)` が通知本文を組み立てる（例:「運転免許の更新期限まで、あと3日です。」「住民税の支払い期限は今日です。」）
-- `deadlineRemainLabel(deadlineAt)` がタイムライン・あとでやるリストでの表示用ラベル（「締切まであと14日」「締切は今日」「締切から3日超過」）を計算する。時刻は無視しカレンダー日数だけで計算する
+- `deadlineRemainLabel(deadlineAt)` がタイムライン・あとでやるリストでの表示用ラベル（「締切まであと14日」「締切から3日超過」）を計算する。日数は時刻を無視しカレンダー日数だけで計算するが、**当日（diff===0）だけは締切の時刻まで含めて「締切は本日の13時」のように表示する**（分が0でなければ「13時30分」のように分も表示）
 - `src/app/components/LocalNotify.ts` の `syncDeadlineAlerts(alerts)` — ネイティブでのみ動作
 - `src/app/page.tsx` の App コンポーネントに、`tasks` が変わるたびに未完了かつ`deadlineAt`/`deadlineNotify`があるタスクの未来のfireをすべて計算し、直近60件を`syncDeadlineAlerts()`に渡す `useEffect` がある。識別子は `deadline-${taskId}-${fireKey}`（`fireKey`は`week`/`3days`/`dayBefore`/`sameDay`/`5h`/`3h`/`1h`/`exact`）
 - `LocalNotifyPlugin.swift` は他の通知と共通の `scheduleAlerts(prefix:call:)` を使い、`deadline-` prefixで全解除→再登録する

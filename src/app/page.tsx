@@ -214,12 +214,16 @@ const deadlineAlertBody = (taskName:string, fire:DeadlineFire): string => {
   if(fire.kind==='today') return `${taskName}期限は今日です。`;
   return `${taskName}の期限になりました。`;
 };
-// タイムライン等での「締切まであとN日」表示用（時刻は無視し、カレンダー日数だけで計算する）
+// タイムライン等での「締切まであとN日」表示用。日数は時刻を無視したカレンダー日数で計算するが、
+// 当日（diff===0）だけは締切の時刻まで含めて「締切は本日の◯時」と表示する
 const deadlineRemainLabel = (deadlineAt:string): string => {
   const deadlineDay = deadlineAt.slice(0,10);
   const diff = Math.round((new Date(deadlineDay+'T00:00:00').getTime()-new Date(todayStr()+'T00:00:00').getTime())/86400000);
   if(diff<0) return `締切から${-diff}日超過`;
-  if(diff===0) return '締切は今日';
+  if(diff===0){
+    const [h,m]=deadlineAt.slice(11,16).split(':').map(Number);
+    return m>0?`締切は本日の${h}時${m}分`:`締切は本日の${h}時`;
+  }
   return `締切まであと${diff}日`;
 };
 // 締切ラベルの表示色: 超過・当日=赤、直近1〜3日=オレンジ（注意）、それ以外=グレー。
