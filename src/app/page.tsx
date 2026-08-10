@@ -361,13 +361,51 @@ const summarizeCustomRec=(r:CustomRec):string=>{
   return main;
 };
 
+const summarizeCustomRecEn=(r:CustomRec):string=>{
+  const ordinal=(n:number)=>{
+    if(n%10===1&&n%100!==11) return `${n}st`;
+    if(n%10===2&&n%100!==12) return `${n}nd`;
+    if(n%10===3&&n%100!==13) return `${n}rd`;
+    return `${n}th`;
+  };
+  let main='';
+  if(r.frequency==='hour'){
+    main=r.interval===1?'Every hour':`Every ${r.interval} hours`;
+  } else if(r.frequency==='day'){
+    main=r.interval===1?'Every day':`Every ${r.interval} days`;
+  } else if(r.frequency==='week'){
+    const base=r.interval===1?'Every week':`Every ${r.interval} weeks`;
+    const days=(r.weekdays??[]).sort((a,b)=>a-b).map(d=>DAY_NAMES_EN[d]).join(', ');
+    main=days?`${base} on ${days}`:base;
+  } else if(r.frequency==='month'){
+    const base=r.interval===1?'Every month':`Every ${r.interval} months`;
+    if(r.monthlyType==='weekday'){
+      const wn=r.weekNumber==='last'?'last':ordinal(r.weekNumber??1);
+      main=`${base} on the ${wn} ${DAY_NAMES_EN[r.weekday??1]}`;
+    } else {
+      const d=r.dayOfMonth==='last'?'the last day':`the ${ordinal(r.dayOfMonth??1)}`;
+      main=`${base} on ${d}`;
+    }
+  } else {
+    const base=r.interval===1?'Every year':`Every ${r.interval} years`;
+    const d=r.yearDay===0?'the last day':`the ${ordinal(r.yearDay??1)}`;
+    main=`${base} on ${MONTH_NAMES_EN[(r.yearMonth??1)-1]} ${d}`;
+  }
+  if(r.endType==='count'&&r.endCount) main+=` · Ends after ${r.endCount} times`;
+  else if(r.endType==='date'&&r.endDate){
+    const dt=new Date(r.endDate+'T12:00:00');
+    main+=` · Until ${MONTH_NAMES_EN[dt.getMonth()].slice(0,3)} ${dt.getDate()}`;
+  }
+  return main;
+};
+
 const recLabel=(t:Task,lang:Language='ja'):string=>{
   if(lang==='en'){
     if(t.recurrence==='daily') return 'Daily';
     if(t.recurrence==='weekly') return 'Weekly';
     if(t.recurrence==='monthly') return 'Monthly';
     if(t.recurrence==='yearly') return 'Yearly';
-    if(t.recurrence==='custom'&&t.customRec) return summarizeCustomRec(t.customRec);
+    if(t.recurrence==='custom'&&t.customRec) return summarizeCustomRecEn(t.customRec);
     return '';
   }
   if(t.recurrence==='daily') return '毎日';
@@ -690,7 +728,7 @@ function SearchPage({tasks,onClose,onSelect}:{tasks:Task[];onClose:()=>void;onSe
         {!query?(
           <div className="py-20 text-center"><AppIcons.search size={40} className="mx-auto mb-2 text-gray-300"/><p className="text-sm text-gray-400">{tr('searchEmptyPrompt')}</p></div>
         ):results.length===0?(
-          <div className="py-20 text-center"><AppIcons.smileySad className="mx-auto mb-2 text-gray-300"/><p className="text-sm text-gray-400">{tr('searchNoResults').replace('{q}',query)}</p></div>
+          <div className="py-20 text-center"><AppIcons.smileySad className="mx-auto mb-2 text-gray-300"/><p className="text-sm text-gray-400">{tr('searchNoResults').replace('{q}',()=>query)}</p></div>
         ):(
           <div>
             <p className="text-xs text-gray-400 px-4 pt-3 pb-1">{language==='ja'?`${results.length}件`:`${results.length} result${results.length===1?'':'s'}`}</p>
@@ -2987,7 +3025,7 @@ function ShopNotifPanel({settings,onChange,notificationsEnabled=true,onEnableNot
     if(days.length===7) return tr('everyDayLabel');
     if(days.length===2&&days.includes(0)&&days.includes(6)) return tr('weekendLabel');
     if(days.length===5&&!days.includes(0)&&!days.includes(6)) return tr('weekdayLabel');
-    return [...days].sort((a,b)=>a-b).map(d=>DOW[d]).join('・');
+    return [...days].sort((a,b)=>a-b).map(d=>DOW[d]).join(language==='ja'?'・':', ');
   };
   const startAdd=()=>{
     setEditing({id:Math.random().toString(36).slice(2),days:[1,2,3,4,5],time:'09:00',enabled:true});
@@ -3581,7 +3619,7 @@ function ForgetAlertsPanel({alerts,onChange,isPremium,onProPrompt}:{
     if(days.length===7) return tr('everyDayLabel');
     if(days.length===2&&days.includes(0)&&days.includes(6)) return tr('weekendLabel');
     if(days.length===5&&!days.includes(0)&&!days.includes(6)) return tr('weekdayLabel');
-    return [...days].sort((a,b)=>a-b).map(d=>DOW[d]).join('・');
+    return [...days].sort((a,b)=>a-b).map(d=>DOW[d]).join(language==='ja'?'・':', ');
   };
   // 文章の空欄に表示する曜日プリセット名（毎日/平日/休日に一致しなければカスタム扱い）
   // 内部の比較用の値は言語に関わらず日本語文字列のまま保持し、表示だけpresetLabel()で翻訳する
@@ -3608,13 +3646,13 @@ function ForgetAlertsPanel({alerts,onChange,isPremium,onProPrompt}:{
     const day=dayPreset(d.weekdays)==='カスタム'?fmtDays(d.weekdays):presetLabel(dayPreset(d.weekdays));
     const place=d.name||tr('previewNoPlace');
     const items=d.items.length>0?d.items.join(language==='ja'?'、':', '):tr('previewNoItems');
-    const itemsBody=tr('previewCheckItemsBody').replace('{items}',items);
+    const itemsBody=tr('previewCheckItemsBody').replace('{items}',()=>items);
     if(language!=='ja'){
       const timeClause=d.timeStart&&d.timeEnd?` from ${d.timeStart} to ${d.timeEnd}`:'';
       const triggerClause=d.trigger==='enter'?`you arrive at ${place}`:`you leave ${place}`;
       return `On ${day}${timeClause}, when ${triggerClause}, check:\n${itemsBody}`;
     }
-    const triggerLabel=d.trigger==='enter'?tr('forgetAlertArriveLabel').replace('{place}',place):tr('forgetAlertLeaveLabel').replace('{place}',place);
+    const triggerLabel=d.trigger==='enter'?tr('forgetAlertArriveLabel').replace('{place}',()=>place):tr('forgetAlertLeaveLabel').replace('{place}',()=>place);
     const dayClause=d.timeStart&&d.timeEnd?`${day}の${d.timeStart}〜${d.timeEnd}に`:`${day}、`;
     return `${dayClause}${triggerLabel}、\n${itemsBody}`;
   };
@@ -3717,7 +3755,7 @@ function ForgetAlertsPanel({alerts,onChange,isPremium,onProPrompt}:{
             <div className="flex items-center gap-3">
               <AppIcons.backpack size={16} className={a.enabled?'text-[var(--c-primary)]':'text-gray-300'}/>
               <button onClick={()=>startEdit(a)} className="flex-1 min-w-0 text-left">
-                <p className="text-sm font-medium text-gray-800 truncate">{((a.trigger??'exit')==='enter'?tr('forgetAlertArriveLabel'):tr('forgetAlertLeaveLabel')).replace('{place}',a.name)}</p>
+                <p className="text-sm font-medium text-gray-800 truncate">{((a.trigger??'exit')==='enter'?tr('forgetAlertArriveLabel'):tr('forgetAlertLeaveLabel')).replace('{place}',()=>a.name)}</p>
                 <p className="text-xs text-gray-400">{fmtDays(a.weekdays)}{a.timeStart&&a.timeEnd?` ${a.timeStart}〜${a.timeEnd}`:''}・{a.radius??200}m</p>
               </button>
               {locked&&<AppIcons.star size={12} className="text-gray-300 shrink-0"/>}
@@ -4799,7 +4837,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           <div className="fixed inset-0 z-[100] flex items-end justify-center" onClick={()=>setDeleteTabId(null)}>
             <div className="absolute inset-0 bg-black/40"/>
             <div className="relative bg-white rounded-t-2xl w-full max-w-md px-6 pt-6 pb-10" onClick={e=>e.stopPropagation()}>
-              <p className="text-center text-[17px] font-semibold text-gray-900 mb-1">{tr('deleteNamedConfirmTitle').replace('{name}',dt?.name??'')}</p>
+              <p className="text-center text-[17px] font-semibold text-gray-900 mb-1">{tr('deleteNamedConfirmTitle').replace('{name}',()=>dt?.name??'')}</p>
               <p className="text-center text-[13px] text-gray-400 mb-6">{tr('deleteTabConfirmBody')}</p>
               <div className="flex flex-col gap-3">
                 <button onClick={()=>setDeleteTabMode('move')} className="w-full py-3.5 rounded-2xl bg-gray-100 text-gray-900 text-[15px] font-semibold">{tr('moveTasksToAllButton')}</button>
@@ -4814,7 +4852,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             <div className="absolute inset-0 bg-black/40"/>
             <div className="relative bg-white rounded-t-2xl w-full max-w-md px-6 pt-6 pb-10" onClick={e=>e.stopPropagation()}>
               <p className="text-center text-[17px] font-semibold text-gray-900 mb-1">{tr('confirmDeleteTitle')}</p>
-              <p className="text-center text-[13px] text-gray-400 mb-6">{isDelete?tr('deleteAllTasksInTabBody').replace('{name}',dt?.name??''):tr('moveTasksToAllBody').replace('{name}',dt?.name??'')}</p>
+              <p className="text-center text-[13px] text-gray-400 mb-6">{isDelete?tr('deleteAllTasksInTabBody').replace('{name}',()=>dt?.name??''):tr('moveTasksToAllBody').replace('{name}',()=>dt?.name??'')}</p>
               <div className="flex flex-col gap-3">
                 <button onClick={()=>{if(isDelete)onDeleteTabTasks(deleteTabId!);onCustomTabs(customTabs.filter(t=>t.id!==deleteTabId));setDeleteTabId(null);setDeleteTabMode(null);}}
                   className={`w-full py-3.5 rounded-2xl text-[15px] font-semibold ${isDelete?'bg-[#D97A7A] text-white':'bg-gray-100 text-gray-900'}`}>
@@ -4924,7 +4962,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           <div className="fixed inset-0 z-[100] flex items-end justify-center" onClick={()=>setDeleteTagIdx(null)}>
             <div className="absolute inset-0 bg-black/40"/>
             <div className="relative bg-white rounded-t-2xl w-full max-w-md px-6 pt-6 pb-10" onClick={e=>e.stopPropagation()}>
-              <p className="text-center text-[17px] font-semibold text-gray-900 mb-1">{tr('deleteNamedConfirmTitle').replace('{name}',dt?.name??'')}</p>
+              <p className="text-center text-[17px] font-semibold text-gray-900 mb-1">{tr('deleteNamedConfirmTitle').replace('{name}',()=>dt?.name??'')}</p>
               <p className="text-center text-[13px] text-gray-400 mb-6">{tr('deleteTagConfirmBody')}</p>
               <div className="flex flex-col gap-3">
                 <button onClick={()=>{if(dt)onDeleteTag(dt.name);setDeleteTagIdx(null);}} className="w-full py-3.5 rounded-2xl bg-[#D97A7A] text-white text-[15px] font-semibold">{tr('deleteTaskButton')}</button>
@@ -4937,7 +4975,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           <div className="fixed inset-0 z-[100] flex items-end justify-center" onClick={()=>setPendingCommitEdit(false)}>
             <div className="absolute inset-0 bg-black/40"/>
             <div className="relative bg-white rounded-t-2xl w-full max-w-md px-6 pt-6 pb-10" onClick={e=>e.stopPropagation()}>
-              <p className="text-center text-[17px] font-semibold text-gray-900 mb-1">{tr('renameNamedConfirmTitle').replace('{name}',orig.name)}</p>
+              <p className="text-center text-[17px] font-semibold text-gray-900 mb-1">{tr('renameNamedConfirmTitle').replace('{name}',()=>orig.name)}</p>
               <p className="text-center text-[13px] text-gray-400 mb-6">{tr('renameTagConfirmBody')}</p>
               <div className="flex flex-col gap-3">
                 <button onClick={doCommitEdit} className="w-full py-3.5 rounded-2xl bg-[var(--c-primary)] text-white text-[15px] font-semibold">{tr('changeButton')}</button>
@@ -5427,7 +5465,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           <div className="fixed inset-0 z-[100] flex items-end justify-center" onClick={()=>setLpDeleteId(null)}>
             <div className="absolute inset-0 bg-black/40"/>
             <div className="relative bg-white rounded-t-2xl w-full max-w-md px-6 pt-6 pb-10" onClick={e=>e.stopPropagation()}>
-              <p className="text-center text-[17px] font-semibold text-gray-900 mb-1">{tr('deleteNamedConfirmTitle').replace('{name}',dp?.name??'')}</p>
+              <p className="text-center text-[17px] font-semibold text-gray-900 mb-1">{tr('deleteNamedConfirmTitle').replace('{name}',()=>dp?.name??'')}</p>
               <p className="text-center text-[13px] text-gray-400 mb-6">
                 {affectedDates.length>0?tr('deletePatternAffectedBody').replace('{n}',String(affectedDates.length)):tr('deletePatternSimpleBody')}
               </p>
@@ -5448,7 +5486,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           <div className="fixed inset-0 z-[100] flex items-end justify-center" onClick={()=>setLpEditConfirmId(null)}>
             <div className="absolute inset-0 bg-black/40"/>
             <div className="relative bg-white rounded-t-2xl w-full max-w-md px-6 pt-6 pb-10" onClick={e=>e.stopPropagation()}>
-              <p className="text-center text-[17px] font-semibold text-gray-900 mb-1">{tr('changePatternConfirmTitle').replace('{name}',dp?.name??'')}</p>
+              <p className="text-center text-[17px] font-semibold text-gray-900 mb-1">{tr('changePatternConfirmTitle').replace('{name}',()=>dp?.name??'')}</p>
               <p className="text-center text-[13px] text-gray-400 mb-6">
                 {affectedDates.length>0?tr('changePatternAffectedBody').replace('{n}',String(affectedDates.length)):tr('changePatternSimpleBody')}
               </p>
