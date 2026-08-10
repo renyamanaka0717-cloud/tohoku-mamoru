@@ -5276,14 +5276,14 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
     const cellDate=(day:number)=>`${lpVm.year}-${String(lpVm.month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
     return (
       <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
-        {subHeader('生活パターン')}{proSheet}
+        {subHeader(tr('rowLifePatternsTitle'))}{proSheet}
         <div className="flex-1 overflow-y-auto px-4 pb-10">
-          {!isPremium&&<p className="text-xs text-gray-400 px-1 mt-4 mb-2">1個まで無料でご利用いただけます。2個目からPROが必要です。</p>}
-          <p className="text-xs text-gray-400 px-1 mb-1 mt-6">シフトや予定に合わせて、日ごとの起床・就寝時間を変更できます</p>
-          <p className="text-xs text-gray-400 px-1 mb-2">パターンを追加・選択して日付をタップ</p>
+          {!isPremium&&<p className="text-xs text-gray-400 px-1 mt-4 mb-2">{tr('lifePatternsFreeLimitNote')}</p>}
+          <p className="text-xs text-gray-400 px-1 mb-1 mt-6">{tr('lifePatternsIntro1')}</p>
+          <p className="text-xs text-gray-400 px-1 mb-2">{tr('lifePatternsIntro2')}</p>
           <div className="bg-white rounded-2xl overflow-hidden shadow-sm mb-1">
             {lifePatterns.length===0&&!lpAddMode&&(
-              <p className="text-sm text-gray-400 text-center py-6">パターンがまだありません</p>
+              <p className="text-sm text-gray-400 text-center py-6">{tr('noPatternsYet')}</p>
             )}
             {lifePatterns.map((pat,i)=>(
               <div key={pat.id} className={`px-4 py-3 flex items-center gap-3${i<lifePatterns.length-1||lpAddMode?' border-b border-gray-100':''}`}>
@@ -5310,12 +5310,12 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                     </div>
                     <div className="flex gap-2">
                       <button onClick={()=>setLpEditConfirmId(pat.id)}
-                        className="flex-1 py-2 rounded-xl text-xs font-semibold bg-[var(--c-primary)] text-white">確定</button>
+                        className="flex-1 py-2 rounded-xl text-xs font-semibold bg-[var(--c-primary)] text-white">{tr('confirmButton')}</button>
                       <button onClick={()=>setLpEditId(null)}
-                        className="flex-1 py-2 rounded-xl text-xs font-semibold bg-gray-100 text-gray-500">キャンセル</button>
+                        className="flex-1 py-2 rounded-xl text-xs font-semibold bg-gray-100 text-gray-500">{tr('cancelButton')}</button>
                     </div>
                     <button onClick={()=>setLpDeleteId(pat.id)}
-                      className="text-xs font-semibold text-[#D97A7A] text-center py-1">このパターンを削除</button>
+                      className="text-xs font-semibold text-[#D97A7A] text-center py-1">{tr('deletePatternButton')}</button>
                   </div>
                 ) : (
                   <>
@@ -5324,12 +5324,12 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                       <div className="w-4 h-4 rounded-full shrink-0" style={{background:pat.color}}/>
                       <div className="flex-1 min-w-0 text-left">
                         <p className={`text-[15px] font-medium ${lpActivePat===pat.id?'text-[var(--c-primary)]':'text-gray-900'}`}>{pat.name}</p>
-                        <p className="text-xs text-gray-400">{pat.wakeTime} 起床 / {pat.sleepTime} 就寝</p>
+                        <p className="text-xs text-gray-400">{pat.wakeTime} {tr('timelineWake')} / {pat.sleepTime} {tr('timelineSleep')}</p>
                       </div>
                       {lpActivePat===pat.id&&<AppIcons.checkCircle size={18} className="text-[var(--c-primary)] shrink-0"/>}
                     </button>
                     <button onClick={()=>{setLpEditId(pat.id);setLpEditName(pat.name);setLpEditWake(pat.wakeTime);setLpEditSleep(pat.sleepTime);setLpEditColor(pat.color);}}
-                      className="text-xs text-gray-400 font-medium px-2 py-1 shrink-0">編集</button>
+                      className="text-xs text-gray-400 font-medium px-2 py-1 shrink-0">{tr('editButton')}</button>
                   </>
                 )}
               </div>
@@ -5337,7 +5337,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             {lpAddMode&&(
               <div className="px-4 py-3 flex flex-col gap-2">
                 <input autoFocus value={lpNewName} onChange={e=>setLpNewName(e.target.value)}
-                  placeholder="パターン名（例：平日、休日、早番、遅番）"
+                  placeholder={tr('patternNamePlaceholder')}
                   className="text-[15px] border-b border-gray-200 outline-none bg-transparent text-gray-900 placeholder-gray-300 py-0.5"/>
                 <div className="flex gap-3 items-center">
                   <input type="time" value={lpNewWake} onChange={e=>setLpNewWake(e.target.value)}
@@ -5359,16 +5359,16 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                     const np:LifePattern={id:uid(),name:lpNewName.trim(),wakeTime:lpNewWake,sleepTime:lpNewSleep,color:lpNewColor};
                     onLifePatterns([...lifePatterns,np]);
                     setLpNewName('');setLpAddMode(false);
-                  }} className="flex-1 py-2 rounded-xl text-xs font-semibold bg-[var(--c-primary)] text-white">追加</button>
+                  }} className="flex-1 py-2 rounded-xl text-xs font-semibold bg-[var(--c-primary)] text-white">{tr('addButton')}</button>
                   <button onClick={()=>setLpAddMode(false)}
-                    className="flex-1 py-2 rounded-xl text-xs font-semibold bg-gray-100 text-gray-500">キャンセル</button>
+                    className="flex-1 py-2 rounded-xl text-xs font-semibold bg-gray-100 text-gray-500">{tr('cancelButton')}</button>
                 </div>
               </div>
             )}
           </div>
           {!lpAddMode&&(
             <button onClick={()=>{if(!isPremium&&lifePatterns.length>=1){setProPrompt('生活パターンを2個以上登録');return;}setLpAddMode(true);setLpNewName('');setLpNewWake('07:00');setLpNewSleep('23:00');setLpNewColor('#94CFC8');}}
-              className="w-full py-3 rounded-2xl text-sm font-semibold text-[var(--c-primary)] bg-white shadow-sm mb-5">＋ パターンを追加</button>
+              className="w-full py-3 rounded-2xl text-sm font-semibold text-[var(--c-primary)] bg-white shadow-sm mb-5">{tr('addPatternButton')}</button>
           )}
 
           {/* Calendar — always visible */}
@@ -5378,14 +5378,14 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                 className="w-8 h-8 flex items-center justify-center rounded-full active:bg-gray-100">
                 <AppIcons.caretLeft size={16} className="text-gray-600"/>
               </button>
-              <p className="text-[15px] font-semibold text-gray-900">{lpVm.year}年{lpVm.month+1}月</p>
+              <p className="text-[15px] font-semibold text-gray-900">{language==='ja'?`${lpVm.year}年${lpVm.month+1}月`:`${MONTH_NAMES_EN[lpVm.month]} ${lpVm.year}`}</p>
               <button onClick={()=>setLpVm(prev=>shiftMonth(lpVm.year,lpVm.month,1))}
                 className="w-8 h-8 flex items-center justify-center rounded-full active:bg-gray-100">
                 <AppIcons.caretRight size={16} className="text-gray-600"/>
               </button>
             </div>
             <div className="grid grid-cols-7 px-2 pt-2">
-              {['日','月','火','水','木','金','土'].map(d=>(
+              {(language==='ja'?['日','月','火','水','木','金','土']:DAY_NAMES_EN).map(d=>(
                 <div key={d} className="text-center text-xs text-gray-400 pb-1">{d}</div>
               ))}
             </div>
@@ -5417,9 +5417,9 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           <div className="fixed inset-0 z-[100] flex items-end justify-center" onClick={()=>setLpDeleteId(null)}>
             <div className="absolute inset-0 bg-black/40"/>
             <div className="relative bg-white rounded-t-2xl w-full max-w-md px-6 pt-6 pb-10" onClick={e=>e.stopPropagation()}>
-              <p className="text-center text-[17px] font-semibold text-gray-900 mb-1">「{dp?.name}」を削除しますか？</p>
+              <p className="text-center text-[17px] font-semibold text-gray-900 mb-1">{tr('deleteNamedConfirmTitle').replace('{name}',dp?.name??'')}</p>
               <p className="text-center text-[13px] text-gray-400 mb-6">
-                {affectedDates.length>0?`このパターンを設定した${affectedDates.length}日分の日付も解除されます`:'このパターンを削除します'}
+                {affectedDates.length>0?tr('deletePatternAffectedBody').replace('{n}',String(affectedDates.length)):tr('deletePatternSimpleBody')}
               </p>
               <div className="flex flex-col gap-3">
                 <button onClick={()=>{
@@ -5428,8 +5428,8 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                   setLpEditId(null);
                   if(lpActivePat===lpDeleteId) setLpActivePat(null);
                   setLpDeleteId(null);
-                }} className="w-full py-3.5 rounded-2xl bg-[#D97A7A] text-white text-[15px] font-semibold">削除する</button>
-                <button onClick={()=>setLpDeleteId(null)} className="w-full py-3.5 rounded-2xl bg-gray-50 text-gray-500 text-[15px] font-semibold">キャンセル</button>
+                }} className="w-full py-3.5 rounded-2xl bg-[#D97A7A] text-white text-[15px] font-semibold">{tr('deleteTaskButton')}</button>
+                <button onClick={()=>setLpDeleteId(null)} className="w-full py-3.5 rounded-2xl bg-gray-50 text-gray-500 text-[15px] font-semibold">{tr('cancelButton')}</button>
               </div>
             </div>
           </div>
@@ -5438,17 +5438,17 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           <div className="fixed inset-0 z-[100] flex items-end justify-center" onClick={()=>setLpEditConfirmId(null)}>
             <div className="absolute inset-0 bg-black/40"/>
             <div className="relative bg-white rounded-t-2xl w-full max-w-md px-6 pt-6 pb-10" onClick={e=>e.stopPropagation()}>
-              <p className="text-center text-[17px] font-semibold text-gray-900 mb-1">「{dp?.name}」の内容を変更しますか？</p>
+              <p className="text-center text-[17px] font-semibold text-gray-900 mb-1">{tr('changePatternConfirmTitle').replace('{name}',dp?.name??'')}</p>
               <p className="text-center text-[13px] text-gray-400 mb-6">
-                {affectedDates.length>0?`このパターンを設定した${affectedDates.length}日分にも反映されます`:'この内容で保存します'}
+                {affectedDates.length>0?tr('changePatternAffectedBody').replace('{n}',String(affectedDates.length)):tr('changePatternSimpleBody')}
               </p>
               <div className="flex flex-col gap-3">
                 <button onClick={()=>{
                   onLifePatterns(lifePatterns.map(p=>p.id===lpEditConfirmId?{...p,name:lpEditName.trim()||p.name,wakeTime:lpEditWake,sleepTime:lpEditSleep,color:lpEditColor}:p));
                   setLpEditConfirmId(null);
                   setLpEditId(null);
-                }} className="w-full py-3.5 rounded-2xl bg-[var(--c-primary)] text-white text-[15px] font-semibold">変更する</button>
-                <button onClick={()=>setLpEditConfirmId(null)} className="w-full py-3.5 rounded-2xl bg-gray-50 text-gray-500 text-[15px] font-semibold">キャンセル</button>
+                }} className="w-full py-3.5 rounded-2xl bg-[var(--c-primary)] text-white text-[15px] font-semibold">{tr('changeButton')}</button>
+                <button onClick={()=>setLpEditConfirmId(null)} className="w-full py-3.5 rounded-2xl bg-gray-50 text-gray-500 text-[15px] font-semibold">{tr('cancelButton')}</button>
               </div>
             </div>
           </div>

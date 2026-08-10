@@ -194,7 +194,7 @@ export const STRINGS = {
   deleteTagConfirmBody:      { ja: 'このタグがついているタスクからも削除されます', en: 'It will also be removed from tasks that use this tag' },
   renameNamedConfirmTitle:   { ja: '「{name}」を変更しますか？',         en: 'Rename "{name}"?' },
   renameTagConfirmBody:      { ja: 'このタグがついているすべてのタスクのタグ名・色も変更されます', en: 'This will update the name and color on all tasks that use this tag' },
-  changeButton:              { ja: '変更する',                      en: 'Rename' },
+  changeButton:              { ja: '変更する',                      en: 'Save' },
 
   // 設定 → 繰り返しタスク
   noRecurringTasks:          { ja: '繰り返しタスクはありません',         en: 'No recurring tasks' },
@@ -264,6 +264,20 @@ export const STRINGS = {
   freeCardHiddenDesc:        { ja: '非表示',                       en: 'Hidden' },
   themeColorScreenSubtitle:  { ja: 'テーマを選択するとアプリ全体の色が切り替わります', en: 'Choose a theme to change the app’s color throughout' },
   appIconScreenSubtitle:     { ja: '選択したアイコンがホーム画面に反映されます',   en: 'Your chosen icon will appear on your home screen' },
+
+  // 設定 → 生活パターン
+  lifePatternsFreeLimitNote: { ja: '1個まで無料でご利用いただけます。2個目からPROが必要です。', en: 'You can use up to 1 for free. PRO is required for a 2nd.' },
+  lifePatternsIntro1:        { ja: 'シフトや予定に合わせて、日ごとの起床・就寝時間を変更できます', en: 'Change your wake and sleep times per day to match shifts or plans' },
+  lifePatternsIntro2:        { ja: 'パターンを追加・選択して日付をタップ',      en: 'Add or select a pattern, then tap a date' },
+  noPatternsYet:             { ja: 'パターンがまだありません',            en: 'No patterns yet' },
+  deletePatternButton:       { ja: 'このパターンを削除',                en: 'Delete this pattern' },
+  patternNamePlaceholder:    { ja: 'パターン名（例：平日、休日、早番、遅番）', en: 'Pattern name (e.g. Weekday, Day off, Early shift)' },
+  addPatternButton:          { ja: '＋ パターンを追加',                 en: '+ Add pattern' },
+  deletePatternAffectedBody: { ja: 'このパターンを設定した{n}日分の日付も解除されます', en: 'This will also clear it from {n} date(s) where it’s set' },
+  deletePatternSimpleBody:   { ja: 'このパターンを削除します',            en: 'This pattern will be deleted' },
+  changePatternConfirmTitle: { ja: '「{name}」の内容を変更しますか？',      en: 'Save changes to "{name}"?' },
+  changePatternAffectedBody: { ja: 'このパターンを設定した{n}日分にも反映されます', en: 'This will also apply to {n} date(s) where it’s set' },
+  changePatternSimpleBody:   { ja: 'この内容で保存します',               en: 'Your changes will be saved' },
 } as const;
 
 export type StringKey = keyof typeof STRINGS;
