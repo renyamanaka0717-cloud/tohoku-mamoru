@@ -3323,7 +3323,9 @@ function ShopLocationPanel({locations,onChange,isPremium,onProPrompt}:{
   const del=(id:string)=>onChange(locations.filter(l=>l.id!==id));
   const [deleteId,setDeleteId]=useState<string|null>(null);
 
-  const permDenied = permStatus!==null && (permStatus.location==='denied'||permStatus.notifications==='denied');
+  // location==='limited'は「Appの使用中のみ許可」状態。バックグラウンドのジオフェンス監視には
+  // 「常に許可」が必須なため、明確な拒否(denied)と同様にバナーで案内する
+  const permDenied = permStatus!==null && (permStatus.location==='denied'||permStatus.location==='limited'||permStatus.notifications==='denied');
 
   return (
     <div className="px-4 pb-6">
