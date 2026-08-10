@@ -6457,11 +6457,11 @@ export default function App() {
   },[settings.theme]);
   // 文字サイズ設定。アイコン・余白・カード幅などレイアウトは変えず「文字だけ」大きくしたいという
   // 要望のため、CSSのzoom（画面全体を一括拡大）は不採用にした（アイコンやパディングまで拡大される）。
-  // 代わりにglobals.cssの--text-scale変数を使い、アプリ全体で使われているTailwindの文字サイズ
-  // クラス（text-sm/text-[15px]等、固定値）だけをcalc()で上書きする方式にしている
+  // 倍率（*1.3等）だと8px前後の小さいラベル類がほとんど変化せず拡大した実感が薄いため、
+  // 全サイズに同じpx数を加減算する方式にしている（globals.cssの--text-delta）
   useEffect(()=>{
-    const scale={small:0.9,standard:1,large:1.15,xlarge:1.3}[settings.fontSize??'standard'];
-    document.documentElement.style.setProperty('--text-scale',String(scale));
+    const delta={small:-1,standard:0,large:2,xlarge:4}[settings.fontSize??'standard'];
+    document.documentElement.style.setProperty('--text-delta',`${delta}px`);
   },[settings.fontSize]);
 
   const handleAppleSignIn=async():Promise<void>=>{

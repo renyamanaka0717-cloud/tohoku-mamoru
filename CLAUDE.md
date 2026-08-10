@@ -1191,28 +1191,30 @@ const recTasks = tasks.filter((t,i,a)=>t.recurrence&&a.findIndex(x=>x.name===t.n
 
 **過去の失敗: 初回実装はCSSの`zoom`プロパティで画面全体（アイコン・余白・カード幅を含む）を一括拡大縮小する方式にしていたが、実機で確認したユーザーから「文字が大きくなった気がしない／アイコンは大きくしなくていいので文字だけ大きくしたい」というフィードバックがあり、方式ごと作り直した。** zoom方式は視覚的な変化の大部分がアイコン・余白の拡大から来ており、肝心の文字の拡大が相対的に地味に感じられる上、要望そのもの（文字だけ拡大したい）にも合っていなかった。
 
-現在の実装は、`globals.css`の`--text-scale`カスタムプロパティと、page.tsx全体で実際に使われている文字サイズクラス（Tailwind標準の`text-xs`〜`text-3xl`、および`text-[15px]`のような固定pxのarbitrary値）を`calc(基準px * var(--text-scale))`で`!important`上書きする方式。**アイコンサイズ・padding・gap・カード幅などレイアウト系の値は一切変更しないため、文字だけが拡大縮小される。**
+現在の実装は、`globals.css`の`--text-delta`カスタムプロパティと、page.tsx全体で実際に使われている文字サイズクラス（Tailwind標準の`text-xs`〜`text-3xl`、および`text-[15px]`のような固定pxのarbitrary値）を`calc(基準px + var(--text-delta))`で`!important`上書きする方式。**アイコンサイズ・padding・gap・カード幅などレイアウト系の値は一切変更しないため、文字だけが拡大縮小される。**
+
+**倍率（`*`）ではなく加算（`+`）にしている点が重要。** 最初は倍率で実装したが、`8px`前後の小さいラベル（時刻表示など）は`8px*1.3=10.4px`のようにほとんど変化せず、「拡大した実感が薄い」というフィードバックを受けて加算方式に作り直した。加算なら`8px+4px=12px`のように、どのサイズ帯でも同じだけ確実に大きくなる。
 
 ```css
 /* globals.css */
-:root { --text-scale: 1; }
-.text-sm       { font-size: calc(14px * var(--text-scale)) !important; line-height: calc(20px * var(--text-scale)) !important; }
-.text-\[15px\] { font-size: calc(15px * var(--text-scale)) !important; }
+:root { --text-delta: 0px; }
+.text-sm       { font-size: calc(14px + var(--text-delta)) !important; line-height: calc(20px + var(--text-delta)) !important; }
+.text-\[15px\] { font-size: calc(15px + var(--text-delta)) !important; }
 /* ...実際に使われている全サイズ分（text-xs〜text-3xl、text-[8px]〜text-[20px]）を列挙 */
 ```
 
 ```typescript
 // App コンポーネント内
 useEffect(()=>{
-  const scale={small:0.9,standard:1,large:1.15,xlarge:1.3}[settings.fontSize??'standard'];
-  document.documentElement.style.setProperty('--text-scale',String(scale));
+  const delta={small:-1,standard:0,large:2,xlarge:4}[settings.fontSize??'standard'];
+  document.documentElement.style.setProperty('--text-delta',`${delta}px`);
 },[settings.fontSize]);
 ```
 
-- 標準（`--text-scale:1`）の時は`calc(14px * 1)`のように元の値と完全に一致するため無害。全サイズ帯で常時ルールを適用したままにしてよく、条件分岐でCSSの出し入れをする必要はない
-- Tailwindの標準クラス（`text-xs`〜`text-3xl`）は`font-size`と`line-height`のペアで上書きする（Tailwindのデフォルトテーマ自体がこの2つをセットで定義しているため、`font-size`だけ上書きすると`line-height`が追従せず、拡大率が大きい時に行の中で文字が窮屈になる）。`text-[Npx]`の固定pxクラスは元々`line-height`を個別指定していないため`font-size`のみでよい
+- 標準（`--text-delta:0px`）の時は`calc(14px + 0px)`のように元の値と完全に一致するため無害。全サイズ帯で常時ルールを適用したままにしてよく、条件分岐でCSSの出し入れをする必要はない
+- Tailwindの標準クラス（`text-xs`〜`text-3xl`）は`font-size`と`line-height`のペアで上書きする（Tailwindのデフォルトテーマ自体がこの2つをセットで定義しているため、`font-size`だけ上書きすると`line-height`が追従せず、拡大幅が大きい時に行の中で文字が窮屈になる）。`text-[Npx]`の固定pxクラスは元々`line-height`を個別指定していないため`font-size`のみでよい
 - **新しく`text-{size}`や`text-[Npx]`のクラスを追加する時は、このCSSブロックにも同じpx値の行を追記すること。** 追記を忘れると、そのクラスだけ文字サイズ設定の対象外になる（見た目には何も壊れないが、設定を変えても該当箇所だけ拡大縮小されない）
-- ヘッダーの拡大縮小を個別に除外する処理は不要になった（アイコン・レイアウトを一切動かさないため、英語化対応時に見つかった"Aug 2026"の折り返し問題のような横幅超過は起きにくい。実際に英語+特大の組み合わせでも確認済み）。ただし新しく横幅の余裕がないUIを追加した時は、文字が伸びるだけでも詰まる可能性があるため`xlarge`で確認する習慣は引き続き持つこと
+- ヘッダーの拡大縮小を個別に除外する処理は不要（アイコン・レイアウトを一切動かさないため、英語化対応時に見つかった"Aug 2026"の折り返し問題のような横幅超過は起きにくい。実際に英語+特大の組み合わせでも確認済み）。ただし新しく横幅の余裕がないUIを追加した時は、文字が伸びるだけでも詰まる可能性があるため`xlarge`で確認する習慣は持つこと
 
 ---
 

@@ -11,7 +11,7 @@
   --c-border:         #F3F4F6;
   --c-text-primary:   #1F1F1F;
   --c-text-secondary: #9CA3AF;
-  --text-scale: 1;
+  --text-delta: 0px;
 }
 
 html {
@@ -31,26 +31,28 @@ body {
 
 /* 文字サイズ設定（設定 → 表示設定 → 文字サイズ）。アイコン・余白・カード幅は変えず文字だけ
    拡大縮小したいため、page.tsx全体で使われている文字サイズクラス（Tailwind標準+固定px指定）
-   を--text-scaleで一括計算し直す。標準（--text-scale:1）の時は元の値と完全に一致し無害。
+   を--text-deltaで一括計算し直す。倍率（*）ではなく加算（+）にしているのは、倍率だと8px前後の
+   小さいラベル類がほとんど変化せず「拡大した感」が薄かったため（8px*1.3=10.4pxはほぼ誤差だが
+   8px+4px=12pxなら明確に違いが分かる）。標準（--text-delta:0px）の時は元の値と完全に一致し無害。
    新しいtext-*クラス・text-[Npx]クラスを追加した時は、ここにも同じpx値の行を追記すること */
-.text-xs       { font-size: calc(12px * var(--text-scale)) !important; line-height: calc(16px * var(--text-scale)) !important; }
-.text-sm       { font-size: calc(14px * var(--text-scale)) !important; line-height: calc(20px * var(--text-scale)) !important; }
-.text-base     { font-size: calc(16px * var(--text-scale)) !important; line-height: calc(24px * var(--text-scale)) !important; }
-.text-lg       { font-size: calc(18px * var(--text-scale)) !important; line-height: calc(28px * var(--text-scale)) !important; }
-.text-xl       { font-size: calc(20px * var(--text-scale)) !important; line-height: calc(28px * var(--text-scale)) !important; }
-.text-2xl      { font-size: calc(24px * var(--text-scale)) !important; line-height: calc(32px * var(--text-scale)) !important; }
-.text-3xl      { font-size: calc(30px * var(--text-scale)) !important; line-height: calc(36px * var(--text-scale)) !important; }
-.text-\[8px\]  { font-size: calc(8px  * var(--text-scale)) !important; }
-.text-\[9px\]  { font-size: calc(9px  * var(--text-scale)) !important; }
-.text-\[10px\] { font-size: calc(10px * var(--text-scale)) !important; }
-.text-\[11px\] { font-size: calc(11px * var(--text-scale)) !important; }
-.text-\[12px\] { font-size: calc(12px * var(--text-scale)) !important; }
-.text-\[13px\] { font-size: calc(13px * var(--text-scale)) !important; }
-.text-\[14px\] { font-size: calc(14px * var(--text-scale)) !important; }
-.text-\[15px\] { font-size: calc(15px * var(--text-scale)) !important; }
-.text-\[16px\] { font-size: calc(16px * var(--text-scale)) !important; }
-.text-\[17px\] { font-size: calc(17px * var(--text-scale)) !important; }
-.text-\[20px\] { font-size: calc(20px * var(--text-scale)) !important; }
+.text-xs       { font-size: calc(12px + var(--text-delta)) !important; line-height: calc(16px + var(--text-delta)) !important; }
+.text-sm       { font-size: calc(14px + var(--text-delta)) !important; line-height: calc(20px + var(--text-delta)) !important; }
+.text-base     { font-size: calc(16px + var(--text-delta)) !important; line-height: calc(24px + var(--text-delta)) !important; }
+.text-lg       { font-size: calc(18px + var(--text-delta)) !important; line-height: calc(28px + var(--text-delta)) !important; }
+.text-xl       { font-size: calc(20px + var(--text-delta)) !important; line-height: calc(28px + var(--text-delta)) !important; }
+.text-2xl      { font-size: calc(24px + var(--text-delta)) !important; line-height: calc(32px + var(--text-delta)) !important; }
+.text-3xl      { font-size: calc(30px + var(--text-delta)) !important; line-height: calc(36px + var(--text-delta)) !important; }
+.text-\[8px\]  { font-size: calc(8px  + var(--text-delta)) !important; }
+.text-\[9px\]  { font-size: calc(9px  + var(--text-delta)) !important; }
+.text-\[10px\] { font-size: calc(10px + var(--text-delta)) !important; }
+.text-\[11px\] { font-size: calc(11px + var(--text-delta)) !important; }
+.text-\[12px\] { font-size: calc(12px + var(--text-delta)) !important; }
+.text-\[13px\] { font-size: calc(13px + var(--text-delta)) !important; }
+.text-\[14px\] { font-size: calc(14px + var(--text-delta)) !important; }
+.text-\[15px\] { font-size: calc(15px + var(--text-delta)) !important; }
+.text-\[16px\] { font-size: calc(16px + var(--text-delta)) !important; }
+.text-\[17px\] { font-size: calc(17px + var(--text-delta)) !important; }
+.text-\[20px\] { font-size: calc(20px + var(--text-delta)) !important; }
 
 /* 入力欄だけはテキスト選択・長押しメニューを許可する（タスク名・メモの編集に必要） */
 input, textarea, [contenteditable="true"] {
