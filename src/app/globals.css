@@ -28,6 +28,11 @@ body {
   user-select: none;
 }
 
+/* 文字サイズ設定のzoomから、横幅の余裕がほぼないヘッダーだけを除外する（逆数を掛けて相殺） */
+header {
+  zoom: calc(1 / var(--zoom-scale, 1));
+}
+
 /* 入力欄だけはテキスト選択・長押しメニューを許可する（タスク名・メモの編集に必要） */
 input, textarea, [contenteditable="true"] {
   -webkit-touch-callout: default;

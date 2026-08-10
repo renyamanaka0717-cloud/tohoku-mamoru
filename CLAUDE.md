@@ -742,7 +742,7 @@ interface ForgetAlert {
 | 型 | 説明 |
 |---|---|
 | `Task` | id, name, startTime, duration, memo, icon, completed, date, isLater, recurrence, customRec, pinned, tags, notifications, incompleteReminder, category, postponedCount, color, subtasks, photoCount, **deadlineAt?:string, deadlineNotify?:'week'\|'3days'\|'dayBefore'\|'sameDay'\|'auto'（PRO）**, **locationNotify?:boolean, location?:{name,lat,lng}（あとでやる限定・PRO）** |
-| `Settings` | wakeTime, sleepTime, **keepIncomplete?:boolean** |
+| `Settings` | wakeTime, sleepTime, **keepIncomplete?:boolean**, **weekStartsOn?:0\|1（0=日曜始まり・デフォルト、1=月曜始まり）**, **fontSize?:'small'\|'standard'\|'large'\|'xlarge'（デフォルト'standard'）** |
 | `FreeSlot` | タイムライン上の空き時間スロット |
 | `ShopItem` | 買い物リストのアイテム（7日後に自動削除） |
 | `TagDef` | タグ定義（name, color） |
@@ -1179,6 +1179,31 @@ const recTasks = tasks.filter((t,i,a)=>t.recurrence&&a.findIndex(x=>x.name===t.n
 // → タップで onEditTask(t) を呼び出してタスク編集モーダルを開く
 ```
 
+### 設定 → 表示設定 → 週の開始日・文字サイズ
+
+「表示設定」グループ内、空き時間カードと言語の間に2行追加してある（テーマカラー→アプリアイコン→空き時間カード→**週の開始日**→**文字サイズ**→言語）。どちらも `sub==='language'` と同じ、シンプルな選択肢リスト＋チェックマークのピッカー画面（`sub==='weekStart'`/`sub==='fontSize'`）。
+
+**週の開始日（`Settings.weekStartsOn?:0|1`、0=日曜始まり・デフォルト）:**
+
+カレンダー系グリッド（メインヘッダーの週カレンダー・`CalendarPage`月間カレンダー・生活パターンのミニカレンダー）はすべて `weekDayOrder(weekStartsOn)`（曜日ヘッダーの並び順を返す）と `monthFirstOffset(jsDay,weekStartsOn)`（`Date.getDay()`の0=日曜起点オフセットを週開始日基準のオフセットに変換）の2つの共通ヘルパー経由で曜日の並びを揃える。新しくカレンダーグリッドを追加する時もこの2つを使うこと（`Date.getDay()`の生値をそのまま曜日ヘッダーの配列インデックスに使わない）。`MonthCalendar`コンポーネントは現在どこからも呼ばれていないdead codeのため対応不要。
+
+**文字サイズ（`Settings.fontSize?:'small'|'standard'|'large'|'xlarge'`、デフォルト`'standard'`）:**
+
+このアプリは`text-[15px]`のような固定pxのTailwind arbitrary値がpage.tsx全体に大量（150件以上）にあり、通常の`rem`基準のフォントスケール（`html`のfont-sizeを変える方式）ではこれらが一切拡大縮小されない。そのため、CSSの`zoom`プロパティで**画面全体を一括拡大縮小**する方式にした（`small:0.9, standard:1, large:1.15, xlarge:1.3`）。
+
+```typescript
+// App コンポーネント内
+useEffect(()=>{
+  const scale={small:0.9,standard:1,large:1.15,xlarge:1.3}[settings.fontSize??'standard'];
+  document.body.style.setProperty('--zoom-scale',String(scale));
+  document.body.style.setProperty('zoom','var(--zoom-scale)');
+},[settings.fontSize]);
+```
+
+**メインヘッダー（`<header>`）だけは意図的にzoomの対象から除外している。** メインヘッダーの日付＋空き時間トグル＋カレンダー/検索/設定アイコン3つの行は、英語化対応時（"Aug 2026"の折り返し修正）に判明した通り横幅の余裕がほぼゼロで、zoomをかけると設定アイコンが画面外にはみ出す不具合が実際に発生した。`globals.css`に`header{ zoom: calc(1 / var(--zoom-scale, 1)); }`を追加し、bodyのzoomを相殺して`<header>`だけ常に等倍で描画されるようにしている（CSSのzoomはネスト時に乗算される仕様を利用）。`<header>`要素はメインタイムラインのヘッダーのみに使われるユニークなタグなので、Tailwindクラスとの衝突リスクなく安全に対象を絞れる。設定画面等の`subHeader()`は`<div>`ベースで`<header>`タグを使っていないため、これらは通常通りzoomの影響を受けて拡大される（意図した挙動）。
+
+**新しく横幅に余裕のないUIを追加する時は、同じ理由でzoomの影響を受けて壊れないか実際に`xlarge`で確認すること。** 壊れる場合はTailwindクラスと衝突しないユニークなセレクタ（要素タグ名や専用クラス）を用意し、`header`と同じ相殺パターンで個別に除外する。
+
 ---
 
 ## アイコン方針
@@ -1212,6 +1237,7 @@ const recTasks = tasks.filter((t,i,a)=>t.recurrence&&a.findIndex(x=>x.name===t.n
 | `health` | Heart | `phone` | Phone |
 | `home` | House | `study` | GraduationCap |
 | `money` | Wallet | `game` | GameController |
+| `textSize` | TextAa | | |
 
 ---
 

@@ -92,6 +92,7 @@ import {
   Flag,
   CheckCircle,
   ChatCircleText,
+  TextAa,
 } from '@phosphor-icons/react';
 
 type PhosphorComp = React.ComponentType<{
@@ -204,4 +205,5 @@ export const AppIcons = {
   deadline:   make(Flag, 18),
   checkCircle: make(CheckCircle, 18),
   chat:        make(ChatCircleText, 18),
+  textSize:    make(TextAa, 18),
 };

@@ -63,7 +63,8 @@ interface Task {
   location?: { name:string; lat:number; lng:number };  // 選択した場所
 }
 
-interface Settings { wakeTime: string; sleepTime: string; keepIncomplete?: boolean; showFreeCard?: boolean; freeCardMinMin?: number; wakeColor?:string; sleepColor?:string; theme?:string; appIcon?:string; notificationsEnabled?:boolean; laterReminderHours?: number; appInactivityHours?: number; }
+type FontSize = 'small'|'standard'|'large'|'xlarge';
+interface Settings { wakeTime: string; sleepTime: string; keepIncomplete?: boolean; showFreeCard?: boolean; freeCardMinMin?: number; wakeColor?:string; sleepColor?:string; theme?:string; appIcon?:string; notificationsEnabled?:boolean; laterReminderHours?: number; appInactivityHours?: number; weekStartsOn?: 0|1; fontSize?: FontSize; }
 // 「おすすめ機能」表示の判定に使う端末内の利用履歴（未使用の機能を段階的に紹介するため）
 interface FeatureUsage {
   installedAt: string;
@@ -164,6 +165,10 @@ const PX_PER_MIN   = PX_PER_HOUR / 60;
 const DAY_NAMES    = ['日','月','火','水','木','金','土'];
 const DAY_NAMES_EN = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const MONTH_NAMES_EN = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+// 週の開始日設定（0=日曜始まり、1=月曜始まり）。カレンダー系グリッドはすべてこの2つのヘルパー経由で
+// 曜日の並び・月初オフセットを揃える
+const weekDayOrder = (weekStartsOn: 0|1): number[] => weekStartsOn===1 ? [1,2,3,4,5,6,0] : [0,1,2,3,4,5,6];
+const monthFirstOffset = (jsDay: number, weekStartsOn: 0|1): number => weekStartsOn===1 ? (jsDay+6)%7 : jsDay;
 const DUR_OPTS     = [
   {v:0,l:'なし'},
   {v:5,l:'5分'},{v:10,l:'10分'},{v:15,l:'15分'},{v:30,l:'30分'},{v:45,l:'45分'},
@@ -325,7 +330,7 @@ const durLabel    = (m: number, lang: Language = 'ja') => {
   return m>=60?`${Math.floor(m/60)}時間${m%60?`${m%60}分`:''}` :`${m}分`;
 };
 const getDateInfo = (s: string) => { const d=new Date(s+'T12:00:00'); return {day:d.getDate(),month:d.getMonth()+1,year:d.getFullYear()}; };
-const getWeekDates= (s:string)=>{ const d=new Date(s+'T12:00:00'),dow=d.getDay(); return Array.from({length:7},(_,i)=>{const c=new Date(d);c.setDate(d.getDate()-dow+i);return dateToStr(c);}); };
+const getWeekDates= (s:string, weekStartsOn:0|1=0)=>{ const d=new Date(s+'T12:00:00'),offset=monthFirstOffset(d.getDay(),weekStartsOn); return Array.from({length:7},(_,i)=>{const c=new Date(d);c.setDate(d.getDate()-offset+i);return dateToStr(c);}); };
 const shiftMonth  = (y:number,m:number,d:number)=>{ let nm=m+d,ny=y; if(nm<0){nm=11;ny--;}if(nm>11){nm=0;ny++;} return {year:ny,month:nm}; };
 
 const summarizeCustomRec=(r:CustomRec):string=>{
@@ -582,7 +587,7 @@ function MonthCalendar({selected,onSelect,onClose,tasks}:{selected:string;onSele
 
 // ── CalendarPage ─────────────────────────────────────────────────────────────
 
-function CalendarPage({date,tasks,customTabs,onSelect,onClose}:{date:string;tasks:Task[];customTabs:CustomTab[];onSelect:(d:string)=>void;onClose:()=>void;}) {
+function CalendarPage({date,tasks,customTabs,onSelect,onClose,weekStartsOn=0}:{date:string;tasks:Task[];customTabs:CustomTab[];onSelect:(d:string)=>void;onClose:()=>void;weekStartsOn?:0|1;}) {
   const {tr,language} = useI18n();
   const [vm,setVm]=useState(()=>{const d=new Date(date+'T12:00:00');return {year:d.getFullYear(),month:d.getMonth()};});
   const [catFilter,setCatF]=useState<string|null>(null);
@@ -600,12 +605,12 @@ function CalendarPage({date,tasks,customTabs,onSelect,onClose}:{date:string;task
 
   const days=useMemo(()=>{
     const {year,month}=vm;
-    const first=new Date(year,month,1).getDay();
+    const first=monthFirstOffset(new Date(year,month,1).getDay(),weekStartsOn);
     const total=new Date(year,month+1,0).getDate();
     const arr:(string|null)[]=Array(first).fill(null);
     for(let d=1;d<=total;d++) arr.push(dateToStr(new Date(year,month,d)));
     return arr;
-  },[vm]);
+  },[vm,weekStartsOn]);
 
   return (
     <div className="fixed inset-0 z-[80] bg-white flex flex-col">
@@ -647,8 +652,8 @@ function CalendarPage({date,tasks,customTabs,onSelect,onClose}:{date:string;task
 
       {/* Day headers */}
       <div className="grid grid-cols-7 px-2 pt-3 pb-1">
-        {DAY_NAMES.map((n,i)=>(
-          <div key={i} className={`text-center text-xs font-semibold text-gray-400`}>{language==='ja'?n:DAY_NAMES_EN[i]}</div>
+        {weekDayOrder(weekStartsOn).map(dow=>(
+          <div key={dow} className={`text-center text-xs font-semibold text-gray-400`}>{language==='ja'?DAY_NAMES[dow]:DAY_NAMES_EN[dow]}</div>
         ))}
       </div>
 
@@ -5202,6 +5207,16 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             desc={(settings.showFreeCard??true)?tr('freeCardShownDesc').replace('{n}',String(settings.freeCardMinMin??120)):tr('freeCardHiddenDesc')}
             onClick={()=>setSub('freeCard')}/>
           <div className="h-px bg-gray-100 mx-4"/>
+          <SettingsRow icon={<AppIcons.calendar size={18}/>} iconBg="bg-gray-100"
+            title={tr('weekStartRowTitle')}
+            desc={(settings.weekStartsOn??0)===1?tr('weekStartMonday'):tr('weekStartSunday')}
+            onClick={()=>setSub('weekStart')}/>
+          <div className="h-px bg-gray-100 mx-4"/>
+          <SettingsRow icon={<AppIcons.textSize size={18}/>} iconBg="bg-gray-100"
+            title={tr('fontSizeRowTitle')}
+            desc={{small:tr('fontSizeSmall'),standard:tr('fontSizeStandard'),large:tr('fontSizeLarge'),xlarge:tr('fontSizeXLarge')}[settings.fontSize??'standard']}
+            onClick={()=>setSub('fontSize')}/>
+          <div className="h-px bg-gray-100 mx-4"/>
           <SettingsRow icon={<AppIcons.book size={18}/>} iconBg="bg-gray-100"
             title="言語 / Language"
             desc={language==='ja'?'日本語':'English'}
@@ -5226,6 +5241,46 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                   {code==='auto'&&<p className="text-xs text-gray-400 mt-0.5">{tr('languageAutoDesc')}</p>}
                 </div>
                 {languagePref===code&&<AppIcons.checkSquare size={18} className="text-[var(--c-primary)] shrink-0"/>}
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
+  if(sub==='weekStart') return (
+    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
+      {subHeader(tr('weekStartRowTitle'))}
+      <div className="flex-1 overflow-y-auto px-4 pb-8">
+        <div className="bg-white rounded-2xl overflow-hidden shadow-sm mt-6">
+          {([0,1] as const).map((code,i)=>(
+            <div key={code}>
+              {i>0&&<div className="h-px bg-gray-100 mx-4"/>}
+              <button onClick={()=>onSettings({...settings,weekStartsOn:code})}
+                className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50">
+                <span className="flex-1 text-left text-sm font-medium text-gray-800">{code===0?tr('weekStartSunday'):tr('weekStartMonday')}</span>
+                {(settings.weekStartsOn??0)===code&&<AppIcons.checkSquare size={18} className="text-[var(--c-primary)] shrink-0"/>}
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
+  if(sub==='fontSize') return (
+    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
+      {subHeader(tr('fontSizeRowTitle'))}
+      <div className="flex-1 overflow-y-auto px-4 pb-8">
+        <div className="bg-white rounded-2xl overflow-hidden shadow-sm mt-6">
+          {(['small','standard','large','xlarge'] as FontSize[]).map((code,i)=>(
+            <div key={code}>
+              {i>0&&<div className="h-px bg-gray-100 mx-4"/>}
+              <button onClick={()=>onSettings({...settings,fontSize:code})}
+                className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50">
+                <span className="flex-1 text-left text-sm font-medium text-gray-800">{{small:tr('fontSizeSmall'),standard:tr('fontSizeStandard'),large:tr('fontSizeLarge'),xlarge:tr('fontSizeXLarge')}[code]}</span>
+                {(settings.fontSize??'standard')===code&&<AppIcons.checkSquare size={18} className="text-[var(--c-primary)] shrink-0"/>}
               </button>
             </div>
           ))}
@@ -5315,9 +5370,10 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   );
 
   if(sub==='lifePatterns') {
+    const weekStartsOn=settings.weekStartsOn??0;
     const PATTERN_COLORS=['#94CFC8','#C4888E','#6A8FAF','#7A9E8A','#C4A44A','#8F82B8','#C47A5E','#A67899'];
     const daysInMonth=(y:number,m:number)=>new Date(y,m+1,0).getDate();
-    const firstDow=(y:number,m:number)=>new Date(y,m,1).getDay();
+    const firstDow=(y:number,m:number)=>monthFirstOffset(new Date(y,m,1).getDay(),weekStartsOn);
     const totalDays=daysInMonth(lpVm.year,lpVm.month);
     const startDow=firstDow(lpVm.year,lpVm.month);
     const calNulls:Array<number|null>=Array(startDow).fill(null);
@@ -5436,8 +5492,8 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
               </button>
             </div>
             <div className="grid grid-cols-7 px-2 pt-2">
-              {(language==='ja'?['日','月','火','水','木','金','土']:DAY_NAMES_EN).map(d=>(
-                <div key={d} className="text-center text-xs text-gray-400 pb-1">{d}</div>
+              {weekDayOrder(weekStartsOn).map(dow=>(
+                <div key={dow} className="text-center text-xs text-gray-400 pb-1">{language==='ja'?DAY_NAMES[dow]:DAY_NAMES_EN[dow]}</div>
               ))}
             </div>
             <div className="grid grid-cols-7 px-2 pb-3">
@@ -6399,6 +6455,16 @@ export default function App() {
     const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
     document.documentElement.style.setProperty('--c-primary-dark',`rgb(${Math.round(r*0.82)},${Math.round(g*0.82)},${Math.round(b*0.82)})`);
   },[settings.theme]);
+  // 文字サイズ設定。アプリ全体に大量に存在する固定px指定（text-[15px]等）はrem基準の
+  // フォントスケールでは拡大縮小されないため、CSSのzoomでレイアウト全体を一括拡大縮小する。
+  // ヘッダー（日付+空き時間トグル+アイコン3つの行）は元々横幅の余裕がほぼゼロで、
+  // zoomをかけると設定アイコンが画面外にはみ出すため、headerだけ逆数のzoomを掛けて
+  // 実質1倍のまま据え置く（globals.cssの`header{zoom:...}`と対）
+  useEffect(()=>{
+    const scale={small:0.9,standard:1,large:1.15,xlarge:1.3}[settings.fontSize??'standard'];
+    document.body.style.setProperty('--zoom-scale',String(scale));
+    document.body.style.setProperty('zoom','var(--zoom-scale)');
+  },[settings.fontSize]);
 
   const handleAppleSignIn=async():Promise<void>=>{
     try{
@@ -6835,7 +6901,8 @@ export default function App() {
     + tasks.filter(t=>!t.completed&&t.locationNotify&&t.location&&t.id!==modal.task?.id).length
     + forgetAlerts.filter(a=>a.enabled).length,
   [shopLocations,tasks,modal.task,forgetAlerts]);
-  const weekDates     = useMemo(()=>getWeekDates(weekAnchor),[weekAnchor]);
+  const weekStartsOn  = settings.weekStartsOn??0;
+  const weekDates     = useMemo(()=>getWeekDates(weekAnchor,weekStartsOn),[weekAnchor,weekStartsOn]);
   const taskDateSet   = useMemo(()=>new Set(filteredTasks.filter(t=>!t.isLater&&t.startTime).map(t=>t.date)),[filteredTasks]);
   const {day,month,year} = useMemo(()=>getDateInfo(date),[date]);
   const today = todayStr();
@@ -7098,12 +7165,12 @@ export default function App() {
               const dy=e.changedTouches[0].clientY-weekSwY.current;
               if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)*1.5) setWeekAnchor(shiftDate(weekAnchor,dx<0?7:-7));
             }}>
-            {DAY_NAMES.map((name,i)=>{
+            {weekDayOrder(weekStartsOn).map((dow,i)=>{
               const d=weekDates[i];
               const isSel=d===date, isToday=d===today;
               return (
                 <button key={i} onClick={()=>{setDate(d);setWeekAnchor(d);}} className="flex flex-col items-center py-1">
-                  <span className="text-[13px] font-medium text-gray-400">{language==='ja'?name:DAY_NAMES_EN[i]}</span>
+                  <span className="text-[13px] font-medium text-gray-400">{language==='ja'?DAY_NAMES[dow]:DAY_NAMES_EN[dow]}</span>
                   <span className={`w-8 h-8 flex items-center justify-center rounded-full font-bold transition-colors ${isSel?'bg-[var(--c-primary)] text-white':isToday?'bg-gray-200 text-gray-900':'text-gray-600'}`} style={{fontSize:'17px'}}>
                     {new Date(d+'T12:00:00').getDate()}
                   </span>
@@ -7385,7 +7452,7 @@ export default function App() {
 
       {/* ── Calendar ── */}
       {calendarOpen&&(
-        <CalendarPage date={date} tasks={tasks} customTabs={customTabs} onSelect={(d)=>{setDate(d);setWeekAnchor(d);setCalOp(false);}} onClose={()=>setCalOp(false)}/>
+        <CalendarPage date={date} tasks={tasks} customTabs={customTabs} onSelect={(d)=>{setDate(d);setWeekAnchor(d);setCalOp(false);}} onClose={()=>setCalOp(false)} weekStartsOn={weekStartsOn}/>
       )}
 
       {/* ── Search ── */}

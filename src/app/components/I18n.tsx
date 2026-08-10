@@ -266,6 +266,14 @@ export const STRINGS = {
   freeCardShownDesc:         { ja: '表示中・最小{n}分',                en: 'Shown · min {n}m' },
   freeCardHiddenDesc:        { ja: '非表示',                       en: 'Hidden' },
   themeColorScreenSubtitle:  { ja: 'テーマを選択するとアプリ全体の色が切り替わります', en: 'Choose a theme to change the app’s color throughout' },
+  weekStartRowTitle:         { ja: '週の開始日',                     en: 'Week starts on' },
+  weekStartSunday:           { ja: '日曜日',                       en: 'Sunday' },
+  weekStartMonday:           { ja: '月曜日',                       en: 'Monday' },
+  fontSizeRowTitle:          { ja: '文字サイズ',                     en: 'Font size' },
+  fontSizeSmall:             { ja: '小',                          en: 'Small' },
+  fontSizeStandard:          { ja: '標準',                         en: 'Standard' },
+  fontSizeLarge:             { ja: '大',                          en: 'Large' },
+  fontSizeXLarge:            { ja: '特大',                         en: 'Extra Large' },
   appIconScreenSubtitle:     { ja: '選択したアイコンがホーム画面に反映されます',   en: 'Your chosen icon will appear on your home screen' },
 
   // 設定 → 生活パターン
