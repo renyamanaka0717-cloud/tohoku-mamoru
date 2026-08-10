@@ -5545,20 +5545,20 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
 
   if(sub==='account') return (
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
-      {subHeader('アカウント')}
+      {subHeader(tr('rowAccountTitle'))}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm mt-6">
           <SettingsRow icon={<AppIcons.link size={18}/>} iconBg="bg-gray-100"
-            title="Appleアカウント"
-            desc="近日リリース予定"
+            title={tr('appleAccountTitle')}
+            desc={tr('comingSoonDesc')}
             onClick={()=>{}} />
           <SettingsRow icon={<AppIcons.sparkle size={18}/>} iconBg="bg-gray-100"
-            title="iCloudバックアップ"
-            desc="近日リリース予定"
+            title={tr('icloudBackupTitle')}
+            desc={tr('comingSoonDesc')}
             onClick={()=>{}} />
           <SettingsRow icon={<AppIcons.clock size={18}/>} iconBg="bg-gray-100"
-            title="同期状態"
-            desc="近日リリース予定"
+            title={tr('syncStatusTitle')}
+            desc={tr('comingSoonDesc')}
             onClick={()=>{}} isLast/>
         </div>
       </div>
@@ -5754,16 +5754,16 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
 
   if(sub==='support') return (
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
-      {subHeader('よくある質問')}
+      {subHeader(tr('rowFaqTitle'))}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
         <div className="mt-4 bg-white rounded-2xl overflow-hidden shadow-sm">
           {([
-            {q:'データはどこに保存されますか？',a:'すべてのデータはお使いのデバイスのローカルストレージに保存されます。外部サーバーへの送信は行いません。'},
-            {q:'アプリを削除するとデータはどうなりますか？',a:'アプリをアンインストールするとすべてのデータが削除されます。現在、クラウドバックアップ機能はありません。'},
-            {q:'タスクを誤って削除してしまいました。復元できますか？',a:'申し訳ありませんが、削除したタスクの復元機能は現在ありません。重要なタスクは削除前にご確認ください。'},
-            {q:'繰り返しタスクの一部だけ削除できますか？',a:'はい。繰り返しタスクを削除する際、「この予定のみ削除」または「すべての予定を削除」を選択できます。'},
-            {q:'起床・就寝時間はどこで変更できますか？',a:'設定画面の「起床・就寝」から変更できます。タイムライン上の起床・就寝カードをタップしても変更できます。'},
-            {q:'「あとでやる」に移動したタスクはどこで確認できますか？',a:'画面下部のバーにある「あとでやる」ボタンをタップすると、あとでやるリストが表示されます。'},
+            {q:tr('faqQ1'),a:tr('faqA1')},
+            {q:tr('faqQ2'),a:tr('faqA2')},
+            {q:tr('faqQ3'),a:tr('faqA3')},
+            {q:tr('faqQ4'),a:tr('faqA4')},
+            {q:tr('faqQ5'),a:tr('faqA5')},
+            {q:tr('faqQ6'),a:tr('faqA6')},
           ] as {q:string;a:string}[]).map(({q,a},i,arr)=>(
             <div key={i} className={i<arr.length-1?'border-b border-gray-100':''}>
               <div className="px-4 py-4">
@@ -5779,28 +5779,28 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
 
   if(sub==='contact') return (
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
-      {subHeader('お問い合わせ')}
+      {subHeader(tr('rowContactTitle'))}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
         <div className="mt-4 rounded-2xl shadow-sm px-4 py-5" style={{background:'#06C755'}}>
           <div className="flex items-center gap-2 mb-2">
             <AppIcons.chat size={20} className="text-white"/>
-            <p className="text-[15px] font-bold text-white">LINEでお問い合わせ</p>
+            <p className="text-[15px] font-bold text-white">{tr('contactLineTitle')}</p>
           </div>
-          <p className="text-[14px] text-white/90 leading-relaxed mb-1">ご質問やご要望がございましたら、公式LINEからお気軽にお問い合わせください。</p>
-          <p className="text-[13px] text-white/70 mb-4">通常、1〜3日以内にお返事いたします。</p>
+          <p className="text-[14px] text-white/90 leading-relaxed mb-1">{tr('contactLineBody')}</p>
+          <p className="text-[13px] text-white/70 mb-4">{tr('contactLineResponseTime')}</p>
           <button onClick={()=>window.open('https://lin.ee/TeaJYTJ')}
             className="w-full py-3 rounded-xl text-[15px] font-semibold"
             style={{background:'white',color:'#06C755'}}>
-            LINEで問い合わせる
+            {tr('contactLineButton')}
           </button>
         </div>
 
         <div className="mt-4 bg-white rounded-2xl shadow-sm px-4 py-5">
-          <p className="text-[14px] font-semibold text-gray-500 mb-2">メールでお問い合わせ</p>
-          <p className="text-[13px] text-gray-400 leading-relaxed mb-4">LINEをご利用でない方は、メールでもお問い合わせいただけます。</p>
+          <p className="text-[14px] font-semibold text-gray-500 mb-2">{tr('contactEmailTitle')}</p>
+          <p className="text-[13px] text-gray-400 leading-relaxed mb-4">{tr('contactEmailBody')}</p>
           <button onClick={()=>window.open('mailto:support.brainbox.jp@gmail.com')}
             className="w-full py-2.5 rounded-xl text-[14px] font-semibold text-gray-600 bg-gray-100">
-            メールアプリで開く
+            {tr('contactEmailButton')}
           </button>
         </div>
       </div>
@@ -5809,16 +5809,16 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
 
   if(sub==='faq') return (
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
-      {subHeader('よくある質問')}
+      {subHeader(tr('rowFaqTitle'))}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
         <div className="mt-4 bg-white rounded-2xl overflow-hidden shadow-sm">
           {[
-            {q:'データはどこに保存されますか？',a:'すべてのデータはお使いのデバイスのローカルストレージに保存されます。外部サーバーへの送信は行いません。'},
-            {q:'アプリを削除するとデータはどうなりますか？',a:'アプリをアンインストールするとすべてのデータが削除されます。現在、クラウドバックアップ機能はありません。'},
-            {q:'タスクを誤って削除してしまいました。復元できますか？',a:'申し訳ありませんが、削除したタスクの復元機能は現在ありません。重要なタスクは削除前にご確認ください。'},
-            {q:'繰り返しタスクの一部だけ削除できますか？',a:'はい。繰り返しタスクを削除する際、「この予定のみ削除」または「すべての予定を削除」を選択できます。'},
-            {q:'起床・就寝時間はどこで変更できますか？',a:'設定画面の「起床・就寝」から変更できます。タイムライン上の起床・就寝カードをタップしても変更できます。'},
-            {q:'「あとでやる」に移動したタスクはどこで確認できますか？',a:'画面下部のバーにある「あとでやる」ボタンをタップすると、あとでやるリストが表示されます。'},
+            {q:tr('faqQ1'),a:tr('faqA1')},
+            {q:tr('faqQ2'),a:tr('faqA2')},
+            {q:tr('faqQ3'),a:tr('faqA3')},
+            {q:tr('faqQ4'),a:tr('faqA4')},
+            {q:tr('faqQ5'),a:tr('faqA5')},
+            {q:tr('faqQ6'),a:tr('faqA6')},
           ].map(({q,a},i,arr)=>(
             <div key={i} className={i<arr.length-1?'border-b border-gray-100':''}>
               <div className="px-4 py-4">

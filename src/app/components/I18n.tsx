@@ -302,6 +302,35 @@ export const STRINGS = {
   previewCheckItemsBody:     { ja: '{items}を確認してください。',         en: '{items}.' },
   useCurrentLocationShortButton: { ja: '現在地から',                 en: 'Current location' },
   forgetAlertLocationPermError: { ja: '場所を出たときに通知するため、位置情報の利用を許可してください。', en: 'To get notified when you leave a place, please allow location access.' },
+
+  // 設定 → アカウント
+  appleAccountTitle:         { ja: 'Appleアカウント',                 en: 'Apple Account' },
+  comingSoonDesc:            { ja: '近日リリース予定',                  en: 'Coming soon' },
+  icloudBackupTitle:         { ja: 'iCloudバックアップ',               en: 'iCloud Backup' },
+  syncStatusTitle:           { ja: '同期状態',                       en: 'Sync status' },
+
+  // 設定 → よくある質問（sub==='support'とsub==='faq'で共用）
+  faqQ1: { ja: 'データはどこに保存されますか？', en: 'Where is my data stored?' },
+  faqA1: { ja: 'すべてのデータはお使いのデバイスのローカルストレージに保存されます。外部サーバーへの送信は行いません。', en: 'All data is stored in local storage on your device. Nothing is sent to external servers.' },
+  faqQ2: { ja: 'アプリを削除するとデータはどうなりますか？', en: 'What happens to my data if I delete the app?' },
+  faqA2: { ja: 'アプリをアンインストールするとすべてのデータが削除されます。現在、クラウドバックアップ機能はありません。', en: 'All data is deleted when you uninstall the app. There is currently no cloud backup feature.' },
+  faqQ3: { ja: 'タスクを誤って削除してしまいました。復元できますか？', en: 'I accidentally deleted a task. Can I restore it?' },
+  faqA3: { ja: '申し訳ありませんが、削除したタスクの復元機能は現在ありません。重要なタスクは削除前にご確認ください。', en: 'Sorry, there is currently no way to restore a deleted task. Please double-check before deleting important tasks.' },
+  faqQ4: { ja: '繰り返しタスクの一部だけ削除できますか？', en: 'Can I delete just one occurrence of a recurring task?' },
+  faqA4: { ja: 'はい。繰り返しタスクを削除する際、「この予定のみ削除」または「すべての予定を削除」を選択できます。', en: 'Yes. When deleting a recurring task, you can choose "Delete this occurrence only" or "Delete all occurrences."' },
+  faqQ5: { ja: '起床・就寝時間はどこで変更できますか？', en: 'Where can I change my wake and sleep times?' },
+  faqA5: { ja: '設定画面の「起床・就寝」から変更できます。タイムライン上の起床・就寝カードをタップしても変更できます。', en: 'You can change them from "Wake & sleep" in Settings, or by tapping the wake/sleep cards on the timeline.' },
+  faqQ6: { ja: '「あとでやる」に移動したタスクはどこで確認できますか？', en: 'Where can I see tasks moved to "Later"?' },
+  faqA6: { ja: '画面下部のバーにある「あとでやる」ボタンをタップすると、あとでやるリストが表示されます。', en: 'Tap the "Later" button on the bottom bar to see the Later list.' },
+
+  // 設定 → お問い合わせ
+  contactLineTitle:          { ja: 'LINEでお問い合わせ',                en: 'Contact us on LINE' },
+  contactLineBody:           { ja: 'ご質問やご要望がございましたら、公式LINEからお気軽にお問い合わせください。', en: 'If you have any questions or requests, feel free to reach out via our official LINE account.' },
+  contactLineResponseTime:   { ja: '通常、1〜3日以内にお返事いたします。',    en: 'We usually reply within 1–3 days.' },
+  contactLineButton:         { ja: 'LINEで問い合わせる',                en: 'Contact via LINE' },
+  contactEmailTitle:         { ja: 'メールでお問い合わせ',               en: 'Contact us by email' },
+  contactEmailBody:          { ja: 'LINEをご利用でない方は、メールでもお問い合わせいただけます。', en: 'If you don’t use LINE, you can also reach us by email.' },
+  contactEmailButton:        { ja: 'メールアプリで開く',                 en: 'Open in mail app' },
 } as const;
 
 export type StringKey = keyof typeof STRINGS;
