@@ -5955,6 +5955,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
 
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">{tr('sectionNotifications')}</p>
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
+          <SettingsRow icon={<AppIcons.bell/>} iconBg="bg-gray-100" title={tr('rowNotificationsTitle')} desc={tr('rowNotificationsDesc')} onClick={()=>setSub('notifications')}/>
           <SettingsRow icon={<AppIcons.shopping size={18}/>} iconBg="bg-gray-100" title={tr('rowShopNotifTitle')}
             desc={tr('rowShopNotifDesc')}
             onClick={()=>setSub('notifications-shop')}/>
@@ -5968,7 +5969,6 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
 
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">{tr('sectionGeneral')}</p>
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
-          <SettingsRow icon={<AppIcons.bell/>} iconBg="bg-gray-100" title={tr('rowNotificationsTitle')} desc={tr('rowNotificationsDesc')} onClick={()=>setSub('notifications')}/>
           <SettingsRow icon={<AppIcons.palette/>} iconBg="bg-gray-100" title={tr('rowDisplayTitle')} desc={tr('rowDisplayDesc')} onClick={()=>setSub('display')} isLast/>
         </div>
 
