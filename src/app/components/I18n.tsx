@@ -278,6 +278,30 @@ export const STRINGS = {
   changePatternConfirmTitle: { ja: '「{name}」の内容を変更しますか？',      en: 'Save changes to "{name}"?' },
   changePatternAffectedBody: { ja: 'このパターンを設定した{n}日分にも反映されます', en: 'This will also apply to {n} date(s) where it’s set' },
   changePatternSimpleBody:   { ja: 'この内容で保存します',               en: 'Your changes will be saved' },
+
+  // 設定 → 忘れ物防止アラート（ForgetAlertsPanel）
+  dayOffLabel:               { ja: '休日',                        en: 'Weekend' },
+  customLabel:               { ja: 'カスタム',                      en: 'Custom' },
+  forgetAlertFreeLimitNote:  { ja: '1件まで無料でご利用いただけます。2件目からPROが必要です。', en: 'You can use up to 1 for free. PRO is required for a 2nd.' },
+  noAlertsYet:               { ja: 'アラートが登録されていません',          en: 'No alerts registered' },
+  forgetAlertArriveLabel:    { ja: '{place}に着いたとき',              en: 'Arrive at {place}' },
+  forgetAlertLeaveLabel:     { ja: '{place}を出るとき',               en: 'Leave {place}' },
+  deleteAlertConfirmTitle:   { ja: 'このアラートを削除しますか？',          en: 'Delete this alert?' },
+  createForgetAlertTitle:    { ja: '忘れ物防止アラートを作成',            en: 'Create alert' },
+  placeSectionLabel:         { ja: '場所',                        en: 'Place' },
+  conditionSectionLabel:     { ja: '条件',                        en: 'Condition' },
+  arriveOptionLabel:         { ja: '到着したら',                     en: 'On arrival' },
+  leaveOptionLabel:          { ja: '出発したら',                     en: 'On departure' },
+  timeRangeOptionalLabel:    { ja: '時間帯（任意）',                   en: 'Time range (optional)' },
+  allDayNote:                { ja: '指定しない場合は終日対象になります',       en: 'Leave blank to apply all day' },
+  itemsSectionLabel:         { ja: '持ち物',                       en: 'Items' },
+  itemsPlaceholder:          { ja: '財布、鍵など',                    en: 'Wallet, keys, etc.' },
+  previewSectionLabel:       { ja: 'プレビュー',                     en: 'Preview' },
+  previewNoPlace:            { ja: '（場所未設定）',                   en: '(no place set)' },
+  previewNoItems:            { ja: '（持ち物未設定）',                  en: '(no items set)' },
+  previewCheckItemsBody:     { ja: '{items}を確認してください。',         en: '{items}.' },
+  useCurrentLocationShortButton: { ja: '現在地から',                 en: 'Current location' },
+  forgetAlertLocationPermError: { ja: '場所を出たときに通知するため、位置情報の利用を許可してください。', en: 'To get notified when you leave a place, please allow location access.' },
 } as const;
 
 export type StringKey = keyof typeof STRINGS;

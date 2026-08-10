@@ -3559,7 +3559,8 @@ function ForgetAlertsPanel({alerts,onChange,isPremium,onProPrompt}:{
   isPremium:boolean;
   onProPrompt:(feature:string)=>void;
 }) {
-  const DOW=['日','月','火','水','木','金','土'];
+  const {tr,language} = useI18n();
+  const DOW=language==='ja'?['日','月','火','水','木','金','土']:DAY_NAMES_EN;
   const [editing,setEditing]=useState<ForgetAlertDraft|null>(null);
   const [adding,setAdding]=useState(false);
   const [mapMode,setMapMode]=useState(false);
@@ -3577,12 +3578,13 @@ function ForgetAlertsPanel({alerts,onChange,isPremium,onProPrompt}:{
   const isLockedByPlan=(idx:number)=>!isPremium&&idx>0;
 
   const fmtDays=(days:number[])=>{
-    if(days.length===7) return '毎日';
-    if(days.length===2&&days.includes(0)&&days.includes(6)) return '週末';
-    if(days.length===5&&!days.includes(0)&&!days.includes(6)) return '平日';
+    if(days.length===7) return tr('everyDayLabel');
+    if(days.length===2&&days.includes(0)&&days.includes(6)) return tr('weekendLabel');
+    if(days.length===5&&!days.includes(0)&&!days.includes(6)) return tr('weekdayLabel');
     return [...days].sort((a,b)=>a-b).map(d=>DOW[d]).join('・');
   };
   // 文章の空欄に表示する曜日プリセット名（毎日/平日/休日に一致しなければカスタム扱い）
+  // 内部の比較用の値は言語に関わらず日本語文字列のまま保持し、表示だけpresetLabel()で翻訳する
   const dayPreset=(days:number[]):'毎日'|'平日'|'休日'|'カスタム'=>{
     const s=[...days].sort((a,b)=>a-b).join(',');
     if(s==='0,1,2,3,4,5,6') return '毎日';
@@ -3590,6 +3592,8 @@ function ForgetAlertsPanel({alerts,onChange,isPremium,onProPrompt}:{
     if(s==='0,6') return '休日';
     return 'カスタム';
   };
+  const presetLabel=(p:'毎日'|'平日'|'休日'|'カスタム')=>
+    p==='毎日'?tr('everyDayLabel'):p==='平日'?tr('weekdayLabel'):p==='休日'?tr('dayOffLabel'):tr('customLabel');
   const applyDayPreset=(p:'毎日'|'平日'|'休日'|'カスタム')=>{
     if(!editing) return;
     if(p==='毎日'){ setEditing({...editing,weekdays:[0,1,2,3,4,5,6]}); setCustomDayOpen(false); }
@@ -3601,12 +3605,18 @@ function ForgetAlertsPanel({alerts,onChange,isPremium,onProPrompt}:{
   // 時間帯を指定していない（終日）場合は「の終日に」という不自然な言い回しを避け、
   // 曜日だけを述べる形にする
   const previewText=(d:ForgetAlertDraft)=>{
-    const day=dayPreset(d.weekdays)==='カスタム'?fmtDays(d.weekdays):dayPreset(d.weekdays);
-    const place=d.name||'（場所未設定）';
-    const triggerLabel=d.trigger==='enter'?`${place}に着いたとき`:`${place}を出るとき`;
-    const items=d.items.length>0?d.items.join('、'):'（持ち物未設定）';
+    const day=dayPreset(d.weekdays)==='カスタム'?fmtDays(d.weekdays):presetLabel(dayPreset(d.weekdays));
+    const place=d.name||tr('previewNoPlace');
+    const items=d.items.length>0?d.items.join(language==='ja'?'、':', '):tr('previewNoItems');
+    const itemsBody=tr('previewCheckItemsBody').replace('{items}',items);
+    if(language!=='ja'){
+      const timeClause=d.timeStart&&d.timeEnd?` from ${d.timeStart} to ${d.timeEnd}`:'';
+      const triggerClause=d.trigger==='enter'?`you arrive at ${place}`:`you leave ${place}`;
+      return `On ${day}${timeClause}, when ${triggerClause}, check:\n${itemsBody}`;
+    }
+    const triggerLabel=d.trigger==='enter'?tr('forgetAlertArriveLabel').replace('{place}',place):tr('forgetAlertLeaveLabel').replace('{place}',place);
     const dayClause=d.timeStart&&d.timeEnd?`${day}の${d.timeStart}〜${d.timeEnd}に`:`${day}、`;
-    return `${dayClause}${triggerLabel}、\n${items}を確認してください。`;
+    return `${dayClause}${triggerLabel}、\n${itemsBody}`;
   };
 
   const cancelEdit=()=>{
@@ -3627,7 +3637,7 @@ function ForgetAlertsPanel({alerts,onChange,isPremium,onProPrompt}:{
     setLocating(true);
     getCurrentCoords(10000).then(loc=>{
       setLocating(false);
-      if(!loc){ setPermError('現在地を取得できませんでした'); return; }
+      if(!loc){ setPermError(tr('couldNotGetLocation')); return; }
       setMapCenter(loc);
       setMapMode(true);
     });
@@ -3652,7 +3662,7 @@ function ForgetAlertsPanel({alerts,onChange,isPremium,onProPrompt}:{
     if(!editing||!editing.location||!editing.name.trim()||editing.weekdays.length===0||editing.items.length===0) return;
     if(adding&&!isPremium&&alerts.length>=1){ onProPrompt('忘れ物防止アラート（2件目以降）'); return; }
     const ok=await ensureGeofencePermission('forget_alert');
-    if(!ok){ setPermError('場所を出たときに通知するため、位置情報の利用を許可してください。'); return; }
+    if(!ok){ setPermError(tr('forgetAlertLocationPermError')); return; }
     const toSave:ForgetAlert={...editing,name:editing.name.trim(),location:editing.location};
     if(adding){ onChange([...alerts,toSave]); logAnalyticsEvent('location_notification_created',{radius:toSave.radius}); }
     else onChange(alerts.map(a=>a.id===toSave.id?toSave:a));
@@ -3675,29 +3685,29 @@ function ForgetAlertsPanel({alerts,onChange,isPremium,onProPrompt}:{
     <div className="pb-6">
       <div className="flex items-center justify-between mb-3 mt-4">
         <p className="text-sm font-semibold text-gray-700 flex items-center gap-1.5">
-          忘れ物防止アラート
+          {tr('rowForgetAlertTitle')}
           {!isPremium&&<span className="inline-flex items-center gap-0.5 border border-gray-300 rounded px-1.5 py-0.5 text-[10px] font-bold text-gray-400 leading-none tracking-wide">★ PRO</span>}
         </p>
         <button onClick={startAdd}
           className="flex items-center gap-1 px-3 py-1.5 bg-[var(--c-primary)] text-white rounded-xl text-sm font-semibold">
-          <AppIcons.plus size={14}/>追加
+          <AppIcons.plus size={14}/>{tr('addButton')}
         </button>
       </div>
-      {!isPremium&&<p className="text-xs text-gray-400 px-1 mb-3">1件まで無料でご利用いただけます。2件目からPROが必要です。</p>}
+      {!isPremium&&<p className="text-xs text-gray-400 px-1 mb-3">{tr('forgetAlertFreeLimitNote')}</p>}
       {permDenied&&(
         <div className="bg-amber-50 rounded-2xl px-4 py-3 mb-3 flex items-start gap-2">
           <AppIcons.location size={16} className="text-amber-500 shrink-0 mt-0.5"/>
           <div className="flex-1 min-w-0">
-            <p className="text-xs text-amber-700 leading-relaxed mb-2">位置情報または通知の許可が必要です。設定アプリ &gt; BrainBoxから「位置情報（常に）」と「通知」を許可してください。</p>
+            <p className="text-xs text-amber-700 leading-relaxed mb-2">{tr('permissionBannerText')}</p>
             <button onClick={()=>openAppSettings()}
               className="px-3 py-1.5 bg-amber-100 text-amber-800 rounded-lg text-xs font-semibold active:bg-amber-200">
-              設定アプリを開く
+              {tr('openSettingsAppButton')}
             </button>
           </div>
         </div>
       )}
       {alerts.length===0&&(
-        <p className="text-sm text-gray-400 text-center py-8">アラートが登録されていません</p>
+        <p className="text-sm text-gray-400 text-center py-8">{tr('noAlertsYet')}</p>
       )}
       <div className="space-y-2">
         {alerts.map((a,i)=>{
@@ -3707,7 +3717,7 @@ function ForgetAlertsPanel({alerts,onChange,isPremium,onProPrompt}:{
             <div className="flex items-center gap-3">
               <AppIcons.backpack size={16} className={a.enabled?'text-[var(--c-primary)]':'text-gray-300'}/>
               <button onClick={()=>startEdit(a)} className="flex-1 min-w-0 text-left">
-                <p className="text-sm font-medium text-gray-800 truncate">{a.name}{(a.trigger??'exit')==='enter'?'に着いたとき':'を出るとき'}</p>
+                <p className="text-sm font-medium text-gray-800 truncate">{((a.trigger??'exit')==='enter'?tr('forgetAlertArriveLabel'):tr('forgetAlertLeaveLabel')).replace('{place}',a.name)}</p>
                 <p className="text-xs text-gray-400">{fmtDays(a.weekdays)}{a.timeStart&&a.timeEnd?` ${a.timeStart}〜${a.timeEnd}`:''}・{a.radius??200}m</p>
               </button>
               {locked&&<AppIcons.star size={12} className="text-gray-300 shrink-0"/>}
@@ -3733,13 +3743,13 @@ function ForgetAlertsPanel({alerts,onChange,isPremium,onProPrompt}:{
       {deleteId&&(
         <div className="fixed inset-0 z-[110] bg-black/40 flex items-center justify-center p-4" onClick={()=>setDeleteId(null)}>
           <div className="bg-white rounded-3xl w-full max-w-md mx-auto p-5" onClick={e=>e.stopPropagation()}>
-            <p className="text-center text-[17px] font-semibold text-gray-900 mb-1">このアラートを削除しますか？</p>
-            <p className="text-center text-[13px] text-gray-400 mb-6">この操作は取り消せません</p>
+            <p className="text-center text-[17px] font-semibold text-gray-900 mb-1">{tr('deleteAlertConfirmTitle')}</p>
+            <p className="text-center text-[13px] text-gray-400 mb-6">{tr('cantUndoBody')}</p>
             <div className="flex gap-2">
               <button onClick={()=>setDeleteId(null)}
-                className="flex-1 py-3 rounded-2xl bg-gray-100 text-gray-700 text-[15px] font-semibold">キャンセル</button>
+                className="flex-1 py-3 rounded-2xl bg-gray-100 text-gray-700 text-[15px] font-semibold">{tr('cancelButton')}</button>
               <button onClick={()=>{del(deleteId);setDeleteId(null);}}
-                className="flex-1 py-3 rounded-2xl bg-[#D97A7A] text-white text-[15px] font-semibold">削除する</button>
+                className="flex-1 py-3 rounded-2xl bg-[#D97A7A] text-white text-[15px] font-semibold">{tr('deleteTaskButton')}</button>
             </div>
           </div>
         </div>
@@ -3748,11 +3758,11 @@ function ForgetAlertsPanel({alerts,onChange,isPremium,onProPrompt}:{
       {editing&&(
         <div className="fixed inset-0 z-[100] bg-black/40 flex items-center justify-center p-4" onClick={cancelEdit}>
           <div className="bg-white w-full max-w-md mx-auto rounded-3xl max-h-[85vh] overflow-y-auto p-4" onClick={e=>e.stopPropagation()}>
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">忘れ物防止アラートを作成</p>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">{tr('createForgetAlertTitle')}</p>
 
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">場所</p>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">{tr('placeSectionLabel')}</p>
             <input value={editing.name} onChange={e=>setEditing({...editing,name:e.target.value})}
-              placeholder="場所の名前"
+              placeholder={tr('placeNamePlaceholder')}
               className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50 mb-2"/>
             {editing.location&&(
               <div className="flex items-center gap-2 bg-gray-50 rounded-xl px-3 py-2 mb-2">
@@ -3762,13 +3772,13 @@ function ForgetAlertsPanel({alerts,onChange,isPremium,onProPrompt}:{
             )}
             <div className="flex gap-2 mb-3">
               <button onClick={()=>{setMapCenter(editing.location?{lat:editing.location.lat,lng:editing.location.lng}:null);setMapMode(true);}}
-                className="flex-1 py-2 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200">地図で指定</button>
+                className="flex-1 py-2 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200">{tr('pickOnMapButton')}</button>
               <button onClick={useCurrentLocation} disabled={locating}
                 className="flex-1 py-2 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200 disabled:opacity-40">
-                {locating?'取得中...':'現在地から'}
+                {locating?tr('gettingLocationLabel'):tr('useCurrentLocationShortButton')}
               </button>
             </div>
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">通知する範囲</p>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">{tr('notifyRadiusSectionLabel')}</p>
             <div className="flex gap-2 mb-4">
               {([100,300,500] as const).map(r=>(
                 <button key={r} onClick={()=>setEditing({...editing,radius:r})}
@@ -3778,23 +3788,23 @@ function ForgetAlertsPanel({alerts,onChange,isPremium,onProPrompt}:{
               ))}
             </div>
 
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">条件</p>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">{tr('conditionSectionLabel')}</p>
             <div className="flex gap-2 mb-4">
               <button onClick={()=>setEditing({...editing,trigger:'enter'})}
                 className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors ${editing.trigger==='enter'?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
-                到着したら
+                {tr('arriveOptionLabel')}
               </button>
               <button onClick={()=>setEditing({...editing,trigger:'exit'})}
                 className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors ${editing.trigger==='exit'?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
-                出発したら
+                {tr('leaveOptionLabel')}
               </button>
             </div>
 
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">曜日</p>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">{tr('dowSectionLabel')}</p>
             <div className="flex gap-2 flex-wrap mb-3">
               {(['毎日','平日','休日','カスタム'] as const).map(p=>(
                 <button key={p} onClick={()=>applyDayPreset(p)}
-                  className={`px-3 py-1.5 rounded-full text-sm font-semibold ${dayPreset(editing.weekdays)===p||(p==='カスタム'&&customDayOpen&&dayPreset(editing.weekdays)!=='カスタム')?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>{p}</button>
+                  className={`px-3 py-1.5 rounded-full text-sm font-semibold ${dayPreset(editing.weekdays)===p||(p==='カスタム'&&customDayOpen&&dayPreset(editing.weekdays)!=='カスタム')?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>{presetLabel(p)}</button>
               ))}
             </div>
             {(dayPreset(editing.weekdays)==='カスタム'||customDayOpen)&&(
@@ -3808,7 +3818,7 @@ function ForgetAlertsPanel({alerts,onChange,isPremium,onProPrompt}:{
               </div>
             )}
 
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">時間帯（任意）</p>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">{tr('timeRangeOptionalLabel')}</p>
             <div className="flex items-center gap-2 mb-1">
               <input type="time" value={editing.timeStart??''} onChange={e=>setEditing({...editing,timeStart:e.target.value})}
                 className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50"/>
@@ -3816,19 +3826,19 @@ function ForgetAlertsPanel({alerts,onChange,isPremium,onProPrompt}:{
               <input type="time" value={editing.timeEnd??''} onChange={e=>setEditing({...editing,timeEnd:e.target.value})}
                 className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50"/>
               {(editing.timeStart||editing.timeEnd)&&(
-                <button onClick={()=>setEditing({...editing,timeStart:'',timeEnd:''})} className="text-xs text-gray-400 px-1 shrink-0">解除</button>
+                <button onClick={()=>setEditing({...editing,timeStart:'',timeEnd:''})} className="text-xs text-gray-400 px-1 shrink-0">{tr('clearButton')}</button>
               )}
             </div>
-            <p className="text-[11px] text-gray-300 mb-4">指定しない場合は終日対象になります</p>
+            <p className="text-[11px] text-gray-300 mb-4">{tr('allDayNote')}</p>
 
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">持ち物</p>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">{tr('itemsSectionLabel')}</p>
             <div className="flex gap-2 mb-2">
               <input value={itemInput} onChange={e=>setItemInput(e.target.value)}
                 onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();addItem();}}}
-                placeholder="財布、鍵など"
+                placeholder={tr('itemsPlaceholder')}
                 className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50"/>
               <button onClick={addItem} disabled={!itemInput.trim()}
-                className="px-4 py-2 bg-gray-100 rounded-xl text-sm font-semibold text-gray-700 shrink-0 disabled:opacity-40">追加</button>
+                className="px-4 py-2 bg-gray-100 rounded-xl text-sm font-semibold text-gray-700 shrink-0 disabled:opacity-40">{tr('addButton')}</button>
             </div>
             {editing.items.length>0&&(
               <div className="flex flex-wrap gap-1.5 mb-4">
@@ -3842,7 +3852,7 @@ function ForgetAlertsPanel({alerts,onChange,isPremium,onProPrompt}:{
 
             <div className="h-px bg-gray-100 mb-4"/>
 
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">プレビュー</p>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">{tr('previewSectionLabel')}</p>
             <div className="bg-gray-50 rounded-2xl p-4 mb-4">
               <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-line">{previewText(editing)}</p>
             </div>
@@ -3852,12 +3862,12 @@ function ForgetAlertsPanel({alerts,onChange,isPremium,onProPrompt}:{
             <div className="flex gap-2">
               <button onClick={cancelEdit}
                 className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200">
-                キャンセル
+                {tr('cancelButton')}
               </button>
               <button onClick={saveEditing}
                 disabled={!editing.location||!editing.name.trim()||editing.weekdays.length===0||editing.items.length===0}
                 className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-[var(--c-primary)] text-white active:opacity-80 disabled:opacity-40">
-                {adding?'登録':'保存'}
+                {adding?tr('registerButton'):tr('taskModalSave')}
               </button>
             </div>
           </div>
@@ -4824,7 +4834,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
 
   if(sub==='forgetAlerts') return (
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
-      {subHeader('忘れ物防止アラート')}{proSheet}
+      {subHeader(tr('rowForgetAlertTitle'))}{proSheet}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
         <ForgetAlertsPanel alerts={forgetAlerts} onChange={onForgetAlerts} isPremium={isPremium} onProPrompt={setProPrompt}/>
       </div>
