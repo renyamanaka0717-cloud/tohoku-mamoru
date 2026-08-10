@@ -3,4 +3,5 @@
 
 CAP_PLUGIN(AnalyticsPlugin, "AnalyticsPlugin",
   CAP_PLUGIN_METHOD(logEvent, CAPPluginReturnPromise);
+  CAP_PLUGIN_METHOD(setUserProperty, CAPPluginReturnPromise);
 )

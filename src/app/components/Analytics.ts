@@ -11,6 +11,7 @@ import { registerPlugin } from '@capacitor/core';
 
 interface AnalyticsPluginType {
   logEvent(options: { name: string; params?: string }): Promise<void>;
+  setUserProperty(options: { name: string; value: string }): Promise<void>;
 }
 
 const AnalyticsPlugin = registerPlugin<AnalyticsPluginType>('AnalyticsPlugin');
@@ -63,6 +64,24 @@ export async function logAnalyticsEvent(name: string, params?: AnalyticsParams):
       if (!analytics) return;
       const { logEvent } = await import('firebase/analytics');
       logEvent(analytics, name, params);
+    }
+  } catch {
+    // Analytics送信の失敗はアプリの動作に影響させない
+  }
+}
+
+// Firebase Analyticsのユーザープロパティを設定する（イベントではなくユーザー単位の属性）。
+// 言語別の機能利用率・プロダクトツアー完了率などをGA4/BigQuery側でセグメント比較できるようにする用途。
+// nameはFirebase側の制約（英数字とアンダースコアのみ、先頭は文字）を満たす値を呼び出し側で渡すこと
+export async function setAnalyticsUserProperty(name: string, value: string): Promise<void> {
+  try {
+    if (isNative()) {
+      await AnalyticsPlugin.setUserProperty({ name, value });
+    } else {
+      const analytics = await getWebAnalytics();
+      if (!analytics) return;
+      const { setUserProperties } = await import('firebase/analytics');
+      setUserProperties(analytics, { [name]: value });
     }
   } catch {
     // Analytics送信の失敗はアプリの動作に影響させない

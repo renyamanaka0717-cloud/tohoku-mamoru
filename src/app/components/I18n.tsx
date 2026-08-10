@@ -1,5 +1,6 @@
 'use client';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { setAnalyticsUserProperty } from './Analytics';
 
 export type Language = 'ja' | 'en';
 
@@ -430,10 +431,13 @@ const I18nContext = createContext<I18nContextValue>({
 export function I18nProvider({ children }: { children: ReactNode }) {
   const [language, setLanguageState] = useState<Language>('ja');
 
-  // 初回マウント時のみ判定する。保存済みの言語があればそれを、無ければ端末の言語設定から判定する
+  // 初回マウント時のみ判定する。保存済みの言語があればそれを、無ければ端末の言語設定から判定する。
+  // 初期stateの'ja'デフォルトはSSR/hydration対策の仮値でしかないため、ここで確定した言語だけを
+  // app_languageユーザープロパティに記録する（仮値の'ja'を一瞬でも計測してしまわないように）
   useEffect(() => {
     const lang = getStoredLanguage() ?? detectLanguage();
     setLanguageState(lang);
+    setAnalyticsUserProperty('app_language', lang);
   }, []);
 
   useEffect(() => {
@@ -443,6 +447,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   const setLanguage = (lang: Language) => {
     setLanguageState(lang);
     localStorage.setItem(LANG_KEY, lang);
+    setAnalyticsUserProperty('app_language', lang);
   };
 
   const tr = (key: StringKey) => STRINGS[key][language];

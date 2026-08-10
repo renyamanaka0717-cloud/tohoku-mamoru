@@ -1362,6 +1362,23 @@ native-ios/BridgeViewController.swift … capacitorDidLoad() 内で FirebaseApp.
 
 **意図的に計測していないもの（スコープ外）:** 繰り返しタスクの一括編集（`editScope==='all'`）保存、「あとでやる」の朝の一括完了（`handleMorningAction`）、繰り返しタスクのドラッグ確認ポップアップ経由の移動。これらは単一操作の裏で複数タスクが変化するバルク処理で、単純な1イベント=1操作の対応にならないため初回実装では対象外にした。買い物リストの場所通知・忘れ物防止アラートの`location_reminder_triggered`も同様の理由（ネイティブ側の記録が「タップされたか」止まり）で未対応。
 
+### ユーザープロパティ（`app_language`）
+
+イベントではなく「ユーザー単位の属性」として、現在アプリに適用されている言語をFirebase Analyticsのユーザープロパティに記録している。GA4/BigQuery側で言語別（`ja`/`en`、今後`es`等を追加予定）にプロダクトツアー完了率・各機能の利用率などをセグメント比較できるようにする用途。
+
+- `Analytics.ts`の`setAnalyticsUserProperty(name,value)` — `logAnalyticsEvent`と同じ「ネイティブはCapacitorカスタムプラグイン経由・Web/開発環境はFirebase JS SDK」構成。ネイティブは`AnalyticsPlugin.setUserProperty()`（`Analytics.setUserProperty(value,forName:name)`を呼ぶ）、Webは`firebase/analytics`の`setUserProperties()`を呼ぶ
+- `I18n.tsx`の`I18nProvider`が呼び出し元。**初期state（SSR/hydration対策の仮値`'ja'`）の段階では呼ばない**——初回マウント時に`getStoredLanguage()??detectLanguage()`で言語を確定した直後、その値で1回だけ`setAnalyticsUserProperty('app_language',lang)`を呼ぶ（仮値の`'ja'`を一瞬でも計測してしまうと、実際は英語話者のユーザーが一時的に`ja`として記録される不具合になるため）。加えて`setLanguage()`（設定画面での手動切り替え）でも同様に呼び、言語を変更するたびに最新値に更新する
+- 呼び出し名は`'app_language'`固定（Firebase側のユーザープロパティ名の制約: 英数字とアンダースコアのみ・先頭は文字）。値は`Language`型の文字列（`'ja'`/`'en'`）をそのまま渡すため、将来`es`等を`Language`型に追加してSTRINGSを拡張すれば、このプロパティも追加のコード変更なしに新しい値を記録できる
+
+### Xcodeでの手動セットアップ（`AnalyticsPlugin`に`setUserProperty`を追加した場合）
+
+`native-ios/AnalyticsPlugin.swift`/`.m`は新規ファイルではなく**既存ファイルの更新**（`setUserProperty`メソッドを追加）なので、Xcode上の同名ファイルの中身をこの変更後の内容に差し替える（`ios/`はgitignore対象のため`git pull`では自動反映されない）。App Group・Info.plist・Background Modes等の追加設定は不要（既存の`logEvent`と同じFirebaseAnalytics SDK呼び出しの追加のみ）。
+
+### 避けるパターン
+
+- ユーザープロパティを`logAnalyticsEvent`のイベントパラメータ（`params`）として送らない（「今どの言語を使っているか」はユーザー単位で一定期間持続する属性であり、イベントのたびに送るものではない。`setAnalyticsUserProperty`経由でユーザープロパティとして送ること）
+- `I18nProvider`の初期state（`useState<Language>('ja')`の仮値）の段階で`setAnalyticsUserProperty`を呼ばない（SSR/hydration対策のための一時的なデフォルト値であり、実際の言語判定が終わる前に計測すると誤った値が記録される）
+
 ### 権限許可イベントの一元化（`logPermissionGrantedOnce`）
 
 `ensureGeofencePermission()`（位置情報＋通知）・`requestNotifyPermission()`（通知のみ）は、機能を使うたびに何度も呼ばれる（場所通知の追加のたびに`ensureGeofencePermission`が呼ばれる等）。呼ばれるたびに「許可されている」ことを計測すると、許可率という指標として意味を持たなくなる（1人のユーザーが機能を使うたびに加算されてしまう）。そのため`Analytics.ts`の`logPermissionGrantedOnce(kind,params)`が`localStorage`（`tl-analytics-permission-granted-v1`）でインストールごとに1回だけに制限した上で`logAnalyticsEvent`を呼ぶ設計にし、`Geofence.ts`/`LocalNotify.ts`側で一元的に計測する（呼び出し元のpage.tsxは`source`文字列を渡すだけでよい）。

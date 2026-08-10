@@ -24,4 +24,16 @@ public class AnalyticsPlugin: CAPPlugin {
         Analytics.logEvent(name, parameters: params)
         call.resolve()
     }
+
+    // ユーザープロパティ（イベントではなくユーザー単位の属性）を設定する。
+    // 例: app_language=ja|en で言語別の機能利用率等をGA4側でセグメント比較できるようにする
+    @objc func setUserProperty(_ call: CAPPluginCall) {
+        guard let name = call.getString("name") else {
+            call.reject("name is required")
+            return
+        }
+        let value = call.getString("value")
+        Analytics.setUserProperty(value, forName: name)
+        call.resolve()
+    }
 }
