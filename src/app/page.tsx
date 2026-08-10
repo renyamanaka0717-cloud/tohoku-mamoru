@@ -1852,7 +1852,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
               <>
                 <div className="h-px bg-gray-100 mx-4"/>
                 <button className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50"
-                  onClick={()=>{ if(!isPremium){setModalProPrompt('締切管理');return;} setDeadlineOpen(o=>!o); }}>
+                  onClick={()=>{ if(!isPremium){setModalProPrompt('締切管理');return;} setDeadlineOpen(true); }}>
                   <AppIcons.deadline size={18} className="text-gray-400 shrink-0"/>
                   <span className="flex-1 text-left text-sm font-medium text-gray-800 flex items-center gap-1.5">
                     {tr('fieldDeadline')}
@@ -1862,59 +1862,63 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                   <AppIcons.caretRight size={14} className="text-gray-300"/>
                 </button>
                 {deadlineOpen&&isPremium&&(
-                  <div className="border-t border-gray-100 px-4 pb-3">
-                    <div className="flex items-center gap-2 py-3">
-                      {/* grid+minmax(0,1fr)でも実機Safariでは重なりが再発したため、
-                          「相手に負けて広がる」余地を完全に断つ方式に変更した。
-                          幅をpx固定し、はみ出した分はoverflow:hiddenでその箱の中だけで
-                          切り取る（ネイティブUIがどれだけ広く描画したがっても、box自体の
-                          外形サイズは絶対に変わらないため、隣とは物理的に重なりようがない） */}
-                      <div className="relative shrink-0" style={{width:'128px',overflow:'hidden'}}>
+                  // 日付・時刻の2つのネイティブinputを狭い横一列に押し込むレイアウトは、
+                  // Safari実機で内部幅がCSSの想定より広く描画され重なる不具合が繰り返し
+                  // 発生したため、タップでポップアップを開き縦に並べる方式に変更した。
+                  // ポップアップ内は幅に余裕があるため、両方ともw-fullで確実に収まる。
+                  <div className="fixed inset-0 z-[100] bg-black/40 flex items-center justify-center p-4" onClick={()=>setDeadlineOpen(false)}>
+                    <div className="bg-white w-full max-w-md mx-auto rounded-3xl max-h-[85vh] overflow-y-auto p-4" onClick={e=>e.stopPropagation()}>
+                      <div className="flex items-center justify-between mb-3">
+                        <p className="text-sm font-bold text-gray-900">{tr('fieldDeadline')}</p>
+                        {deadlineDate&&(
+                          <button onClick={()=>setDeadlineDate('')} className="text-xs text-gray-400 px-2">{tr('clearButton')}</button>
+                        )}
+                      </div>
+                      <div className="relative mb-2">
                         <input type="date" value={deadlineDate} onChange={e=>setDeadlineDate(e.target.value)}
-                          className="w-full border border-gray-200 rounded-xl px-2 py-2 text-sm bg-gray-50 outline-none"/>
+                          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-gray-50 outline-none" style={{boxSizing:'border-box'}}/>
                         {/* iOS(WebKit)のtype="date"はplaceholder属性を表示しないため、
                             未入力時だけ重ねて表示する（クリックは下の実inputに通す） */}
                         {!deadlineDate&&(
-                          <span className="absolute inset-y-0 left-2 flex items-center text-sm text-gray-400 pointer-events-none">{tr('deadlineDatePlaceholder')}</span>
+                          <span className="absolute inset-y-0 left-3 flex items-center text-sm text-gray-400 pointer-events-none">{tr('deadlineDatePlaceholder')}</span>
                         )}
                       </div>
-                      <div className="shrink-0" style={{width:'96px',overflow:'hidden'}}>
-                        <input type="time" value={deadlineTime} onChange={e=>setDeadlineTime(e.target.value)}
-                          className="w-full border border-gray-200 rounded-xl px-2 py-2 text-sm bg-gray-50 outline-none"/>
-                      </div>
+                      <input type="time" value={deadlineTime} onChange={e=>setDeadlineTime(e.target.value)}
+                        className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-gray-50 outline-none mb-4" style={{boxSizing:'border-box'}}/>
                       {deadlineDate&&(
-                        <button onClick={()=>setDeadlineDate('')} className="text-xs text-gray-400 px-2 shrink-0">{tr('clearButton')}</button>
-                      )}
-                    </div>
-                    {deadlineDate&&(
-                      <>
-                        <p className="text-xs text-gray-400 mb-1.5">{tr('deadlineNotifyTiming')}</p>
-                        <div className="flex flex-wrap gap-1.5 pb-1">
-                          {(language==='ja'?DEADLINE_NOTIFY_OPTS:DEADLINE_NOTIFY_OPTS_EN).map(({v,l})=>(
-                            <button key={v} onClick={()=>setDeadlineNotify(v)}
-                              className={`px-3 py-1 rounded-full text-xs font-semibold ${deadlineNotify===v?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>{l}</button>
-                          ))}
-                        </div>
-                        {deadlineNotify==='auto'&&(
-                          <div className="mt-2 bg-gray-50 rounded-xl p-3 space-y-2.5">
-                            <p className="text-xs font-semibold text-gray-500">通知される内容（8件）</p>
-                            {computeDeadlineFires(`${deadlineDate}T${deadlineTime||'18:00'}`,'auto')
-                              .sort((a,b)=>a.fireMs-b.fireMs)
-                              .map(fire=>{
-                                const d=new Date(fire.fireMs);
-                                const w=['日','月','火','水','木','金','土'][d.getDay()];
-                                const label=`${d.getMonth()+1}/${d.getDate()}(${w}) ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
-                                return (
-                                  <div key={fire.key}>
-                                    <p className="text-[11px] text-gray-400">{label}</p>
-                                    <p className="text-xs text-gray-700">{deadlineAlertBody(name.trim()||'このタスク',fire)}</p>
-                                  </div>
-                                );
-                              })}
+                        <>
+                          <p className="text-xs text-gray-400 mb-1.5">{tr('deadlineNotifyTiming')}</p>
+                          <div className="flex flex-wrap gap-1.5 pb-1">
+                            {(language==='ja'?DEADLINE_NOTIFY_OPTS:DEADLINE_NOTIFY_OPTS_EN).map(({v,l})=>(
+                              <button key={v} onClick={()=>setDeadlineNotify(v)}
+                                className={`px-3 py-1 rounded-full text-xs font-semibold ${deadlineNotify===v?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>{l}</button>
+                            ))}
                           </div>
-                        )}
-                      </>
-                    )}
+                          {deadlineNotify==='auto'&&(
+                            <div className="mt-2 bg-gray-50 rounded-xl p-3 space-y-2.5">
+                              <p className="text-xs font-semibold text-gray-500">通知される内容（8件）</p>
+                              {computeDeadlineFires(`${deadlineDate}T${deadlineTime||'18:00'}`,'auto')
+                                .sort((a,b)=>a.fireMs-b.fireMs)
+                                .map(fire=>{
+                                  const d=new Date(fire.fireMs);
+                                  const w=['日','月','火','水','木','金','土'][d.getDay()];
+                                  const label=`${d.getMonth()+1}/${d.getDate()}(${w}) ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+                                  return (
+                                    <div key={fire.key}>
+                                      <p className="text-[11px] text-gray-400">{label}</p>
+                                      <p className="text-xs text-gray-700">{deadlineAlertBody(name.trim()||'このタスク',fire)}</p>
+                                    </div>
+                                  );
+                                })}
+                            </div>
+                          )}
+                        </>
+                      )}
+                      <button onClick={()=>setDeadlineOpen(false)}
+                        className="w-full mt-4 py-2.5 rounded-xl text-sm font-semibold bg-[var(--c-primary)] text-white active:opacity-80">
+                        {tr('taskModalDone')}
+                      </button>
+                    </div>
                   </div>
                 )}
               </>
