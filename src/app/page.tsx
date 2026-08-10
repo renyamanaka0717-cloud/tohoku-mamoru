@@ -1080,6 +1080,10 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
   const [deadlineOpen,setDeadlineOpen] = useState(false);
   const [locationNotify,setLocationNotify] = useState(task?.locationNotify??false);
   const [taskLocation,setTaskLocation] = useState(task?.location??null);
+  // 場所通知を設定した後に位置情報/通知の許可を取り消された場合に気づけるよう、
+  // モーダルを開くたびに現在の許可状態を確認する（ShopLocationPanelと同じパターン）
+  const [taskLocPermStatus,setTaskLocPermStatus] = useState<{location:string;notifications:string}|null>(null);
+  useEffect(()=>{ if(locationNotify) checkGeofencePermissions().then(setTaskLocPermStatus); },[locationNotify]);
   const [locAdding,setLocAdding] = useState(false);
   const [locMapMode,setLocMapMode] = useState(false);
   const [locMapCenter,setLocMapCenter] = useState<{lat:number;lng:number}|null>(null);
@@ -1819,6 +1823,12 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                   <AppIcons.caretRight size={14} className="text-gray-300"/>
                 </button>
                 {locError&&<p className="text-xs text-[#D97A7A] px-4 pb-3">{locError}</p>}
+                {locationNotify&&taskLocPermStatus&&
+                  (taskLocPermStatus.location==='denied'||taskLocPermStatus.location==='limited'||taskLocPermStatus.notifications==='denied')&&(
+                  <p className="text-xs text-[#D97A7A] px-4 pb-3 leading-relaxed">
+                    位置情報または通知の許可が取り消されているため、この通知は届きません。設定アプリ &gt; BrainBoxから「位置情報（常に）」と「通知」を許可してください。
+                  </p>
+                )}
                 {locAdding&&(
                   <div className="border-t border-gray-100 px-4 pt-3 pb-4">
                     {locMapMode?(
@@ -3492,6 +3502,10 @@ function ForgetAlertsPanel({alerts,onChange,isPremium,onProPrompt}:{
   const [itemInput,setItemInput]=useState('');
   const [permError,setPermError]=useState<string|null>(null);
   const [customDayOpen,setCustomDayOpen]=useState(false);
+  // 登録済みアラートが有効なまま、設定後に位置情報/通知の許可を取り消された場合に気づけるよう、
+  // 画面を開くたびに現在の許可状態を確認する（ShopLocationPanelと同じパターン）
+  const [permStatus,setPermStatus]=useState<{location:string;notifications:string}|null>(null);
+  useEffect(()=>{ checkGeofencePermissions().then(setPermStatus); },[]);
 
   // 2件目以降の登録・有効化はPRO限定（1件までは無料）。作成順（配列の並び順）で判定する
   const isLockedByPlan=(idx:number)=>!isPremium&&idx>0;
@@ -3586,6 +3600,11 @@ function ForgetAlertsPanel({alerts,onChange,isPremium,onProPrompt}:{
     onChange(alerts.map(a=>a.id===id?{...a,enabled:!a.enabled}:a));
   };
 
+  // locationが'limited'（Appの使用中のみ許可）はバックグラウンドのジオフェンス監視には不十分なため、
+  // 明確な拒否(denied)と同様に案内する。有効なアラートが無ければ表示する意味が無いので絞り込む
+  const permDenied = permStatus!==null && alerts.some(a=>a.enabled) &&
+    (permStatus.location==='denied'||permStatus.location==='limited'||permStatus.notifications==='denied');
+
   return (
     <div className="pb-6">
       <div className="flex items-center justify-between mb-3 mt-4">
@@ -3599,6 +3618,18 @@ function ForgetAlertsPanel({alerts,onChange,isPremium,onProPrompt}:{
         </button>
       </div>
       {!isPremium&&<p className="text-xs text-gray-400 px-1 mb-3">1件まで無料でご利用いただけます。2件目からPROが必要です。</p>}
+      {permDenied&&(
+        <div className="bg-amber-50 rounded-2xl px-4 py-3 mb-3 flex items-start gap-2">
+          <AppIcons.location size={16} className="text-amber-500 shrink-0 mt-0.5"/>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-amber-700 leading-relaxed mb-2">位置情報または通知の許可が必要です。設定アプリ &gt; BrainBoxから「位置情報（常に）」と「通知」を許可してください。</p>
+            <button onClick={()=>openAppSettings()}
+              className="px-3 py-1.5 bg-amber-100 text-amber-800 rounded-lg text-xs font-semibold active:bg-amber-200">
+              設定アプリを開く
+            </button>
+          </div>
+        </div>
+      )}
       {alerts.length===0&&(
         <p className="text-sm text-gray-400 text-center py-8">アラートが登録されていません</p>
       )}
