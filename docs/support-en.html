@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Support - BrainBox</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', sans-serif; background: #F9FAFB; color: #1F2937; line-height: 1.7; font-size: 16px; }
+  header { background: #fff; border-bottom: 1px solid #F3F4F6; padding: 16px 24px; display: flex; align-items: center; gap: 12px; position: sticky; top: 0; z-index: 10; }
+  .logo { width: 36px; height: 36px; background: #D9A3B2; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .logo svg { width: 20px; height: 20px; fill: white; }
+  header h1 { font-size: 17px; font-weight: 700; color: #1F2937; }
+  header a { margin-left: auto; font-size: 14px; color: #D9A3B2; text-decoration: none; font-weight: 600; }
+  main { max-width: 720px; margin: 0 auto; padding: 40px 24px 80px; }
+  .page-title { font-size: 28px; font-weight: 800; color: #1F2937; margin-bottom: 6px; }
+  .subtitle { font-size: 15px; color: #6B7280; margin-bottom: 40px; }
+  section { background: #fff; border-radius: 16px; padding: 24px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+  h2 { font-size: 17px; font-weight: 700; color: #1F2937; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+  h2::before { content: ''; width: 4px; height: 18px; background: #D9A3B2; border-radius: 2px; display: inline-block; flex-shrink: 0; }
+  p { font-size: 15px; color: #374151; margin-bottom: 10px; }
+  p:last-child { margin-bottom: 0; }
+  .faq-item { border-bottom: 1px solid #F3F4F6; padding: 16px 0; }
+  .faq-item:first-child { padding-top: 0; }
+  .faq-item:last-child { border-bottom: none; padding-bottom: 0; }
+  .faq-q { font-size: 15px; font-weight: 600; color: #1F2937; margin-bottom: 6px; }
+  .faq-a { font-size: 15px; color: #374151; }
+  .contact-btn { display: inline-block; background: #D9A3B2; color: #fff; font-weight: 700; font-size: 15px; padding: 12px 28px; border-radius: 12px; text-decoration: none; margin-top: 8px; }
+  .contact-btn:hover { opacity: 0.9; }
+  a { color: #D9A3B2; }
+  .feature-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; margin-top: 4px; }
+  .feature-item { background: #F9FAFB; border-radius: 12px; padding: 14px 16px; }
+  .feature-title { font-size: 14px; font-weight: 600; color: #1F2937; margin-bottom: 4px; }
+  .feature-desc { font-size: 13px; color: #6B7280; }
+  footer { text-align: center; padding: 24px; font-size: 13px; color: #9CA3AF; }
+  footer a { color: #D9A3B2; text-decoration: none; }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">
+    <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg>
+  </div>
+  <h1>BrainBox</h1>
+  <a href="privacy-en.html">Privacy Policy</a>
+</header>
+
+<main>
+  <div class="page-title">BrainBox Support</div>
+  <div class="subtitle">A timeline-based task management app for your day</div>
+
+  <section>
+    <h2>About the App</h2>
+    <p>BrainBox is a timeline-based task management app designed for people with ADHD tendencies or who struggle to keep up with to-do lists. By visualizing today's tasks along a time axis, it helps prevent procrastination.</p>
+    <div class="feature-grid">
+      <div class="feature-item">
+        <div class="feature-title">Timeline view</div>
+        <div class="feature-desc">See your day's tasks laid out along a time axis</div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-title">Free time visualization</div>
+        <div class="feature-desc">Clearly see the gaps between your plans</div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-title">Recurring tasks</div>
+        <div class="feature-desc">Set up daily, weekly, and other repeating tasks</div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-title">Later list</div>
+        <div class="feature-desc">Manage tasks without a set time in one place</div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-title">Subtasks & notes</div>
+        <div class="feature-desc">Track task details in depth</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>How to Contact Us</h2>
+    <p>If you have any questions or requests, please feel free to reach out at the email address below.</p>
+    <p>Please note that it may take a few days to receive a reply.</p>
+    <a class="contact-btn" href="mailto:support.brainbox.jp@gmail.com">Contact us by email</a>
+  </section>
+
+  <section>
+    <h2>Reporting a Bug</h2>
+    <p>If you find a bug in the app, please include the following information when contacting our support email.</p>
+    <ul style="padding-left:20px;margin-top:8px;">
+      <li style="font-size:15px;color:#374151;margin-bottom:6px;">Your device model and OS version</li>
+      <li style="font-size:15px;color:#374151;margin-bottom:6px;">The app version (available in Settings)</li>
+      <li style="font-size:15px;color:#374151;margin-bottom:6px;">What happened and how to reproduce it</li>
+      <li style="font-size:15px;color:#374151;">A screenshot, if possible</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Privacy Policy</h2>
+    <p>For information on how we handle personal data, please see our Privacy Policy.</p>
+    <p><a href="privacy-en.html">Read the Privacy Policy →</a></p>
+  </section>
+</main>
+
+<footer>
+  &copy; 2026 BrainBox. All rights reserved. &nbsp;|&nbsp; <a href="privacy-en.html">Privacy Policy</a>
+</footer>
+</body>
+</html>
