@@ -2435,7 +2435,8 @@ function FreeTimeCard({slot,fits,moreCount=0,height,onSchedule,onDragStart,onMor
                 onTouchEnd={cancelLP}
                 onTouchMove={cancelLP}
                 data-tour="tour-draggable"
-                className={`inline-flex items-center bg-gray-100 rounded-full px-2.5 py-1 text-xs font-medium text-gray-500 select-none transition-transform${pressingId===t.id?' scale-95':''}`}>
+                className={`inline-flex items-center gap-1 bg-gray-100 rounded-full px-2.5 py-1 text-xs font-medium text-gray-500 select-none transition-transform${pressingId===t.id?' scale-95':''}`}>
+                {t.deadlineAt&&<AppIcons.deadline size={10+iconDelta} className={deadlineLabelColor(t.deadlineAt)}/>}
                 <span>{t.name}</span>
               </button>
             ))}
