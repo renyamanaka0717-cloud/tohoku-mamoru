@@ -996,7 +996,9 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
 
   const nameInputRef = useRef<HTMLInputElement>(null);
   useEffect(()=>{
-    if(!suppressAutoFocus) nameInputRef.current?.focus();
+    // 編集時（既存タスクを開いた時）は他の項目を触りたいことが多く、意図せずキーボードが
+    // 出ると邪魔になるため、新規作成時のみ自動フォーカスする
+    if(!suppressAutoFocus&&!task) nameInputRef.current?.focus();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   },[]);
   const focusNameBaseline = useRef(focusNameSignal);
