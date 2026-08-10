@@ -5763,8 +5763,8 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           ].map(({label,free,pro},i,arr)=>(
             <div key={i} className={`grid items-center px-4 py-3${i<arr.length-1?' border-b border-gray-100':''}`} style={{gridTemplateColumns:'1fr 72px 64px'}}>
               <p className="text-sm text-gray-800">{label}</p>
-              <p className={`text-sm text-center ${free==='×'?'text-gray-300':'text-gray-500'}`}>{free}</p>
-              <p className="text-sm font-semibold text-[var(--c-primary)] text-center">{pro}</p>
+              <p className={`text-sm text-center break-words ${free==='×'?'text-gray-300':'text-gray-500'}`}>{free}</p>
+              <p className="text-sm font-semibold text-[var(--c-primary)] text-center break-words">{pro}</p>
             </div>
           ))}
         </div>
