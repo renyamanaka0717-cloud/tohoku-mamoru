@@ -40,22 +40,24 @@ export function notify(title: string, body: string): void {
 
 // sourceはどの機能からの許可リクエストか（'onboarding'|'settings'等）をnotification_permission_granted
 // のparamsに残すためのラベル。ネイティブのrequestPermission()はOSダイアログの選択完了後にresolveする
-// ため、resolve後にcheckGeofencePermissions()で結果を読めば実際に許可されたかを確認できる
-export function requestNotifyPermission(source: string): void {
+// ため、resolve後にcheckGeofencePermissions()で結果を読めば実際に許可されたかを確認できる。
+// Promiseを返すため、オンボーディングのように「このダイアログの選択が終わってから次を出す」という
+// 順序が必要な呼び出し元はawait/thenできる（既存の呼び出し元は返り値を無視してもfire-and-forgetのまま動く）
+export function requestNotifyPermission(source: string): Promise<void> {
   if (isNative()) {
-    LocalNotifyPlugin.requestPermission().then(async () => {
+    return LocalNotifyPlugin.requestPermission().then(async () => {
       const status = await checkGeofencePermissions();
       if (status.notifications === 'granted') logPermissionGrantedOnce('notification', { source });
     }).catch(() => {
       // ネイティブ側プラグイン未導入時はリクエストのみスキップ
     });
-    return;
   }
   if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
-    Notification.requestPermission().then(perm => {
+    return Notification.requestPermission().then(perm => {
       if (perm === 'granted') logPermissionGrantedOnce('notification', { source });
     });
   }
+  return Promise.resolve();
 }
 
 // タスクごとのアラート（開始時・何分前など）をネイティブに事前予約する。

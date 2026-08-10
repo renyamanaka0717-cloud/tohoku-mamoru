@@ -6000,8 +6000,6 @@ export default function App() {
   const [lifePatterns,setLifePatterns] = useState<LifePattern[]>([]);
   const [patternOverrides,setPatternOverrides] = useState<Record<string,string>>({});
   const [authUser,setAuthUser] = useState<AuthUser|null>(null);
-  const [showNotifPrompt,setShowNotifPrompt] = useState(false);
-  const [showLocPrompt,setShowLocPrompt] = useState(false);
   const [showTour,setShowTour] = useState(false);
   const [showWelcome,setShowWelcome] = useState(false);
   const [tourDragSignal,setTourDragSignal] = useState(0);
@@ -6282,33 +6280,20 @@ export default function App() {
     setShowWakeSleepPrompt(true);
   };
   // 通知・位置情報の許可は、プロダクトツアーを体験して価値が伝わった後に求める
-  // （アプリに触る前だと拒否されやすいため。ツアー完了時に呼ばれる）
+  // （アプリに触る前だと拒否されやすいため。ツアー完了時に呼ばれる）。
+  // BrainBox独自の説明ポップアップは挟まず、Apple純正の許可ダイアログをそのまま順番に出す。
+  // requestNotifyPermission/ensureGeofencePermissionの完了を待ってから次に進むことで、
+  // 「通知許可→位置情報許可」の順序をダイアログの表示タイミングレベルで保証している
   const maybeShowNotifPrompt=()=>{
     if(localStorage.getItem(NOTIF_ASKED_KEY)){ maybeShowLocPrompt(); return; }
-    setShowNotifPrompt(true);
+    localStorage.setItem(NOTIF_ASKED_KEY,'1');
+    setSettings(s=>({...s,notificationsEnabled:true}));
+    requestNotifyPermission('onboarding').finally(()=>maybeShowLocPrompt());
   };
   const maybeShowLocPrompt=()=>{
     if(localStorage.getItem(LOCATION_ASKED_KEY)){ maybeShowWakeSleepPrompt(); return; }
-    setShowLocPrompt(true);
-  };
-  const dismissNotifPrompt=()=>{
-    localStorage.setItem(NOTIF_ASKED_KEY,'1');
-    setShowNotifPrompt(false);
-    maybeShowLocPrompt();
-  };
-  const enableNotifFromPrompt=()=>{
-    requestNotifyPermission('onboarding');
-    setSettings(s=>({...s,notificationsEnabled:true}));
-    dismissNotifPrompt();
-  };
-  const dismissLocPrompt=()=>{
     localStorage.setItem(LOCATION_ASKED_KEY,'1');
-    setShowLocPrompt(false);
-    maybeShowWakeSleepPrompt();
-  };
-  const enableLocFromPrompt=()=>{
-    ensureGeofencePermission('onboarding');
-    dismissLocPrompt();
+    ensureGeofencePermission('onboarding').finally(()=>maybeShowWakeSleepPrompt());
   };
   const dismissWakeSleepPrompt=()=>{
     localStorage.setItem(WAKESLEEP_ASKED_KEY,'1');
@@ -7356,50 +7341,6 @@ export default function App() {
       )}
 
       {appProPrompt&&<ProGateSheet onClose={()=>setAppProPrompt(false)} onView={()=>{setAppProPrompt(false);setSettingsInitSub('premium');setSOp(true);}} feature="起床・就寝アイコンの色変更"/>}
-
-      {/* ── 通知許可プロンプト（プロダクトツアー完了後） ── */}
-      {showNotifPrompt&&(
-        <div className="fixed inset-0 z-[210] flex items-end justify-center">
-          <div className="absolute inset-0 bg-black/40" onClick={dismissNotifPrompt}/>
-          <div className="relative bg-white rounded-t-3xl w-full max-w-md px-6 pt-7 pb-10 shadow-2xl">
-            <div className="flex justify-center mb-4">
-              <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{background:'rgba(217,163,178,0.12)'}}>
-                <AppIcons.bell size={32} className="text-[var(--c-primary)]"/>
-              </div>
-            </div>
-            <p className="text-lg font-bold text-gray-900 text-center mb-2">通知を有効にしよう</p>
-            <p className="text-sm text-gray-500 text-center mb-1 leading-relaxed">必要なタイミングで、やることを思い出せるようにします。</p>
-            <p className="text-xs text-gray-400 text-center mb-7 leading-relaxed">あとから設定画面でいつでも有効にできます。</p>
-            <button onClick={enableNotifFromPrompt}
-              className="w-full py-3.5 rounded-2xl text-[15px] font-bold text-white mb-3"
-              style={{background:'var(--c-primary)'}}>通知をオンにする</button>
-            <button onClick={dismissNotifPrompt}
-              className="w-full py-2.5 text-sm font-medium text-gray-400">あとで</button>
-          </div>
-        </div>
-      )}
-
-      {/* ── 位置情報許可プロンプト（通知許可の直後） ── */}
-      {showLocPrompt&&(
-        <div className="fixed inset-0 z-[210] flex items-end justify-center">
-          <div className="absolute inset-0 bg-black/40" onClick={dismissLocPrompt}/>
-          <div className="relative bg-white rounded-t-3xl w-full max-w-md px-6 pt-7 pb-10 shadow-2xl">
-            <div className="flex justify-center mb-4">
-              <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{background:'rgba(217,163,178,0.12)'}}>
-                <AppIcons.location size={32} className="text-[var(--c-primary)]"/>
-              </div>
-            </div>
-            <p className="text-lg font-bold text-gray-900 text-center mb-2">位置情報を有効にしよう</p>
-            <p className="text-sm text-gray-500 text-center mb-1 leading-relaxed">場所に着いたときに、必要なことを思い出せるようにします。</p>
-            <p className="text-xs text-gray-400 text-center mb-7 leading-relaxed">あとから設定画面でいつでも有効にできます。</p>
-            <button onClick={enableLocFromPrompt}
-              className="w-full py-3.5 rounded-2xl text-[15px] font-bold text-white mb-3"
-              style={{background:'var(--c-primary)'}}>位置情報をオンにする</button>
-            <button onClick={dismissLocPrompt}
-              className="w-full py-2.5 text-sm font-medium text-gray-400">あとで</button>
-          </div>
-        </div>
-      )}
 
       {showWakeSleepPrompt&&(
         <div className="fixed inset-0 z-[210] flex items-end justify-center">

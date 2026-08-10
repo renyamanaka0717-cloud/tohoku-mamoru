@@ -806,12 +806,11 @@ interface ForgetAlert {
 
 `Welcome`の「あとで見る」・`ProductTour`の`onFinish`（どちらも`TOUR_COMPLETED_KEY`をセットする箇所）から`maybeShowNotifPrompt()`を呼ぶ——**ツアーを「スキップ」した場合も「あとで見る」を選んだ場合も同じ連鎖に入る**。ツアーが既に完了しているユーザーの入口である`maybeShowProductTour()`も、`TOUR_COMPLETED_KEY`があれば同様に`maybeShowNotifPrompt()`を呼び、無ければウェルカム画面を表示する。
 
-**通知・位置情報プロンプト（`showNotifPrompt`/`showLocPrompt`、ツアー完了直後に表示）:**
-- 通知プロンプトが先、位置情報プロンプトが後（`dismissNotifPrompt()`が`NOTIF_ASKED_KEY`をセットしてから`maybeShowLocPrompt()`を呼ぶ）
-- 文言: 通知は「必要なタイミングで、やることを思い出せるようにします。」、位置情報は「場所に着いたときに、必要なことを思い出せるようにします。」。どちらも「あとから設定画面でいつでも有効にできます」を添えている
-- 「あとで」（拒否）を押した場合も連鎖は先に進む（通知→位置情報→起床・就寝）だけで、それ以上何も表示しない
-- `NOTIF_ASKED_KEY`/`LOCATION_ASKED_KEY`で「一度尋ねたら二度と出さない」を管理する（拒否されても再度は聞かない）
-- `maybeShowLocPrompt()`は`LOCATION_ASKED_KEY`が既にあれば`maybeShowWakeSleepPrompt()`を呼び、`dismissLocPrompt()`（`enableLocFromPrompt()`もこれを呼ぶ）も位置情報プロンプトを閉じた直後に`maybeShowWakeSleepPrompt()`を呼ぶ
+**通知・位置情報の許可（ツアー完了直後）:** BrainBox独自の説明ポップアップ（`showNotifPrompt`/`showLocPrompt`、旧実装）は撤去済み。**Apple純正の許可ダイアログをそのまま順番に出す**（`maybeShowNotifPrompt()`→`requestNotifyPermission('onboarding')`→（完了後）`maybeShowLocPrompt()`→`ensureGeofencePermission('onboarding')`→（完了後）`maybeShowWakeSleepPrompt()`）。
+- `requestNotifyPermission()`/`ensureGeofencePermission()`はどちらもPromiseを返す。`.finally()`で次のステップに繋ぐことで、前のダイアログの選択が終わってから次のダイアログを要求する順序を保証している（同期的に両方叩くと、iOS側のダイアログ表示順が呼び出し順と一致する保証がなくなる）
+- `NOTIF_ASKED_KEY`/`LOCATION_ASKED_KEY`は各ステップに入った時点（ダイアログの結果を待たず）で即座にセットする（「一度尋ねたら二度と出さない」管理用。拒否されても再度は聞かない）
+- `maybeShowNotifPrompt()`は`settings.notificationsEnabled`をtrueにしてからリクエストする（旧実装の「オンにする」ボタン相当の副作用を維持）
+- `maybeShowLocPrompt()`は`LOCATION_ASKED_KEY`が既にあれば`maybeShowWakeSleepPrompt()`を呼ぶ（両ステップとも「既に済んでいれば次へ」を関数内に持つ）
 
 **起床・就寝プロンプト（連鎖の最後）:** `maybeShowWakeSleepPrompt()`は`WAKESLEEP_ASKED_KEY`が既にあれば何もせず終了する（＝この連鎖はここで終わり、次のプロンプトへは繋がらない）。`dismissWakeSleepPrompt()`（`confirmWakeSleepPrompt()`もこれを呼ぶ）は`WAKESLEEP_ASKED_KEY`をセットして閉じるだけで、以降何も呼ばない。
 
@@ -877,7 +876,8 @@ interface RecommendationDef { id:RecommendationId; usedKey:keyof Omit<FeatureUsa
 - おすすめ機能とプロダクトツアーを同時に表示しない（おすすめ機能の表示条件が`!showTour`でガードしている）
 - 削除済みの`Onboarding.tsx`・`ONBOARDING_KEY`・`showOnboarding`（複数ページのスワイプ式イントロ）を新しいセッションで復活させない。単一画面の「ウェルカム画面」（`Welcome.tsx`）は別物として存在するので混同しない
 - ウェルカム画面・プロダクトツアーの表示可否判定に新しいlocalStorageキーを追加しない（`TOUR_COMPLETED_KEY`1つだけで両方を判定する設計。「あとで見る」もツアーの「スキップ」も同じくこのキーをセットする）
-- プロダクトツアー→通知・位置情報プロンプト→起床・就寝プロンプトの順序を変えない（アプリに触る前に許可や設定を求めると離脱されやすいため、意図的に起床・就寝設定を最後に回している）
+- プロダクトツアー→通知許可→位置情報許可→起床・就寝プロンプトの順序を変えない（アプリに触る前に許可や設定を求めると離脱されやすいため、意図的に起床・就寝設定を最後に回している）
+- 通知・位置情報の許可にBrainBox独自の説明ポップアップ（`showNotifPrompt`/`showLocPrompt`）を復活させない。意図的にApple純正の許可ダイアログへ直接進む設計に変更済み。`requestNotifyPermission()`/`ensureGeofencePermission()`を同期的に連続で呼ばない（順序が保証されなくなる。必ず`.finally()`で前のダイアログの完了を待ってから次を呼ぶこと）
 - プロダクトツアーの対象要素に`data-tour`属性を付け忘れない（`ProductTour`は`querySelector`でこれらを探すため、対象のJSXを変更する時は属性ごと移動させること）
 - `data-tour="tour-draggable"`をタイムライン上の通常のスケジュール済みTaskCardに付けない（`FreeTimeCard`内の「あとでやる」タスクのピルにのみ付与する設計。`querySelector`は最初にDOM順で見つかった要素を使うため、両方に付けるとスケジュール済みタスクの方が先にヒットしてしまい、あとでやるタスクがスポットライトされなくなる不具合の実績あり）
 - 吹き出しの矢印の水平位置を固定値（`left:24`等）に戻さない（対象が画面右側にある場合に矢印が対象と無関係な位置を指してしまう不具合の実績あり。`arrowRect`（`arrowSelector`が指す要素、省略時はスポットライト対象）の中心座標に動的に追従させる設計を維持すること）
