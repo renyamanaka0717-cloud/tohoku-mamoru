@@ -5638,31 +5638,31 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[var(--c-primary)]/10 mb-3">
             <AppIcons.star size={32} className="text-[var(--c-primary)]"/>
           </div>
-          <p className="text-lg font-bold text-gray-900">PROにアップグレード</p>
-          <p className="text-sm text-gray-500 mt-1">より便利な機能で、毎日をもっとスムーズに</p>
+          <p className="text-lg font-bold text-gray-900">{tr('proUpgradeTitle')}</p>
+          <p className="text-sm text-gray-500 mt-1">{tr('proUpgradeSubtitle')}</p>
         </div>
 
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2">★ PRO 機能一覧</p>
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2">{tr('proFeatureListLabel')}</p>
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm mb-4">
           <div className="grid px-4 py-2.5 bg-gray-50 border-b border-gray-100" style={{gridTemplateColumns:'1fr 72px 64px'}}>
-            <p className="text-xs font-semibold text-gray-500">機能</p>
-            <p className="text-xs font-semibold text-gray-500 text-center">無料</p>
+            <p className="text-xs font-semibold text-gray-500">{tr('proHeaderFeature')}</p>
+            <p className="text-xs font-semibold text-gray-500 text-center">{tr('proHeaderFree')}</p>
             <p className="text-xs font-bold text-[var(--c-primary)] text-center">PRO</p>
           </div>
           {[
-            {label:'生活パターン',         free:'1個',       pro:'無制限'},
-            {label:'タスク一括入力',       free:'月1回',     pro:'無制限'},
-            {label:'タグ',                 free:'2個',       pro:'無制限'},
-            {label:'ファイルタブ',         free:'1個',       pro:'無制限'},
-            {label:'繰り返し間隔カスタム', free:'基本のみ',  pro:'完全対応'},
-            {label:'テーマカラー',         free:'ミントのみ', pro:'9色'},
-            {label:'アプリアイコン変更',   free:'×',         pro:'対応'},
-            {label:'起床・就寝アイコン色変更', free:'×',      pro:'対応'},
-            {label:'場所で通知',           free:'×',         pro:'対応'},
-            {label:'放置アラート',         free:'既定のみ',  pro:'完全対応'},
-            {label:'締切管理',             free:'×',         pro:'対応'},
-            {label:'あとでやるの場所通知', free:'×',         pro:'対応'},
-            {label:'忘れ物防止アラート',   free:'×',         pro:'対応'},
+            {label:tr('rowLifePatternsTitle'),     free:tr('proValCount1'),       pro:tr('proValUnlimited')},
+            {label:tr('rowBulkInputTitle'),         free:tr('proValOncePerMonth'), pro:tr('proValUnlimited')},
+            {label:tr('rowTagsTitle'),              free:tr('proValCount2'),       pro:tr('proValUnlimited')},
+            {label:tr('rowTabsTitle'),              free:tr('proValCount1'),       pro:tr('proValUnlimited')},
+            {label:tr('proFeatureCustomRecurrence'), free:tr('proValBasicOnly'),   pro:tr('proValFull')},
+            {label:tr('themeColorRowTitle'),        free:tr('proValMintOnly'),     pro:tr('proVal9Colors')},
+            {label:tr('proFeatureAppIconChange'),   free:'×',                     pro:tr('proValSupported')},
+            {label:tr('proFeatureWakeSleepIconColor'), free:'×',                  pro:tr('proValSupported')},
+            {label:tr('fieldLocationNotify'),       free:'×',                     pro:tr('proValSupported')},
+            {label:tr('rowLaterAlertTitle'),        free:tr('proValDefaultOnly'),  pro:tr('proValFull')},
+            {label:tr('proFeatureDeadline'),        free:'×',                     pro:tr('proValSupported')},
+            {label:tr('proFeatureLaterLocationNotify'), free:'×',                 pro:tr('proValSupported')},
+            {label:tr('rowForgetAlertTitle'),       free:'×',                     pro:tr('proValSupported')},
           ].map(({label,free,pro},i,arr)=>(
             <div key={i} className={`grid items-center px-4 py-3${i<arr.length-1?' border-b border-gray-100':''}`} style={{gridTemplateColumns:'1fr 72px 64px'}}>
               <p className="text-sm text-gray-800">{label}</p>
@@ -5674,33 +5674,33 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
 
         {isPremium ? (
           <div className="bg-white rounded-2xl px-4 py-5 shadow-sm text-center">
-            <p className="text-sm font-bold text-[var(--c-primary)] mb-1">PROプランを利用中です</p>
-            <p className="text-xs text-gray-400">すべての機能をご利用いただけます</p>
+            <p className="text-sm font-bold text-[var(--c-primary)] mb-1">{tr('proActiveTitle')}</p>
+            <p className="text-xs text-gray-400">{tr('proActiveDesc')}</p>
           </div>
         ) : (
           <>
             <div className="bg-white rounded-2xl px-4 py-5 shadow-sm mb-3">
-              <p className="text-[13px] font-semibold text-gray-400 text-center mb-3">料金プラン</p>
+              <p className="text-[13px] font-semibold text-gray-400 text-center mb-3">{tr('proPricingLabel')}</p>
               <div className="rounded-xl px-4 py-4 text-center border border-gray-100" style={{background:'color-mix(in srgb, var(--c-primary) 8%, white)'}}>
-                <p className="text-sm font-bold mb-1" style={{color:'var(--c-primary)'}}>7日間無料トライアル</p>
-                <p className="text-xs text-gray-400 mb-1">トライアル終了後 月額</p>
+                <p className="text-sm font-bold mb-1" style={{color:'var(--c-primary)'}}>{tr('proTrialTitle')}</p>
+                <p className="text-xs text-gray-400 mb-1">{tr('proTrialAfter')}</p>
                 <p className="text-2xl font-bold" style={{color:'var(--c-primary)'}}>¥200</p>
-                <p className="text-xs text-gray-400 mt-1">いつでもキャンセル可能</p>
+                <p className="text-xs text-gray-400 mt-1">{tr('proTrialCancelNote')}</p>
               </div>
             </div>
             <button
               disabled={isPurchasing}
-              onClick={async()=>{try{await purchase();}catch{alert('購入処理に失敗しました。時間をおいて再度お試しください。');}}}
+              onClick={async()=>{try{await purchase();}catch{alert(tr('proPurchaseFailedAlert'));}}}
               className="w-full py-4 rounded-2xl text-[15px] font-bold text-white mb-2 active:opacity-80 disabled:opacity-50"
               style={{background:'var(--c-primary)'}}
             >
-              {isPurchasing?'処理中...':'7日間無料で始める'}
+              {isPurchasing?tr('proProcessingLabel'):tr('proStartTrialButton')}
             </button>
             <button
-              onClick={async()=>{const ok=await restore();if(!ok)alert('復元できる購入履歴が見つかりませんでした');}}
+              onClick={async()=>{const ok=await restore();if(!ok)alert(tr('proRestoreNotFoundAlert'));}}
               className="w-full py-2.5 text-sm text-gray-400 text-center"
             >
-              購入を復元
+              {tr('proRestoreButton')}
             </button>
           </>
         )}
