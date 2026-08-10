@@ -1291,7 +1291,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
     setLocLocating(true);
     getCurrentCoords(10000).then(loc=>{
       setLocLocating(false);
-      if(!loc){ setLocError('現在地を取得できませんでした'); return; }
+      if(!loc){ setLocError(tr('couldNotGetLocation')); return; }
       setLocMapCenter(loc);
       setLocMapMode(true);
     });
@@ -1368,13 +1368,13 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
         }
       }
       if(!task&&(notificationsEnabled===false)){
-        const ok=window.confirm('通知機能がオフになっています。\nタスクのアラートを受け取るには通知を有効にしてください。\n\n通知をオンにしますか？');
+        const ok=window.confirm(tr('taskNotifOffConfirm'));
         if(ok) onEnableNotifications?.();
       }
       onSave(instances);
     } else {
       if(!task&&(mode==='scheduled'||mode==='recurring')&&(notificationsEnabled===false)){
-        const ok=window.confirm('通知機能がオフになっています。\nタスクのアラートを受け取るには通知を有効にしてください。\n\n通知をオンにしますか？');
+        const ok=window.confirm(tr('taskNotifOffConfirm'));
         if(ok) onEnableNotifications?.();
       }
       onSave([base]);
@@ -2979,13 +2979,14 @@ function ShopNotifPanel({settings,onChange,notificationsEnabled=true,onEnableNot
   notificationsEnabled?:boolean;
   onEnableNotifications?:()=>void;
 }) {
-  const DOW=['日','月','火','水','木','金','土'];
+  const {tr,language} = useI18n();
+  const DOW=language==='ja'?['日','月','火','水','木','金','土']:DAY_NAMES_EN;
   const [editing,setEditing]=useState<ShopNotifSetting|null>(null);
   const [adding,setAdding]=useState(false);
   const fmtDays=(days:number[])=>{
-    if(days.length===7) return '毎日';
-    if(days.length===2&&days.includes(0)&&days.includes(6)) return '週末';
-    if(days.length===5&&!days.includes(0)&&!days.includes(6)) return '平日';
+    if(days.length===7) return tr('everyDayLabel');
+    if(days.length===2&&days.includes(0)&&days.includes(6)) return tr('weekendLabel');
+    if(days.length===5&&!days.includes(0)&&!days.includes(6)) return tr('weekdayLabel');
     return [...days].sort((a,b)=>a-b).map(d=>DOW[d]).join('・');
   };
   const startAdd=()=>{
@@ -3003,7 +3004,7 @@ function ShopNotifPanel({settings,onChange,notificationsEnabled=true,onEnableNot
   const toggleEnabled=(id:string)=>{
     const target=settings.find(s=>s.id===id);
     if(target&&!target.enabled&&!notificationsEnabled){
-      const ok=window.confirm('通知機能がオフになっています。\n通知を有効にしますか？');
+      const ok=window.confirm(tr('notifOffConfirm'));
       if(!ok) return;
       onEnableNotifications?.();
     }
@@ -3012,14 +3013,14 @@ function ShopNotifPanel({settings,onChange,notificationsEnabled=true,onEnableNot
   return (
     <div className="px-4 pb-6">
       <div className="flex items-center justify-between mb-3 mt-1">
-        <p className="text-sm font-semibold text-gray-700">買い物リストの通知</p>
+        <p className="text-sm font-semibold text-gray-700">{tr('shopNotifTitle')}</p>
         <button onClick={startAdd} disabled={!!editing}
           className="flex items-center gap-1 px-3 py-1.5 bg-[var(--c-primary)] text-white rounded-xl text-sm font-semibold disabled:opacity-40">
-          <AppIcons.plus size={14}/>追加
+          <AppIcons.plus size={14}/>{tr('addButton')}
         </button>
       </div>
       {settings.length===0&&!editing&&(
-        <p className="text-sm text-gray-400 text-center py-4">通知が設定されていません</p>
+        <p className="text-sm text-gray-400 text-center py-4">{tr('noShopNotifYet')}</p>
       )}
       <div className="space-y-2">
         {settings.map(s=>(
@@ -3042,13 +3043,13 @@ function ShopNotifPanel({settings,onChange,notificationsEnabled=true,onEnableNot
       {deleteId&&(
         <div className="fixed inset-0 z-[110] bg-black/40 flex items-center justify-center p-4" onClick={()=>setDeleteId(null)}>
           <div className="bg-white rounded-3xl w-full max-w-md mx-auto p-5" onClick={e=>e.stopPropagation()}>
-            <p className="text-center text-[17px] font-semibold text-gray-900 mb-1">この通知を削除しますか？</p>
-            <p className="text-center text-[13px] text-gray-400 mb-6">この操作は取り消せません</p>
+            <p className="text-center text-[17px] font-semibold text-gray-900 mb-1">{tr('deleteNotifConfirmTitle')}</p>
+            <p className="text-center text-[13px] text-gray-400 mb-6">{tr('cantUndoBody')}</p>
             <div className="flex gap-2">
               <button onClick={()=>setDeleteId(null)}
-                className="flex-1 py-3 rounded-2xl bg-gray-100 text-gray-700 text-[15px] font-semibold">キャンセル</button>
+                className="flex-1 py-3 rounded-2xl bg-gray-100 text-gray-700 text-[15px] font-semibold">{tr('cancelButton')}</button>
               <button onClick={()=>{del(deleteId);setDeleteId(null);}}
-                className="flex-1 py-3 rounded-2xl bg-[#D97A7A] text-white text-[15px] font-semibold">削除する</button>
+                className="flex-1 py-3 rounded-2xl bg-[#D97A7A] text-white text-[15px] font-semibold">{tr('deleteTaskButton')}</button>
             </div>
           </div>
         </div>
@@ -3056,7 +3057,7 @@ function ShopNotifPanel({settings,onChange,notificationsEnabled=true,onEnableNot
       {editing&&(
         <div className="fixed inset-0 z-[100] bg-black/40 flex items-center justify-center p-4" onClick={()=>{setEditing(null);setAdding(false);}}>
           <div className="bg-white w-full max-w-md mx-auto rounded-3xl max-h-[85vh] overflow-y-auto p-4" onClick={e=>e.stopPropagation()}>
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">曜日</p>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">{tr('dowSectionLabel')}</p>
             <div className="flex gap-2 flex-wrap mb-4">
               {DOW.map((d,i)=>(
                 <button key={i} onClick={()=>{
@@ -3068,17 +3069,17 @@ function ShopNotifPanel({settings,onChange,notificationsEnabled=true,onEnableNot
                 </button>
               ))}
             </div>
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">時間</p>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">{tr('timeSectionLabel')}</p>
             <input type="time" value={editing.time} onChange={e=>setEditing({...editing,time:e.target.value})}
               className="border border-gray-200 rounded-xl px-2 py-2 text-sm bg-gray-50 w-full block mb-4" style={{boxSizing:'border-box'}}/>
             <div className="flex gap-2">
               <button onClick={()=>{setEditing(null);setAdding(false);}}
                 className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200">
-                キャンセル
+                {tr('cancelButton')}
               </button>
               <button onClick={()=>save(editing)} disabled={editing.days.length===0}
                 className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-[var(--c-primary)] text-white active:opacity-80 disabled:opacity-40">
-                保存
+                {tr('taskModalSave')}
               </button>
             </div>
           </div>
@@ -3318,6 +3319,7 @@ function ShopLocationPanel({locations,onChange,isPremium,onProPrompt}:{
   isPremium:boolean;
   onProPrompt:(feature:string)=>void;
 }) {
+  const {tr} = useI18n();
   const [adding,setAdding]=useState(false);
   const [mapMode,setMapMode]=useState(false);
   const [mapCenter,setMapCenter]=useState<{lat:number;lng:number}|null>(null);
@@ -3349,7 +3351,7 @@ function ShopLocationPanel({locations,onChange,isPremium,onProPrompt}:{
     setLocating(true);
     getCurrentCoords(10000).then(loc=>{
       setLocating(false);
-      if(!loc){ alert('現在地を取得できませんでした'); return; }
+      if(!loc){ alert(tr('couldNotGetLocation')); return; }
       setMapCenter(loc);
       setMapMode(true);
     });
@@ -3405,28 +3407,28 @@ function ShopLocationPanel({locations,onChange,isPremium,onProPrompt}:{
     <div className="px-4 pb-6">
       <div className="flex items-center justify-between mb-3 mt-1">
         <p className="text-sm font-semibold text-gray-700 flex items-center gap-1.5">
-          場所で通知
+          {tr('fieldLocationNotify')}
           {!isPremium&&<span className="inline-flex items-center gap-0.5 border border-gray-300 rounded px-1.5 py-0.5 text-[10px] font-bold text-gray-400 leading-none tracking-wide">★ PRO</span>}
         </p>
         <button onClick={()=>setAdding(true)} disabled={adding}
           className="flex items-center gap-1 px-3 py-1.5 bg-[var(--c-primary)] text-white rounded-xl text-sm font-semibold disabled:opacity-40">
-          <AppIcons.plus size={14}/>追加
+          <AppIcons.plus size={14}/>{tr('addButton')}
         </button>
       </div>
       {permDenied&&(
         <div className="bg-amber-50 rounded-2xl px-4 py-3 mb-3 flex items-start gap-2">
           <AppIcons.location size={16} className="text-amber-500 shrink-0 mt-0.5"/>
           <div className="flex-1 min-w-0">
-            <p className="text-xs text-amber-700 leading-relaxed mb-2">位置情報または通知の許可が必要です。設定アプリ &gt; BrainBoxから「位置情報（常に）」と「通知」を許可してください。</p>
+            <p className="text-xs text-amber-700 leading-relaxed mb-2">{tr('permissionBannerText')}</p>
             <button onClick={()=>openAppSettings()}
               className="px-3 py-1.5 bg-amber-100 text-amber-800 rounded-lg text-xs font-semibold active:bg-amber-200">
-              設定アプリを開く
+              {tr('openSettingsAppButton')}
             </button>
           </div>
         </div>
       )}
       {locations.length===0&&!adding&&(
-        <p className="text-sm text-gray-400 text-center py-4">場所が登録されていません</p>
+        <p className="text-sm text-gray-400 text-center py-4">{tr('noLocationsYet')}</p>
       )}
       <div className="space-y-2">
         {locations.map(l=>(
@@ -3434,7 +3436,7 @@ function ShopLocationPanel({locations,onChange,isPremium,onProPrompt}:{
             <AppIcons.location size={16} className={l.enabled?'text-[var(--c-primary)]':'text-gray-300'}/>
             <button onClick={()=>startEditLocation(l)} className="flex-1 min-w-0 text-left">
               <p className="text-sm font-medium text-gray-800 truncate">{l.name}</p>
-              <p className="text-xs text-gray-400">半径{l.radius}m</p>
+              <p className="text-xs text-gray-400">{tr('radiusLabel').replace('{r}',String(l.radius))}</p>
             </button>
             <button onClick={()=>toggle(l.id)}
               className={`relative w-10 h-6 rounded-full transition-colors shrink-0 ${l.enabled?'bg-[var(--c-primary)]':'bg-gray-200'}`}>
@@ -3449,13 +3451,13 @@ function ShopLocationPanel({locations,onChange,isPremium,onProPrompt}:{
       {deleteId&&(
         <div className="fixed inset-0 z-[110] bg-black/40 flex items-center justify-center p-4" onClick={()=>setDeleteId(null)}>
           <div className="bg-white rounded-3xl w-full max-w-md mx-auto p-5" onClick={e=>e.stopPropagation()}>
-            <p className="text-center text-[17px] font-semibold text-gray-900 mb-1">この場所を削除しますか？</p>
-            <p className="text-center text-[13px] text-gray-400 mb-6">この操作は取り消せません</p>
+            <p className="text-center text-[17px] font-semibold text-gray-900 mb-1">{tr('deleteLocationConfirmTitle')}</p>
+            <p className="text-center text-[13px] text-gray-400 mb-6">{tr('cantUndoBody')}</p>
             <div className="flex gap-2">
               <button onClick={()=>setDeleteId(null)}
-                className="flex-1 py-3 rounded-2xl bg-gray-100 text-gray-700 text-[15px] font-semibold">キャンセル</button>
+                className="flex-1 py-3 rounded-2xl bg-gray-100 text-gray-700 text-[15px] font-semibold">{tr('cancelButton')}</button>
               <button onClick={()=>{del(deleteId);setDeleteId(null);}}
-                className="flex-1 py-3 rounded-2xl bg-[#D97A7A] text-white text-[15px] font-semibold">削除する</button>
+                className="flex-1 py-3 rounded-2xl bg-[#D97A7A] text-white text-[15px] font-semibold">{tr('deleteTaskButton')}</button>
             </div>
           </div>
         </div>
@@ -3465,15 +3467,15 @@ function ShopLocationPanel({locations,onChange,isPremium,onProPrompt}:{
           <div className="bg-white w-full max-w-md mx-auto rounded-3xl max-h-[85vh] overflow-y-auto p-4" onClick={e=>e.stopPropagation()}>
             {!pendingCoord?(
               <>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">場所を検索</p>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">{tr('searchLocationSectionLabel')}</p>
                 <div className="flex gap-2 mb-3">
                   <input value={searchQuery} onChange={e=>setSearchQuery(e.target.value)}
                     onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();doSearch();}}}
-                    placeholder="住所や施設名を入力"
+                    placeholder={tr('addressPlaceholder')}
                     className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50"/>
                   <button onClick={doSearch} disabled={searching||!searchQuery.trim()}
                     className="px-4 py-2 bg-gray-100 rounded-xl text-sm font-semibold text-gray-700 shrink-0 disabled:opacity-40">
-                    {searching?'検索中':'検索'}
+                    {searching?tr('searchingLabel'):tr('searchLabel')}
                   </button>
                 </div>
                 {searchResults.length>0&&(
@@ -3488,19 +3490,19 @@ function ShopLocationPanel({locations,onChange,isPremium,onProPrompt}:{
                 )}
                 <button onClick={openMapMode} disabled={locating}
                   className="w-full py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200 mb-2 disabled:opacity-40">
-                  {locating?'取得中...':'地図で指定'}
+                  {locating?tr('gettingLocationLabel'):tr('pickOnMapButton')}
                 </button>
                 <button onClick={useCurrentLocation} disabled={locating}
                   className="w-full py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200 mb-3 disabled:opacity-40">
-                  {locating?'取得中...':'現在地から登録'}
+                  {locating?tr('gettingLocationLabel'):tr('useCurrentLocationButton')}
                 </button>
                 <button onClick={cancelAdd} className="w-full py-2.5 rounded-xl text-sm font-semibold bg-gray-50 text-gray-400">
-                  キャンセル
+                  {tr('cancelButton')}
                 </button>
               </>
             ):(
               <>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">通知する範囲</p>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">{tr('notifyRadiusSectionLabel')}</p>
                 <div className="flex gap-2 mb-4">
                   {([100,300,500] as const).map(r=>(
                     <button key={r} onClick={()=>setRadius(r)}
@@ -3509,22 +3511,22 @@ function ShopLocationPanel({locations,onChange,isPremium,onProPrompt}:{
                     </button>
                   ))}
                 </div>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">名前</p>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">{tr('nameSectionLabel')}</p>
                 <input value={pendingCoord.name} onChange={e=>setPendingCoord({...pendingCoord,name:e.target.value})}
-                  placeholder="場所の名前"
+                  placeholder={tr('placeNamePlaceholder')}
                   className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50 mb-4"/>
                 <button onClick={()=>{setMapCenter({lat:pendingCoord.lat,lng:pendingCoord.lng});setMapMode(true);}}
                   className="w-full py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200 mb-4">
-                  地図で場所を変更
+                  {tr('changeOnMapButton')}
                 </button>
                 <div className="flex gap-2">
                   <button onClick={()=>{editLocId?cancelAdd():setPendingCoord(null);}}
                     className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200">
-                    {editLocId?'キャンセル':'戻る'}
+                    {editLocId?tr('cancelButton'):tr('backButton')}
                   </button>
                   <button onClick={confirmAdd}
                     className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-[var(--c-primary)] text-white active:opacity-80">
-                    {editLocId?'保存':'登録'}
+                    {editLocId?tr('taskModalSave'):tr('registerButton')}
                   </button>
                 </div>
               </>
@@ -5084,7 +5086,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
 
   if(sub==='notifications-shop') return (
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
-      {subHeader('買い物リスト通知')}
+      {subHeader(tr('rowShopNotifTitle'))}
       <div className="flex-1 overflow-y-auto pb-8">
         <div className="mt-6">
           <ShopNotifPanel settings={shopNotifSettings} onChange={onShopNotifSettings}

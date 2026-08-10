@@ -220,6 +220,39 @@ export const STRINGS = {
   enableNotificationsTitle:  { ja: '通知を有効にする',                en: 'Enable notifications' },
   enableNotificationsDesc:   { ja: 'タスクのアラートや買い物リストの通知',    en: 'Task alerts and shopping list notifications' },
   notificationsPermissionHint: { ja: '通知を受け取るには、端末の設定でこのアプリの通知を許可してください。', en: 'To receive notifications, allow them for this app in your device settings.' },
+
+  // 設定 → 買い物リスト通知（ShopNotifPanel / ShopLocationPanel）
+  shopNotifTitle:            { ja: '買い物リストの通知',               en: 'Shopping list notifications' },
+  noShopNotifYet:            { ja: '通知が設定されていません',           en: 'No notifications set' },
+  dowSectionLabel:           { ja: '曜日',                        en: 'Days' },
+  timeSectionLabel:          { ja: '時間',                        en: 'Time' },
+  deleteNotifConfirmTitle:   { ja: 'この通知を削除しますか？',           en: 'Delete this notification?' },
+  cantUndoBody:              { ja: 'この操作は取り消せません',           en: 'This can’t be undone' },
+  everyDayLabel:             { ja: '毎日',                        en: 'Every day' },
+  weekendLabel:              { ja: '週末',                        en: 'Weekend' },
+  weekdayLabel:              { ja: '平日',                        en: 'Weekdays' },
+  notifOffConfirm:           { ja: '通知機能がオフになっています。\n通知を有効にしますか？', en: 'Notifications are turned off.\nDo you want to enable them?' },
+  taskNotifOffConfirm:       { ja: '通知機能がオフになっています。\nタスクのアラートを受け取るには通知を有効にしてください。\n\n通知をオンにしますか？', en: 'Notifications are turned off.\nEnable them to receive task alerts.\n\nTurn on notifications?' },
+
+  // ShopLocationPanel（買い物リストの場所通知）
+  permissionBannerText:      { ja: '位置情報または通知の許可が必要です。設定アプリ > BrainBoxから「位置情報（常に）」と「通知」を許可してください。', en: 'Location or notification permission is required. Please allow "Location (Always)" and "Notifications" for BrainBox in Settings.' },
+  openSettingsAppButton:     { ja: '設定アプリを開く',                en: 'Open Settings' },
+  noLocationsYet:            { ja: '場所が登録されていません',           en: 'No locations registered' },
+  radiusLabel:               { ja: '半径{r}m',                    en: '{r}m radius' },
+  deleteLocationConfirmTitle: { ja: 'この場所を削除しますか？',          en: 'Delete this location?' },
+  searchLocationSectionLabel: { ja: '場所を検索',                    en: 'Search for a place' },
+  addressPlaceholder:        { ja: '住所や施設名を入力',                en: 'Enter an address or place name' },
+  searchingLabel:            { ja: '検索中',                       en: 'Searching' },
+  searchLabel:               { ja: '検索',                        en: 'Search' },
+  gettingLocationLabel:      { ja: '取得中...',                    en: 'Getting location...' },
+  pickOnMapButton:           { ja: '地図で指定',                    en: 'Choose on map' },
+  useCurrentLocationButton:  { ja: '現在地から登録',                  en: 'Use current location' },
+  notifyRadiusSectionLabel:  { ja: '通知する範囲',                   en: 'Notification range' },
+  nameSectionLabel:          { ja: '名前',                        en: 'Name' },
+  placeNamePlaceholder:      { ja: '場所の名前',                    en: 'Place name' },
+  changeOnMapButton:         { ja: '地図で場所を変更',                en: 'Change location on map' },
+  registerButton:            { ja: '登録',                        en: 'Register' },
+  couldNotGetLocation:       { ja: '現在地を取得できませんでした',         en: 'Couldn’t get your current location' },
 } as const;
 
 export type StringKey = keyof typeof STRINGS;
