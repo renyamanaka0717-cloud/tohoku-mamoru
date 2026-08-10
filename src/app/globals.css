@@ -64,10 +64,15 @@ input, textarea, [contenteditable="true"] {
 /* ネイティブの日付・時刻ピッカー（input[type=date/time]）は文字サイズ設定の対象外にする。
    ブラウザ自身がレンダリングする内部レイアウト（時刻の数字・区切り文字の配置）が
    --text-deltaによる拡大に追従せず、特大設定で値が枠内の右側で見切れる不具合があったため。
-   text-3xlを使う起床・就寝の大きな時刻ピッカーは意図的に大きい表示なので対象外にする */
+   text-3xlを使う起床・就寝の大きな時刻ピッカーは意図的に大きい表示なので対象外にする。
+   font-sizeだけでなくline-heightも固定すること（このinputには.text-smも付いており、
+   font-sizeだけ上書きするとline-heightだけ--text-deltaで肥大化したまま残り、
+   font-sizeとline-heightがちぐはぐになってネイティブUIの内部幅計算が崩れ、
+   見切れが再発する不具合があった） */
 input[type="date"]:not(.text-3xl),
 input[type="time"]:not(.text-3xl) {
   font-size: 14px !important;
+  line-height: 20px !important;
 }
 
 input[type="time"]::-webkit-calendar-picker-indicator {
