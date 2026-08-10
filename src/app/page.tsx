@@ -4379,7 +4379,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
 
       <button onClick={back} className="flex items-center gap-0.5 min-w-[80px]" style={{color:'var(--c-primary)'}}>
         <AppIcons.caretLeft size={20}/>
-        <span className="text-[15px]">設定</span>
+        <span className="text-[15px]">{tr('settingsTitle')}</span>
       </button>
       <h2 className="flex-1 text-center text-[17px] font-semibold text-gray-900 -mx-4">{title}</h2>
       <div className="min-w-[80px]"/>
@@ -4727,23 +4727,23 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
 
   if(sub==='tabs') return (
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
-      {subHeader('ファイルタブ')}{proSheet}
+      {subHeader(tr('rowTabsTitle'))}{proSheet}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
-        {!isPremium&&<p className="text-xs text-gray-400 px-1 mt-4 mb-4">1個まで無料でご利用いただけます。2個目からPROが必要です。</p>}
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-4">新しいタブ</p>
+        {!isPremium&&<p className="text-xs text-gray-400 px-1 mt-4 mb-4">{tr('fileTabsFreeLimitNote')}</p>}
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-4">{tr('newTabSectionLabel')}</p>
         <div className="bg-white rounded-2xl shadow-sm px-4 py-3">
           <div className="flex gap-2 items-center">
             <input value={tabInput} onChange={e=>setTabInput(e.target.value)}
               onKeyDown={e=>{if(e.key==='Enter'){const v=tabInput.trim();if(v){if(!isPremium&&customTabs.length>=1){setProPrompt('ファイルタブを2個以上作成');return;}onCustomTabs([...customTabs,{id:uid(),name:v}]);setTabInput('');}}} }
-              placeholder="タブ名を入力"
+              placeholder={tr('tabNamePlaceholder')}
               className="flex-1 text-[15px] bg-transparent outline-none text-gray-900 placeholder-gray-300 border-b border-gray-200 pb-1"/>
             <button onClick={()=>{const v=tabInput.trim();if(v){if(!isPremium&&customTabs.length>=1){setProPrompt('ファイルタブを2個以上作成');return;}onCustomTabs([...customTabs,{id:uid(),name:v}]);setTabInput('');}}}
-              className="px-4 py-1.5 bg-[var(--c-primary)] text-white text-sm font-semibold rounded-xl shrink-0">追加</button>
+              className="px-4 py-1.5 bg-[var(--c-primary)] text-white text-sm font-semibold rounded-xl shrink-0">{tr('addButton')}</button>
           </div>
         </div>
         {customTabs.length>0&&(
           <>
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">タブ一覧</p>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">{tr('tabListSectionLabel')}</p>
             <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
               {customTabs.map((tab,i)=>(
                 <div key={tab.id}>
@@ -4756,7 +4756,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                       <div className="flex-1 min-w-0">
                         <span className="text-[15px] text-gray-900">{tab.name}</span>
                         <div className="flex items-center gap-2 mt-1">
-                          <span className="text-[12px] text-gray-400">【すべて】タブに表示</span>
+                          <span className="text-[12px] text-gray-400">{tr('showInAllLabel')}</span>
                           <button
                             onClick={()=>onCustomTabs(customTabs.map(t=>t.id===tab.id?{...t,showInAll:t.showInAll===false?undefined:false}:t))}
                             className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors ${tab.showInAll===false?'bg-gray-200':'bg-[var(--c-primary)]'}`}>
@@ -4768,11 +4768,11 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                     <div className="flex gap-1 shrink-0">
                       <button onClick={()=>{if(editTabId===tab.id){const v=editTabVal.trim();if(v)onCustomTabs(customTabs.map(t=>t.id===tab.id?{...t,name:v}:t));setEditTabId(null);}else{setEditTabId(tab.id);setEditTabVal(tab.name);}}}
                         className="text-xs text-gray-400 font-medium px-2 py-1">
-                        {editTabId===tab.id?'確定':'編集'}
+                        {editTabId===tab.id?tr('confirmButton'):tr('editButton')}
                       </button>
                       {editTabId===tab.id
-                        ? <button onClick={()=>setEditTabId(null)} className="text-xs text-gray-400 font-medium px-2 py-1">キャンセル</button>
-                        : <button onClick={()=>setDeleteTabId(tab.id)} className="text-xs text-[#D97A7A] font-medium px-2 py-1">削除</button>
+                        ? <button onClick={()=>setEditTabId(null)} className="text-xs text-gray-400 font-medium px-2 py-1">{tr('cancelButton')}</button>
+                        : <button onClick={()=>setDeleteTabId(tab.id)} className="text-xs text-[#D97A7A] font-medium px-2 py-1">{tr('deleteButton')}</button>
                       }
                     </div>
                   </div>
@@ -4785,12 +4785,12 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           <div className="fixed inset-0 z-[100] flex items-end justify-center" onClick={()=>setDeleteTabId(null)}>
             <div className="absolute inset-0 bg-black/40"/>
             <div className="relative bg-white rounded-t-2xl w-full max-w-md px-6 pt-6 pb-10" onClick={e=>e.stopPropagation()}>
-              <p className="text-center text-[17px] font-semibold text-gray-900 mb-1">「{dt?.name}」を削除しますか？</p>
-              <p className="text-center text-[13px] text-gray-400 mb-6">このタブのタスクをどうしますか？</p>
+              <p className="text-center text-[17px] font-semibold text-gray-900 mb-1">{tr('deleteNamedConfirmTitle').replace('{name}',dt?.name??'')}</p>
+              <p className="text-center text-[13px] text-gray-400 mb-6">{tr('deleteTabConfirmBody')}</p>
               <div className="flex flex-col gap-3">
-                <button onClick={()=>setDeleteTabMode('move')} className="w-full py-3.5 rounded-2xl bg-gray-100 text-gray-900 text-[15px] font-semibold">タスクを【すべて】に移動</button>
-                <button onClick={()=>setDeleteTabMode('delete')} className="w-full py-3.5 rounded-2xl bg-[#D97A7A] text-white text-[15px] font-semibold">タスクも完全に削除</button>
-                <button onClick={()=>setDeleteTabId(null)} className="w-full py-3.5 rounded-2xl bg-gray-50 text-gray-500 text-[15px] font-semibold">キャンセル</button>
+                <button onClick={()=>setDeleteTabMode('move')} className="w-full py-3.5 rounded-2xl bg-gray-100 text-gray-900 text-[15px] font-semibold">{tr('moveTasksToAllButton')}</button>
+                <button onClick={()=>setDeleteTabMode('delete')} className="w-full py-3.5 rounded-2xl bg-[#D97A7A] text-white text-[15px] font-semibold">{tr('deleteTasksTooButton')}</button>
+                <button onClick={()=>setDeleteTabId(null)} className="w-full py-3.5 rounded-2xl bg-gray-50 text-gray-500 text-[15px] font-semibold">{tr('cancelButton')}</button>
               </div>
             </div>
           </div>
@@ -4799,20 +4799,20 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           <div className="fixed inset-0 z-[100] flex items-end justify-center" onClick={()=>setDeleteTabMode(null)}>
             <div className="absolute inset-0 bg-black/40"/>
             <div className="relative bg-white rounded-t-2xl w-full max-w-md px-6 pt-6 pb-10" onClick={e=>e.stopPropagation()}>
-              <p className="text-center text-[17px] font-semibold text-gray-900 mb-1">本当に削除しますか？</p>
-              <p className="text-center text-[13px] text-gray-400 mb-6">{isDelete?`「${dt?.name}」のタスクもすべて完全に削除されます`:`「${dt?.name}」のタスクは【すべて】タブに移動されます`}</p>
+              <p className="text-center text-[17px] font-semibold text-gray-900 mb-1">{tr('confirmDeleteTitle')}</p>
+              <p className="text-center text-[13px] text-gray-400 mb-6">{isDelete?tr('deleteAllTasksInTabBody').replace('{name}',dt?.name??''):tr('moveTasksToAllBody').replace('{name}',dt?.name??'')}</p>
               <div className="flex flex-col gap-3">
                 <button onClick={()=>{if(isDelete)onDeleteTabTasks(deleteTabId!);onCustomTabs(customTabs.filter(t=>t.id!==deleteTabId));setDeleteTabId(null);setDeleteTabMode(null);}}
                   className={`w-full py-3.5 rounded-2xl text-[15px] font-semibold ${isDelete?'bg-[#D97A7A] text-white':'bg-gray-100 text-gray-900'}`}>
-                  {isDelete?'完全に削除する':'移動して削除する'}
+                  {isDelete?tr('deletePermanentlyButton'):tr('moveAndDeleteButton')}
                 </button>
-                <button onClick={()=>setDeleteTabMode(null)} className="w-full py-3.5 rounded-2xl bg-gray-50 text-gray-500 text-[15px] font-semibold">戻る</button>
+                <button onClick={()=>setDeleteTabMode(null)} className="w-full py-3.5 rounded-2xl bg-gray-50 text-gray-500 text-[15px] font-semibold">{tr('backButton')}</button>
               </div>
             </div>
           </div>
         );})()}
         {customTabs.length===0&&(
-          <p className="text-sm text-gray-400 text-center mt-10">タブがまだありません</p>
+          <p className="text-sm text-gray-400 text-center mt-10">{tr('noTabsYet')}</p>
         )}
       </div>
     </div>
@@ -4829,12 +4829,12 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
 
   if(sub==='tags') return (
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
-      {subHeader('タグ')}{proSheet}
+      {subHeader(tr('rowTagsTitle'))}{proSheet}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
-        {!isPremium&&<p className="text-xs text-gray-400 px-1 mt-4">2個まで無料でご利用いただけます。3個目からPROが必要です。</p>}
+        {!isPremium&&<p className="text-xs text-gray-400 px-1 mt-4">{tr('tagsFreeLimitNote')}</p>}
 
         {/* New tag */}
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-4">新しいタグ</p>
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-4">{tr('newTagSectionLabel')}</p>
         <div className="bg-white rounded-2xl shadow-sm px-4 pt-4 pb-3">
           <div className="flex gap-2 mb-3 flex-wrap">
             {TAG_COLORS.map(c=>(
@@ -4846,10 +4846,10 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           <div className="flex gap-2 items-center">
             <input value={tagInput} onChange={e=>setTagInput(e.target.value)}
               onKeyDown={e=>e.key==='Enter'&&addTag()}
-              placeholder="タグ名を入力"
+              placeholder={tr('tagNamePlaceholder')}
               className="flex-1 text-[15px] bg-transparent outline-none text-gray-900 placeholder-gray-300 border-b border-gray-200 pb-1"/>
             <button onClick={addTag}
-              className="px-4 py-1.5 bg-[var(--c-primary)] text-white text-sm font-semibold rounded-xl shrink-0">追加</button>
+              className="px-4 py-1.5 bg-[var(--c-primary)] text-white text-sm font-semibold rounded-xl shrink-0">{tr('addButton')}</button>
           </div>
           {tagInput.trim()&&(
             <div className="mt-3">
@@ -4864,7 +4864,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
         {/* Tag list */}
         {globalTags.length>0&&(
           <>
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">タグ一覧</p>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">{tr('tagListSectionLabel')}</p>
             <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
               {globalTags.map((tag,i)=>(
                 <div key={i} className={`px-4 py-3 flex items-center gap-3${i<globalTags.length-1?' border-b border-gray-100':''}`}>
@@ -4891,11 +4891,11 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                   <div className="flex gap-1.5 shrink-0">
                     <button onClick={()=>editIdx===i?commitEdit():startEdit(i)}
                       className={`text-xs font-medium px-2.5 py-1 rounded-lg ${editIdx===i?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
-                      {editIdx===i?'確定':'編集'}
+                      {editIdx===i?tr('confirmButton'):tr('editButton')}
                     </button>
                     {editIdx===i
-                      ? <button onClick={()=>setEditIdx(null)} className="text-xs font-medium px-2.5 py-1 rounded-lg bg-gray-100 text-gray-400">キャンセル</button>
-                      : <button onClick={()=>deleteTag(i)} className="text-xs font-medium px-2.5 py-1 rounded-lg bg-red-50 text-[#D97A7A]">削除</button>
+                      ? <button onClick={()=>setEditIdx(null)} className="text-xs font-medium px-2.5 py-1 rounded-lg bg-gray-100 text-gray-400">{tr('cancelButton')}</button>
+                      : <button onClick={()=>deleteTag(i)} className="text-xs font-medium px-2.5 py-1 rounded-lg bg-red-50 text-[#D97A7A]">{tr('deleteButton')}</button>
                     }
                   </div>
                 </div>
@@ -4904,17 +4904,17 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           </>
         )}
         {globalTags.length===0&&(
-          <p className="text-sm text-gray-400 text-center mt-10">タグがまだありません</p>
+          <p className="text-sm text-gray-400 text-center mt-10">{tr('noTagsYet')}</p>
         )}
         {deleteTagIdx!==null&&(()=>{const dt=globalTags[deleteTagIdx];return(
           <div className="fixed inset-0 z-[100] flex items-end justify-center" onClick={()=>setDeleteTagIdx(null)}>
             <div className="absolute inset-0 bg-black/40"/>
             <div className="relative bg-white rounded-t-2xl w-full max-w-md px-6 pt-6 pb-10" onClick={e=>e.stopPropagation()}>
-              <p className="text-center text-[17px] font-semibold text-gray-900 mb-1">「{dt?.name}」を削除しますか？</p>
-              <p className="text-center text-[13px] text-gray-400 mb-6">このタグがついているタスクからも削除されます</p>
+              <p className="text-center text-[17px] font-semibold text-gray-900 mb-1">{tr('deleteNamedConfirmTitle').replace('{name}',dt?.name??'')}</p>
+              <p className="text-center text-[13px] text-gray-400 mb-6">{tr('deleteTagConfirmBody')}</p>
               <div className="flex flex-col gap-3">
-                <button onClick={()=>{if(dt)onDeleteTag(dt.name);setDeleteTagIdx(null);}} className="w-full py-3.5 rounded-2xl bg-[#D97A7A] text-white text-[15px] font-semibold">削除する</button>
-                <button onClick={()=>setDeleteTagIdx(null)} className="w-full py-3.5 rounded-2xl bg-gray-100 text-gray-700 text-[15px] font-semibold">キャンセル</button>
+                <button onClick={()=>{if(dt)onDeleteTag(dt.name);setDeleteTagIdx(null);}} className="w-full py-3.5 rounded-2xl bg-[#D97A7A] text-white text-[15px] font-semibold">{tr('deleteTaskButton')}</button>
+                <button onClick={()=>setDeleteTagIdx(null)} className="w-full py-3.5 rounded-2xl bg-gray-100 text-gray-700 text-[15px] font-semibold">{tr('cancelButton')}</button>
               </div>
             </div>
           </div>
@@ -4923,11 +4923,11 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           <div className="fixed inset-0 z-[100] flex items-end justify-center" onClick={()=>setPendingCommitEdit(false)}>
             <div className="absolute inset-0 bg-black/40"/>
             <div className="relative bg-white rounded-t-2xl w-full max-w-md px-6 pt-6 pb-10" onClick={e=>e.stopPropagation()}>
-              <p className="text-center text-[17px] font-semibold text-gray-900 mb-1">「{orig.name}」を変更しますか？</p>
-              <p className="text-center text-[13px] text-gray-400 mb-6">このタグがついているすべてのタスクのタグ名・色も変更されます</p>
+              <p className="text-center text-[17px] font-semibold text-gray-900 mb-1">{tr('renameNamedConfirmTitle').replace('{name}',orig.name)}</p>
+              <p className="text-center text-[13px] text-gray-400 mb-6">{tr('renameTagConfirmBody')}</p>
               <div className="flex flex-col gap-3">
-                <button onClick={doCommitEdit} className="w-full py-3.5 rounded-2xl bg-[var(--c-primary)] text-white text-[15px] font-semibold">変更する</button>
-                <button onClick={()=>setPendingCommitEdit(false)} className="w-full py-3.5 rounded-2xl bg-gray-100 text-gray-700 text-[15px] font-semibold">キャンセル</button>
+                <button onClick={doCommitEdit} className="w-full py-3.5 rounded-2xl bg-[var(--c-primary)] text-white text-[15px] font-semibold">{tr('changeButton')}</button>
+                <button onClick={()=>setPendingCommitEdit(false)} className="w-full py-3.5 rounded-2xl bg-gray-100 text-gray-700 text-[15px] font-semibold">{tr('cancelButton')}</button>
               </div>
             </div>
           </div>
