@@ -176,13 +176,13 @@ const weekDayOrder = (weekStartsOn: 0|1): number[] => weekStartsOn===1 ? [1,2,3,
 const monthFirstOffset = (jsDay: number, weekStartsOn: 0|1): number => weekStartsOn===1 ? (jsDay+6)%7 : jsDay;
 const DUR_OPTS     = [
   {v:0,l:'なし'},
-  {v:5,l:'5分'},{v:10,l:'10分'},{v:15,l:'15分'},{v:30,l:'30分'},{v:45,l:'45分'},
+  {v:5,l:'5分'},{v:10,l:'10分'},{v:15,l:'15分'},{v:20,l:'20分'},{v:30,l:'30分'},{v:45,l:'45分'},
   {v:60,l:'1時間'},{v:90,l:'1時間半'},{v:120,l:'2時間'},
   {v:180,l:'3時間'},{v:240,l:'4時間'},{v:300,l:'5時間'},
 ];
 const DUR_OPTS_EN  = [
   {v:0,l:'None'},
-  {v:5,l:'5m'},{v:10,l:'10m'},{v:15,l:'15m'},{v:30,l:'30m'},{v:45,l:'45m'},
+  {v:5,l:'5m'},{v:10,l:'10m'},{v:15,l:'15m'},{v:20,l:'20m'},{v:30,l:'30m'},{v:45,l:'45m'},
   {v:60,l:'1h'},{v:90,l:'1.5h'},{v:120,l:'2h'},
   {v:180,l:'3h'},{v:240,l:'4h'},{v:300,l:'5h'},
 ];
