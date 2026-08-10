@@ -2242,12 +2242,13 @@ function TaskCard({task,onToggle,onEdit,globalTags,onSubtaskToggle,tabName}:{tas
 
 // ── FreeTimeCard ──────────────────────────────────────────────────────────────
 
-function FreeTimeCard({slot,fits,moreCount=0,height,onSchedule,onDragStart,onMoreClick,measureRef}:{
+function FreeTimeCard({slot,fits,moreCount=0,height,onSchedule,onDragStart,onMoreClick,measureRef,outerRef}:{
   slot:FreeSlot;fits:Task[];moreCount?:number;height:number;
   onSchedule:(t:Task,time:string)=>void;
   onDragStart:(t:Task,x:number,y:number)=>void;
   onMoreClick?:()=>void;
   measureRef?:(el:HTMLDivElement|null)=>void;
+  outerRef?:(el:HTMLDivElement|null)=>void;
 }) {
   const [pressingId,setPressingId] = useState<string|null>(null);
   const lpTimer = useRef<ReturnType<typeof setTimeout>|null>(null);
@@ -2270,7 +2271,7 @@ function FreeTimeCard({slot,fits,moreCount=0,height,onSchedule,onDragStart,onMor
 
   const h=Math.floor(slot.min/60), m=slot.min%60;
   return (
-    <div className="bg-gray-50 rounded-2xl px-3 pt-3 pb-3 flex flex-col border border-gray-100" style={{minHeight:`${height}px`}} data-tour="free-time-card">
+    <div ref={outerRef} className="bg-gray-50 rounded-2xl px-3 pt-3 pb-3 flex flex-col border border-gray-100" style={{minHeight:`${height}px`}} data-tour="free-time-card">
       {/* 実測はこの内側のcontentRefで行う（外側のminHeightに引きずられると、一度でも見積りが
           過大になった時に測定値がその過大なサイズで固定されてしまい、あとで縮まなくなる不具合が
           あったため。ここは中身の自然な高さだけを反映する） */}
@@ -2355,6 +2356,10 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
   const [measuredH,setMeasuredH] = useState<Record<string,number>>({});
   const containerRef = useRef<HTMLDivElement>(null);
   const roRef = useRef<ResizeObserver|null>(null);
+  // 空き時間カードの外枠(padding+border)の高さ。measuredH['free-*']は内側のcontentのみの高さなので、
+  // 積み上げ計算で外枠込みの実際の高さに戻すために使う。フォントサイズやborder幅の環境差（実機WebKit等）
+  // で固定px値だと合わないことがあったため、outerRefでマウント時に実際のcomputed styleから算出する
+  const freeChromeRef = useRef<Record<string,number>>({});
   if (roRef.current===null) {
     roRef.current = new ResizeObserver(entries=>{
       setMeasuredH(prev=>{
@@ -2456,11 +2461,9 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
     }
     return base+CHIP_MT+rows*CHIP_H+(rows-1)*ROW_GAP;
   };
-  // measuredH['free-*']はResizeObserverが内側のcontentのみを測定した値（自己再生産ループ対策でminHeightの
-  // 影響を受けない内側divを対象にしているため）。外枠のpx-3 pt-3 pb-3(24px)+border(2px)ぶんが含まれないので、
-  // 積み上げ計算に使う前にこの分を足して外枠の実際の高さに揃える（calcFreeContentHの見積りは元々この分を
-  // 含んだ値を返すため、見積りにはこのオフセットを足さない）。
-  const FREE_CARD_CHROME_H=26;
+  // FreeTimeCardの外枠(padding+border)の高さ。フォールバック用の概算値（outerRefでの実測が間に合わない
+  // 最初のフレームのみ使う。px-3 pt-3 pb-3=24px相当+border 2px相当を17px基準フォントで見積もったもの）
+  const FREE_CARD_CHROME_FALLBACK=27;
 
   type FreePassItem={slot:FreeSlot;freeY:number;finalH:number};
   const groupLayout:{g:TaskGroupData;top:number}[]=[];
@@ -2494,7 +2497,9 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
       .filter(g=>{const m=adjM(g.startTime);return m>=wakeMin&&m<=sleepMinEff;})
       .map(g=>({kind:'task' as const,g,startMin:adjM(g.startTime),h:g.h})),
     ...freeSlots.map(s=>({kind:'free' as const,slot:s,startMin:adjM(s.start),
-      h:measuredH[`free-${s.start}`]!=null?measuredH[`free-${s.start}`]+FREE_CARD_CHROME_H:calcFreeContentH(laterPoolForEstimate)})),
+      h:measuredH[`free-${s.start}`]!=null
+        ?measuredH[`free-${s.start}`]+(freeChromeRef.current[`free-${s.start}`]??FREE_CARD_CHROME_FALLBACK)
+        :calcFreeContentH(laterPoolForEstimate)})),
   ].sort((a,b)=>a.startMin-b.startMin);
 
   type Anchor={min:number;y:number};
@@ -2869,7 +2874,13 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
         return (
           <div key={i} className="absolute z-10" style={{top:`${freeY}px`,left:`${CARD_LEFT}px`,right:'0px'}}>
             <FreeTimeCard slot={slot} fits={fits} moreCount={laterPoolMoreCount} height={finalH} onSchedule={onSchedule} onDragStart={onDragStart} onMoreClick={onOpenLater}
-              measureRef={el=>{if(el){el.dataset.gk=`free-${slot.start}`;roRef.current?.observe(el);}}}/>
+              measureRef={el=>{if(el){el.dataset.gk=`free-${slot.start}`;roRef.current?.observe(el);}}}
+              outerRef={el=>{
+                if(!el) return;
+                const key=`free-${slot.start}`;
+                const cs=getComputedStyle(el);
+                freeChromeRef.current[key]=parseFloat(cs.paddingTop)+parseFloat(cs.paddingBottom)+parseFloat(cs.borderTopWidth)+parseFloat(cs.borderBottomWidth);
+              }}/>
           </div>
         );
       })}
