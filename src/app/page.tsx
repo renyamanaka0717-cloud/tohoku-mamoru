@@ -1880,13 +1880,12 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                           <button onClick={()=>setDeadlineDate('')} className="text-xs text-gray-400 px-2">{tr('clearButton')}</button>
                         )}
                       </div>
-                      <div className="relative mb-2">
-                        {/* 右側にpr-9の余白を確保している。実機（特にiOS本体の文字サイズ設定を
-                            大きくしている場合）はネイティブのカレンダーアイコン部分がCSSの
-                            font-size指定に完全には追従せず、右詰め気味のpaddingだと見切れる
-                            不具合があったため、通常より広めに余白を取って必ず収まるようにした */}
+                      {/* w-fullだとネイティブの日付・時刻UIが実際の値に対して横に間延びして
+                          見えたため、値の表示に必要な分だけの幅（カード幅の半分程度）に
+                          縮めている */}
+                      <div className="relative mb-2" style={{width:'55%'}}>
                         <input type="date" value={deadlineDate} onChange={e=>setDeadlineDate(e.target.value)}
-                          className="w-full border border-gray-200 rounded-xl pl-3 pr-9 py-2.5 text-sm bg-gray-50 outline-none" style={{boxSizing:'border-box'}}/>
+                          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-gray-50 outline-none" style={{boxSizing:'border-box'}}/>
                         {/* iOS(WebKit)のtype="date"はplaceholder属性を表示しないため、
                             未入力時だけ重ねて表示する（クリックは下の実inputに通す） */}
                         {!deadlineDate&&(
@@ -1894,7 +1893,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                         )}
                       </div>
                       <input type="time" value={deadlineTime} onChange={e=>setDeadlineTime(e.target.value)}
-                        className="w-full border border-gray-200 rounded-xl pl-3 pr-9 py-2.5 text-sm bg-gray-50 outline-none mb-4" style={{boxSizing:'border-box'}}/>
+                        className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-gray-50 outline-none mb-4" style={{boxSizing:'border-box',width:'45%'}}/>
                       {deadlineDate&&(
                         <>
                           <p className="text-xs text-gray-400 mb-1.5">{tr('deadlineNotifyTiming')}</p>
