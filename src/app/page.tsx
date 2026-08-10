@@ -1858,8 +1858,8 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                 </button>
                 {deadlineOpen&&isPremium&&(
                   <div className="border-t border-gray-100 px-4 pb-3">
-                    <div className="flex flex-wrap items-center gap-2 py-3">
-                      <div className="flex-1 relative min-w-[130px]">
+                    <div className="py-3 space-y-2">
+                      <div className="relative">
                         <input type="date" value={deadlineDate} onChange={e=>setDeadlineDate(e.target.value)}
                           className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50 outline-none"/>
                         {/* iOS(WebKit)のtype="date"はplaceholder属性を表示しないため、
@@ -1868,11 +1868,13 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                           <span className="absolute inset-y-0 left-3 flex items-center text-sm text-gray-400 pointer-events-none">{tr('deadlineDatePlaceholder')}</span>
                         )}
                       </div>
-                      <input type="time" value={deadlineTime} onChange={e=>setDeadlineTime(e.target.value)}
-                        className="shrink-0 border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50 outline-none"/>
-                      {deadlineDate&&(
-                        <button onClick={()=>setDeadlineDate('')} className="text-xs text-gray-400 px-2 shrink-0">{tr('clearButton')}</button>
-                      )}
+                      <div className="flex items-center gap-2">
+                        <input type="time" value={deadlineTime} onChange={e=>setDeadlineTime(e.target.value)}
+                          className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50 outline-none"/>
+                        {deadlineDate&&(
+                          <button onClick={()=>setDeadlineDate('')} className="text-xs text-gray-400 px-2 shrink-0">{tr('clearButton')}</button>
+                        )}
+                      </div>
                     </div>
                     {deadlineDate&&(
                       <>
