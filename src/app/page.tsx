@@ -160,6 +160,8 @@ const getTagTextColor=(bg:string)=>TAG_COLORS.find(c=>c.bg===bg)?.text??'#374151
 const PX_PER_HOUR  = 40;
 const PX_PER_MIN   = PX_PER_HOUR / 60;
 const DAY_NAMES    = ['日','月','火','水','木','金','土'];
+const DAY_NAMES_EN = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const MONTH_NAMES_EN = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const DUR_OPTS     = [
   {v:0,l:'なし'},
   {v:5,l:'5分'},{v:10,l:'10分'},{v:15,l:'15分'},{v:30,l:'30分'},{v:45,l:'45分'},
@@ -216,9 +218,17 @@ const deadlineAlertBody = (taskName:string, fire:DeadlineFire): string => {
 };
 // タイムライン等での「締切まであとN日」表示用。日数は時刻を無視したカレンダー日数で計算するが、
 // 当日（diff===0）だけは締切の時刻まで含めて「締切は本日の◯時」と表示する
-const deadlineRemainLabel = (deadlineAt:string): string => {
+const deadlineRemainLabel = (deadlineAt:string, lang:Language='ja'): string => {
   const deadlineDay = deadlineAt.slice(0,10);
   const diff = Math.round((new Date(deadlineDay+'T00:00:00').getTime()-new Date(todayStr()+'T00:00:00').getTime())/86400000);
+  if(lang==='en'){
+    if(diff<0) return `Overdue by ${-diff} day${-diff===1?'':'s'}`;
+    if(diff===0){
+      const [h,m]=deadlineAt.slice(11,16).split(':').map(Number);
+      return `Due today at ${h}:${String(m).padStart(2,'0')}`;
+    }
+    return `Due in ${diff} day${diff===1?'':'s'}`;
+  }
   if(diff<0) return `締切から${-diff}日超過`;
   if(diff===0){
     const [h,m]=deadlineAt.slice(11,16).split(':').map(Number);
@@ -297,7 +307,11 @@ const shiftDate   = (s: string, n: number) => { const d=new Date(s+'T12:00:00');
 const shiftMonthBy= (s: string, n: number) => { const d=new Date(s+'T12:00:00'); d.setMonth(d.getMonth()+n); return dateToStr(d); };
 const shiftYearBy = (s: string, n: number) => { const d=new Date(s+'T12:00:00'); d.setFullYear(d.getFullYear()+n); return dateToStr(d); };
 const uid         = () => `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-const durLabel    = (m: number) => m<=0?'':m>=60?`${Math.floor(m/60)}時間${m%60?`${m%60}分`:''}` :`${m}分`;
+const durLabel    = (m: number, lang: Language = 'ja') => {
+  if(m<=0) return '';
+  if(lang==='en') return m>=60?`${Math.floor(m/60)}h${m%60?` ${m%60}m`:''}`:`${m}m`;
+  return m>=60?`${Math.floor(m/60)}時間${m%60?`${m%60}分`:''}` :`${m}分`;
+};
 const getDateInfo = (s: string) => { const d=new Date(s+'T12:00:00'); return {day:d.getDate(),month:d.getMonth()+1,year:d.getFullYear()}; };
 const getWeekDates= (s:string)=>{ const d=new Date(s+'T12:00:00'),dow=d.getDay(); return Array.from({length:7},(_,i)=>{const c=new Date(d);c.setDate(d.getDate()-dow+i);return dateToStr(c);}); };
 const shiftMonth  = (y:number,m:number,d:number)=>{ let nm=m+d,ny=y; if(nm<0){nm=11;ny--;}if(nm>11){nm=0;ny++;} return {year:ny,month:nm}; };
@@ -335,7 +349,15 @@ const summarizeCustomRec=(r:CustomRec):string=>{
   return main;
 };
 
-const recLabel=(t:Task):string=>{
+const recLabel=(t:Task,lang:Language='ja'):string=>{
+  if(lang==='en'){
+    if(t.recurrence==='daily') return 'Daily';
+    if(t.recurrence==='weekly') return 'Weekly';
+    if(t.recurrence==='monthly') return 'Monthly';
+    if(t.recurrence==='yearly') return 'Yearly';
+    if(t.recurrence==='custom'&&t.customRec) return summarizeCustomRec(t.customRec);
+    return '';
+  }
   if(t.recurrence==='daily') return '毎日';
   if(t.recurrence==='weekly') return '毎週';
   if(t.recurrence==='monthly') return '毎月';
@@ -2190,6 +2212,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
 
 function TaskCard({task,onToggle,onEdit,globalTags,onSubtaskToggle,tabName}:{task:Task;onToggle:()=>void;onEdit:()=>void;globalTags:TagDef[];onSubtaskToggle?:(subtaskId:string)=>void;tabName?:string;}) {
   const [openPanel,setOpenPanel] = useState<'subtask'|'memo'|null>(null);
+  const {language} = useI18n();
   const endTime = (task.startTime&&(task.duration??0)>0) ? fromMin(toMin(task.startTime)+(task.duration??0)) : null;
   const subtasks = task.subtasks??[];
   const doneCount = subtasks.filter(s=>s.completed).length;
@@ -2210,7 +2233,7 @@ function TaskCard({task,onToggle,onEdit,globalTags,onSubtaskToggle,tabName}:{tas
           <p className={`text-[15px] font-semibold leading-snug ${task.completed?'line-through text-gray-400':'text-gray-900'}`}>{task.name}</p>
           {task.deadlineAt&&!task.completed&&(
             <p className={`text-[11px] font-semibold mt-1 flex items-center gap-1 ${deadlineLabelColor(task.deadlineAt)}`}>
-              <AppIcons.deadline size={10}/>{deadlineRemainLabel(task.deadlineAt)}
+              <AppIcons.deadline size={10}/>{deadlineRemainLabel(task.deadlineAt,language)}
             </p>
           )}
           {(task.tags??[]).length>0&&(
@@ -2285,6 +2308,7 @@ function FreeTimeCard({slot,fits,moreCount=0,height,onSchedule,onDragStart,onMor
   const [pressingId,setPressingId] = useState<string|null>(null);
   const lpTimer = useRef<ReturnType<typeof setTimeout>|null>(null);
   const didDrag = useRef(false);
+  const {tr} = useI18n();
 
   const startLP=(task:Task,e:React.TouchEvent)=>{
     const touch=e.touches[0];
@@ -2310,11 +2334,11 @@ function FreeTimeCard({slot,fits,moreCount=0,height,onSchedule,onDragStart,onMor
       <div ref={measureRef}>
         <div className="flex items-center gap-1 mb-1">
           <AppIcons.freeTime size={12} className="text-gray-400"/>
-          <span className="text-xs text-gray-400 font-medium">空き時間 {slot.start}〜{slot.end}</span>
+          <span className="text-xs text-gray-400 font-medium">{tr('freeTimeRange').replace('{start}',slot.start).replace('{end}',slot.end)}</span>
         </div>
         <p className="font-medium text-gray-600 leading-none">
-          {h>0&&<><span className="text-lg">{h}</span><span className="text-xs ml-0.5">時間</span></>}
-          {m>0&&<><span className="text-lg ml-1">{m}</span><span className="text-xs ml-0.5">分</span></>}
+          {h>0&&<><span className="text-lg">{h}</span><span className="text-xs ml-0.5">{tr('durUnitHour')}</span></>}
+          {m>0&&<><span className="text-lg ml-1">{m}</span><span className="text-xs ml-0.5">{tr('durUnitMin')}</span></>}
         </p>
         {(fits.length>0||moreCount>0)&&(
           <div className="flex flex-wrap gap-1.5 mt-2">
@@ -2332,7 +2356,7 @@ function FreeTimeCard({slot,fits,moreCount=0,height,onSchedule,onDragStart,onMor
             {moreCount>0&&(
               <button onClick={onMoreClick}
                 className="inline-flex items-center bg-gray-100 rounded-full px-2.5 py-1 text-xs font-medium text-gray-400 select-none active:bg-gray-200">
-                +{moreCount}件
+                {tr('moreCountChip').replace('{n}',String(moreCount))}
               </button>
             )}
           </div>
@@ -2388,6 +2412,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
   const [measuredH,setMeasuredH] = useState<Record<string,number>>({});
   const containerRef = useRef<HTMLDivElement>(null);
   const roRef = useRef<ResizeObserver|null>(null);
+  const {tr} = useI18n();
   // 空き時間カードの外枠(padding+border)の高さ。measuredH['free-*']は内側のcontentのみの高さなので、
   // 積み上げ計算で外枠込みの実際の高さに戻すために使う。フォントサイズやborder幅の環境差（実機WebKit等）
   // で固定px値だと合わないことがあったため、outerRefでマウント時に実際のcomputed styleから算出する
@@ -2725,7 +2750,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
         <div className="flex items-center gap-2.5 bg-white rounded-2xl border border-gray-100 px-3 py-2.5 select-none" style={{boxShadow:'0 4px 12px rgba(0,0,0,0.06)'}}>
           <div className="flex-1 min-w-0">
             <p className="text-[11px] text-gray-400 leading-none mb-0.5">{settings.wakeTime}</p>
-            <p className="text-sm font-semibold text-gray-900">起床</p>
+            <p className="text-sm font-semibold text-gray-900">{tr('timelineWake')}</p>
           </div>
           {pat&&<span className="text-[11px] font-medium px-2 py-0.5 rounded-full" style={{background:pat.color+'22',color:pat.color}}>{pat.name}</span>}
         </div>
@@ -2739,7 +2764,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
         <div className="flex items-center gap-2.5 bg-white rounded-2xl border border-gray-100 px-3 py-2.5 select-none" style={{boxShadow:'0 4px 12px rgba(0,0,0,0.06)'}}>
           <div className="flex-1 min-w-0">
             <p className="text-[11px] text-gray-400 leading-none mb-0.5">{settings.sleepTime}</p>
-            <p className="text-sm font-semibold text-gray-900">就寝</p>
+            <p className="text-sm font-semibold text-gray-900">{tr('timelineSleep')}</p>
           </div>
           {pat&&<span className="text-[11px] font-medium px-2 py-0.5 rounded-full" style={{background:pat.color+'22',color:pat.color}}>{pat.name}</span>}
         </div>
@@ -2754,7 +2779,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
             onClick={()=>setHistoryOpen(true)}>
             <div className="flex items-center gap-2 bg-gray-50 rounded-xl border border-gray-100 px-3 py-2.5 active:bg-gray-100">
               <span className="text-xs text-gray-400">↩︎</span>
-              <span className="text-xs text-gray-400 flex-1">未完了タスク{todayHistory.taskNames.length}件をあとでやるへ移動</span>
+              <span className="text-xs text-gray-400 flex-1">{tr('timelineMovedTasksNotice').replace('{n}',String(todayHistory.taskNames.length))}</span>
               <AppIcons.caretRight size={12} className="text-gray-300"/>
             </div>
           </div>
@@ -2764,7 +2789,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
               <div className="bg-white rounded-2xl p-4 w-full max-w-xs shadow-xl"
                 onClick={e=>e.stopPropagation()}>
                 <div className="flex items-center justify-between mb-3">
-                  <p className="text-sm font-semibold text-gray-900">移動したタスク</p>
+                  <p className="text-sm font-semibold text-gray-900">{tr('timelineMovedTasksTitle')}</p>
                   <button onClick={()=>setHistoryOpen(false)}
                     className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 text-sm">×</button>
                 </div>
@@ -2787,14 +2812,14 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
           <div className="rounded-2xl bg-gray-50 border border-gray-100">
             <div className="flex items-center gap-2 px-4 pt-3 pb-2">
               <AppIcons.sparkle size={16} className="text-[var(--c-primary)] shrink-0"/>
-              <span className="text-sm font-semibold text-gray-500">今日完了したタスク</span>
+              <span className="text-sm font-semibold text-gray-500">{tr('timelineCompletedTitle')}</span>
               {completedToday.length>0&&(
                 <span className="ml-auto text-xs font-bold bg-[var(--c-primary)] text-white rounded-full px-2 py-0.5">{completedToday.length}</span>
               )}
             </div>
             <div className="px-3 pb-3">
               {completedToday.length===0?(
-                <p className="text-xs text-gray-400 text-center py-2">まだ完了したタスクはありません</p>
+                <p className="text-xs text-gray-400 text-center py-2">{tr('timelineCompletedEmpty')}</p>
               ):(
                 <div className="flex flex-col gap-1">
                   {completedToday.map(t=>(
@@ -2853,7 +2878,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
           <div key={`dup-${g.startTime}`} className="absolute z-10 flex items-center gap-1"
             style={{top:`${top}px`,left:`${CARD_LEFT}px`,right:'0px',height:`${DUP_LABEL_H}px`}}>
             <span className="text-[var(--c-primary)]" style={{fontSize:'10px'}}>●</span>
-            <span className="text-xs text-gray-400">タスクが重複しています</span>
+            <span className="text-xs text-gray-400">{tr('timelineDuplicateNotice')}</span>
           </div>,
           <div key={`cap-${g.startTime}`} className="absolute z-10 pointer-events-none"
             style={{top:`${stackTop}px`,left:`${AXIS_X-28}px`,width:'56px',height:`${stackH}px`,overflow:'visible'}}>
@@ -2921,8 +2946,8 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
       {dayTasks.length===0&&freeSlots.length===0&&(
         <div className="absolute inset-0 flex flex-col items-center justify-center" style={{left:`${CARD_LEFT}px`}}>
           <AppIcons.task size={40} className="mb-2 text-gray-300"/>
-          <p className="text-sm text-gray-400">タスクがありません</p>
-          <p className="text-xs text-gray-300 mt-1">時間をタップして追加</p>
+          <p className="text-sm text-gray-400">{tr('timelineEmptyTitle')}</p>
+          <p className="text-xs text-gray-300 mt-1">{tr('timelineEmptySubtitle')}</p>
         </div>
       )}
     </div>
@@ -3851,6 +3876,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
   isPremium:boolean; onOpenPro:()=>void;
   notificationsEnabled?:boolean; onEnableNotifications?:()=>void;
 }) {
+  const {tr,language} = useI18n();
   const [shopInput,setShopInput] = useState('');
   const [sortDir,setSortDir]     = useState<null|'asc'|'desc'>(null);
   const [shopSortDir,setShopSortDir] = useState<null|'asc'|'desc'>(null);
@@ -3932,7 +3958,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
         </button>
         {/* Tab bar */}
         <div className="flex border-b border-gray-100 shrink-0 mt-1">
-          {([['later','あとでやる',pendingCount],['shop','買い物リスト',shopPending]] as const).map(([t,label,cnt])=>(
+          {([['later',tr('laterTabLabel'),pendingCount],['shop',tr('shopTabLabel'),shopPending]] as const).map(([t,label,cnt])=>(
             <button key={t} onClick={()=>onSwitchTab(t)}
               className={`flex-1 py-3 text-sm font-semibold flex items-center justify-center gap-1.5 border-b-2 transition-colors ${activeTab===t?'border-[var(--c-primary)] text-gray-900':'border-transparent text-gray-400'}`}>
               {label}
@@ -3946,7 +3972,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
           <div className={`overflow-y-auto px-4 ${activeTab==='later'?'':'invisible pointer-events-none'}`} style={{gridArea:'1/1',paddingBottom:'calc(5.5rem + env(safe-area-inset-bottom))'}}>
             <div className="flex items-center justify-between pt-3 pb-2">
               <h3 className="text-sm font-bold text-gray-900">
-                あとでやる
+                {tr('laterTabLabel')}
                 {pendingCount>0&&<span className="ml-1.5 text-gray-400 font-normal">{pendingCount}</span>}
               </h3>
               <button onClick={()=>setSortDir(d=>d===null?'asc':d==='asc'?'desc':'asc')}
@@ -3960,7 +3986,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
               <div className="mb-1">
                 <div className="flex items-center gap-1.5 mb-2">
                   <span className="text-xs text-gray-400">≡</span>
-                  <span className="text-xs text-gray-400 font-medium">あとでやる {normalLater.length}</span>
+                  <span className="text-xs text-gray-400 font-medium">{tr('laterSectionLabel').replace('{n}',String(normalLater.length))}</span>
                 </div>
                 <div className="space-y-2">
                   {normalLater.map(t=>{
@@ -3975,11 +4001,11 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
                         <LaterIc size={14} className={t.color?'text-white':'text-[var(--c-primary)]'}/>
                       </div>
                       <div className="flex-1 min-w-0" onClick={()=>onEdit(t)}>
-                        {(t.duration??0)>0&&<p className="text-xs text-gray-400">{durLabel(t.duration??0)}</p>}
+                        {(t.duration??0)>0&&<p className="text-xs text-gray-400">{durLabel(t.duration??0,language)}</p>}
                         <p className="text-sm font-semibold text-gray-900">{t.name}</p>
                         {t.deadlineAt&&(
                           <p className={`text-[11px] font-semibold mt-0.5 flex items-center gap-1 ${deadlineLabelColor(t.deadlineAt)}`}>
-                            <AppIcons.deadline size={10}/>{deadlineRemainLabel(t.deadlineAt)}
+                            <AppIcons.deadline size={10}/>{deadlineRemainLabel(t.deadlineAt,language)}
                           </p>
                         )}
                         {t.locationNotify&&t.location&&(
@@ -4003,7 +4029,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
               <div className="mt-3">
                 <div className="flex items-center gap-1.5 mb-2">
                   <span className="text-xs text-gray-400">⊙</span>
-                  <span className="text-xs text-gray-400 font-medium">時間指定 {scheduledRaw.length}</span>
+                  <span className="text-xs text-gray-400 font-medium">{tr('scheduledSectionLabel').replace('{n}',String(scheduledRaw.length))}</span>
                 </div>
                 <div className="space-y-2">
                   {scheduledRaw.map(t=>{
@@ -4029,7 +4055,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
               <div className="mt-3">
                 <div className="flex items-center gap-1.5 mb-2">
                   <AppIcons.repeat size={12} className="text-gray-400"/>
-                  <span className="text-xs text-gray-400 font-medium">繰り返し {recurringGroups.length}</span>
+                  <span className="text-xs text-gray-400 font-medium">{tr('recurringSectionLabel').replace('{n}',String(recurringGroups.length))}</span>
                 </div>
                 <div className="space-y-2">
                   {recurringGroups.map(t=>{
@@ -4042,7 +4068,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
                         <RecIc size={14} className={t.color?'text-white':'text-[var(--c-primary)]'}/>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs text-gray-400">{recLabel(t)}{t.startTime?` ${t.startTime}`:''}</p>
+                        <p className="text-xs text-gray-400">{recLabel(t,language)}{t.startTime?` ${t.startTime}`:''}</p>
                         <p className="text-sm font-semibold text-gray-900">{t.name}</p>
                       </div>
                     </div>
@@ -4053,13 +4079,13 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
 
             {/* empty */}
             {normalLater.length===0&&scheduledRaw.length===0&&recurringGroups.length===0&&(
-              <div className="py-12 text-center"><AppIcons.sparkle className="mx-auto mb-2 text-gray-300"/><p className="text-sm text-gray-400">タスクがありません</p></div>
+              <div className="py-12 text-center"><AppIcons.sparkle className="mx-auto mb-2 text-gray-300"/><p className="text-sm text-gray-400">{tr('laterEmptyLabel')}</p></div>
             )}
 
             {/* completed */}
             {laterDone.length>0&&(
               <div className="mt-4">
-                <p className="text-xs text-gray-300 pb-2">完了済み</p>
+                <p className="text-xs text-gray-300 pb-2">{tr('doneSectionLabel')}</p>
                 <div className="space-y-2">
                   {laterDone.map(t=>(
                     <div key={t.id} className="flex items-center gap-2.5 bg-gray-50 border border-gray-100 rounded-2xl px-3 py-3 opacity-60">
@@ -4079,7 +4105,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
           <div className={`flex flex-col overflow-hidden ${activeTab==='shop'?'':'invisible pointer-events-none'}`} style={{gridArea:'1/1'}}>
             <div className="px-4 pt-3 pb-2 shrink-0">
               <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-bold text-gray-900">買い物リスト</h3>
+                <h3 className="text-sm font-bold text-gray-900">{tr('shopTabLabel')}</h3>
                 <div className="flex items-center gap-2">
                   <button onClick={()=>setShowShopNotif(v=>!v)}
                     className={`relative w-8 h-8 rounded-xl flex items-center justify-center transition-colors ${showShopNotif?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-500'}`}>
@@ -4097,10 +4123,10 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
               {!showShopNotif&&<div className="flex gap-2">
                 <input type="text" value={shopInput} onChange={e=>setShopInput(e.target.value)}
                   onKeyDown={e=>e.key==='Enter'&&addShop()}
-                  placeholder="商品を追加..."
+                  placeholder={tr('shopAddPlaceholder')}
                   className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-gray-400 bg-gray-50"/>
                 <button onClick={addShop} disabled={!shopInput.trim()}
-                  className="px-4 py-2 bg-[var(--c-primary)] text-white rounded-xl text-sm font-semibold disabled:opacity-40">追加</button>
+                  className="px-4 py-2 bg-[var(--c-primary)] text-white rounded-xl text-sm font-semibold disabled:opacity-40">{tr('addButton')}</button>
               </div>}
             </div>
             <div className="overflow-y-auto pb-10 flex-1">
@@ -4111,7 +4137,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
                   {locProPrompt&&<ProGateSheet feature={locProPrompt} onClose={()=>setLocProPrompt(null)} onView={()=>{setLocProPrompt(null);onOpenPro();}}/>}
                 </>
               ):shopItems.length===0?(
-                <div className="py-12 text-center px-4"><AppIcons.shopping size={40} className="mx-auto mb-2 text-gray-300"/><p className="text-sm text-gray-400">リストは空です</p></div>
+                <div className="py-12 text-center px-4"><AppIcons.shopping size={40} className="mx-auto mb-2 text-gray-300"/><p className="text-sm text-gray-400">{tr('shopEmptyLabel')}</p></div>
               ):(
                 <div className="space-y-2 px-4">
                   {shopPendingItems.map(item=>(
@@ -4122,7 +4148,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
                     </div>
                   ))}
                   {shopDoneItems.length>0&&<>
-                    <p className="text-xs text-gray-300 pt-3 pb-1">購入済み（7日後に自動削除）</p>
+                    <p className="text-xs text-gray-300 pt-3 pb-1">{tr('shopDoneNotice')}</p>
                     {shopDoneItems.map(item=>(
                       <div key={item.id} className="flex items-center gap-3 bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3 opacity-60">
                         <button onClick={()=>onToggleShop(item.id)} className="w-5 h-5 rounded border-2 border-[var(--c-primary)] bg-[var(--c-primary)] shrink-0 flex items-center justify-center">
@@ -6082,6 +6108,7 @@ export default function App() {
   const recommendStateRef = useRef<Partial<Record<RecommendationId,RecommendationState>>>({});
   const recommendPickedRef = useRef(false);
   const { isPremium } = usePremium();
+  const { tr, language } = useI18n();
 
   useEffect(()=>{
     try{
@@ -6964,7 +6991,7 @@ export default function App() {
     setDate(next); setSOp(false);
   };
 
-  if(!loaded) return <div className="flex h-screen items-center justify-center text-gray-400">読み込み中…</div>;
+  if(!loaded) return <div className="flex h-screen items-center justify-center text-gray-400">{tr('loading')}</div>;
 
   return (
     <div className="max-w-md mx-auto bg-white font-sans flex flex-col" style={{height:'100%'}}>
@@ -6973,12 +7000,12 @@ export default function App() {
         <div className="px-4 pt-1 pb-0">
           {/* Date + nav */}
           <div className="flex items-center justify-between mb-1">
-            <span className="text-2xl font-bold text-gray-900">{year}年{month}月</span>
+            <span className="text-2xl font-bold text-gray-900">{language==='ja'?`${year}年${month}月`:`${MONTH_NAMES_EN[month-1]} ${year}`}</span>
             <div className="flex items-center gap-1">
               <button onClick={()=>setSettings(s=>({...s,showFreeCard:!(s.showFreeCard??true)}))}
                 className={`relative h-7 rounded-full text-xs font-medium transition-colors duration-200 mr-1 overflow-hidden ${(settings.showFreeCard??true)?'bg-[var(--c-primary)] text-white':'bg-gray-200 text-gray-500'}`}
                 style={{width:'84px'}}>
-                <span className="absolute inset-0 flex items-center justify-center" style={{paddingLeft:(settings.showFreeCard??true)?'0':'10px',paddingRight:(settings.showFreeCard??true)?'10px':'0',transition:'padding 0.2s'}}>空き時間</span>
+                <span className="absolute inset-0 flex items-center justify-center" style={{paddingLeft:(settings.showFreeCard??true)?'0':'10px',paddingRight:(settings.showFreeCard??true)?'10px':'0',transition:'padding 0.2s'}}>{tr('headerFreeTimeToggle')}</span>
                 <span className="absolute top-1.5 w-4 h-4 bg-white rounded-full" style={{boxShadow:'0 1px 3px rgba(0,0,0,0.2)',transition:'left 0.2s',left:(settings.showFreeCard??true)?'calc(100% - 22px)':'6px'}}/>
               </button>
               <button onClick={()=>setCalOp(true)} className="w-8 h-8 flex items-center justify-center text-gray-400"><AppIcons.calendar size={24}/></button>
@@ -7000,7 +7027,7 @@ export default function App() {
               const isSel=d===date, isToday=d===today;
               return (
                 <button key={i} onClick={()=>{setDate(d);setWeekAnchor(d);}} className="flex flex-col items-center py-1">
-                  <span className="text-[13px] font-medium text-gray-400">{name}</span>
+                  <span className="text-[13px] font-medium text-gray-400">{language==='ja'?name:DAY_NAMES_EN[i]}</span>
                   <span className={`w-8 h-8 flex items-center justify-center rounded-full font-bold transition-colors ${isSel?'bg-[var(--c-primary)] text-white':isToday?'bg-gray-200 text-gray-900':'text-gray-600'}`} style={{fontSize:'17px'}}>
                     {new Date(d+'T12:00:00').getDate()}
                   </span>
@@ -7023,7 +7050,7 @@ export default function App() {
               width:'80px',padding:'5px 12px',background:'#FFFFFF',color:'#6B7280',fontWeight:600,fontSize:'0.875rem',
               border:'none',borderRadius:'14px 14px 0 0',marginBottom:'2px',zIndex:totalZ,
               boxShadow:'0 4px 10px rgba(0,0,0,0.08)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',
-            }}>すべて</button>);})()}
+            }}>{tr('fileTabAll')}</button>);})()}
           {customTabs.map((tab,i)=>{
             const active=activeCategory===tab.id;
             const tabZ=customTabs.length-i;
@@ -7110,7 +7137,7 @@ export default function App() {
         onTouchEnd={e=>{ if(touchY-e.changedTouches[0].clientY>30) setActiveTab('later'); }}
       >
         <div className="flex">
-          {([['later','あとでやる',pendingCount],['shop','買い物リスト',shopPending]] as const).map(([tab,label,cnt],i)=>(
+          {([['later',tr('laterTabLabel'),pendingCount],['shop',tr('shopTabLabel'),shopPending]] as const).map(([tab,label,cnt],i)=>(
             <button key={tab} onClick={()=>setActiveTab(t=>t===tab?null:tab)}
               className={`flex-1 flex items-center justify-center gap-2 py-3 transition-colors ${i===0?'border-r border-gray-300':''} ${activeTab===tab?'bg-gray-100':''}`}>
               <span className={`text-base font-semibold ${activeTab===tab?'text-gray-900':'text-gray-500'}`}>{label}</span>

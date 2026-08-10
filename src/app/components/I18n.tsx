@@ -29,6 +29,39 @@ export const STRINGS = {
   settingsDisplayTitle:  { ja: '表示設定',                        en: 'Display' },
   settingsLanguageJa:    { ja: '日本語',                          en: 'Japanese' },
   settingsLanguageEn:    { ja: 'English',                        en: 'English' },
+
+  // Timeline / FreeTimeCard（{n}/{start}/{end}等はcall側でreplace()する簡易プレースホルダー）
+  timelineWake:              { ja: '起床',                        en: 'Wake up' },
+  timelineSleep:             { ja: '就寝',                        en: 'Sleep' },
+  timelineMovedTasksNotice:  { ja: '未完了タスク{n}件をあとでやるへ移動', en: 'Moved {n} unfinished task(s) to Later' },
+  timelineMovedTasksTitle:   { ja: '移動したタスク',                en: 'Moved tasks' },
+  timelineCompletedTitle:    { ja: '今日完了したタスク',             en: 'Completed today' },
+  timelineCompletedEmpty:    { ja: 'まだ完了したタスクはありません',   en: 'No completed tasks yet' },
+  timelineDuplicateNotice:   { ja: 'タスクが重複しています',          en: 'Tasks overlap' },
+  timelineEmptyTitle:        { ja: 'タスクがありません',             en: 'No tasks' },
+  timelineEmptySubtitle:     { ja: '時間をタップして追加',           en: 'Tap a time to add one' },
+  freeTimeRange:             { ja: '空き時間 {start}〜{end}',       en: 'Free time {start}–{end}' },
+  durUnitHour:               { ja: '時間',                        en: 'h' },
+  durUnitMin:                { ja: '分',                          en: 'm' },
+  moreCountChip:             { ja: '+{n}件',                      en: '+{n} more' },
+
+  // ヘッダー（App本体）
+  headerFreeTimeToggle:      { ja: '空き時間',                     en: 'Free time' },
+  fileTabAll:                { ja: 'すべて',                       en: 'All' },
+  loading:                   { ja: '読み込み中…',                  en: 'Loading…' },
+
+  // BottomTabs（あとでやる・買い物リスト）
+  laterTabLabel:             { ja: 'あとでやる',                    en: 'Later' },
+  shopTabLabel:              { ja: '買い物リスト',                   en: 'Shopping list' },
+  laterSectionLabel:         { ja: 'あとでやる {n}',                en: 'Later {n}' },
+  scheduledSectionLabel:     { ja: '時間指定 {n}',                  en: 'Scheduled {n}' },
+  recurringSectionLabel:     { ja: '繰り返し {n}',                  en: 'Recurring {n}' },
+  laterEmptyLabel:           { ja: 'タスクがありません',              en: 'No tasks' },
+  doneSectionLabel:          { ja: '完了済み',                      en: 'Completed' },
+  shopAddPlaceholder:        { ja: '商品を追加...',                 en: 'Add an item...' },
+  addButton:                 { ja: '追加',                        en: 'Add' },
+  shopEmptyLabel:            { ja: 'リストは空です',                 en: 'Your list is empty' },
+  shopDoneNotice:            { ja: '購入済み（7日後に自動削除）',       en: 'Purchased (auto-deleted after 7 days)' },
 } as const;
 
 export type StringKey = keyof typeof STRINGS;
