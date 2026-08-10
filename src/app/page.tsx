@@ -4923,7 +4923,6 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                     className={`px-3 py-1.5 rounded-xl text-sm font-medium transition-colors inline-flex items-center gap-1 ${(settings.laterReminderHours??72)===o.v?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
                     {locked&&<AppIcons.lock size={10} className="text-gray-400"/>}
                     {o.l}
-                    {locked&&<span className="text-[9px] font-bold text-gray-400 border border-gray-300 rounded px-1 py-0.5 leading-none">PRO</span>}
                   </button>
                 );
               })}
@@ -4950,7 +4949,6 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                     className={`px-3 py-1.5 rounded-xl text-sm font-medium transition-colors inline-flex items-center gap-1 ${(settings.appInactivityHours??6)===o.v?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
                     {locked&&<AppIcons.lock size={10} className="text-gray-400"/>}
                     {o.l}
-                    {locked&&<span className="text-[9px] font-bold text-gray-400 border border-gray-300 rounded px-1 py-0.5 leading-none">PRO</span>}
                   </button>
                 );
               })}
