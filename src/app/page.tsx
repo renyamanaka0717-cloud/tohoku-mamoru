@@ -2453,6 +2453,11 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
     }
     return base+CHIP_MT+rows*CHIP_H+(rows-1)*ROW_GAP;
   };
+  // measuredH['free-*']はResizeObserverが内側のcontentのみを測定した値（自己再生産ループ対策でminHeightの
+  // 影響を受けない内側divを対象にしているため）。外枠のpx-3 pt-3 pb-3(24px)+border(2px)ぶんが含まれないので、
+  // 積み上げ計算に使う前にこの分を足して外枠の実際の高さに揃える（calcFreeContentHの見積りは元々この分を
+  // 含んだ値を返すため、見積りにはこのオフセットを足さない）。
+  const FREE_CARD_CHROME_H=26;
 
   type FreePassItem={slot:FreeSlot;freeY:number;finalH:number};
   const groupLayout:{g:TaskGroupData;top:number}[]=[];
@@ -2486,7 +2491,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
       .filter(g=>{const m=adjM(g.startTime);return m>=wakeMin&&m<=sleepMinEff;})
       .map(g=>({kind:'task' as const,g,startMin:adjM(g.startTime),h:g.h})),
     ...freeSlots.map(s=>({kind:'free' as const,slot:s,startMin:adjM(s.start),
-      h:measuredH[`free-${s.start}`]??calcFreeContentH(laterPoolForEstimate)})),
+      h:measuredH[`free-${s.start}`]!=null?measuredH[`free-${s.start}`]+FREE_CARD_CHROME_H:calcFreeContentH(laterPoolForEstimate)})),
   ].sort((a,b)=>a.startMin-b.startMin);
 
   type Anchor={min:number;y:number};
