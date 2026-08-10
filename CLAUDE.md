@@ -470,6 +470,17 @@ iOS標準のホーム画面ウィジェット（WidgetKit）。1つの大きい�
 4. `native-ios/Widgets/BrainBoxWidgets.swift` と `native-ios/Widgets/WidgetIntents.swift` をこの **Widget Extension ターゲット**に追加（Target Membership: BrainBoxWidgetsExtension。メインAppターゲットには入れない）
 5. Widget Extensionターゲットにも①と同じ「Signing & Capabilities」→「App Groups」→ `group.jp.brainbox.app` を追加（メインAppと共有するため両方に必要）
 6. Widget Extensionターゲットの「General」→「Minimum Deployments」を **iOS 17.0以上**に設定する（`Button(intent:)` のインタラクティブウィジェットAPIがiOS 17+のため。メインAppターゲットはiOS 15.0のままでよい）
+7. `native-ios/Widgets/Localizable.xcstrings`（String Catalog、ウィジェットの英語対応用）も同じ **Widget Extension ターゲット**に追加
+
+**⑤ ウィジェットの英語対応（String Catalog）**
+
+ウィジェット内の固定文言（「次の予定」「買い物リスト」等のラベル・ウィジェットギャラリーの説明文・インタラクティブ操作の名前）は `native-ios/Widgets/Localizable.xcstrings`（Xcode 15+ の String Catalog、ja基準+en訳を1ファイルにまとめたもの）で英語対応している。SwiftUIの`Text(_:)`は**リテラル文字列を直接渡した場合のみ**`LocalizedStringKey`として自動的にこのカタログを検索する（`Text("次の予定")`はOK、`Text(someStringVariable)`のように一度`String`型の変数を経由すると非ローカライズ版の`Text<S:StringProtocol>`に解決されてしまい、カタログを追加しても翻訳されない）。`QuadWidgetView.quadColumn(title:)`のtitle引数を`String`ではなく`LocalizedStringKey`型にしているのはこのため——新しく共通化した見出しコンポーネントを作る時も同じ罠に注意すること。
+
+- `.configurationDisplayName(_:)` / `.description(_:)`（ウィジェットギャラリーでの表示名・説明文）は`LocalizedStringResource`型を受け取るAPIなので、文字列リテラルをそのまま渡せば同じカタログから自動的に引かれる
+- `WidgetIntents.swift`の`static var title: LocalizedStringResource = "タスクを完了"`も同様にカタログから自動で引かれる
+- `WidgetTaskItem.name`/`WidgetShopItem.name`/`WidgetLaterItem.name`（実際のタスク名・買い物名）は元々ユーザーが入力した文字列そのものであり、カタログの対象外（翻訳しようがないので対象にしない）
+- Widget Extensionターゲットの「Info」→「Localizations」に English が追加されていることを確認する（String Catalogをターゲットに追加すると自動で候補に出るはずだが、出ない場合はプロジェクト設定の Localizations で手動追加）
+- **実機で確認する時は端末の言語をEnglishに切り替えて**、ホーム画面からウィジェットを一度削除→再追加するのが確実（キャッシュされたタイムラインが残っていると言語が反映されないことがある）
 
 **④ ビルド・実機確認**
 
@@ -484,6 +495,8 @@ iOS標準のホーム画面ウィジェット（WidgetKit）。1つの大きい�
 - App Group ID をメインAppとWidget Extensionで一致させ忘れる（`group.jp.brainbox.app` で統一）
 - Widget Extensionターゲットの Minimum Deployment を iOS 17 未満のままにする（`Button(intent:)` がビルドエラーになる）
 - `WidgetTaskItem` / `WidgetShopItem` の `id` を JS側の送信データから外す（タップ完了機能がどのアイテムか特定できなくなる）
+- ウィジェット内の見出し文言を`Text(someStringVariable)`のように一度`String`型を経由して渡さない（`Localizable.xcstrings`があっても翻訳が反映されない。`Text("リテラル")`か、`LocalizedStringKey`型のパラメータ経由で渡すこと）
+- `Localizable.xcstrings`をメインAppターゲットに追加しない（Widget Extensionターゲットのみ。ウィジェット内の文言専用のカタログ）
 
 ---
 

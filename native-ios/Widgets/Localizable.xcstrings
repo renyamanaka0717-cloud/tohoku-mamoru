@@ -1,0 +1,246 @@
+{
+  "sourceLanguage" : "ja",
+  "strings" : {
+    "4分割（予定・買い物・あとでやる・追加）" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "4-Panel (Tasks, Shopping, Later, Add)"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "4分割（予定・買い物・あとでやる・追加）"
+          }
+        }
+      }
+    },
+    "あとでやる" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Later"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "あとでやる"
+          }
+        }
+      }
+    },
+    "あとでやるタスクを追加" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add a Later task"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "あとでやるタスクを追加"
+          }
+        }
+      }
+    },
+    "あとでやるを追加" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add a Later Task"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "あとでやるを追加"
+          }
+        }
+      }
+    },
+    "ありません" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nothing here"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ありません"
+          }
+        }
+      }
+    },
+    "買い物を完了" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mark as Purchased"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "買い物を完了"
+          }
+        }
+      }
+    },
+    "買い物リスト" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shopping List"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "買い物リスト"
+          }
+        }
+      }
+    },
+    "買うものはありません" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No items to buy"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "買うものはありません"
+          }
+        }
+      }
+    },
+    "次の予定" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Next Up"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "次の予定"
+          }
+        }
+      }
+    },
+    "次の予定 & 買い物リスト" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Upcoming & Shopping List"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "次の予定 & 買い物リスト"
+          }
+        }
+      }
+    },
+    "次の予定・買い物リスト・あとでやるタスクを4分割で表示し、＋タップで新規タスクを追加できます。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shows upcoming tasks, your shopping list, and Later tasks in four panels. Tap + to add a new task."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "次の予定・買い物リスト・あとでやるタスクを4分割で表示し、＋タップで新規タスクを追加できます。"
+          }
+        }
+      }
+    },
+    "タスクを完了" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Complete Task"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "タスクを完了"
+          }
+        }
+      }
+    },
+    "タップするだけで「あとでやる」タスクの追加画面を開けます。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tap to open the Add Later Task screen."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "タップするだけで「あとでやる」タスクの追加画面を開けます。"
+          }
+        }
+      }
+    },
+    "予定はありません" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No tasks"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "予定はありません"
+          }
+        }
+      }
+    },
+    "今日の予定と買い物リストをまとめて表示します。タップで完了にできます。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shows today's schedule and shopping list together. Tap to mark items as done."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "今日の予定と買い物リストをまとめて表示します。タップで完了にできます。"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

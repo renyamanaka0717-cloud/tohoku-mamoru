@@ -290,7 +290,10 @@ struct QuadWidgetView: View {
         .containerBackground(adaptiveWidgetBackground, for: .widget)
     }
 
-    private func quadColumn<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
+    // titleをStringではなくLocalizedStringKeyで受けること。Stringのまま渡すと
+    // Text(_:)がローカライズ非対応のオーバーロード（Text<S:StringProtocol>）に
+    // 解決されてしまい、Localizable.xcstringsを追加しても翻訳が反映されない
+    private func quadColumn<Content: View>(title: LocalizedStringKey, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(title).font(.caption2).foregroundColor(.secondary)
             content()
