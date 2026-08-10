@@ -3735,7 +3735,7 @@ function ForgetAlertsPanel({alerts,onChange,isPremium,onProPrompt}:{
 
   const saveEditing=async()=>{
     if(!editing||!editing.location||!editing.name.trim()||editing.weekdays.length===0||editing.items.length===0) return;
-    if(adding&&!isPremium&&alerts.length>=1){ onProPrompt('忘れ物防止アラート（2件目以降）'); return; }
+    if(adding&&!isPremium&&alerts.length>=1){ onProPrompt('忘れ物防止通知（2件目以降）'); return; }
     const ok=await ensureGeofencePermission('forget_alert');
     if(!ok){ setPermError(tr('forgetAlertLocationPermError')); return; }
     const toSave:ForgetAlert={...editing,name:editing.name.trim(),location:editing.location};
@@ -3747,7 +3747,7 @@ function ForgetAlertsPanel({alerts,onChange,isPremium,onProPrompt}:{
   const [deleteId,setDeleteId]=useState<string|null>(null);
   const toggleEnabled=(id:string)=>{
     const idx=alerts.findIndex(a=>a.id===id);
-    if(idx>=0&&!alerts[idx].enabled&&isLockedByPlan(idx)){ onProPrompt('忘れ物防止アラート（2件目以降）'); return; }
+    if(idx>=0&&!alerts[idx].enabled&&isLockedByPlan(idx)){ onProPrompt('忘れ物防止通知（2件目以降）'); return; }
     onChange(alerts.map(a=>a.id===id?{...a,enabled:!a.enabled}:a));
   };
 
@@ -5104,7 +5104,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
               {(language==='ja'?LATER_REMINDER_OPTS:LATER_REMINDER_OPTS_EN).filter(o=>o.v!==0).map(o=>{
                 const locked=o.v!==72&&!isPremium;
                 return (
-                  <button key={o.v} onClick={()=>{if(locked){setProPrompt('タスク放置アラートの間隔変更');return;}onSettings({...settings,laterReminderHours:o.v});}}
+                  <button key={o.v} onClick={()=>{if(locked){setProPrompt('タスク放置通知の間隔変更');return;}onSettings({...settings,laterReminderHours:o.v});}}
                     className={`px-3 py-1.5 rounded-xl text-sm font-medium transition-colors inline-flex items-center gap-1 ${(settings.laterReminderHours??72)===o.v?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
                     {locked&&<AppIcons.lock size={10} className="text-gray-400"/>}
                     {o.l}
@@ -5130,7 +5130,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
               {(language==='ja'?APP_INACTIVITY_OPTS:APP_INACTIVITY_OPTS_EN).filter(o=>o.v!==0).map(o=>{
                 const locked=o.v!==6&&!isPremium;
                 return (
-                  <button key={o.v} onClick={()=>{if(locked){setProPrompt('アプリ放置アラートの間隔変更');return;}onSettings({...settings,appInactivityHours:o.v});}}
+                  <button key={o.v} onClick={()=>{if(locked){setProPrompt('アプリ放置通知の間隔変更');return;}onSettings({...settings,appInactivityHours:o.v});}}
                     className={`px-3 py-1.5 rounded-xl text-sm font-medium transition-colors inline-flex items-center gap-1 ${(settings.appInactivityHours??6)===o.v?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
                     {locked&&<AppIcons.lock size={10} className="text-gray-400"/>}
                     {o.l}

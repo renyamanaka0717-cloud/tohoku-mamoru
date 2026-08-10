@@ -299,7 +299,7 @@ export const STRINGS = {
   forgetAlertArriveLabel:    { ja: '{place}に着いたとき',              en: 'Arrive at {place}' },
   forgetAlertLeaveLabel:     { ja: '{place}を出るとき',               en: 'Leave {place}' },
   deleteAlertConfirmTitle:   { ja: 'このアラートを削除しますか？',          en: 'Delete this alert?' },
-  createForgetAlertTitle:    { ja: '忘れ物防止アラートを作成',            en: 'Create alert' },
+  createForgetAlertTitle:    { ja: '忘れ物防止通知を作成',              en: 'Create alert' },
   placeSectionLabel:         { ja: '場所',                        en: 'Place' },
   conditionSectionLabel:     { ja: '条件',                        en: 'Condition' },
   arriveOptionLabel:         { ja: '到着したら',                     en: 'On arrival' },
