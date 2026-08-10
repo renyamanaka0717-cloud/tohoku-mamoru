@@ -113,6 +113,15 @@ export const STRINGS = {
   discardAndMoveButton:      { ja: '破棄して移動',                   en: 'Discard & continue' },
   deleteTaskConfirmTitle:    { ja: 'このタスクを削除しますか？',          en: 'Delete this task?' },
   deleteTaskConfirmBody:     { ja: 'この操作は取り消せません。',          en: 'This can’t be undone.' },
+
+  // MonthCalendar / CalendarPage
+  closeButton:               { ja: '閉じる',                       en: 'Close' },
+  todayButton:               { ja: '今日',                        en: 'Today' },
+
+  // SearchPage
+  searchPlaceholder:         { ja: 'タスク・メモ・タブを検索...',        en: 'Search tasks, notes, tabs...' },
+  searchEmptyPrompt:         { ja: 'タスク名・メモ・タブで検索',          en: 'Search by task name, note, or tab' },
+  searchNoResults:           { ja: '「{q}」は見つかりませんでした',       en: 'No results for "{q}"' },
 } as const;
 
 export type StringKey = keyof typeof STRINGS;

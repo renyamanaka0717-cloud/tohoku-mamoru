@@ -465,6 +465,7 @@ function calcFreeSlots(tasks: Task[], date: string, s: Settings): FreeSlot[] {
 // ── MonthCalendar ─────────────────────────────────────────────────────────────
 
 function MonthCalendar({selected,onSelect,onClose,tasks}:{selected:string;onSelect:(d:string)=>void;onClose:()=>void;tasks:Task[];}) {
+  const {tr,language} = useI18n();
   const init = new Date(selected+'T12:00:00');
   const [vm,setVm] = useState({year:init.getFullYear(),month:init.getMonth()});
   const today = todayStr();
@@ -494,12 +495,12 @@ function MonthCalendar({selected,onSelect,onClose,tasks}:{selected:string;onSele
         <div className="px-4 pt-4 pb-2">
           <div className="flex items-center justify-between mb-3">
             <button onClick={()=>setVm(m=>shiftMonth(m.year,m.month,-1))} className="w-9 h-9 flex items-center justify-center text-gray-600"><AppIcons.caretLeft/></button>
-            <span className="font-bold text-gray-900 text-base">{vm.year}年{vm.month+1}月</span>
+            <span className="font-bold text-gray-900 text-base">{language==='ja'?`${vm.year}年${vm.month+1}月`:`${MONTH_NAMES_EN[vm.month]} ${vm.year}`}</span>
             <button onClick={()=>setVm(m=>shiftMonth(m.year,m.month,1))} className="w-9 h-9 flex items-center justify-center text-gray-600"><AppIcons.caretRight/></button>
           </div>
           <div className="grid grid-cols-7 mb-1">
             {DAY_NAMES.map((n,i)=>(
-              <div key={i} className={`text-center text-xs font-semibold py-1 text-gray-400`}>{n}</div>
+              <div key={i} className={`text-center text-xs font-semibold py-1 text-gray-400`}>{language==='ja'?n:DAY_NAMES_EN[i]}</div>
             ))}
           </div>
         </div>
@@ -532,7 +533,7 @@ function MonthCalendar({selected,onSelect,onClose,tasks}:{selected:string;onSele
         </div>
         {/* Footer */}
         <div className="border-t border-gray-100 px-4 py-3 flex justify-end">
-          <button onClick={onClose} className="text-sm text-gray-500 font-semibold px-4 py-1.5">閉じる</button>
+          <button onClick={onClose} className="text-sm text-gray-500 font-semibold px-4 py-1.5">{tr('closeButton')}</button>
         </div>
       </div>
     </div>
@@ -542,6 +543,7 @@ function MonthCalendar({selected,onSelect,onClose,tasks}:{selected:string;onSele
 // ── CalendarPage ─────────────────────────────────────────────────────────────
 
 function CalendarPage({date,tasks,customTabs,onSelect,onClose}:{date:string;tasks:Task[];customTabs:CustomTab[];onSelect:(d:string)=>void;onClose:()=>void;}) {
+  const {tr,language} = useI18n();
   const [vm,setVm]=useState(()=>{const d=new Date(date+'T12:00:00');return {year:d.getFullYear(),month:d.getMonth()};});
   const [catFilter,setCatF]=useState<string|null>(null);
   const today=todayStr();
@@ -573,18 +575,18 @@ function CalendarPage({date,tasks,customTabs,onSelect,onClose}:{date:string;task
         <div className="flex items-center gap-3">
           <button onClick={()=>setVm(m=>shiftMonth(m.year,m.month,-1))}
             className="w-9 h-9 flex items-center justify-center text-gray-500 bg-gray-100 rounded-xl"><AppIcons.caretLeft/></button>
-          <span className="font-bold text-gray-900 text-base min-w-[7rem] text-center">{vm.year}年{vm.month+1}月</span>
+          <span className="font-bold text-gray-900 text-base min-w-[7rem] text-center">{language==='ja'?`${vm.year}年${vm.month+1}月`:`${MONTH_NAMES_EN[vm.month]} ${vm.year}`}</span>
           <button onClick={()=>setVm(m=>shiftMonth(m.year,m.month,1))}
             className="w-9 h-9 flex items-center justify-center text-gray-500 bg-gray-100 rounded-xl"><AppIcons.caretRight/></button>
         </div>
         <button onClick={()=>{const d=new Date();setVm({year:d.getFullYear(),month:d.getMonth()});onSelect(today);}}
-          className="text-xs font-bold px-3 py-1.5 bg-[var(--c-primary)] text-white rounded-full">今日</button>
+          className="text-xs font-bold px-3 py-1.5 bg-[var(--c-primary)] text-white rounded-full">{tr('todayButton')}</button>
       </div>
 
       {/* Category filter - file tabs */}
       <div className="bg-[var(--c-primary)]">
         <div className="flex items-end px-3 pt-2" style={{overflowX:'auto',WebkitOverflowScrolling:'touch'}}>
-          {([{key:null as string|null,label:'すべて'},...customTabs.map(t=>({key:t.id,label:t.name}))]).map(({key,label})=>{
+          {([{key:null as string|null,label:tr('fileTabAll')},...customTabs.map(t=>({key:t.id,label:t.name}))]).map(({key,label})=>{
             const active=catFilter===key;
             return (
               <button key={String(key)} onClick={()=>setCatF(key)}
@@ -606,7 +608,7 @@ function CalendarPage({date,tasks,customTabs,onSelect,onClose}:{date:string;task
       {/* Day headers */}
       <div className="grid grid-cols-7 px-2 pt-3 pb-1">
         {DAY_NAMES.map((n,i)=>(
-          <div key={i} className={`text-center text-xs font-semibold text-gray-400`}>{n}</div>
+          <div key={i} className={`text-center text-xs font-semibold text-gray-400`}>{language==='ja'?n:DAY_NAMES_EN[i]}</div>
         ))}
       </div>
 
@@ -646,6 +648,7 @@ function CalendarPage({date,tasks,customTabs,onSelect,onClose}:{date:string;task
 // ── SearchPage ────────────────────────────────────────────────────────────────
 
 function SearchPage({tasks,onClose,onSelect}:{tasks:Task[];onClose:()=>void;onSelect:(t:Task)=>void;}) {
+  const {tr,language} = useI18n();
   const [query,setQuery]=useState('');
   const inputRef=useRef<HTMLInputElement>(null);
   useEffect(()=>{inputRef.current?.focus();},[]);
@@ -662,6 +665,7 @@ function SearchPage({tasks,onClose,onSelect}:{tasks:Task[];onClose:()=>void;onSe
 
   const fmtDate=(d:string)=>{
     const dt=new Date(d+'T12:00:00');
+    if(language==='en') return `${MONTH_NAMES_EN[dt.getMonth()].slice(0,3)} ${dt.getDate()} (${DAY_NAMES_EN[dt.getDay()]})`;
     return `${dt.getMonth()+1}月${dt.getDate()}日（${DAY_NAMES[dt.getDay()]}）`;
   };
 
@@ -669,11 +673,11 @@ function SearchPage({tasks,onClose,onSelect}:{tasks:Task[];onClose:()=>void;onSe
     <div className="fixed inset-0 z-[90] bg-white flex flex-col">
       {/* Header */}
       <div className="flex items-center gap-3 px-4 pb-3 border-b border-gray-100" style={{paddingTop:'calc(1rem + env(safe-area-inset-top))'}}>
-        <button onClick={onClose} className="text-sm font-semibold text-gray-600 shrink-0">キャンセル</button>
+        <button onClick={onClose} className="text-sm font-semibold text-gray-600 shrink-0">{tr('cancelButton')}</button>
         <div className="flex-1 flex items-center gap-2 bg-gray-100 rounded-xl px-3 py-2.5">
           <AppIcons.search size={16} className="text-gray-400 shrink-0"/>
           <input ref={inputRef} type="text" value={query} onChange={e=>setQuery(e.target.value)}
-            placeholder="タスク・メモ・タブを検索..."
+            placeholder={tr('searchPlaceholder')}
             className="flex-1 text-sm bg-transparent outline-none text-gray-900 placeholder-gray-400"/>
           {query&&<button onClick={()=>setQuery('')} className="text-gray-400 text-lg leading-none">×</button>}
         </div>
@@ -682,19 +686,19 @@ function SearchPage({tasks,onClose,onSelect}:{tasks:Task[];onClose:()=>void;onSe
       {/* Results */}
       <div className="flex-1 overflow-y-auto">
         {!query?(
-          <div className="py-20 text-center"><AppIcons.search size={40} className="mx-auto mb-2 text-gray-300"/><p className="text-sm text-gray-400">タスク名・メモ・タブで検索</p></div>
+          <div className="py-20 text-center"><AppIcons.search size={40} className="mx-auto mb-2 text-gray-300"/><p className="text-sm text-gray-400">{tr('searchEmptyPrompt')}</p></div>
         ):results.length===0?(
-          <div className="py-20 text-center"><AppIcons.smileySad className="mx-auto mb-2 text-gray-300"/><p className="text-sm text-gray-400">「{query}」は見つかりませんでした</p></div>
+          <div className="py-20 text-center"><AppIcons.smileySad className="mx-auto mb-2 text-gray-300"/><p className="text-sm text-gray-400">{tr('searchNoResults').replace('{q}',query)}</p></div>
         ):(
           <div>
-            <p className="text-xs text-gray-400 px-4 pt-3 pb-1">{results.length}件</p>
+            <p className="text-xs text-gray-400 px-4 pt-3 pb-1">{language==='ja'?`${results.length}件`:`${results.length} result${results.length===1?'':'s'}`}</p>
             {results.map(t=>(
               <button key={t.id} onClick={()=>onSelect(t)}
                 className="w-full flex items-center gap-3 px-4 py-3.5 border-b border-gray-50 active:bg-gray-50 text-left">
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-gray-900">{t.name}</p>
                   <p className="text-xs text-gray-400 mt-0.5">
-                    {t.isLater?'あとでやる':fmtDate(t.date)}
+                    {t.isLater?tr('laterTabLabel'):fmtDate(t.date)}
                     {t.startTime&&` · ${t.startTime}`}
                     {t.category&&<span className="ml-1 bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full text-[10px]">{t.category}</span>}
                   </p>
