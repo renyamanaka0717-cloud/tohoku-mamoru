@@ -1858,8 +1858,8 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                 </button>
                 {deadlineOpen&&isPremium&&(
                   <div className="border-t border-gray-100 px-4 pb-3">
-                    <div className="flex items-center gap-2 py-3">
-                      <div className="flex-1 relative">
+                    <div className="flex flex-wrap items-center gap-2 py-3">
+                      <div className="flex-1 relative min-w-[130px]">
                         <input type="date" value={deadlineDate} onChange={e=>setDeadlineDate(e.target.value)}
                           className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50 outline-none"/>
                         {/* iOS(WebKit)のtype="date"はplaceholder属性を表示しないため、
@@ -1869,7 +1869,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                         )}
                       </div>
                       <input type="time" value={deadlineTime} onChange={e=>setDeadlineTime(e.target.value)}
-                        className="border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50 outline-none"/>
+                        className="shrink-0 border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50 outline-none"/>
                       {deadlineDate&&(
                         <button onClick={()=>setDeadlineDate('')} className="text-xs text-gray-400 px-2 shrink-0">{tr('clearButton')}</button>
                       )}
@@ -4523,13 +4523,13 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             </div>
             <div className="flex items-center gap-3 px-4 py-3.5 border-b border-gray-100">
               <AppIcons.clock size={18} className="text-gray-400 shrink-0"/>
-              <span className="text-sm font-medium text-gray-500 shrink-0 w-16">開始時刻</span>
+              <span className="text-sm font-medium text-gray-500 shrink-0 whitespace-nowrap">開始時刻</span>
               <input type="time" value={bulkStart} onChange={e=>setBulkStart(e.target.value)}
                 className="flex-1 text-sm text-gray-800 bg-transparent outline-none"/>
             </div>
             <div className="flex items-center gap-3 px-4 py-3.5">
               <AppIcons.clock size={18} className="text-gray-400 shrink-0"/>
-              <span className="text-sm font-medium text-gray-500 shrink-0 w-16">終了時刻</span>
+              <span className="text-sm font-medium text-gray-500 shrink-0 whitespace-nowrap">終了時刻</span>
               <input type="time" value={bulkEnd} onChange={e=>setBulkEnd(e.target.value)}
                 className="flex-1 text-sm text-gray-800 bg-transparent outline-none"/>
             </div>
@@ -4696,12 +4696,12 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                         className="flex-1 text-sm text-gray-800 bg-transparent outline-none border-b border-gray-200 pb-0.5"/>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-gray-500 w-14 shrink-0">開始時刻</span>
+                      <span className="text-xs text-gray-500 shrink-0 whitespace-nowrap">開始時刻</span>
                       <input type="time" value={histEditStart} onChange={e=>setHES(e.target.value)}
                         className="flex-1 text-sm text-gray-800 bg-transparent outline-none"/>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-gray-500 w-14 shrink-0">終了時刻</span>
+                      <span className="text-xs text-gray-500 shrink-0 whitespace-nowrap">終了時刻</span>
                       <input type="time" value={histEditEnd} onChange={e=>setHEE(e.target.value)}
                         className="flex-1 text-sm text-gray-800 bg-transparent outline-none"/>
                     </div>
