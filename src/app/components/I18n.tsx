@@ -207,6 +207,19 @@ export const STRINGS = {
   dailyOverrideTitle:        { ja: '日ごとに起床・就寝時間を変えたいときは', en: 'Want different times on different days?' },
   dailyOverrideBody:         { ja: '生活パターンを使うと、シフトや休日など日ごとの時間帯を設定できます。', en: 'Life patterns let you set different times for shifts, days off, and more.' },
   goToLifePatternsButton:    { ja: '生活パターンの設定へ',              en: 'Go to life patterns' },
+
+  // 設定 → 通知
+  notificationSettingsRowTitle: { ja: '通知設定',                   en: 'Notification settings' },
+  onLabel:                   { ja: 'オン',                        en: 'On' },
+  offLabel:                  { ja: 'オフ',                        en: 'Off' },
+  laterAlertSectionLabel:    { ja: 'タスク放置アラート',               en: 'Task inactivity alert' },
+  laterAlertDesc:            { ja: '「あとでやる」に追加したタスクが、設定した時間が経っても完了していないときにお知らせします。', en: 'Get notified if a task added to "Later" is still incomplete after the time you set.' },
+  notifyToggleLabel:         { ja: '通知する',                      en: 'Notify me' },
+  appAlertSectionLabel:      { ja: 'アプリ放置アラート',               en: 'App inactivity alert' },
+  appAlertDesc:              { ja: '一定時間アプリを開いていない場合に通知します。', en: 'Get notified if you haven’t opened the app in a while.' },
+  enableNotificationsTitle:  { ja: '通知を有効にする',                en: 'Enable notifications' },
+  enableNotificationsDesc:   { ja: 'タスクのアラートや買い物リストの通知',    en: 'Task alerts and shopping list notifications' },
+  notificationsPermissionHint: { ja: '通知を受け取るには、端末の設定でこのアプリの通知を許可してください。', en: 'To receive notifications, allow them for this app in your device settings.' },
 } as const;
 
 export type StringKey = keyof typeof STRINGS;

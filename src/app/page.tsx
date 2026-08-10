@@ -135,7 +135,9 @@ const TASK_ALERT_FIRED_KEY = 'tl-task-alert-fired-v1';
 const DEADLINE_ALERT_FIRED_KEY = 'tl-deadline-alert-fired-v1';
 const WAKE_CHECKIN_NOTIF_KEY = 'tl-wake-checkin-notif-v1';
 const LATER_REMINDER_OPTS = [{v:0,l:'オフ'},{v:1,l:'1時間'},{v:3,l:'3時間'},{v:6,l:'6時間'},{v:12,l:'12時間'},{v:24,l:'1日'},{v:48,l:'2日'},{v:72,l:'3日'}];
+const LATER_REMINDER_OPTS_EN = [{v:0,l:'Off'},{v:1,l:'1h'},{v:3,l:'3h'},{v:6,l:'6h'},{v:12,l:'12h'},{v:24,l:'1d'},{v:48,l:'2d'},{v:72,l:'3d'}];
 const APP_INACTIVITY_OPTS = [{v:0,l:'オフ'},{v:6,l:'6時間'},{v:12,l:'12時間'},{v:24,l:'1日'},{v:48,l:'2日'},{v:72,l:'3日'}];
+const APP_INACTIVITY_OPTS_EN = [{v:0,l:'Off'},{v:6,l:'6h'},{v:12,l:'12h'},{v:24,l:'1d'},{v:48,l:'2d'},{v:72,l:'3d'}];
 const AUTH_KEY          = 'tl-auth-v1';
 
 // テーマカラー — 将来的にここを差し替えるだけで全体の色が変わる
@@ -4377,12 +4379,12 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   const subHeader = (title:string) => (
     <div className="bg-white border-b border-gray-200 px-4 py-3.5 flex items-center shrink-0" style={{paddingTop:'calc(0.875rem + env(safe-area-inset-top))'}}>
 
-      <button onClick={back} className="flex items-center gap-0.5 min-w-[80px]" style={{color:'var(--c-primary)'}}>
+      <button onClick={back} className="flex items-center gap-0.5 shrink-0 min-w-[44px]" style={{color:'var(--c-primary)'}}>
         <AppIcons.caretLeft size={20}/>
-        <span className="text-[15px]">{tr('settingsTitle')}</span>
+        {language==='ja'&&<span className="text-[15px] whitespace-nowrap">{tr('settingsTitle')}</span>}
       </button>
-      <h2 className="flex-1 text-center text-[17px] font-semibold text-gray-900 -mx-4">{title}</h2>
-      <div className="min-w-[80px]"/>
+      <h2 className="flex-1 text-center text-[17px] font-semibold text-gray-900 truncate px-1">{title}</h2>
+      <div className="shrink-0 min-w-[44px]"/>
     </div>
   );
 
@@ -4985,11 +4987,11 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
 
   if(sub==='notifications') return (
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
-      {subHeader('通知')}{proSheet}
+      {subHeader(tr('rowNotificationsTitle'))}{proSheet}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm mt-6">
-          <SettingsRow icon={<AppIcons.bell size={18}/>} iconBg="bg-gray-100" title="通知設定"
-            desc={(settings.notificationsEnabled??true)?'オン':'オフ'}
+          <SettingsRow icon={<AppIcons.bell size={18}/>} iconBg="bg-gray-100" title={tr('notificationSettingsRowTitle')}
+            desc={(settings.notificationsEnabled??true)?tr('onLabel'):tr('offLabel')}
             onClick={()=>setSub('notifications-general')} isLast/>
         </div>
       </div>
@@ -4998,13 +5000,13 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
 
   if(sub==='notifications-later') return (
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
-      {subHeader('放置アラート')}{proSheet}
+      {subHeader(tr('rowLaterAlertTitle'))}{proSheet}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-4">タスク放置アラート</p>
-        <p className="text-xs text-gray-400 px-1 mb-4 leading-relaxed">「あとでやる」に追加したタスクが、設定した時間が経っても完了していないときにお知らせします。</p>
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-4">{tr('laterAlertSectionLabel')}</p>
+        <p className="text-xs text-gray-400 px-1 mb-4 leading-relaxed">{tr('laterAlertDesc')}</p>
         <div className="bg-white rounded-2xl shadow-sm px-4 py-4">
           <div className="flex items-center justify-between mb-3">
-            <p className="text-sm font-medium text-gray-800">通知する</p>
+            <p className="text-sm font-medium text-gray-800">{tr('notifyToggleLabel')}</p>
             <button onClick={()=>onSettings({...settings,laterReminderHours:(settings.laterReminderHours??72)!==0?0:72})}
               className={`relative w-10 h-6 rounded-full transition-colors shrink-0 ${(settings.laterReminderHours??72)!==0?'bg-[var(--c-primary)]':'bg-gray-200'}`}>
               <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${(settings.laterReminderHours??72)!==0?'left-[18px]':'left-0.5'}`}/>
@@ -5012,7 +5014,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           </div>
           {(settings.laterReminderHours??72)!==0&&(
             <div className="flex gap-2 flex-wrap">
-              {LATER_REMINDER_OPTS.filter(o=>o.v!==0).map(o=>{
+              {(language==='ja'?LATER_REMINDER_OPTS:LATER_REMINDER_OPTS_EN).filter(o=>o.v!==0).map(o=>{
                 const locked=o.v!==72&&!isPremium;
                 return (
                   <button key={o.v} onClick={()=>{if(locked){setProPrompt('タスク放置アラートの間隔変更');return;}onSettings({...settings,laterReminderHours:o.v});}}
@@ -5026,11 +5028,11 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           )}
         </div>
 
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">アプリ放置アラート</p>
-        <p className="text-xs text-gray-400 px-1 mb-4 leading-relaxed">一定時間アプリを開いていない場合に通知します。</p>
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">{tr('appAlertSectionLabel')}</p>
+        <p className="text-xs text-gray-400 px-1 mb-4 leading-relaxed">{tr('appAlertDesc')}</p>
         <div className="bg-white rounded-2xl shadow-sm px-4 py-4">
           <div className="flex items-center justify-between mb-3">
-            <p className="text-sm font-medium text-gray-800">通知する</p>
+            <p className="text-sm font-medium text-gray-800">{tr('notifyToggleLabel')}</p>
             <button onClick={()=>onSettings({...settings,appInactivityHours:(settings.appInactivityHours??6)!==0?0:6})}
               className={`relative w-10 h-6 rounded-full transition-colors shrink-0 ${(settings.appInactivityHours??6)!==0?'bg-[var(--c-primary)]':'bg-gray-200'}`}>
               <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${(settings.appInactivityHours??6)!==0?'left-[18px]':'left-0.5'}`}/>
@@ -5038,7 +5040,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           </div>
           {(settings.appInactivityHours??6)!==0&&(
             <div className="flex gap-2 flex-wrap">
-              {APP_INACTIVITY_OPTS.filter(o=>o.v!==0).map(o=>{
+              {(language==='ja'?APP_INACTIVITY_OPTS:APP_INACTIVITY_OPTS_EN).filter(o=>o.v!==0).map(o=>{
                 const locked=o.v!==6&&!isPremium;
                 return (
                   <button key={o.v} onClick={()=>{if(locked){setProPrompt('アプリ放置アラートの間隔変更');return;}onSettings({...settings,appInactivityHours:o.v});}}
@@ -5057,13 +5059,13 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
 
   if(sub==='notifications-general') return (
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
-      {subHeader('通知設定')}
+      {subHeader(tr('notificationSettingsRowTitle'))}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm mt-6">
           <div className="px-4 py-3.5 flex items-center justify-between">
             <div className="flex-1 min-w-0">
-              <p className="text-[15px] font-medium text-gray-900">通知を有効にする</p>
-              <p className="text-xs text-gray-400 mt-0.5">タスクのアラートや買い物リストの通知</p>
+              <p className="text-[15px] font-medium text-gray-900">{tr('enableNotificationsTitle')}</p>
+              <p className="text-xs text-gray-400 mt-0.5">{tr('enableNotificationsDesc')}</p>
             </div>
             <button onClick={()=>{
                 const next=!(settings.notificationsEnabled??true);
@@ -5075,7 +5077,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             </button>
           </div>
         </div>
-        <p className="text-xs text-gray-400 px-1 mt-2 leading-relaxed">通知を受け取るには、端末の設定でこのアプリの通知を許可してください。</p>
+        <p className="text-xs text-gray-400 px-1 mt-2 leading-relaxed">{tr('notificationsPermissionHint')}</p>
       </div>
     </div>
   );
