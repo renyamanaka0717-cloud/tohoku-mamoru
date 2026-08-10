@@ -4947,17 +4947,17 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
     }).sort((a,b)=>(a.startTime??'').localeCompare(b.startTime??''));
     return (
       <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
-        {subHeader('繰り返しタスク')}
+        {subHeader(tr('rowRecurringTitle'))}
         <div className="flex-1 overflow-y-auto px-4 pb-8">
           {recurTasks.length===0?(
             <div className="flex flex-col items-center justify-center pt-20 gap-3">
               <div className="text-gray-300"><AppIcons.repeat size={48}/></div>
-              <p className="text-[17px] font-semibold text-gray-900">繰り返しタスクはありません</p>
-              <p className="text-sm text-gray-400 text-center px-8 leading-relaxed">タスク作成時に「繰り返し」を選ぶと、ここに表示されます</p>
+              <p className="text-[17px] font-semibold text-gray-900">{tr('noRecurringTasks')}</p>
+              <p className="text-sm text-gray-400 text-center px-8 leading-relaxed">{tr('noRecurringTasksHint')}</p>
             </div>
           ):(
             <>
-              <p className="text-xs text-gray-400 px-1 mt-4 mb-2">{recurTasks.length}件</p>
+              <p className="text-xs text-gray-400 px-1 mt-4 mb-2">{language==='ja'?`${recurTasks.length}件`:`${recurTasks.length}`}</p>
               <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
                 {recurTasks.map((t,i)=>{
                   const Icon=getTaskIcon(t.icon||'task');
@@ -4969,7 +4969,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-[15px] font-medium text-gray-900 truncate">{t.name}</p>
-                        <p className="text-xs text-gray-400 mt-0.5">{recLabel(t)}{t.startTime?` · ${t.startTime}`:''}</p>
+                        <p className="text-xs text-gray-400 mt-0.5">{recLabel(t,language)}{t.startTime?` · ${t.startTime}`:''}</p>
                       </div>
                       <AppIcons.caretRight size={14} className="text-gray-300 shrink-0"/>
                     </button>
@@ -5464,38 +5464,42 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
     const cellDate=(day:number)=>`${lpVm.year}-${String(lpVm.month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
     return (
       <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
-        {subHeader('起床・就寝')}{proSheet}
+        {subHeader(tr('rowWakeSleepTitle'))}{proSheet}
         <div className="flex-1 overflow-y-auto px-4 pb-10">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">時間設定</p>
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">{tr('timeSettingsSectionLabel')}</p>
           <div className="bg-white rounded-2xl overflow-hidden shadow-sm mb-5">
-            <div className="px-4 py-4 flex items-center gap-3">
-              <button onClick={()=>{if(!isPremium){setProPrompt('起床・就寝アイコンの色変更');return;}setColorPicking(colorPicking==='wake'?null:'wake');}} className="relative shrink-0">
-                <div className="w-9 h-9 rounded-full flex items-center justify-center" style={{background:settings.wakeColor||'var(--c-primary)'}}>
-                  <AppIcons.wake size={16} className="text-white"/>
-                </div>
-                <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-white rounded-full flex items-center justify-center shadow border border-gray-100">
-                  <AppIcons.pencil size={9} className="text-gray-500"/>
-                </div>
-              </button>
-              <input type="time" value={settings.wakeTime}
-                onChange={e=>onSettings({...settings,wakeTime:e.target.value})}
-                className="border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50"/>
+            <div className="px-4 py-4 flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-3">
+                <button onClick={()=>{if(!isPremium){setProPrompt('起床・就寝アイコンの色変更');return;}setColorPicking(colorPicking==='wake'?null:'wake');}} className="relative shrink-0">
+                  <div className="w-9 h-9 rounded-full flex items-center justify-center" style={{background:settings.wakeColor||'var(--c-primary)'}}>
+                    <AppIcons.wake size={16} className="text-white"/>
+                  </div>
+                  <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-white rounded-full flex items-center justify-center shadow border border-gray-100">
+                    <AppIcons.pencil size={9} className="text-gray-500"/>
+                  </div>
+                </button>
+                <input type="time" value={settings.wakeTime}
+                  onChange={e=>onSettings({...settings,wakeTime:e.target.value})}
+                  className="border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50"/>
+              </div>
               <span className="text-gray-300 text-sm">〜</span>
-              <button onClick={()=>{if(!isPremium){setProPrompt('起床・就寝アイコンの色変更');return;}setColorPicking(colorPicking==='sleep'?null:'sleep');}} className="relative shrink-0">
-                <div className="w-9 h-9 rounded-full flex items-center justify-center" style={{background:settings.sleepColor||'var(--c-primary)'}}>
-                  <AppIcons.sleep size={16} className="text-white"/>
-                </div>
-                <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-white rounded-full flex items-center justify-center shadow border border-gray-100">
-                  <AppIcons.pencil size={9} className="text-gray-500"/>
-                </div>
-              </button>
-              <input type="time" value={settings.sleepTime}
-                onChange={e=>onSettings({...settings,sleepTime:e.target.value})}
-                className="border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50"/>
+              <div className="flex items-center gap-3">
+                <button onClick={()=>{if(!isPremium){setProPrompt('起床・就寝アイコンの色変更');return;}setColorPicking(colorPicking==='sleep'?null:'sleep');}} className="relative shrink-0">
+                  <div className="w-9 h-9 rounded-full flex items-center justify-center" style={{background:settings.sleepColor||'var(--c-primary)'}}>
+                    <AppIcons.sleep size={16} className="text-white"/>
+                  </div>
+                  <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-white rounded-full flex items-center justify-center shadow border border-gray-100">
+                    <AppIcons.pencil size={9} className="text-gray-500"/>
+                  </div>
+                </button>
+                <input type="time" value={settings.sleepTime}
+                  onChange={e=>onSettings({...settings,sleepTime:e.target.value})}
+                  className="border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50"/>
+              </div>
             </div>
             {colorPicking&&(
               <div className="px-4 pb-4 border-t border-gray-100 pt-3">
-                <p className="text-xs text-gray-400 mb-2 flex items-center gap-1.5">{colorPicking==='wake'?'起床':'就寝'}アイコンの色<span className="inline-flex items-center gap-0.5 border border-gray-300 rounded px-1.5 py-0.5 text-[10px] font-bold text-gray-400 leading-none tracking-wide">★ PRO</span></p>
+                <p className="text-xs text-gray-400 mb-2 flex items-center gap-1.5">{colorPicking==='wake'?tr('wakeIconColorLabel'):tr('sleepIconColorLabel')}<span className="inline-flex items-center gap-0.5 border border-gray-300 rounded px-1.5 py-0.5 text-[10px] font-bold text-gray-400 leading-none tracking-wide">★ PRO</span></p>
                 <div className="flex flex-wrap gap-2">
                   {['#94CFC8',...TASK_COLORS.filter(Boolean)].map((c,i)=>{
                     const cur=colorPicking==='wake'?(settings.wakeColor||'#94CFC8'):(settings.sleepColor||'#94CFC8');
@@ -5510,11 +5514,11 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
 
           <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
             <div className="px-4 py-4">
-              <p className="text-sm font-medium text-gray-800 mb-1">日ごとに起床・就寝時間を変えたいときは</p>
-              <p className="text-xs text-gray-400 mb-3 leading-relaxed">生活パターンを使うと、シフトや休日など日ごとの時間帯を設定できます。</p>
+              <p className="text-sm font-medium text-gray-800 mb-1">{tr('dailyOverrideTitle')}</p>
+              <p className="text-xs text-gray-400 mb-3 leading-relaxed">{tr('dailyOverrideBody')}</p>
               <button onClick={()=>setSub('lifePatterns')}
                 className="w-full py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200">
-                生活パターンの設定へ
+                {tr('goToLifePatternsButton')}
               </button>
             </div>
           </div>

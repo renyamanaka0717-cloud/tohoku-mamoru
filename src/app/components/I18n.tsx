@@ -195,6 +195,18 @@ export const STRINGS = {
   renameNamedConfirmTitle:   { ja: '「{name}」を変更しますか？',         en: 'Rename "{name}"?' },
   renameTagConfirmBody:      { ja: 'このタグがついているすべてのタスクのタグ名・色も変更されます', en: 'This will update the name and color on all tasks that use this tag' },
   changeButton:              { ja: '変更する',                      en: 'Rename' },
+
+  // 設定 → 繰り返しタスク
+  noRecurringTasks:          { ja: '繰り返しタスクはありません',         en: 'No recurring tasks' },
+  noRecurringTasksHint:      { ja: 'タスク作成時に「繰り返し」を選ぶと、ここに表示されます', en: 'Choose "Recurring" when creating a task to see it here' },
+
+  // 設定 → 起床・就寝
+  timeSettingsSectionLabel:  { ja: '時間設定',                      en: 'Time settings' },
+  wakeIconColorLabel:        { ja: '起床アイコンの色',                en: 'Wake icon color' },
+  sleepIconColorLabel:       { ja: '就寝アイコンの色',                en: 'Sleep icon color' },
+  dailyOverrideTitle:        { ja: '日ごとに起床・就寝時間を変えたいときは', en: 'Want different times on different days?' },
+  dailyOverrideBody:         { ja: '生活パターンを使うと、シフトや休日など日ごとの時間帯を設定できます。', en: 'Life patterns let you set different times for shifts, days off, and more.' },
+  goToLifePatternsButton:    { ja: '生活パターンの設定へ',              en: 'Go to life patterns' },
 } as const;
 
 export type StringKey = keyof typeof STRINGS;
