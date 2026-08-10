@@ -1864,24 +1864,23 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                 {deadlineOpen&&isPremium&&(
                   <div className="border-t border-gray-100 px-4 pb-3">
                     <div className="flex items-center gap-2 py-3">
-                      {/* grid-template-columnsをminmax(0,1fr)で明示し、両方のセルにmin-w-0を
-                          指定することで、ネイティブのdate/time UIの内部幅（Safariの実機では
-                          Chromiumより広く描画される、また12時間表記(例:06:00 PM)は24時間表記より
-                          幅を要する）に引きずられず必ず半々に分割されるようにしている
-                          （flexのみだと片方が内部幅に負けて溢れ、隣と重なる不具合が実機で
-                          起きたため）。均等割りにすることでどちらの表記でも十分な幅を確保する */}
-                      <div className="grid gap-2 flex-1" style={{gridTemplateColumns:'minmax(0,1fr) minmax(0,1fr)'}}>
-                        <div className="relative min-w-0">
-                          <input type="date" value={deadlineDate} onChange={e=>setDeadlineDate(e.target.value)}
-                            className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50 outline-none"/>
-                          {/* iOS(WebKit)のtype="date"はplaceholder属性を表示しないため、
-                              未入力時だけ重ねて表示する（クリックは下の実inputに通す） */}
-                          {!deadlineDate&&(
-                            <span className="absolute inset-y-0 left-3 flex items-center text-sm text-gray-400 pointer-events-none">{tr('deadlineDatePlaceholder')}</span>
-                          )}
-                        </div>
+                      {/* grid+minmax(0,1fr)でも実機Safariでは重なりが再発したため、
+                          「相手に負けて広がる」余地を完全に断つ方式に変更した。
+                          幅をpx固定し、はみ出した分はoverflow:hiddenでその箱の中だけで
+                          切り取る（ネイティブUIがどれだけ広く描画したがっても、box自体の
+                          外形サイズは絶対に変わらないため、隣とは物理的に重なりようがない） */}
+                      <div className="relative shrink-0" style={{width:'128px',overflow:'hidden'}}>
+                        <input type="date" value={deadlineDate} onChange={e=>setDeadlineDate(e.target.value)}
+                          className="w-full border border-gray-200 rounded-xl px-2 py-2 text-sm bg-gray-50 outline-none"/>
+                        {/* iOS(WebKit)のtype="date"はplaceholder属性を表示しないため、
+                            未入力時だけ重ねて表示する（クリックは下の実inputに通す） */}
+                        {!deadlineDate&&(
+                          <span className="absolute inset-y-0 left-2 flex items-center text-sm text-gray-400 pointer-events-none">{tr('deadlineDatePlaceholder')}</span>
+                        )}
+                      </div>
+                      <div className="shrink-0" style={{width:'96px',overflow:'hidden'}}>
                         <input type="time" value={deadlineTime} onChange={e=>setDeadlineTime(e.target.value)}
-                          className="w-full min-w-0 border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50 outline-none"/>
+                          className="w-full border border-gray-200 rounded-xl px-2 py-2 text-sm bg-gray-50 outline-none"/>
                       </div>
                       {deadlineDate&&(
                         <button onClick={()=>setDeadlineDate('')} className="text-xs text-gray-400 px-2 shrink-0">{tr('clearButton')}</button>
