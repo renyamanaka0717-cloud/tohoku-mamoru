@@ -5819,67 +5819,67 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
         <button onClick={onClose} className="absolute left-4 flex items-center" style={{color:'var(--c-primary)'}}>
           <AppIcons.caretLeft size={20}/>
         </button>
-        <h1 className="text-[20px] font-bold text-gray-900">設定</h1>
+        <h1 className="text-[20px] font-bold text-gray-900">{tr('settingsTitle')}</h1>
       </div>
       <div className="flex-1 overflow-y-auto px-4 pb-10">
 
 
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">機能</p>
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">{tr('sectionFeatures')}</p>
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
-          <SettingsRow icon={<AppIcons.tag/>} iconBg="bg-gray-100" title="タグ" desc="タスクにラベルを付けて整理・検索" onClick={()=>setSub('tags')}/>
-          <SettingsRow icon={<AppIcons.caretRight/>} iconBg="bg-gray-100" title="ファイルタブ" desc="タスクをフォルダ別に管理" onClick={()=>setSub('tabs')}/>
-          <SettingsRow icon={<AppIcons.pencil size={18}/>} iconBg="bg-gray-100" title="タスク一括入力" desc="まとめてタスクを登録" onClick={()=>setSub('bulkInput')}/>
-          <SettingsRow icon={<AppIcons.calendar size={18}/>} iconBg="bg-gray-100" title="生活パターン" desc="シフトや休日で起床・就寝時間を切り替え" onClick={()=>setSub('lifePatterns')}/>
-          <SettingsRow icon={<AppIcons.repeat size={18}/>} iconBg="bg-gray-100" title="繰り返しタスク" desc="繰り返しタスクを管理" onClick={()=>setSub('recurring')}/>
-          <SettingsRow icon={<AppIcons.wake size={18}/>} iconBg="bg-gray-100" title="起床・就寝" desc="起床時間、就寝時間を設定" onClick={()=>setSub('wakeSleep')}/>
-          <SettingsRow icon={<AppIcons.shopping size={18}/>} iconBg="bg-gray-100" title="買い物リスト通知"
-            desc="時間や場所で買い物リストを通知"
+          <SettingsRow icon={<AppIcons.tag/>} iconBg="bg-gray-100" title={tr('rowTagsTitle')} desc={tr('rowTagsDesc')} onClick={()=>setSub('tags')}/>
+          <SettingsRow icon={<AppIcons.caretRight/>} iconBg="bg-gray-100" title={tr('rowTabsTitle')} desc={tr('rowTabsDesc')} onClick={()=>setSub('tabs')}/>
+          <SettingsRow icon={<AppIcons.pencil size={18}/>} iconBg="bg-gray-100" title={tr('rowBulkInputTitle')} desc={tr('rowBulkInputDesc')} onClick={()=>setSub('bulkInput')}/>
+          <SettingsRow icon={<AppIcons.calendar size={18}/>} iconBg="bg-gray-100" title={tr('rowLifePatternsTitle')} desc={tr('rowLifePatternsDesc')} onClick={()=>setSub('lifePatterns')}/>
+          <SettingsRow icon={<AppIcons.repeat size={18}/>} iconBg="bg-gray-100" title={tr('rowRecurringTitle')} desc={tr('rowRecurringDesc')} onClick={()=>setSub('recurring')}/>
+          <SettingsRow icon={<AppIcons.wake size={18}/>} iconBg="bg-gray-100" title={tr('rowWakeSleepTitle')} desc={tr('rowWakeSleepDesc')} onClick={()=>setSub('wakeSleep')}/>
+          <SettingsRow icon={<AppIcons.shopping size={18}/>} iconBg="bg-gray-100" title={tr('rowShopNotifTitle')}
+            desc={tr('rowShopNotifDesc')}
             onClick={()=>setSub('notifications-shop')}/>
-          <SettingsRow icon={<AppIcons.postponed size={18}/>} iconBg="bg-gray-100" title="放置アラート"
-            desc="タスクやアプリの放置を通知"
+          <SettingsRow icon={<AppIcons.postponed size={18}/>} iconBg="bg-gray-100" title={tr('rowLaterAlertTitle')}
+            desc={tr('rowLaterAlertDesc')}
             onClick={()=>setSub('notifications-later')}/>
-          <SettingsRow icon={<AppIcons.backpack size={18}/>} iconBg="bg-gray-100" title="忘れ物防止アラート"
-            desc="場所を出るときに持ち物を確認"
+          <SettingsRow icon={<AppIcons.backpack size={18}/>} iconBg="bg-gray-100" title={tr('rowForgetAlertTitle')}
+            desc={tr('rowForgetAlertDesc')}
             onClick={()=>setSub('forgetAlerts')} isLast/>
         </div>
 
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">一般</p>
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">{tr('sectionGeneral')}</p>
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
-          <SettingsRow icon={<AppIcons.bell/>} iconBg="bg-gray-100" title="通知" desc="通知設定" onClick={()=>setSub('notifications')}/>
-          <SettingsRow icon={<AppIcons.palette/>} iconBg="bg-gray-100" title="表示設定" desc="外観、言語など" onClick={()=>setSub('display')} isLast/>
+          <SettingsRow icon={<AppIcons.bell/>} iconBg="bg-gray-100" title={tr('rowNotificationsTitle')} desc={tr('rowNotificationsDesc')} onClick={()=>setSub('notifications')}/>
+          <SettingsRow icon={<AppIcons.palette/>} iconBg="bg-gray-100" title={tr('rowDisplayTitle')} desc={tr('rowDisplayDesc')} onClick={()=>setSub('display')} isLast/>
         </div>
 
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">連携</p>
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">{tr('sectionIntegration')}</p>
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
-          <SettingsRow icon={<AppIcons.link size={18}/>} iconBg="bg-gray-100" title="アカウント" desc="Appleアカウント・iCloudバックアップ" onClick={()=>setSub('account')} isLast/>
+          <SettingsRow icon={<AppIcons.link size={18}/>} iconBg="bg-gray-100" title={tr('rowAccountTitle')} desc={tr('rowAccountDesc')} onClick={()=>setSub('account')} isLast/>
         </div>
 
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">サブスクリプション</p>
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">{tr('sectionSubscription')}</p>
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
-          <SettingsRow icon={<AppIcons.star/>} iconBg="bg-gray-100" title="PRO" desc={isPremium?'利用中':'月額¥200'} onClick={()=>setSub('premium')} isLast/>
+          <SettingsRow icon={<AppIcons.star/>} iconBg="bg-gray-100" title={tr('rowProTitle')} desc={isPremium?tr('rowProActive'):tr('rowProPrice')} onClick={()=>setSub('premium')} isLast/>
         </div>
 
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">情報</p>
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">{tr('sectionInfo')}</p>
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
-          <SettingsRow icon={<AppIcons.tag size={18}/>} iconBg="bg-gray-100" title="プライバシーポリシー" onClick={()=>setSub('privacy')}/>
-          <SettingsRow icon={<AppIcons.book size={18}/>} iconBg="bg-gray-100" title="利用規約" onClick={()=>setSub('terms')}/>
-          <SettingsRow icon={<AppIcons.question size={18}/>} iconBg="bg-gray-100" title="よくある質問" onClick={()=>setSub('support')}/>
-          <SettingsRow icon={<AppIcons.mail size={18}/>} iconBg="bg-gray-100" title="お問い合わせ" onClick={()=>setSub('contact')}/>
+          <SettingsRow icon={<AppIcons.tag size={18}/>} iconBg="bg-gray-100" title={tr('rowPrivacyTitle')} onClick={()=>setSub('privacy')}/>
+          <SettingsRow icon={<AppIcons.book size={18}/>} iconBg="bg-gray-100" title={tr('rowTermsTitle')} onClick={()=>setSub('terms')}/>
+          <SettingsRow icon={<AppIcons.question size={18}/>} iconBg="bg-gray-100" title={tr('rowFaqTitle')} onClick={()=>setSub('support')}/>
+          <SettingsRow icon={<AppIcons.mail size={18}/>} iconBg="bg-gray-100" title={tr('rowContactTitle')} onClick={()=>setSub('contact')}/>
           <button onClick={handleVersionTap} className="w-full flex items-center gap-3 px-4 py-3.5 text-left active:bg-gray-50">
             <div className="w-[30px] h-[30px] rounded-[8px] flex items-center justify-center shrink-0"
               style={{background:'color-mix(in srgb, var(--c-primary) 15%, white)', color:'var(--c-primary)'}}>
               <AppIcons.sparkle size={18}/>
             </div>
-            <p className="flex-1 text-[15px] font-medium text-gray-900">アプリバージョン</p>
+            <p className="flex-1 text-[15px] font-medium text-gray-900">{tr('rowAppVersionTitle')}</p>
             <span className="text-sm text-gray-400">{appVersion??'—'}</span>
           </button>
         </div>
 
         {devModeUnlocked&&(
           <>
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">開発者向け</p>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">{tr('sectionDeveloper')}</p>
             <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
-              <SettingsRow icon={<AppIcons.settings size={18}/>} iconBg="bg-gray-100" title="開発者モード" desc="検証用の状態を切り替える" onClick={()=>setSub('devMode')} isLast/>
+              <SettingsRow icon={<AppIcons.settings size={18}/>} iconBg="bg-gray-100" title={tr('rowDevModeTitle')} desc={tr('rowDevModeDesc')} onClick={()=>setSub('devMode')} isLast/>
             </div>
           </>
         )}
