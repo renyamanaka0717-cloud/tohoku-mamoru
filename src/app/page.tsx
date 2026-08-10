@@ -5204,7 +5204,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           <div className="h-px bg-gray-100 mx-4"/>
           <SettingsRow icon={<AppIcons.book size={18}/>} iconBg="bg-gray-100"
             title="言語 / Language"
-            desc={language==='ja'?tr('settingsLanguageJa'):tr('settingsLanguageEn')}
+            desc={language==='ja'?'日本語':'English'}
             onClick={()=>setSub('language')} isLast/>
         </div>
       </div>
@@ -5216,12 +5216,12 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
       {subHeader('言語 / Language')}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm mt-6">
-          {([['ja','settingsLanguageJa'],['en','settingsLanguageEn']] as [Language,StringKey][]).map(([code,labelKey],i)=>(
+          {([['ja','日本語'],['en','English']] as [Language,string][]).map(([code,label],i)=>(
             <div key={code}>
               {i>0&&<div className="h-px bg-gray-100 mx-4"/>}
               <button onClick={()=>setLanguage(code)}
                 className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50">
-                <span className="flex-1 text-left text-sm font-medium text-gray-800">{tr(labelKey)}</span>
+                <span className="flex-1 text-left text-sm font-medium text-gray-800">{label}</span>
                 {language===code&&<AppIcons.checkSquare size={18} className="text-[var(--c-primary)]"/>}
               </button>
             </div>

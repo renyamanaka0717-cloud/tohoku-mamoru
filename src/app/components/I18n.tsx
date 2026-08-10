@@ -27,8 +27,6 @@ export const STRINGS = {
   tourCompleteStart:     { ja: 'はじめる',                        en: 'Get started' },
 
   settingsDisplayTitle:  { ja: '表示設定',                        en: 'Display' },
-  settingsLanguageJa:    { ja: '日本語',                          en: 'Japanese' },
-  settingsLanguageEn:    { ja: 'English',                        en: 'English' },
 
   // Timeline / FreeTimeCard（{n}/{start}/{end}等はcall側でreplace()する簡易プレースホルダー）
   timelineWake:              { ja: '起床',                        en: 'Wake up' },
