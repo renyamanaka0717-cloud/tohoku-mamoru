@@ -7035,7 +7035,7 @@ export default function App() {
         <div className="px-4 pt-1 pb-0">
           {/* Date + nav */}
           <div className="flex items-center justify-between mb-1">
-            <span className="text-2xl font-bold text-gray-900">{language==='ja'?`${year}年${month}月`:`${MONTH_NAMES_EN[month-1]} ${year}`}</span>
+            <span className="text-2xl font-bold text-gray-900 whitespace-nowrap">{language==='ja'?`${year}年${month}月`:`${MONTH_NAMES_EN[month-1].slice(0,3)} ${year}`}</span>
             <div className="flex items-center gap-1">
               <button onClick={()=>setSettings(s=>({...s,showFreeCard:!(s.showFreeCard??true)}))}
                 className={`relative h-7 rounded-full text-xs font-medium transition-colors duration-200 mr-1 overflow-hidden ${(settings.showFreeCard??true)?'bg-[var(--c-primary)] text-white':'bg-gray-200 text-gray-500'}`}
