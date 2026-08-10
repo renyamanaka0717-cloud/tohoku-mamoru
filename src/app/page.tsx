@@ -6463,7 +6463,7 @@ export default function App() {
   useEffect(()=>{
     const scale={small:0.9,standard:1,large:1.15,xlarge:1.3}[settings.fontSize??'standard'];
     document.body.style.setProperty('--zoom-scale',String(scale));
-    document.body.style.setProperty('zoom','var(--zoom-scale)');
+    document.body.style.setProperty('zoom',String(scale));
   },[settings.fontSize]);
 
   const handleAppleSignIn=async():Promise<void>=>{
