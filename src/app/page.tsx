@@ -7144,8 +7144,8 @@ export default function App() {
             <span className="text-2xl font-bold text-gray-900 whitespace-nowrap">{language==='ja'?`${year}年${month}月`:`${MONTH_NAMES_EN[month-1].slice(0,3)} ${year}`}</span>
             <div className="flex items-center gap-1">
               <button onClick={()=>setSettings(s=>({...s,showFreeCard:!(s.showFreeCard??true)}))}
-                className={`relative h-7 rounded-full text-xs font-medium transition-colors duration-200 mr-1 overflow-hidden ${(settings.showFreeCard??true)?'bg-[var(--c-primary)] text-white':'bg-gray-200 text-gray-500'}`}
-                style={{width:language==='ja'?'84px':'104px'}}>
+                className={`relative h-7 rounded-full font-medium transition-colors duration-200 mr-1 overflow-hidden ${(settings.showFreeCard??true)?'bg-[var(--c-primary)] text-white':'bg-gray-200 text-gray-500'}`}
+                style={{width:language==='ja'?'84px':'104px',fontSize:'12px'}}>
                 <span className="absolute inset-0 flex items-center justify-center whitespace-nowrap" style={{paddingLeft:(settings.showFreeCard??true)?'0':'12px',paddingRight:(settings.showFreeCard??true)?'12px':'0',transition:'padding 0.2s'}}>{tr('headerFreeTimeToggle')}</span>
                 <span className="absolute top-1.5 w-4 h-4 bg-white rounded-full" style={{boxShadow:'0 1px 3px rgba(0,0,0,0.2)',transition:'left 0.2s',left:(settings.showFreeCard??true)?'calc(100% - 22px)':'6px'}}/>
               </button>
