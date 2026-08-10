@@ -1866,8 +1866,14 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                   // Safari実機で内部幅がCSSの想定より広く描画され重なる不具合が繰り返し
                   // 発生したため、タップでポップアップを開き縦に並べる方式に変更した。
                   // ポップアップ内は幅に余裕があるため、両方ともw-fullで確実に収まる。
-                  <div className="fixed inset-0 z-[100] bg-black/40 flex items-center justify-center p-4" onClick={()=>setDeadlineOpen(false)}>
-                    <div className="bg-white w-full max-w-md mx-auto rounded-3xl max-h-[85vh] overflow-y-auto p-4" onClick={e=>e.stopPropagation()}>
+                  // カードをflexのjustify-center/w-fullで中央寄せする方式だと、TaskModal自体が
+                  // 既にfixed inset-0のため「fixed の中の fixed」の入れ子になり、実機Safariで
+                  // 右端が画面外にはみ出す不具合が起きた（Chromiumでは再現しない）。
+                  // 中央寄せの計算に頼らず、カード自身をleft-4/right-4で直接ビューポート端から
+                  // 固定オフセットする方式にすることで、どんな入れ子状況でも幅がビューポート幅
+                  // 基準で確定するようにした
+                  <div className="fixed inset-0 z-[100] bg-black/40" onClick={()=>setDeadlineOpen(false)}>
+                    <div className="fixed left-4 right-4 top-1/2 max-w-md mx-auto bg-white rounded-3xl max-h-[85vh] overflow-y-auto p-4" style={{transform:'translateY(-50%)'}} onClick={e=>e.stopPropagation()}>
                       <div className="flex items-center justify-between mb-3">
                         <p className="text-sm font-bold text-gray-900">{tr('fieldDeadline')}</p>
                         {deadlineDate&&(
