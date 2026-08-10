@@ -6455,15 +6455,13 @@ export default function App() {
     const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
     document.documentElement.style.setProperty('--c-primary-dark',`rgb(${Math.round(r*0.82)},${Math.round(g*0.82)},${Math.round(b*0.82)})`);
   },[settings.theme]);
-  // 文字サイズ設定。アプリ全体に大量に存在する固定px指定（text-[15px]等）はrem基準の
-  // フォントスケールでは拡大縮小されないため、CSSのzoomでレイアウト全体を一括拡大縮小する。
-  // ヘッダー（日付+空き時間トグル+アイコン3つの行）は元々横幅の余裕がほぼゼロで、
-  // zoomをかけると設定アイコンが画面外にはみ出すため、headerだけ逆数のzoomを掛けて
-  // 実質1倍のまま据え置く（globals.cssの`header{zoom:...}`と対）
+  // 文字サイズ設定。アイコン・余白・カード幅などレイアウトは変えず「文字だけ」大きくしたいという
+  // 要望のため、CSSのzoom（画面全体を一括拡大）は不採用にした（アイコンやパディングまで拡大される）。
+  // 代わりにglobals.cssの--text-scale変数を使い、アプリ全体で使われているTailwindの文字サイズ
+  // クラス（text-sm/text-[15px]等、固定値）だけをcalc()で上書きする方式にしている
   useEffect(()=>{
     const scale={small:0.9,standard:1,large:1.15,xlarge:1.3}[settings.fontSize??'standard'];
-    document.body.style.setProperty('--zoom-scale',String(scale));
-    document.body.style.setProperty('zoom',String(scale));
+    document.documentElement.style.setProperty('--text-scale',String(scale));
   },[settings.fontSize]);
 
   const handleAppleSignIn=async():Promise<void>=>{

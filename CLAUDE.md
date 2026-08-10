@@ -1189,20 +1189,30 @@ const recTasks = tasks.filter((t,i,a)=>t.recurrence&&a.findIndex(x=>x.name===t.n
 
 **文字サイズ（`Settings.fontSize?:'small'|'standard'|'large'|'xlarge'`、デフォルト`'standard'`）:**
 
-このアプリは`text-[15px]`のような固定pxのTailwind arbitrary値がpage.tsx全体に大量（150件以上）にあり、通常の`rem`基準のフォントスケール（`html`のfont-sizeを変える方式）ではこれらが一切拡大縮小されない。そのため、CSSの`zoom`プロパティで**画面全体を一括拡大縮小**する方式にした（`small:0.9, standard:1, large:1.15, xlarge:1.3`）。
+**過去の失敗: 初回実装はCSSの`zoom`プロパティで画面全体（アイコン・余白・カード幅を含む）を一括拡大縮小する方式にしていたが、実機で確認したユーザーから「文字が大きくなった気がしない／アイコンは大きくしなくていいので文字だけ大きくしたい」というフィードバックがあり、方式ごと作り直した。** zoom方式は視覚的な変化の大部分がアイコン・余白の拡大から来ており、肝心の文字の拡大が相対的に地味に感じられる上、要望そのもの（文字だけ拡大したい）にも合っていなかった。
+
+現在の実装は、`globals.css`の`--text-scale`カスタムプロパティと、page.tsx全体で実際に使われている文字サイズクラス（Tailwind標準の`text-xs`〜`text-3xl`、および`text-[15px]`のような固定pxのarbitrary値）を`calc(基準px * var(--text-scale))`で`!important`上書きする方式。**アイコンサイズ・padding・gap・カード幅などレイアウト系の値は一切変更しないため、文字だけが拡大縮小される。**
+
+```css
+/* globals.css */
+:root { --text-scale: 1; }
+.text-sm       { font-size: calc(14px * var(--text-scale)) !important; line-height: calc(20px * var(--text-scale)) !important; }
+.text-\[15px\] { font-size: calc(15px * var(--text-scale)) !important; }
+/* ...実際に使われている全サイズ分（text-xs〜text-3xl、text-[8px]〜text-[20px]）を列挙 */
+```
 
 ```typescript
 // App コンポーネント内
 useEffect(()=>{
   const scale={small:0.9,standard:1,large:1.15,xlarge:1.3}[settings.fontSize??'standard'];
-  document.body.style.setProperty('--zoom-scale',String(scale));
-  document.body.style.setProperty('zoom','var(--zoom-scale)');
+  document.documentElement.style.setProperty('--text-scale',String(scale));
 },[settings.fontSize]);
 ```
 
-**メインヘッダー（`<header>`）だけは意図的にzoomの対象から除外している。** メインヘッダーの日付＋空き時間トグル＋カレンダー/検索/設定アイコン3つの行は、英語化対応時（"Aug 2026"の折り返し修正）に判明した通り横幅の余裕がほぼゼロで、zoomをかけると設定アイコンが画面外にはみ出す不具合が実際に発生した。`globals.css`に`header{ zoom: calc(1 / var(--zoom-scale, 1)); }`を追加し、bodyのzoomを相殺して`<header>`だけ常に等倍で描画されるようにしている（CSSのzoomはネスト時に乗算される仕様を利用）。`<header>`要素はメインタイムラインのヘッダーのみに使われるユニークなタグなので、Tailwindクラスとの衝突リスクなく安全に対象を絞れる。設定画面等の`subHeader()`は`<div>`ベースで`<header>`タグを使っていないため、これらは通常通りzoomの影響を受けて拡大される（意図した挙動）。
-
-**新しく横幅に余裕のないUIを追加する時は、同じ理由でzoomの影響を受けて壊れないか実際に`xlarge`で確認すること。** 壊れる場合はTailwindクラスと衝突しないユニークなセレクタ（要素タグ名や専用クラス）を用意し、`header`と同じ相殺パターンで個別に除外する。
+- 標準（`--text-scale:1`）の時は`calc(14px * 1)`のように元の値と完全に一致するため無害。全サイズ帯で常時ルールを適用したままにしてよく、条件分岐でCSSの出し入れをする必要はない
+- Tailwindの標準クラス（`text-xs`〜`text-3xl`）は`font-size`と`line-height`のペアで上書きする（Tailwindのデフォルトテーマ自体がこの2つをセットで定義しているため、`font-size`だけ上書きすると`line-height`が追従せず、拡大率が大きい時に行の中で文字が窮屈になる）。`text-[Npx]`の固定pxクラスは元々`line-height`を個別指定していないため`font-size`のみでよい
+- **新しく`text-{size}`や`text-[Npx]`のクラスを追加する時は、このCSSブロックにも同じpx値の行を追記すること。** 追記を忘れると、そのクラスだけ文字サイズ設定の対象外になる（見た目には何も壊れないが、設定を変えても該当箇所だけ拡大縮小されない）
+- ヘッダーの拡大縮小を個別に除外する処理は不要になった（アイコン・レイアウトを一切動かさないため、英語化対応時に見つかった"Aug 2026"の折り返し問題のような横幅超過は起きにくい。実際に英語+特大の組み合わせでも確認済み）。ただし新しく横幅の余裕がないUIを追加した時は、文字が伸びるだけでも詰まる可能性があるため`xlarge`で確認する習慣は引き続き持つこと
 
 ---
 
