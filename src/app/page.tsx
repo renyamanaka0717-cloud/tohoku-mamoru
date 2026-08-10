@@ -823,26 +823,26 @@ const TASK_COLORS=[
   '#C4888E','#C47A5E','#C4A44A','#7A9E8A','#6A8FAF','#8F82B8','#A67899','#8F8880',
 ];
 const APP_ICONS=[
-  {id:'mint',    name:'ミント',           file:'mint.png'},
-  {id:'sage',    name:'セージグリーン',   file:'sage.png'},
-  {id:'lilac',   name:'ライラック',       file:'lilac.png'},
-  {id:'rose',    name:'ダスティローズ',   file:'rose.png'},
-  {id:'dusty',   name:'ダスティブルー',   file:'dusty.png'},
-  {id:'apricot', name:'アプリコット',     file:'apricot.png'},
-  {id:'greige',  name:'グレージュ',       file:'greige.png'},
-  {id:'charcoal',name:'チャコールグレー', file:'charcoal.png'},
-  {id:'mocha',   name:'モカベージュ',     file:'mocha.png'},
+  {id:'mint',    name:'ミント',           nameEn:'Mint',        file:'mint.png'},
+  {id:'sage',    name:'セージグリーン',   nameEn:'Sage Green',  file:'sage.png'},
+  {id:'lilac',   name:'ライラック',       nameEn:'Lilac',       file:'lilac.png'},
+  {id:'rose',    name:'ダスティローズ',   nameEn:'Dusty Rose',  file:'rose.png'},
+  {id:'dusty',   name:'ダスティブルー',   nameEn:'Dusty Blue',  file:'dusty.png'},
+  {id:'apricot', name:'アプリコット',     nameEn:'Apricot',     file:'apricot.png'},
+  {id:'greige',  name:'グレージュ',       nameEn:'Greige',      file:'greige.png'},
+  {id:'charcoal',name:'チャコールグレー', nameEn:'Charcoal Gray', file:'charcoal.png'},
+  {id:'mocha',   name:'モカベージュ',     nameEn:'Mocha Beige', file:'mocha.png'},
 ];
 const THEMES=[
-  {id:'mint',    name:'ミント',             color:'#94CFC8'},
-  {id:'coral',   name:'コーラルピンク',     color:'#E88878'},
-  {id:'sunset',  name:'サンセットオレンジ', color:'#E8906A'},
-  {id:'forest',  name:'フォレストグリーン', color:'#5A8A6A'},
-  {id:'sky',     name:'スカイブルー',       color:'#7CB9E8'},
-  {id:'navy',    name:'ネイビー',           color:'#5F7EA8'},
-  {id:'lavender',name:'ラベンダー',         color:'#9B8EC4'},
-  {id:'peach',   name:'ピーチ',             color:'#E8A0B0'},
-  {id:'mono',    name:'モノクロ',           color:'#666666'},
+  {id:'mint',    name:'ミント',             nameEn:'Mint',           color:'#94CFC8'},
+  {id:'coral',   name:'コーラルピンク',     nameEn:'Coral Pink',     color:'#E88878'},
+  {id:'sunset',  name:'サンセットオレンジ', nameEn:'Sunset Orange',  color:'#E8906A'},
+  {id:'forest',  name:'フォレストグリーン', nameEn:'Forest Green',   color:'#5A8A6A'},
+  {id:'sky',     name:'スカイブルー',       nameEn:'Sky Blue',       color:'#7CB9E8'},
+  {id:'navy',    name:'ネイビー',           nameEn:'Navy',           color:'#5F7EA8'},
+  {id:'lavender',name:'ラベンダー',         nameEn:'Lavender',       color:'#9B8EC4'},
+  {id:'peach',   name:'ピーチ',             nameEn:'Peach',          color:'#E8A0B0'},
+  {id:'mono',    name:'モノクロ',           nameEn:'Monochrome',     color:'#666666'},
 ];
 
 function getTaskIcon(key:string){
@@ -5100,11 +5100,11 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
 
   if(sub==='freeCard') return (
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
-      {subHeader('空き時間カード')}
+      {subHeader(tr('freeCardScreenTitle'))}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm mt-6">
           <div className="px-4 py-3.5 flex items-center justify-between border-b border-gray-100">
-            <p className="text-[15px] font-medium text-gray-900">空き時間カードを表示</p>
+            <p className="text-[15px] font-medium text-gray-900">{tr('showFreeCardLabel')}</p>
             <button onClick={()=>onSettings({...settings,showFreeCard:!(settings.showFreeCard??true)})}
               className={`relative w-10 h-6 rounded-full transition-colors shrink-0 ${(settings.showFreeCard??true)?'bg-[var(--c-primary)]':'bg-gray-200'}`}>
               <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${(settings.showFreeCard??true)?'left-[18px]':'left-0.5'}`}/>
@@ -5112,10 +5112,12 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           </div>
           {(settings.showFreeCard??true)&&(
             <div className="px-4 py-3.5">
-              <p className="text-[15px] font-medium text-gray-900 mb-3">最小表示時間</p>
+              <p className="text-[15px] font-medium text-gray-900 mb-3">{tr('minDisplayTimeLabel')}</p>
               <div className="flex gap-2 flex-wrap">
                 {([30,60,90,120,150,180] as const).map(m=>{
-                  const label=m<60?`${m}分`:m===60?'1時間':m===90?'1.5時間':m===120?'2時間':m===150?'2.5時間':'3時間';
+                  const label=language==='ja'
+                    ?(m<60?`${m}分`:m===60?'1時間':m===90?'1.5時間':m===120?'2時間':m===150?'2.5時間':'3時間')
+                    :(m<60?`${m}m`:m===60?'1h':m===90?'1.5h':m===120?'2h':m===150?'2.5h':'3h');
                   const active=(settings.freeCardMinMin??120)===m;
                   return (
                     <button key={m} onClick={()=>onSettings({...settings,freeCardMinMin:m})}
@@ -5138,18 +5140,18 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
       <div className="flex-1 overflow-y-auto px-4 pb-8">
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm mt-6">
           <SettingsRow icon={<AppIcons.palette/>} iconBg="bg-gray-100"
-            title="テーマカラー"
-            desc={THEMES.find(t=>t.id===(settings.theme??'mint'))?.name??'ミント'}
+            title={tr('themeColorRowTitle')}
+            desc={(language==='ja'?THEMES.find(t=>t.id===(settings.theme??'mint'))?.name:THEMES.find(t=>t.id===(settings.theme??'mint'))?.nameEn)??'Mint'}
             onClick={()=>setSub('themeColor')}/>
           <div className="h-px bg-gray-100 mx-4"/>
           <SettingsRow icon={<AppIcons.home/>} iconBg="bg-gray-100"
-            title="アプリアイコン"
-            desc={APP_ICONS.find(t=>t.id===(settings.appIcon??'mint'))?.name??'ミント'}
+            title={tr('appIconRowTitle')}
+            desc={(language==='ja'?APP_ICONS.find(t=>t.id===(settings.appIcon??'mint'))?.name:APP_ICONS.find(t=>t.id===(settings.appIcon??'mint'))?.nameEn)??'Mint'}
             onClick={()=>setSub('appIcon')}/>
           <div className="h-px bg-gray-100 mx-4"/>
           <SettingsRow icon={<AppIcons.freeTime size={18}/>} iconBg="bg-gray-100"
-            title="空き時間カード"
-            desc={(settings.showFreeCard??true)?`表示中・最小${settings.freeCardMinMin??120}分`:'非表示'}
+            title={tr('freeCardScreenTitle')}
+            desc={(settings.showFreeCard??true)?tr('freeCardShownDesc').replace('{n}',String(settings.freeCardMinMin??120)):tr('freeCardHiddenDesc')}
             onClick={()=>setSub('freeCard')}/>
           <div className="h-px bg-gray-100 mx-4"/>
           <SettingsRow icon={<AppIcons.book size={18}/>} iconBg="bg-gray-100"
@@ -5183,9 +5185,9 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
 
   if(sub==='themeColor') return (
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
-      {subHeader('テーマカラー')}{proSheet}
+      {subHeader(tr('themeColorRowTitle'))}{proSheet}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
-        <p className="text-xs text-gray-400 px-1 mb-4 mt-6">テーマを選択するとアプリ全体の色が切り替わります</p>
+        <p className="text-xs text-gray-400 px-1 mb-4 mt-6">{tr('themeColorScreenSubtitle')}</p>
         <div className="grid grid-cols-4 gap-4">
           {(()=>{const effectiveTheme=THEMES.some(th=>th.id===settings.theme)?(settings.theme??'mint'):'mint';return THEMES.map(t=>{
             const selected=effectiveTheme===t.id;
@@ -5209,7 +5211,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                     </div>
                   )}
                 </div>
-                <span className={`text-xs text-center leading-tight ${selected?'font-bold text-gray-900':'text-gray-500'}`}>{t.name}</span>
+                <span className={`text-xs text-center leading-tight ${selected?'font-bold text-gray-900':'text-gray-500'}`}>{language==='ja'?t.name:t.nameEn}</span>
                 {!isFree&&!isPremium&&<span className="text-[8px] font-bold text-gray-400 border border-gray-300 rounded px-1 py-0.5 leading-none">PRO</span>}
               </button>
             );
@@ -5221,9 +5223,9 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
 
   if(sub==='appIcon') return (
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
-      {subHeader('アプリアイコン')}{proSheet}
+      {subHeader(tr('appIconRowTitle'))}{proSheet}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
-        <p className="text-xs text-gray-400 px-1 mb-4 mt-6">選択したアイコンがホーム画面に反映されます</p>
+        <p className="text-xs text-gray-400 px-1 mb-4 mt-6">{tr('appIconScreenSubtitle')}</p>
         <div className="grid grid-cols-3 gap-4">
           {APP_ICONS.map(ic=>{
             const selected=(settings.appIcon??'mint')===ic.id;
@@ -5251,7 +5253,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                     </div>
                   )}
                 </div>
-                <span className={`text-xs text-center leading-tight ${selected?'font-bold text-gray-900':'text-gray-500'}`}>{ic.name}</span>
+                <span className={`text-xs text-center leading-tight ${selected?'font-bold text-gray-900':'text-gray-500'}`}>{language==='ja'?ic.name:ic.nameEn}</span>
                 {!isFree&&!isPremium&&<span className="text-[8px] font-bold text-gray-400 border border-gray-300 rounded px-1 py-0.5 leading-none">PRO</span>}
               </button>
             );

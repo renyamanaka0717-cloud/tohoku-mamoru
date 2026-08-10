@@ -253,6 +253,17 @@ export const STRINGS = {
   changeOnMapButton:         { ja: '地図で場所を変更',                en: 'Change location on map' },
   registerButton:            { ja: '登録',                        en: 'Register' },
   couldNotGetLocation:       { ja: '現在地を取得できませんでした',         en: 'Couldn’t get your current location' },
+
+  // 設定 → 表示設定（空き時間カード・テーマカラー・アプリアイコン）
+  freeCardScreenTitle:       { ja: '空き時間カード',                  en: 'Free time cards' },
+  showFreeCardLabel:         { ja: '空き時間カードを表示',              en: 'Show free time cards' },
+  minDisplayTimeLabel:       { ja: '最小表示時間',                   en: 'Minimum duration to show' },
+  themeColorRowTitle:        { ja: 'テーマカラー',                    en: 'Theme color' },
+  appIconRowTitle:           { ja: 'アプリアイコン',                   en: 'App icon' },
+  freeCardShownDesc:         { ja: '表示中・最小{n}分',                en: 'Shown · min {n}m' },
+  freeCardHiddenDesc:        { ja: '非表示',                       en: 'Hidden' },
+  themeColorScreenSubtitle:  { ja: 'テーマを選択するとアプリ全体の色が切り替わります', en: 'Choose a theme to change the app’s color throughout' },
+  appIconScreenSubtitle:     { ja: '選択したアイコンがホーム画面に反映されます',   en: 'Your chosen icon will appear on your home screen' },
 } as const;
 
 export type StringKey = keyof typeof STRINGS;
