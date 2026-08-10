@@ -5710,16 +5710,16 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
 
   if(sub==='privacy') return (
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
-      {subHeader('プライバシーポリシー')}
+      {subHeader(tr('rowPrivacyTitle'))}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
-        <p className="text-xs text-gray-400 mt-4 mb-3 px-1">最終更新日：2026年7月3日</p>
+        <p className="text-xs text-gray-400 mt-4 mb-3 px-1">{tr('legalLastUpdated')}</p>
         {([
-          {title:'BrainBoxについて',body:'BrainBoxは、ADHD気質の方やToDoリストが続かない方向けに、1日のタスクを時間軸で見える化するタイムライン型タスク管理アプリです。\n本プライバシーポリシーは、本アプリにおける個人情報の取り扱いについて説明します。'},
-          {title:'取得する情報',body:'本アプリは、以下の情報をお客様のデバイス上にのみ保存します。\n・タスク名・日時・メモ・サブタスクなどの入力データ\n・起床・就寝時間などの設定情報\n・タグ・カテゴリ・繰り返し設定などのカスタマイズ情報\n\nこれらの情報は外部サーバーには送信されず、お客様のデバイス内のみで管理されます。'},
-          {title:'情報の利用目的',body:'取得した情報は、以下の目的にのみ使用します。\n・タスクの表示・管理・検索機能の提供\n・繰り返しタスクのスケジュール生成\n・アプリ設定の保持'},
-          {title:'第三者提供について',body:'本アプリは、お客様の個人情報を第三者に提供することはありません。\n\nただし、オプション機能としてAI文章生成機能（Groq APIを使用）をご利用いただく場合、入力したタスク情報が当該APIに送信されることがあります。詳細はGroq社のプライバシーポリシーをご確認ください。'},
-          {title:'データの管理について',body:'本アプリのデータはすべてお客様のデバイス内（localStorage）に保存されます。\n・アプリをアンインストールするとすべてのデータが削除されます\n・デバイスの初期化によってデータが失われる場合があります\n・本アプリはデータのクラウドバックアップ機能を持ちません'},
-          {title:'プライバシーポリシーの改定について',body:'本プライバシーポリシーは、法令の改正や機能追加に伴い改定される場合があります。重要な変更がある場合はアプリ内またはサポートページにてお知らせします。'},
+          {title:tr('privacyAboutTitle'),body:tr('privacyAboutBody')},
+          {title:tr('privacyCollectTitle'),body:tr('privacyCollectBody')},
+          {title:tr('privacyPurposeTitle'),body:tr('privacyPurposeBody')},
+          {title:tr('privacyThirdPartyTitle'),body:tr('privacyThirdPartyBody')},
+          {title:tr('privacyDataMgmtTitle'),body:tr('privacyDataMgmtBody')},
+          {title:tr('privacyRevisionTitle'),body:tr('privacyRevisionBody')},
         ] as {title:string;body:string}[]).map(({title,body},i,arr)=>(
           <div key={i} className={`bg-white rounded-2xl shadow-sm px-4 py-4 mb-3`}>
             <p className="text-[15px] font-bold text-gray-900 mb-2">{title}</p>
@@ -5732,16 +5732,16 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
 
   if(sub==='terms') return (
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
-      {subHeader('利用規約')}
+      {subHeader(tr('rowTermsTitle'))}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
-        <p className="text-xs text-gray-400 mt-4 mb-3 px-1">最終更新日：2026年7月3日</p>
+        <p className="text-xs text-gray-400 mt-4 mb-3 px-1">{tr('legalLastUpdated')}</p>
         {([
-          {title:'はじめに',body:'本利用規約（以下「本規約」）は、BrainBox（以下「本アプリ」）のご利用条件を定めるものです。本アプリをご利用いただくことで、本規約に同意したものとみなします。'},
-          {title:'利用条件',body:'本アプリは、個人的・非商業的な用途に限り無償でご利用いただけます。\n・本アプリの複製・改変・再配布は禁止します\n・本アプリを商業目的で利用することは禁止します\n・本アプリのリバースエンジニアリングは禁止します'},
-          {title:'免責事項',body:'本アプリは現状有姿で提供されます。本アプリの利用によって生じたいかなる損害についても、開発者は責任を負いません。\n・データの消失・破損に関する損害\n・本アプリの不具合・停止による損害\n・その他、本アプリの利用に起因する損害\n\n重要なデータは定期的にバックアップされることをお勧めします。'},
-          {title:'知的財産権',body:'本アプリに関する著作権その他の知的財産権は、開発者に帰属します。本規約に定める範囲を超えた利用は禁止します。'},
-          {title:'サービスの変更・終了',body:'開発者は、予告なく本アプリの機能変更・サービスの一部または全部の終了を行う場合があります。これによってお客様に生じた損害について、開発者は責任を負いません。'},
-          {title:'規約の変更',body:'開発者は、必要に応じて本規約を変更することがあります。変更後の規約は本ページにて公開します。重要な変更がある場合はアプリ内またはサポートページにてお知らせします。'},
+          {title:tr('termsIntroTitle'),body:tr('termsIntroBody')},
+          {title:tr('termsConditionsTitle'),body:tr('termsConditionsBody')},
+          {title:tr('termsDisclaimerTitle'),body:tr('termsDisclaimerBody')},
+          {title:tr('termsIpTitle'),body:tr('termsIpBody')},
+          {title:tr('termsChangesTitle'),body:tr('termsChangesBody')},
+          {title:tr('termsRevisionTitle'),body:tr('termsRevisionBody')},
         ] as {title:string;body:string}[]).map(({title,body},i,arr)=>(
           <div key={i} className="bg-white rounded-2xl shadow-sm px-4 py-4 mb-3">
             <p className="text-[15px] font-bold text-gray-900 mb-2">{title}</p>

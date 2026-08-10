@@ -331,6 +331,35 @@ export const STRINGS = {
   contactEmailTitle:         { ja: 'メールでお問い合わせ',               en: 'Contact us by email' },
   contactEmailBody:          { ja: 'LINEをご利用でない方は、メールでもお問い合わせいただけます。', en: 'If you don’t use LINE, you can also reach us by email.' },
   contactEmailButton:        { ja: 'メールアプリで開く',                 en: 'Open in mail app' },
+
+  // 設定 → プライバシーポリシー
+  legalLastUpdated:          { ja: '最終更新日：2026年7月3日',            en: 'Last updated: July 3, 2026' },
+  privacyAboutTitle:         { ja: 'BrainBoxについて',                en: 'About BrainBox' },
+  privacyAboutBody:          { ja: 'BrainBoxは、ADHD気質の方やToDoリストが続かない方向けに、1日のタスクを時間軸で見える化するタイムライン型タスク管理アプリです。\n本プライバシーポリシーは、本アプリにおける個人情報の取り扱いについて説明します。', en: 'BrainBox is a timeline-style task management app that visualizes your day’s tasks along a time axis, designed for people with ADHD tendencies or who struggle to keep up with to-do lists.\nThis Privacy Policy explains how personal information is handled in this app.' },
+  privacyCollectTitle:       { ja: '取得する情報',                     en: 'Information we collect' },
+  privacyCollectBody:        { ja: '本アプリは、以下の情報をお客様のデバイス上にのみ保存します。\n・タスク名・日時・メモ・サブタスクなどの入力データ\n・起床・就寝時間などの設定情報\n・タグ・カテゴリ・繰り返し設定などのカスタマイズ情報\n\nこれらの情報は外部サーバーには送信されず、お客様のデバイス内のみで管理されます。', en: 'This app stores the following information only on your device.\n・Input data such as task names, dates/times, memos, and subtasks\n・Settings such as wake and sleep times\n・Customization info such as tags, categories, and recurrence settings\n\nThis information is never sent to external servers and is managed only on your device.' },
+  privacyPurposeTitle:       { ja: '情報の利用目的',                    en: 'Purpose of use' },
+  privacyPurposeBody:        { ja: '取得した情報は、以下の目的にのみ使用します。\n・タスクの表示・管理・検索機能の提供\n・繰り返しタスクのスケジュール生成\n・アプリ設定の保持', en: 'The information collected is used only for the following purposes.\n・Providing task display, management, and search features\n・Generating schedules for recurring tasks\n・Retaining app settings' },
+  privacyThirdPartyTitle:    { ja: '第三者提供について',                  en: 'Third-party disclosure' },
+  privacyThirdPartyBody:     { ja: '本アプリは、お客様の個人情報を第三者に提供することはありません。\n\nただし、オプション機能としてAI文章生成機能（Groq APIを使用）をご利用いただく場合、入力したタスク情報が当該APIに送信されることがあります。詳細はGroq社のプライバシーポリシーをご確認ください。', en: 'This app does not provide your personal information to any third party.\n\nHowever, if you use the optional AI text generation feature (which uses the Groq API), the task information you enter may be sent to that API. Please review Groq’s privacy policy for details.' },
+  privacyDataMgmtTitle:      { ja: 'データの管理について',                 en: 'Data management' },
+  privacyDataMgmtBody:       { ja: '本アプリのデータはすべてお客様のデバイス内（localStorage）に保存されます。\n・アプリをアンインストールするとすべてのデータが削除されます\n・デバイスの初期化によってデータが失われる場合があります\n・本アプリはデータのクラウドバックアップ機能を持ちません', en: 'All data for this app is stored on your device (localStorage).\n・All data is deleted when you uninstall the app\n・Data may be lost if your device is reset\n・This app has no cloud backup feature for data' },
+  privacyRevisionTitle:      { ja: 'プライバシーポリシーの改定について',          en: 'Changes to this policy' },
+  privacyRevisionBody:       { ja: '本プライバシーポリシーは、法令の改正や機能追加に伴い改定される場合があります。重要な変更がある場合はアプリ内またはサポートページにてお知らせします。', en: 'This Privacy Policy may be revised due to changes in laws or the addition of new features. If there are any significant changes, we will notify you in the app or on our support page.' },
+
+  // 設定 → 利用規約
+  termsIntroTitle:           { ja: 'はじめに',                       en: 'Introduction' },
+  termsIntroBody:            { ja: '本利用規約（以下「本規約」）は、BrainBox（以下「本アプリ」）のご利用条件を定めるものです。本アプリをご利用いただくことで、本規約に同意したものとみなします。', en: 'These Terms of Service (the “Terms”) set out the conditions for using BrainBox (the “App”). By using the App, you are deemed to have agreed to these Terms.' },
+  termsConditionsTitle:      { ja: '利用条件',                       en: 'Conditions of use' },
+  termsConditionsBody:       { ja: '本アプリは、個人的・非商業的な用途に限り無償でご利用いただけます。\n・本アプリの複製・改変・再配布は禁止します\n・本アプリを商業目的で利用することは禁止します\n・本アプリのリバースエンジニアリングは禁止します', en: 'This app is provided free of charge for personal, non-commercial use only.\n・Copying, modifying, or redistributing this app is prohibited\n・Using this app for commercial purposes is prohibited\n・Reverse engineering this app is prohibited' },
+  termsDisclaimerTitle:      { ja: '免責事項',                       en: 'Disclaimer' },
+  termsDisclaimerBody:       { ja: '本アプリは現状有姿で提供されます。本アプリの利用によって生じたいかなる損害についても、開発者は責任を負いません。\n・データの消失・破損に関する損害\n・本アプリの不具合・停止による損害\n・その他、本アプリの利用に起因する損害\n\n重要なデータは定期的にバックアップされることをお勧めします。', en: 'This app is provided “as is.” The developer is not liable for any damages arising from the use of this app.\n・Damages related to data loss or corruption\n・Damages caused by malfunctions or outages of this app\n・Other damages arising from the use of this app\n\nWe recommend backing up important data regularly.' },
+  termsIpTitle:              { ja: '知的財産権',                      en: 'Intellectual property' },
+  termsIpBody:               { ja: '本アプリに関する著作権その他の知的財産権は、開発者に帰属します。本規約に定める範囲を超えた利用は禁止します。', en: 'Copyright and other intellectual property rights related to this app belong to the developer. Use beyond the scope set out in these Terms is prohibited.' },
+  termsChangesTitle:         { ja: 'サービスの変更・終了',                 en: 'Changes or termination of service' },
+  termsChangesBody:          { ja: '開発者は、予告なく本アプリの機能変更・サービスの一部または全部の終了を行う場合があります。これによってお客様に生じた損害について、開発者は責任を負いません。', en: 'The developer may change features of this app or terminate part or all of the service without prior notice. The developer is not liable for any damages this causes you.' },
+  termsRevisionTitle:        { ja: '規約の変更',                       en: 'Changes to these Terms' },
+  termsRevisionBody:         { ja: '開発者は、必要に応じて本規約を変更することがあります。変更後の規約は本ページにて公開します。重要な変更がある場合はアプリ内またはサポートページにてお知らせします。', en: 'The developer may change these Terms as needed. The revised Terms will be published on this page. If there are any significant changes, we will notify you in the app or on our support page.' },
 } as const;
 
 export type StringKey = keyof typeof STRINGS;
