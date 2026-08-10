@@ -392,7 +392,7 @@ notify('おはようございます', body);
 - `src/app/page.tsx` の App コンポーネントに、`tasks` が変わるたびに未完了かつ`deadlineAt`/`deadlineNotify`があるタスクの未来のfireをすべて計算し、直近60件を`syncDeadlineAlerts()`に渡す `useEffect` がある。識別子は `deadline-${taskId}-${fireKey}`（`fireKey`は`week`/`3days`/`dayBefore`/`sameDay`/`5h`/`3h`/`1h`/`exact`）
 - `LocalNotifyPlugin.swift` は他の通知と共通の `scheduleAlerts(prefix:call:)` を使い、`deadline-` prefixで全解除→再登録する
 - Web/開発環境専用フォールバック（`now`ポーリング＋即時`notify()`、`DEADLINE_ALERT_FIRED_KEY`使用）も用意しており、ネイティブでは`isNative()`で早期returnする
-- 表示: `TaskCard`とBottomTabsの「あとでやる」リスト行に、締切がある場合は🚩アイコン付きで`deadlineRemainLabel()`のラベルを表示する（超過・当日は`#D97A7A`、それ以外はグレー）
+- 表示: `TaskCard`とBottomTabsの「あとでやる」リスト行に、締切がある場合は🚩アイコン付きで`deadlineRemainLabel()`のラベルを表示する。色は`deadlineLabelColor()`が3段階で判定する（超過・当日=`#D97A7A`、直近1〜3日=`text-amber-600`、それ以外=グレー）。常に赤にすると余裕がある締切まで目立ってしまい緊急度のシグナルにならないため、あえて3段階にしている
 - PRO比較表（設定 → PRO）に「締切管理」の行を追加済み
 
 ### Xcodeでの手動セットアップ（`ios/`はgitignore対象なので毎回必要）

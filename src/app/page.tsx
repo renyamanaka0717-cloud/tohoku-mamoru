@@ -222,6 +222,15 @@ const deadlineRemainLabel = (deadlineAt:string): string => {
   if(diff===0) return '締切は今日';
   return `締切まであと${diff}日`;
 };
+// 締切ラベルの表示色: 超過・当日=赤、直近1〜3日=オレンジ（注意）、それ以外=グレー。
+// 常に赤にすると余裕がある締切まで目立ってしまい緊急度のシグナルにならないため3段階にしている
+const deadlineLabelColor = (deadlineAt:string): string => {
+  const deadlineDay = deadlineAt.slice(0,10);
+  const diff = Math.round((new Date(deadlineDay+'T00:00:00').getTime()-new Date(todayStr()+'T00:00:00').getTime())/86400000);
+  if(diff<=0) return 'text-[#D97A7A]';
+  if(diff<=3) return 'text-amber-600';
+  return 'text-gray-400';
+};
 
 // ── Utils ─────────────────────────────────────────────────────────────────────
 
@@ -2189,7 +2198,7 @@ function TaskCard({task,onToggle,onEdit,globalTags,onSubtaskToggle,tabName}:{tas
           )}
           <p className={`text-[15px] font-semibold leading-snug ${task.completed?'line-through text-gray-400':'text-gray-900'}`}>{task.name}</p>
           {task.deadlineAt&&!task.completed&&(
-            <p className={`text-[11px] font-semibold mt-1 flex items-center gap-1 ${deadlineRemainLabel(task.deadlineAt).includes('超過')||deadlineRemainLabel(task.deadlineAt)==='締切は今日'?'text-[#D97A7A]':'text-gray-400'}`}>
+            <p className={`text-[11px] font-semibold mt-1 flex items-center gap-1 ${deadlineLabelColor(task.deadlineAt)}`}>
               <AppIcons.deadline size={10}/>{deadlineRemainLabel(task.deadlineAt)}
             </p>
           )}
@@ -3958,7 +3967,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
                         {(t.duration??0)>0&&<p className="text-xs text-gray-400">{durLabel(t.duration??0)}</p>}
                         <p className="text-sm font-semibold text-gray-900">{t.name}</p>
                         {t.deadlineAt&&(
-                          <p className={`text-[11px] font-semibold mt-0.5 flex items-center gap-1 ${deadlineRemainLabel(t.deadlineAt).includes('超過')||deadlineRemainLabel(t.deadlineAt)==='締切は今日'?'text-[#D97A7A]':'text-gray-400'}`}>
+                          <p className={`text-[11px] font-semibold mt-0.5 flex items-center gap-1 ${deadlineLabelColor(t.deadlineAt)}`}>
                             <AppIcons.deadline size={10}/>{deadlineRemainLabel(t.deadlineAt)}
                           </p>
                         )}
