@@ -64,6 +64,11 @@ interface Task {
 }
 
 type FontSize = 'small'|'standard'|'large'|'xlarge';
+// 本文の--text-deltaと同じ値。テキストに隣接する小さい装飾アイコン（空き時間の時計・
+// 締切の旗など）は通常アイコンサイズ固定の対象だが、これらは文章の一部のように隣接テキストと
+// セットで読まれるため、文字サイズ設定に合わせて一緒に拡大しないと隣のテキストだけ大きくなり
+// 相対的にアイコンが小さすぎて見える不具合があった。ナビゲーション等の固定アイコンには使わない。
+const FONT_SIZE_ICON_DELTA:Record<FontSize,number> = {small:-1,standard:0,large:2,xlarge:4};
 interface Settings { wakeTime: string; sleepTime: string; keepIncomplete?: boolean; showFreeCard?: boolean; freeCardMinMin?: number; wakeColor?:string; sleepColor?:string; theme?:string; appIcon?:string; notificationsEnabled?:boolean; laterReminderHours?: number; appInactivityHours?: number; weekStartsOn?: 0|1; fontSize?: FontSize; }
 // 「おすすめ機能」表示の判定に使う端末内の利用履歴（未使用の機能を段階的に紹介するため）
 interface FeatureUsage {
@@ -2272,7 +2277,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
 
 // ── TaskCard ──────────────────────────────────────────────────────────────────
 
-function TaskCard({task,onToggle,onEdit,globalTags,onSubtaskToggle,tabName}:{task:Task;onToggle:()=>void;onEdit:()=>void;globalTags:TagDef[];onSubtaskToggle?:(subtaskId:string)=>void;tabName?:string;}) {
+function TaskCard({task,onToggle,onEdit,globalTags,onSubtaskToggle,tabName,iconDelta=0}:{task:Task;onToggle:()=>void;onEdit:()=>void;globalTags:TagDef[];onSubtaskToggle?:(subtaskId:string)=>void;tabName?:string;iconDelta?:number;}) {
   const [openPanel,setOpenPanel] = useState<'subtask'|'memo'|null>(null);
   const {language} = useI18n();
   const endTime = (task.startTime&&(task.duration??0)>0) ? fromMin(toMin(task.startTime)+(task.duration??0)) : null;
@@ -2295,7 +2300,7 @@ function TaskCard({task,onToggle,onEdit,globalTags,onSubtaskToggle,tabName}:{tas
           <p className={`text-[15px] font-semibold leading-snug ${task.completed?'line-through text-gray-400':'text-gray-900'}`}>{task.name}</p>
           {task.deadlineAt&&!task.completed&&(
             <p className={`text-[11px] font-semibold mt-1 flex items-center gap-1 ${deadlineLabelColor(task.deadlineAt)}`}>
-              <AppIcons.deadline size={10}/>{deadlineRemainLabel(task.deadlineAt,language)}
+              <AppIcons.deadline size={10+iconDelta}/>{deadlineRemainLabel(task.deadlineAt,language)}
             </p>
           )}
           {(task.tags??[]).length>0&&(
@@ -2359,13 +2364,14 @@ function TaskCard({task,onToggle,onEdit,globalTags,onSubtaskToggle,tabName}:{tas
 
 // ── FreeTimeCard ──────────────────────────────────────────────────────────────
 
-function FreeTimeCard({slot,fits,moreCount=0,height,onSchedule,onDragStart,onMoreClick,measureRef,outerRef}:{
+function FreeTimeCard({slot,fits,moreCount=0,height,onSchedule,onDragStart,onMoreClick,measureRef,outerRef,iconDelta=0}:{
   slot:FreeSlot;fits:Task[];moreCount?:number;height:number;
   onSchedule:(t:Task,time:string)=>void;
   onDragStart:(t:Task,x:number,y:number)=>void;
   onMoreClick?:()=>void;
   measureRef?:(el:HTMLDivElement|null)=>void;
   outerRef?:(el:HTMLDivElement|null)=>void;
+  iconDelta?:number;
 }) {
   const [pressingId,setPressingId] = useState<string|null>(null);
   const lpTimer = useRef<ReturnType<typeof setTimeout>|null>(null);
@@ -2395,7 +2401,7 @@ function FreeTimeCard({slot,fits,moreCount=0,height,onSchedule,onDragStart,onMor
           あったため。ここは中身の自然な高さだけを反映する） */}
       <div ref={measureRef}>
         <div className="flex items-center gap-1 mb-1">
-          <AppIcons.freeTime size={12} className="text-gray-400"/>
+          <AppIcons.freeTime size={12+iconDelta} className="text-gray-400"/>
           <span className="text-xs text-gray-400 font-medium">{tr('freeTimeRange').replace('{start}',slot.start).replace('{end}',slot.end)}</span>
         </div>
         <p className="font-medium text-gray-600 leading-none">
@@ -2475,6 +2481,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
   const containerRef = useRef<HTMLDivElement>(null);
   const roRef = useRef<ResizeObserver|null>(null);
   const {tr} = useI18n();
+  const iconDelta = FONT_SIZE_ICON_DELTA[settings.fontSize??'standard'];
   // 空き時間カードの外枠(padding+border)の高さ。measuredH['free-*']は内側のcontentのみの高さなので、
   // 積み上げ計算で外枠込みの実際の高さに戻すために使う。フォントサイズやborder幅の環境差（実機WebKit等）
   // で固定px値だと合わないことがあったため、outerRefでマウント時に実際のcomputed styleから算出する
@@ -2806,7 +2813,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
       {/* current time */}
       {date===todayStr()&&(nowMin>=wakeMin||sleepMinEff>1440&&nowMin<sleepMin)&&adjM(now)<=sleepMinEff&&(
         <div className="absolute flex items-center z-20 gap-1.5" style={{top:`${layoutCalcY(adjM(now))-12}px`,left:'-4px',right:0}}>
-          <div className="bg-[var(--c-primary)] text-white text-xs font-bold px-2 py-1 rounded-full whitespace-nowrap">{now}</div>
+          <div className="bg-[var(--c-primary)] text-white font-bold px-2 py-1 rounded-full whitespace-nowrap" style={{fontSize:'12px'}}>{now}</div>
         </div>
       )}
 
@@ -2927,7 +2934,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
               onTouchStart={e=>startLP(task,e)}
               onTouchEnd={cancelLP}
               onTouchMove={cancelLP}>
-              <TaskCard task={task} onToggle={()=>onToggle(task.id)} onEdit={()=>onEdit(task)} globalTags={globalTags} onSubtaskToggle={(sid)=>onSubtaskToggle(task.id,sid)} tabName={task.category?customTabs.find(t=>t.id===task.category)?.name:undefined}/>
+              <TaskCard task={task} onToggle={()=>onToggle(task.id)} onEdit={()=>onEdit(task)} globalTags={globalTags} onSubtaskToggle={(sid)=>onSubtaskToggle(task.id,sid)} tabName={task.category?customTabs.find(t=>t.id===task.category)?.name:undefined} iconDelta={iconDelta}/>
             </div>,
           ];
         }
@@ -2983,7 +2990,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
                     onTouchStart={e=>startLP(task,e)}
                     onTouchEnd={cancelLP}
                     onTouchMove={cancelLP}>
-                    <TaskCard task={task} onToggle={()=>onToggle(task.id)} onEdit={()=>onEdit(task)} globalTags={globalTags} onSubtaskToggle={(sid)=>onSubtaskToggle(task.id,sid)} tabName={task.category?customTabs.find(t=>t.id===task.category)?.name:undefined}/>
+                    <TaskCard task={task} onToggle={()=>onToggle(task.id)} onEdit={()=>onEdit(task)} globalTags={globalTags} onSubtaskToggle={(sid)=>onSubtaskToggle(task.id,sid)} tabName={task.category?customTabs.find(t=>t.id===task.category)?.name:undefined} iconDelta={iconDelta}/>
                   </div>
                 );
               })}
@@ -2997,7 +3004,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
         const fits=laterPoolVisible;
         return (
           <div key={i} className="absolute z-10" style={{top:`${freeY}px`,left:`${CARD_LEFT}px`,right:'0px'}}>
-            <FreeTimeCard slot={slot} fits={fits} moreCount={laterPoolMoreCount} height={finalH} onSchedule={onSchedule} onDragStart={onDragStart} onMoreClick={onOpenLater}
+            <FreeTimeCard slot={slot} fits={fits} moreCount={laterPoolMoreCount} height={finalH} onSchedule={onSchedule} onDragStart={onDragStart} onMoreClick={onOpenLater} iconDelta={iconDelta}
               measureRef={el=>{if(el){el.dataset.gk=`free-${slot.start}`;roRef.current?.observe(el);}}}
               outerRef={el=>{
                 if(!el) return;
@@ -6471,7 +6478,7 @@ export default function App() {
   // 倍率（*1.3等）だと8px前後の小さいラベル類がほとんど変化せず拡大した実感が薄いため、
   // 全サイズに同じpx数を加減算する方式にしている（globals.cssの--text-delta）
   useEffect(()=>{
-    const delta={small:-1,standard:0,large:2,xlarge:4}[settings.fontSize??'standard'];
+    const delta=FONT_SIZE_ICON_DELTA[settings.fontSize??'standard'];
     document.documentElement.style.setProperty('--text-delta',`${delta}px`);
   },[settings.fontSize]);
 
