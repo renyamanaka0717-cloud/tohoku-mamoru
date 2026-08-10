@@ -133,7 +133,7 @@ export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSa
 
   // 対象要素が見つからない場合（該当データが無い等）は少し待って自動的に次へ進む。
   // ただしdrop直後（dropped）はdragステップの対象が消えるのが正常な結果なので、
-  // このフォールバックではなく専用の2秒待ちタイマー（下記）に処理を任せる
+  // このフォールバックではなく専用の1秒待ちタイマー（下記）に処理を任せる
   useEffect(() => {
     if (rect || showCompletion || dropped) return;
     const t = setTimeout(() => goNext(), 800);
@@ -172,11 +172,11 @@ export default function ProductTour({ onFinish, gestureSignal, modalOpen, taskSa
     el.addEventListener('input', update);
     return () => el.removeEventListener('input', update);
   }, [step.id]);
-  // ドロップした瞬間にオーバーレイを消して結果を見せ、2秒待ってから完了ポップアップに進む
+  // ドロップした瞬間にオーバーレイを消して結果を見せ、1秒待ってから完了ポップアップに進む
   useEffect(() => {
     if (step.id !== 'drag' || gestureSignal === gestureBaseline.current) return;
     setDropped(true);
-    const t = setTimeout(() => goNext(), 2000);
+    const t = setTimeout(() => goNext(), 1000);
     return () => clearTimeout(t);
   }, [gestureSignal, step.id, goNext]);
 
