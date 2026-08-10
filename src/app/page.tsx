@@ -2621,15 +2621,20 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
         :calcFreeContentH(laterPoolForEstimate)})),
   ].sort((a,b)=>a.startMin-b.startMin);
 
+  // アンカーのyは各カードの「表示上の時刻ラベル位置」（アイコン/ラベル中央）に合わせる。
+  // カード上端を使うと、カード高さが56pxを超える（メモ・締切ラベル等で伸びる）ほど
+  // 実際の時刻ラベル（中央表示）とのズレが大きくなり、現在時刻バッジが該当タスクの
+  // ラベルと視覚的に一致しない不具合があったため（ノード・ラベル描画と同じ計算式に統一）。
   type Anchor={min:number;y:number};
-  const anchors:Anchor[]=[{min:wakeMin,y:wakeCardTop+WAKE_CARD_H}];
+  const anchors:Anchor[]=[{min:wakeMin,y:wakeCardTop+WAKE_CARD_H/2}];
 
   let dayPrevBottom=wakeCardTop+WAKE_CARD_H;
   for(const item of dayItems){
     const top=dayPrevBottom+CARD_GAP_MIN;
     if(item.kind==='task') groupLayout.push({g:item.g,top});
     else freePassItems.push({slot:item.slot,freeY:top,finalH:item.h});
-    anchors.push({min:item.startMin,y:top});
+    const anchorY=item.kind==='task'?top+groupIconTop(item.g)+groupStackH(item.g)/2:top;
+    anchors.push({min:item.startMin,y:anchorY});
     dayPrevBottom=top+item.h;
   }
 
@@ -2637,7 +2642,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
 
   // Sleep card: right after the last daytime card, fully compacted
   const sleepCardTop=dayPrevBottom+CARD_GAP_MIN;
-  if(anchors[anchors.length-1].min!==sleepMinEff) anchors.push({min:sleepMinEff,y:sleepCardTop});
+  if(anchors[anchors.length-1].min!==sleepMinEff) anchors.push({min:sleepMinEff,y:sleepCardTop+SLEEP_CARD_H/2});
 
   // Phase 2: post-sleep tasks — compact (card order, no time gap)
   // Exclude Phase 0 tasks: only include tasks where rawMin >= wakeMin, or past-midnight sleep and rawMin >= sleepMin
