@@ -4111,8 +4111,8 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
                   </button>
                 )}
                 <button onClick={()=>setSortDir(d=>d===null?'asc':d==='asc'?'desc':'asc')}
-                  className="w-8 h-8 rounded-xl flex items-center justify-center text-sm bg-[var(--c-primary)] text-white transition-colors">
-                  {sortDir===null?'↑↓':sortDir==='asc'?'↑':'↓'}
+                  className="w-8 h-8 rounded-xl flex items-center justify-center bg-[var(--c-primary)] text-white transition-colors">
+                  {sortDir===null?<AppIcons.clock size={16}/>:sortDir==='asc'?<AppIcons.sortAsc size={16}/>:<AppIcons.sortDesc size={16}/>}
                 </button>
               </div>
             </div>
@@ -4230,8 +4230,8 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
                     )}
                   </button>
                   <button onClick={()=>setShopSortDir(d=>d===null?'asc':d==='asc'?'desc':'asc')}
-                    className="w-8 h-8 rounded-xl flex items-center justify-center text-sm bg-[var(--c-primary)] text-white transition-colors">
-                    {shopSortDir===null?'↑↓':shopSortDir==='asc'?'↑':'↓'}
+                    className="w-8 h-8 rounded-xl flex items-center justify-center bg-[var(--c-primary)] text-white transition-colors">
+                    {shopSortDir===null?<AppIcons.clock size={16}/>:shopSortDir==='asc'?<AppIcons.sortAsc size={16}/>:<AppIcons.sortDesc size={16}/>}
                   </button>
                 </div>
               </div>

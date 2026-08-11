@@ -95,6 +95,8 @@ import {
   TextAa,
   ArrowsDownUp,
   DotsSixVertical,
+  ClockClockwise,
+  ClockCounterClockwise,
 } from '@phosphor-icons/react';
 
 type PhosphorComp = React.ComponentType<{
@@ -210,4 +212,6 @@ export const AppIcons = {
   textSize:    make(TextAa, 18),
   reorder:     make(ArrowsDownUp, 18),
   dragHandle:  make(DotsSixVertical, 20),
+  sortAsc:     make(ClockCounterClockwise, 16),
+  sortDesc:    make(ClockClockwise, 16),
 };
