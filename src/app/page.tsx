@@ -4461,7 +4461,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   const [lpEditColor,setLpEditColor] = useState('');
   const [lpEditConfirmId,setLpEditConfirmId] = useState<string|null>(null);
   const [colorPicking,setColorPicking] = useState<'wake'|'sleep'|null>(null);
-  const { purchase, restore, isPurchasing } = usePremium();
+  const { purchase, restore, isPurchasing, priceString } = usePremium();
   const [proPrompt,setProPrompt] = useState<string|null>(null);
   const proSheet = proPrompt ? <ProGateSheet feature={proPrompt} onClose={()=>setProPrompt(null)} onView={()=>{setProPrompt(null);setSub('premium');}}/> : null;
 
@@ -5817,7 +5817,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
               <div className="rounded-xl px-4 py-4 text-center border border-gray-100" style={{background:'color-mix(in srgb, var(--c-primary) 8%, white)'}}>
                 <p className="text-sm font-bold mb-1" style={{color:'var(--c-primary)'}}>{tr('proTrialTitle')}</p>
                 <p className="text-xs text-gray-400 mb-1">{tr('proTrialAfter')}</p>
-                <p className="text-2xl font-bold" style={{color:'var(--c-primary)'}}>¥200</p>
+                <p className="text-2xl font-bold" style={{color:'var(--c-primary)'}}>{priceString??'¥200'}</p>
                 <p className="text-xs text-gray-400 mt-1">{tr('proTrialCancelNote')}</p>
               </div>
             </div>
@@ -6013,7 +6013,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
 
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">{tr('sectionSubscription')}</p>
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
-          <SettingsRow icon={<AppIcons.star/>} iconBg="bg-gray-100" title={tr('rowProTitle')} desc={isPremium?tr('rowProActive'):tr('rowProPrice')} onClick={()=>setSub('premium')} isLast/>
+          <SettingsRow icon={<AppIcons.star/>} iconBg="bg-gray-100" title={tr('rowProTitle')} desc={isPremium?tr('rowProActive'):tr('rowProPrice').replace('{price}',()=>priceString??'¥200')} onClick={()=>setSub('premium')} isLast/>
         </div>
 
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">{tr('sectionInfo')}</p>

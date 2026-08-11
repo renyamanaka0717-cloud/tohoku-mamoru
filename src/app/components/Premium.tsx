@@ -12,6 +12,9 @@ interface PremiumContextValue {
   isPurchasing: boolean;
   purchase: () => Promise<void>;
   restore: () => Promise<boolean>;
+  // App Storeのストアフロントに応じてRevenueCatがローカライズ済みの価格文字列（例: "$1.99"）。
+  // ネイティブでofferingsが取得できるまではnull（PRO画面側でフォールバック表示する）
+  priceString: string | null;
 }
 
 const PremiumContext = createContext<PremiumContextValue>({
@@ -20,6 +23,7 @@ const PremiumContext = createContext<PremiumContextValue>({
   isPurchasing: false,
   purchase: async () => {},
   restore: async () => false,
+  priceString: null,
 });
 
 function isNative(): boolean {
@@ -31,6 +35,7 @@ export function PremiumProvider({ children }: { children: React.ReactNode }) {
   const [isPremium, setIsPremium] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isPurchasing, setIsPurchasing] = useState(false);
+  const [priceString, setPriceString] = useState<string | null>(null);
   // 開発者モードのプラン上書き。RevenueCatの実際の状態は変えず、表示だけを差し替える
   const [devOverride, setDevOverride] = useState<'free' | 'premium' | null>(null);
 
@@ -57,6 +62,14 @@ export function PremiumProvider({ children }: { children: React.ReactNode }) {
         await Purchases.configure({ apiKey: RC_API_KEY });
         const { customerInfo } = await Purchases.getCustomerInfo();
         setIsPremium(ENTITLEMENT_ID in customerInfo.entitlements.active);
+        // ¥200固定表示だと地域によって実際の請求額と食い違うため、App Storeの
+        // ストアフロントに応じてRevenueCatがローカライズした価格文字列を取得する
+        try {
+          const offerings = await Purchases.getOfferings();
+          setPriceString(offerings.current?.monthly?.product.priceString ?? null);
+        } catch {
+          setPriceString(null);
+        }
       } catch {
         setIsPremium(false);
       } finally {
@@ -101,7 +114,7 @@ export function PremiumProvider({ children }: { children: React.ReactNode }) {
   const effectiveIsPremium = devOverride ? devOverride === 'premium' : isPremium;
 
   return (
-    <PremiumContext.Provider value={{ isPremium: effectiveIsPremium, isLoading, isPurchasing, purchase, restore }}>
+    <PremiumContext.Provider value={{ isPremium: effectiveIsPremium, isLoading, isPurchasing, purchase, restore, priceString }}>
       {children}
     </PremiumContext.Provider>
   );

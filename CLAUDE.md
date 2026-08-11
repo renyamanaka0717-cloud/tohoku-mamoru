@@ -284,6 +284,7 @@ const pkg = offerings.current?.monthly;
 | `isPurchasing` | boolean | 購入処理中か |
 | `purchase` | `()=>Promise<void>` | 月額プランを購入 |
 | `restore` | `()=>Promise<boolean>` | 購入を復元 |
+| `priceString` | `string \| null` | App Storeのストアフロントに応じてRevenueCatがローカライズした価格文字列（例:`"$1.99"`）。ネイティブで`getOfferings()`が解決するまでは`null` |
 
 ### App Store Connect 設定
 
@@ -299,13 +300,15 @@ const pkg = offerings.current?.monthly;
 
 ```tsx
 // isPremium=false: 購入UI
-<div>¥200/月カード + "PROプランを始める"ボタン + "購入を復元"リンク</div>
+<div>{priceString ?? '¥200'}/月カード + "PROプランを始める"ボタン + "購入を復元"リンク</div>
 // isPremium=true: 利用中UI
 <div>"PROプランを利用中です"カード</div>
 ```
 
-- `SettingsRow` の PRO 行: `isPremium ? '利用中' : '月額¥200'`
-- `purchase()` / `restore()` は `usePremium()` から取得
+- `SettingsRow` の PRO 行: `isPremium ? '利用中' : ` `月額${priceString ?? '¥200'}` ``
+- `purchase()` / `restore()` / `priceString` は `usePremium()` から取得
+
+**価格表示は固定文字列にしない（重要）:** 当初PRO画面・設定メニューのPRO行はどちらも `¥200`/`月額¥200` を直書きしていたが、App Store Connectで設定する基準価格はストアフロント（国・地域）ごとにAppleが為替レートに応じて自動換算するため、日本以外のユーザーには実際に課金される金額と表示が食い違う不具合だった。`Premium.tsx`の`PremiumProvider`がネイティブ初期化時（`getCustomerInfo()`と同じ`useEffect`内）に`Purchases.getOfferings()`を呼び、`offerings.current?.monthly?.product.priceString`（RevenueCatがApp Storeのロケールに応じてフォーマット済みの価格文字列、例: `"$1.99"`）を`priceString`としてContextで公開するよう修正した。呼び出し側（PRO画面・設定メニューのPRO行）は`priceString ?? '¥200'`で、取得できるまでの一瞬だけ日本円の値をフォールバック表示する（ブラウザ・開発環境は`isPremium`が常に`true`のためこの購入UI自体が表示されず、実質ネイティブの未購入状態でのみ関係する）。
 
 ### 避けるパターン
 

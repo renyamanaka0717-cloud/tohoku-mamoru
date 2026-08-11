@@ -161,7 +161,7 @@ export const STRINGS = {
   rowAccountDesc:            { ja: 'Appleアカウント・iCloudバックアップ', en: 'Apple account & iCloud backup' },
   rowProTitle:               { ja: 'PRO',                         en: 'PRO' },
   rowProActive:              { ja: '利用中',                       en: 'Active' },
-  rowProPrice:               { ja: '月額¥200',                     en: '¥200/month' },
+  rowProPrice:               { ja: '月額{price}',                   en: '{price}/month' },
   rowPrivacyTitle:           { ja: 'プライバシーポリシー',              en: 'Privacy policy' },
   rowTermsTitle:             { ja: '利用規約',                      en: 'Terms of service' },
   rowFaqTitle:               { ja: 'よくある質問',                   en: 'FAQ' },
