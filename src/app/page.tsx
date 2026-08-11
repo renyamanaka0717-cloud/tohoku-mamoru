@@ -3969,7 +3969,7 @@ function ForgetAlertsPanel({alerts,onChange,isPremium,onProPrompt}:{
 // ── BottomTabs ────────────────────────────────────────────────────────────────
 
 function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,shopPending,
-  onToggle,onEdit,onAddShop,onToggleShop,onDeleteShop,onDragStart,shopNotifSettings,onShopNotifSettings,
+  onToggle,onEdit,onAddShop,onToggleShop,onDeleteShop,onReorderLater,shopNotifSettings,onShopNotifSettings,
   shopLocations,onShopLocations,isPremium,onOpenPro,
   notificationsEnabled,onEnableNotifications
 }:{
@@ -3977,7 +3977,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
   tasks:Task[]; shopItems:ShopItem[]; pendingCount:number; shopPending:number;
   onToggle:(id:string)=>void; onEdit:(t:Task)=>void;
   onAddShop:(n:string)=>void; onToggleShop:(id:string)=>void; onDeleteShop:(id:string)=>void;
-  onDragStart:(t:Task,x:number,y:number)=>void;
+  onReorderLater:(orderedIds:string[])=>void;
   shopNotifSettings:ShopNotifSetting[]; onShopNotifSettings:(s:ShopNotifSetting[])=>void;
   shopLocations:ShopLocation[]; onShopLocations:(l:ShopLocation[])=>void;
   isPremium:boolean; onOpenPro:()=>void;
@@ -3990,7 +3990,16 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
   const [pressingId,setPressingId]= useState<string|null>(null);
   const [showShopNotif,setShowShopNotif] = useState(false);
   const [locProPrompt,setLocProPrompt] = useState<string|null>(null);
-  const lpTimer = useRef<ReturnType<typeof setTimeout>|null>(null);
+  // 「あとでやる」一覧のドラッグ並び替え。ピン留めタスクは対象外（常に先頭固定）。
+  // sortDir が null（既定順）の時だけ有効にする — asc/desc 表示中はドラッグした見た目の位置と
+  // 実際の並び替え結果がずれて混乱するため
+  const [reorderId,setReorderId] = useState<string|null>(null);
+  const [reorderIds,setReorderIds] = useState<string[]|null>(null);
+  const [reorderDy,setReorderDy] = useState(0);
+  const reorderTimer = useRef<ReturnType<typeof setTimeout>|null>(null);
+  const reorderStartY = useRef(0);
+  const reorderSlots = useRef<{top:number;height:number}[]>([]);
+  const rowRefs = useRef<Record<string,HTMLDivElement|null>>({});
   const swX=useRef(0), swY=useRef(0);
   const tabs:('later'|'shop')[]=['later','shop'];
   const onSheetSwipe=(e:React.TouchEvent)=>{
@@ -4004,19 +4013,6 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
     }
   };
 
-  const startLP=(task:Task,e:React.TouchEvent)=>{
-    const touch=e.touches[0];
-    setPressingId(task.id);
-    lpTimer.current=setTimeout(()=>{
-      if(navigator.vibrate) navigator.vibrate(40);
-      setPressingId(null);
-      onDragStart(task,touch.clientX,touch.clientY);
-    },500);
-  };
-  const cancelLP=()=>{
-    if(lpTimer.current){clearTimeout(lpTimer.current);lpTimer.current=null;}
-    setPressingId(null);
-  };
   const addShop = () => { const v=shopInput.trim(); if(!v) return; onAddShop(v); setShopInput(''); };
 
   const laterTasks  = tasks.filter(t=>t.isLater);
@@ -4030,6 +4026,96 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
     const ordered = sortDir!=='desc' ? normal : [...normal].reverse();
     return [...pinned,...ordered];
   })();
+  const pinnedLater    = normalLater.filter(t=>t.pinned);
+  const nonPinnedLater = normalLater.filter(t=>!t.pinned);
+  const displayNonPinned = reorderIds
+    ? reorderIds.map(id=>nonPinnedLater.find(t=>t.id===id)).filter((t):t is Task=>!!t)
+    : nonPinnedLater;
+
+  // 「あとでやる」一覧の長押し→ドラッグで並び替え。ジオメトリ（各行の初期位置）は
+  // ドラッグ開始時に一度だけ計測して固定し、指の移動量(dy)だけで「今どのスロットに
+  // 重なっているか」を判定する。並び替え自体（reorderIds）はローカルstateで完結させ、
+  // 親のtasks更新（onReorderLater）はドロップ時に1回だけ呼ぶ（ドラッグ中に毎回呼ぶと
+  // 再レンダーが重くなるため）
+  const startReorderPress=(task:Task,e:React.TouchEvent)=>{
+    if(sortDir!==null) return;
+    const touch=e.touches[0];
+    setPressingId(task.id);
+    reorderTimer.current=setTimeout(()=>{
+      if(navigator.vibrate) navigator.vibrate(40);
+      setPressingId(null);
+      reorderSlots.current=nonPinnedLater.map(t=>{
+        const r=rowRefs.current[t.id]?.getBoundingClientRect();
+        return {top:r?.top??0, height:r?.height??60};
+      });
+      reorderStartY.current=touch.clientY;
+      setReorderIds(nonPinnedLater.map(t=>t.id));
+      setReorderId(task.id);
+    },500);
+  };
+  const cancelReorderPress=()=>{
+    if(reorderTimer.current){clearTimeout(reorderTimer.current);reorderTimer.current=null;}
+    setPressingId(null);
+  };
+  const onReorderMove=(e:React.TouchEvent)=>{
+    if(!reorderId){cancelReorderPress();return;}
+    const touch=e.touches[0];
+    const dy=touch.clientY-reorderStartY.current;
+    setReorderDy(dy);
+    setReorderIds(prev=>{
+      if(!prev) return prev;
+      const slots=reorderSlots.current;
+      const draggedIdx=prev.indexOf(reorderId);
+      if(draggedIdx===-1||!slots[draggedIdx]) return prev;
+      const draggedCenter=slots[draggedIdx].top+slots[draggedIdx].height/2+dy;
+      let targetIdx=draggedIdx;
+      for(let i=0;i<slots.length;i++){
+        const s=slots[i];
+        if(draggedCenter>=s.top&&draggedCenter<=s.top+s.height){targetIdx=i;break;}
+      }
+      if(targetIdx===draggedIdx) return prev;
+      const next=[...prev];
+      next.splice(draggedIdx,1);
+      next.splice(targetIdx,0,reorderId);
+      return next;
+    });
+  };
+  const endReorder=()=>{
+    cancelReorderPress();
+    if(reorderId&&reorderIds) onReorderLater(reorderIds);
+    setReorderId(null);
+    setReorderIds(null);
+    setReorderDy(0);
+    reorderSlots.current=[];
+  };
+  const renderLaterRowContent=(t:Task)=>{
+    const LaterIc=getTaskIcon(t.icon||defaultIconKey(t.name));
+    return (
+      <>
+        <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{background:t.color||'color-mix(in srgb, var(--c-primary) 15%, white)'}}>
+          <LaterIc size={14} className={t.color?'text-white':'text-[var(--c-primary)]'}/>
+        </div>
+        <div className="flex-1 min-w-0" onClick={()=>onEdit(t)}>
+          {(t.duration??0)>0&&<p className="text-xs text-gray-400">{durLabel(t.duration??0,language)}</p>}
+          <p className="text-sm font-semibold text-gray-900">{t.name}</p>
+          {t.deadlineAt&&(
+            <p className={`text-[11px] font-semibold mt-0.5 flex items-center gap-1 ${deadlineLabelColor(t.deadlineAt)}`}>
+              <AppIcons.deadline size={10}/>{deadlineRemainLabel(t.deadlineAt,language)}
+            </p>
+          )}
+          {t.locationNotify&&t.location&&(
+            <p className="text-[11px] text-gray-400 font-semibold mt-0.5 flex items-center gap-1">
+              <AppIcons.location size={10}/><span className="truncate">{t.location.name}</span>
+            </p>
+          )}
+        </div>
+        {(t.postponedCount??0)>0&&(
+          <span className="flex items-center gap-0.5 text-xs text-gray-400 font-semibold shrink-0"><AppIcons.postponed size={11}/>{t.postponedCount}</span>
+        )}
+        <button onClick={()=>onToggle(t.id)} className="w-6 h-6 rounded-full border-2 border-gray-300 shrink-0"/>
+      </>
+    );
+  };
 
   const scheduledRaw = tasks.filter(t=>!t.isLater&&t.startTime&&!t.completed&&!t.recurrence&&t.date===todayStr())
     .sort((a,b)=>{
@@ -4096,35 +4182,23 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
                   <span className="text-xs text-gray-400 font-medium">{tr('laterSectionLabel').replace('{n}',String(normalLater.length))}</span>
                 </div>
                 <div className="space-y-2">
-                  {normalLater.map(t=>{
-                    const LaterIc=getTaskIcon(t.icon||defaultIconKey(t.name));
+                  {pinnedLater.map(t=>(
+                    <div key={t.id} className="flex items-center gap-2.5 bg-white border border-gray-100 rounded-2xl shadow-sm px-3 py-3 select-none">
+                      {renderLaterRowContent(t)}
+                    </div>
+                  ))}
+                  {displayNonPinned.map(t=>{
+                    const dragging=reorderId===t.id;
                     return (
                     <div key={t.id}
-                      className={`flex items-center gap-2.5 bg-white border border-gray-100 rounded-2xl shadow-sm px-3 py-3 transition-transform select-none ${pressingId===t.id?'scale-95 shadow-lg border-blue-200':''}`}
-                      onTouchStart={e=>startLP(t,e)}
-                      onTouchEnd={cancelLP}
-                      onTouchMove={cancelLP}>
-                      <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{background:t.color||'color-mix(in srgb, var(--c-primary) 15%, white)'}}>
-                        <LaterIc size={14} className={t.color?'text-white':'text-[var(--c-primary)]'}/>
-                      </div>
-                      <div className="flex-1 min-w-0" onClick={()=>onEdit(t)}>
-                        {(t.duration??0)>0&&<p className="text-xs text-gray-400">{durLabel(t.duration??0,language)}</p>}
-                        <p className="text-sm font-semibold text-gray-900">{t.name}</p>
-                        {t.deadlineAt&&(
-                          <p className={`text-[11px] font-semibold mt-0.5 flex items-center gap-1 ${deadlineLabelColor(t.deadlineAt)}`}>
-                            <AppIcons.deadline size={10}/>{deadlineRemainLabel(t.deadlineAt,language)}
-                          </p>
-                        )}
-                        {t.locationNotify&&t.location&&(
-                          <p className="text-[11px] text-gray-400 font-semibold mt-0.5 flex items-center gap-1">
-                            <AppIcons.location size={10}/><span className="truncate">{t.location.name}</span>
-                          </p>
-                        )}
-                      </div>
-                      {(t.postponedCount??0)>0&&(
-                        <span className="flex items-center gap-0.5 text-xs text-gray-400 font-semibold shrink-0"><AppIcons.postponed size={11}/>{t.postponedCount}</span>
-                      )}
-                      <button onClick={()=>onToggle(t.id)} className="w-6 h-6 rounded-full border-2 border-gray-300 shrink-0"/>
+                      ref={el=>{rowRefs.current[t.id]=el;}}
+                      className={`flex items-center gap-2.5 bg-white border border-gray-100 rounded-2xl shadow-sm px-3 py-3 select-none ${dragging?'relative z-10 shadow-lg border-blue-200':'transition-transform'} ${pressingId===t.id?'scale-95':''}`}
+                      style={dragging?{transform:`translateY(${reorderDy}px)`}:undefined}
+                      onTouchStart={e=>startReorderPress(t,e)}
+                      onTouchEnd={endReorder}
+                      onTouchMove={onReorderMove}
+                      onTouchCancel={endReorder}>
+                      {renderLaterRowContent(t)}
                     </div>
                   );})}
                 </div>
@@ -7145,6 +7219,18 @@ export default function App() {
     if(target&&!target.completed) logAnalyticsEvent('task_completed');
     return prev.map(t=>t.id===id?{...t,completed:!t.completed}:t);
   });
+  // 「あとでやる」一覧のドラッグ並び替え確定時に1回だけ呼ばれる。tasks配列内での
+  // 該当タスク群のスロット位置はそのままに、中身の並び順だけorderedIdsの順序に差し替える
+  const reorderLaterTasks=(orderedIds:string[])=>setTasks(prev=>{
+    const idSet=new Set(orderedIds);
+    let cursor=0;
+    return prev.map(t=>{
+      if(!idSet.has(t.id)) return t;
+      const replacement=prev.find(x=>x.id===orderedIds[cursor]);
+      cursor++;
+      return replacement??t;
+    });
+  });
   const scheduleInSlot=(task:Task,startTime:string)=>setModal({open:true,task:{...task,isLater:false,startTime,date,notifications:task.notifications?.length?task.notifications:[0]}});
   const moveToTimeline=(task:Task)=>setModal({open:true,task:{...task,isLater:false}});
   const handleMorningAction=(type:'done'|'later')=>{
@@ -7388,7 +7474,7 @@ export default function App() {
           tasks={filteredTasks} shopItems={shopItems} pendingCount={pendingCount} shopPending={shopPending}
           onToggle={toggle} onEdit={openEdit}
           onAddShop={addShopItem} onToggleShop={toggleShop} onDeleteShop={deleteShop}
-          onDragStart={startDrag}
+          onReorderLater={reorderLaterTasks}
           shopNotifSettings={shopNotifSettings} onShopNotifSettings={setShopNotifSettings}
           shopLocations={shopLocations} onShopLocations={setShopLocations}
           isPremium={isPremium} onOpenPro={()=>{setActiveTab(null);setSettingsInitSub('premium');setSOp(true);}}
