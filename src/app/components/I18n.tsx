@@ -57,6 +57,8 @@ export const STRINGS = {
   laterTabLabel:             { ja: 'あとでやる',                    en: 'Later' },
   shopTabLabel:              { ja: '買い物リスト',                   en: 'Shopping list' },
   laterSectionLabel:         { ja: 'あとでやる {n}',                en: 'Later {n}' },
+  reorderPopupTitle:         { ja: '並び替え',                     en: 'Reorder' },
+  reorderPopupHint:          { ja: 'ハンドルをドラッグして順番を変更できます', en: 'Drag the handle to change the order' },
   scheduledSectionLabel:     { ja: '時間指定 {n}',                  en: 'Scheduled {n}' },
   recurringSectionLabel:     { ja: '繰り返し {n}',                  en: 'Recurring {n}' },
   laterEmptyLabel:           { ja: 'タスクがありません',              en: 'No tasks' },

@@ -3987,20 +3987,12 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
   const [shopInput,setShopInput] = useState('');
   const [sortDir,setSortDir]     = useState<null|'asc'|'desc'>(null);
   const [shopSortDir,setShopSortDir] = useState<null|'asc'|'desc'>(null);
-  const [pressingId,setPressingId]= useState<string|null>(null);
   const [showShopNotif,setShowShopNotif] = useState(false);
   const [locProPrompt,setLocProPrompt] = useState<string|null>(null);
-  // 「あとでやる」一覧のドラッグ並び替え。ピン留めタスクは対象外（常に先頭固定）。
-  // sortDir が null（既定順）の時だけ有効にする — asc/desc 表示中はドラッグした見た目の位置と
-  // 実際の並び替え結果がずれて混乱するため
-  const [reorderId,setReorderId] = useState<string|null>(null);
-  const [reorderIds,setReorderIds] = useState<string[]|null>(null);
-  const [reorderDy,setReorderDy] = useState(0);
-  const reorderTimer = useRef<ReturnType<typeof setTimeout>|null>(null);
-  const reorderStartY = useRef(0);
-  const reorderStartTouch = useRef<{x:number;y:number}>({x:0,y:0});
-  const reorderSlots = useRef<{top:number;height:number}[]>([]);
-  const rowRefs = useRef<Record<string,HTMLDivElement|null>>({});
+  // 「あとでやる」一覧の並び替えは専用ポップアップ（ReorderLaterPopup）で行う。
+  // 一覧内で直接ドラッグする方式は、長押しでの並び替え開始とタップでの編集開始の判定が
+  // 実機で不安定になりやすかったため撤去した
+  const [showReorderPopup,setShowReorderPopup] = useState(false);
   const swX=useRef(0), swY=useRef(0);
   const tabs:('later'|'shop')[]=['later','shop'];
   const onSheetSwipe=(e:React.TouchEvent)=>{
@@ -4029,90 +4021,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
   })();
   const pinnedLater    = normalLater.filter(t=>t.pinned);
   const nonPinnedLater = normalLater.filter(t=>!t.pinned);
-  const displayNonPinned = reorderIds
-    ? reorderIds.map(id=>nonPinnedLater.find(t=>t.id===id)).filter((t):t is Task=>!!t)
-    : nonPinnedLater;
 
-  // 「あとでやる」一覧の長押し→ドラッグで並び替え。ジオメトリ（各行の初期位置）は
-  // ドラッグ開始時に一度だけ計測して固定し、指の移動量(dy)だけで「今どのスロットに
-  // 重なっているか」を判定する。並び替え自体（reorderIds）はローカルstateで完結させ、
-  // 親のtasks更新（onReorderLater）はドロップ時に1回だけ呼ぶ（ドラッグ中に毎回呼ぶと
-  // 再レンダーが重くなるため）
-  const startReorderPress=(task:Task,e:React.TouchEvent)=>{
-    if(sortDir!==null) return;
-    const touch=e.touches[0];
-    reorderStartTouch.current={x:touch.clientX,y:touch.clientY};
-    setPressingId(task.id);
-    reorderTimer.current=setTimeout(()=>{
-      if(navigator.vibrate) navigator.vibrate(40);
-      setPressingId(null);
-      reorderSlots.current=nonPinnedLater.map(t=>{
-        const r=rowRefs.current[t.id]?.getBoundingClientRect();
-        return {top:r?.top??0, height:r?.height??60};
-      });
-      reorderStartY.current=touch.clientY;
-      setReorderIds(nonPinnedLater.map(t=>t.id));
-      setReorderId(task.id);
-    },500);
-  };
-  const cancelReorderPress=()=>{
-    if(reorderTimer.current){clearTimeout(reorderTimer.current);reorderTimer.current=null;}
-    setPressingId(null);
-  };
-  // 長押し待ち（500ms）の間だけ使う。指の自然な微振動（数px）でキャンセルされないよう
-  // 許容範囲を設ける（実機で許容範囲なしだと長押し自体がほぼ成立せず「ドラッグしづらい」
-  // 不具合になった実績あり）。実際のドラッグ中の移動判定は下のuseEffect側が担当する
-  const onReorderPreMove=(e:React.TouchEvent)=>{
-    if(reorderId) return;
-    const touch=e.touches[0];
-    const dx=touch.clientX-reorderStartTouch.current.x;
-    const dy=touch.clientY-reorderStartTouch.current.y;
-    if(Math.hypot(dx,dy)>12) cancelReorderPress();
-  };
-  // 実際のドラッグ中はdocumentに直接{passive:false}のtouchmoveリスナーを付けて
-  // preventDefault()する（Reactの合成touchイベントはpassiveで登録されpreventDefaultが
-  // 効かないため、これが無いとドラッグ中に一覧が裏でスクロールしてしまい操作が破綻する。
-  // App本体のタイムラインドラッグ（startDrag）と同じパターン）
-  useEffect(()=>{
-    if(!reorderId) return;
-    const onMove=(e:TouchEvent)=>{
-      e.preventDefault();
-      const touch=e.touches[0];
-      const dy=touch.clientY-reorderStartY.current;
-      setReorderDy(dy);
-      setReorderIds(prev=>{
-        if(!prev) return prev;
-        const slots=reorderSlots.current;
-        const draggedIdx=prev.indexOf(reorderId);
-        if(draggedIdx===-1||!slots[draggedIdx]) return prev;
-        const draggedCenter=slots[draggedIdx].top+slots[draggedIdx].height/2+dy;
-        let targetIdx=draggedIdx;
-        for(let i=0;i<slots.length;i++){
-          const s=slots[i];
-          if(draggedCenter>=s.top&&draggedCenter<=s.top+s.height){targetIdx=i;break;}
-        }
-        if(targetIdx===draggedIdx) return prev;
-        const next=[...prev];
-        next.splice(draggedIdx,1);
-        next.splice(targetIdx,0,reorderId);
-        return next;
-      });
-    };
-    const onEnd=()=>{
-      setReorderIds(curr=>{ if(curr) onReorderLater(curr); return null; });
-      setReorderId(null);
-      setReorderDy(0);
-      reorderSlots.current=[];
-    };
-    document.addEventListener('touchmove',onMove,{passive:false});
-    document.addEventListener('touchend',onEnd);
-    document.addEventListener('touchcancel',onEnd);
-    return ()=>{
-      document.removeEventListener('touchmove',onMove);
-      document.removeEventListener('touchend',onEnd);
-      document.removeEventListener('touchcancel',onEnd);
-    };
-  },[reorderId,onReorderLater]);
   const renderLaterRowContent=(t:Task)=>{
     const LaterIc=getTaskIcon(t.icon||defaultIconKey(t.name));
     return (
@@ -4166,6 +4075,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
 
 
   return (
+    <>
     <div className="fixed inset-0 z-50 flex flex-col bg-black/20" onClick={onClose}>
       <div className="flex-1"/>
       <div className="bg-white w-full max-w-md mx-auto rounded-t-3xl max-h-[85vh] flex flex-col shadow-2xl" onClick={e=>e.stopPropagation()}
@@ -4193,10 +4103,18 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
                 {tr('laterTabLabel')}
                 {pendingCount>0&&<span className="ml-1.5 text-gray-400 font-normal">{pendingCount}</span>}
               </h3>
-              <button onClick={()=>setSortDir(d=>d===null?'asc':d==='asc'?'desc':'asc')}
-                className="w-8 h-8 rounded-xl flex items-center justify-center text-sm bg-[var(--c-primary)] text-white transition-colors">
-                {sortDir===null?'↑↓':sortDir==='asc'?'↑':'↓'}
-              </button>
+              <div className="flex items-center gap-1.5">
+                {nonPinnedLater.length>1&&(
+                  <button onClick={()=>setShowReorderPopup(true)}
+                    className="w-8 h-8 rounded-xl flex items-center justify-center bg-gray-100 text-gray-500 active:bg-gray-200">
+                    <AppIcons.reorder size={15}/>
+                  </button>
+                )}
+                <button onClick={()=>setSortDir(d=>d===null?'asc':d==='asc'?'desc':'asc')}
+                  className="w-8 h-8 rounded-xl flex items-center justify-center text-sm bg-[var(--c-primary)] text-white transition-colors">
+                  {sortDir===null?'↑↓':sortDir==='asc'?'↑':'↓'}
+                </button>
+              </div>
             </div>
 
             {/* あとでやる section */}
@@ -4212,20 +4130,11 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
                       {renderLaterRowContent(t)}
                     </div>
                   ))}
-                  {displayNonPinned.map(t=>{
-                    const dragging=reorderId===t.id;
-                    return (
-                    <div key={t.id}
-                      ref={el=>{rowRefs.current[t.id]=el;}}
-                      className={`flex items-center gap-2.5 bg-white border border-gray-100 rounded-2xl shadow-sm px-3 py-3 select-none ${dragging?'relative z-10 shadow-lg border-blue-200':'transition-transform'} ${pressingId===t.id?'scale-95':''}`}
-                      style={dragging?{transform:`translateY(${reorderDy}px)`}:undefined}
-                      onTouchStart={e=>startReorderPress(t,e)}
-                      onTouchEnd={cancelReorderPress}
-                      onTouchMove={onReorderPreMove}
-                      onTouchCancel={cancelReorderPress}>
+                  {nonPinnedLater.map(t=>(
+                    <div key={t.id} className="flex items-center gap-2.5 bg-white border border-gray-100 rounded-2xl shadow-sm px-3 py-3">
                       {renderLaterRowContent(t)}
                     </div>
-                  );})}
+                  ))}
                 </div>
               </div>
             )}
@@ -4370,6 +4279,110 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
             </div>
           </div>
         </div>{/* end stacked panels wrapper */}
+      </div>
+    </div>
+    {showReorderPopup&&(
+      <ReorderLaterPopup tasks={nonPinnedLater} onSave={ids=>{onReorderLater(ids);setShowReorderPopup(false);}} onClose={()=>setShowReorderPopup(false)}/>
+    )}
+    </>
+  );
+}
+
+// ── ReorderLaterPopup ─────────────────────────────────────────────────────────
+// 「あとでやる」一覧を並び替え専用のポップアップ。一覧内で直接ドラッグする方式は、
+// 長押しでの並び替え開始とタップでの編集開始の判定が実機で不安定になりやすかったため撤去し、
+// 常時ドラッグ可能な専用ハンドル（≡アイコン）を持つ独立したポップアップに切り出した
+// （スクロールとの競合・タップとの判定分岐が一切不要になる）。
+function ReorderLaterPopup({tasks,onSave,onClose}:{tasks:Task[];onSave:(orderedIds:string[])=>void;onClose:()=>void;}) {
+  const {tr,language} = useI18n();
+  const [order,setOrder] = useState<string[]>(tasks.map(t=>t.id));
+  const byId = new Map(tasks.map(t=>[t.id,t]));
+  const [dragId,setDragId] = useState<string|null>(null);
+  const [dragDy,setDragDy] = useState(0);
+  const startY = useRef(0);
+  const slots = useRef<{top:number;height:number}[]>([]);
+  const rowRefs = useRef<Record<string,HTMLDivElement|null>>({});
+
+  const startDrag=(id:string,e:React.TouchEvent)=>{
+    e.stopPropagation();
+    const touch=e.touches[0];
+    startY.current=touch.clientY;
+    slots.current=order.map(oid=>{
+      const r=rowRefs.current[oid]?.getBoundingClientRect();
+      return {top:r?.top??0, height:r?.height??60};
+    });
+    setDragId(id);
+  };
+
+  useEffect(()=>{
+    if(!dragId) return;
+    const onMove=(e:TouchEvent)=>{
+      e.preventDefault();
+      const touch=e.touches[0];
+      const dy=touch.clientY-startY.current;
+      setDragDy(dy);
+      setOrder(prev=>{
+        const s=slots.current;
+        const draggedIdx=prev.indexOf(dragId);
+        if(draggedIdx===-1||!s[draggedIdx]) return prev;
+        const draggedCenter=s[draggedIdx].top+s[draggedIdx].height/2+dy;
+        let targetIdx=draggedIdx;
+        for(let i=0;i<s.length;i++){
+          if(draggedCenter>=s[i].top&&draggedCenter<=s[i].top+s[i].height){targetIdx=i;break;}
+        }
+        if(targetIdx===draggedIdx) return prev;
+        const next=[...prev];
+        next.splice(draggedIdx,1);
+        next.splice(targetIdx,0,dragId);
+        return next;
+      });
+    };
+    const onEnd=()=>{setDragId(null);setDragDy(0);slots.current=[];};
+    document.addEventListener('touchmove',onMove,{passive:false});
+    document.addEventListener('touchend',onEnd);
+    document.addEventListener('touchcancel',onEnd);
+    return ()=>{
+      document.removeEventListener('touchmove',onMove);
+      document.removeEventListener('touchend',onEnd);
+      document.removeEventListener('touchcancel',onEnd);
+    };
+  },[dragId]);
+
+  return (
+    <div className="fixed inset-0 z-[100] flex flex-col bg-black/30" onClick={onClose}>
+      <div className="flex-1"/>
+      <div className="bg-white w-full max-w-md mx-auto rounded-t-3xl max-h-[80vh] flex flex-col shadow-2xl" onClick={e=>e.stopPropagation()}>
+        <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-gray-100 shrink-0">
+          <h3 className="text-base font-bold text-gray-900">{tr('reorderPopupTitle')}</h3>
+          <button onClick={()=>onSave(order)} className="text-sm font-bold text-[var(--c-primary)] px-2 py-1">{tr('taskModalDone')}</button>
+        </div>
+        <p className="text-xs text-gray-400 px-4 pt-3 pb-1">{tr('reorderPopupHint')}</p>
+        <div className="overflow-y-auto px-4 pb-4 pt-2 space-y-2" style={{paddingBottom:'calc(1rem + env(safe-area-inset-bottom))'}}>
+          {order.map(id=>{
+            const t=byId.get(id);
+            if(!t) return null;
+            const dragging=dragId===id;
+            const Ic=getTaskIcon(t.icon||defaultIconKey(t.name));
+            return (
+              <div key={id}
+                ref={el=>{rowRefs.current[id]=el;}}
+                className={`flex items-center gap-2.5 bg-white border border-gray-100 rounded-2xl shadow-sm px-3 py-3 select-none ${dragging?'relative z-10 shadow-lg border-[var(--c-primary)]':'transition-transform'}`}
+                style={dragging?{transform:`translateY(${dragDy}px)`}:undefined}>
+                <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{background:t.color||'color-mix(in srgb, var(--c-primary) 15%, white)'}}>
+                  <Ic size={14} className={t.color?'text-white':'text-[var(--c-primary)]'}/>
+                </div>
+                <div className="flex-1 min-w-0">
+                  {(t.duration??0)>0&&<p className="text-xs text-gray-400">{durLabel(t.duration??0,language)}</p>}
+                  <p className="text-sm font-semibold text-gray-900 truncate">{t.name}</p>
+                </div>
+                <button onTouchStart={e=>startDrag(id,e)}
+                  className="w-9 h-9 -mr-1.5 rounded-lg flex items-center justify-center text-gray-300 active:bg-gray-100 shrink-0" style={{touchAction:'none'}}>
+                  <AppIcons.dragHandle size={20}/>
+                </button>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
