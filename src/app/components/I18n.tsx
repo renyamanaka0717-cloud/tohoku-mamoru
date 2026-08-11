@@ -430,6 +430,59 @@ export const STRINGS = {
   notifFreeTimeBodyMulti:    { ja: '「{name}」など{n}件のタスクがあります',    en: 'You have {n} tasks, including "{name}"' },
   notifFreeTimeBodySingle:   { ja: '「{name}」をやってみませんか？',          en: 'Why not try "{name}"?' },
   deadlinePreviewLabel:      { ja: '通知される内容（{n}件）',               en: 'Notifications to be sent ({n})' },
+
+  // PROペイウォールシート（ProGateSheet）自体の固定文言
+  proSheetTitle:        { ja: 'Proプランが必要です',                     en: 'PRO plan required' },
+  proSheetBodyFeature:  { ja: '「{feature}」はProプランでご利用いただけます。', en: '"{feature}" is available with the PRO plan.' },
+  proSheetBodyGeneric:  { ja: 'この機能はProプランでご利用いただけます。',       en: 'This feature is available with the PRO plan.' },
+  proSheetNote:         { ja: '設定画面のPROから登録できます。',              en: 'You can subscribe from PRO in Settings.' },
+  proSheetViewButton:   { ja: 'PROプランを見る',                        en: 'View PRO plan' },
+  proSheetClose:        { ja: '閉じる',                                en: 'Close' },
+
+  // ProGateSheetのfeatureに渡す機能名（PROゲートの対象になる操作の説明）
+  proFeatureTags:            { ja: 'タグを3個以上作成',              en: 'Creating 3+ tags' },
+  proFeatureBulkInput:       { ja: '一括入力を月2回以上利用',          en: 'Using bulk input more than once a month' },
+  proFeatureIconUse:         { ja: 'アイコン「{name}」の使用',         en: 'Using the "{name}" icon' },
+  proFeatureTabs:            { ja: 'ファイルタブを2個以上作成',         en: 'Creating 2+ file tabs' },
+  proFeatureLaterInterval:   { ja: 'タスク放置通知の間隔変更',          en: 'Changing the later-task alert interval' },
+  proFeatureInactiveInterval:{ ja: 'アプリ放置通知の間隔変更',          en: 'Changing the app-inactivity alert interval' },
+  proFeatureThemeColor:      { ja: 'テーマカラーの変更',              en: 'Changing the theme color' },
+  proFeatureAppIcon:         { ja: 'アプリアイコンの変更',             en: 'Changing the app icon' },
+  proFeatureLifePatterns:    { ja: '生活パターンを2個以上登録',         en: 'Registering 2+ life patterns' },
+  proFeatureWakeSleepColor:  { ja: '起床・就寝アイコンの色変更',        en: 'Changing the wake/sleep icon color' },
+  proFeatureLocationNotify:  { ja: '場所で通知',                    en: 'Location-based notification' },
+  proFeatureForgetAlerts:    { ja: '忘れ物防止通知（2件目以降）',       en: 'Forget-item alerts (2nd and beyond)' },
+  proFeatureCustomRepeat:    { ja: '繰り返しのカスタム設定',           en: 'Custom repeat settings' },
+
+  // おすすめ機能カード（RECOMMENDATION_DEFS）
+  recommendShoppingListTitle: { ja: '買い物リスト、使ってみませんか？',                    en: 'Want to try the shopping list?' },
+  recommendShoppingListBody:  { ja: '買うものをまとめておくと、必要なときにすぐ確認できます。', en: 'Keep track of what to buy so you can check it anytime.' },
+  recommendLocationTitle:     { ja: '場所で通知、使ってみませんか？',                      en: 'Want to try location alerts?' },
+  recommendLocationBody:      { ja: 'よく行く場所に近づいたら、買い物リストを知らせてくれます。', en: "Get notified about your shopping list when you're near a place you often visit." },
+  recommendRepeatTitle:       { ja: '繰り返しタスク、使ってみませんか？',                    en: 'Want to try repeating tasks?' },
+  recommendRepeatBody:        { ja: '毎日・毎週のタスクは繰り返し設定にしておくと登録の手間が省けます。', en: 'Set daily or weekly tasks to repeat so you don\'t have to re-add them.' },
+  recommendCta:               { ja: '使ってみる',                                     en: 'Try it' },
+  recommendDismiss:           { ja: '今はしない',                                     en: 'Not now' },
+
+  // タスク一括入力（設定 → タスク一括入力）
+  bulkInputTitle:            { ja: 'タスク一括入力',                          en: 'Bulk add tasks' },
+  bulkInputFreeLimitNote:    { ja: '月1回まで無料でご利用いただけます。2回目からPROが必要です。', en: 'Free for 1 use per month. PRO is required after that.' },
+  bulkInputTaskInfoLabel:    { ja: 'タスク情報',                            en: 'Task info' },
+  bulkInputNamePlaceholder:  { ja: 'タスク名を入力',                          en: 'Enter a task name' },
+  fieldEndTime:              { ja: '終了時刻',                             en: 'End time' },
+  bulkInputSelectDateLabel:  { ja: '日付を選択',                            en: 'Select dates' },
+  bulkInputDaysSelected:     { ja: '{n}日選択中',                          en: '{n} day(s) selected' },
+  bulkInputViewHistoryButton:{ ja: '履歴を見る',                            en: 'View history' },
+  bulkInputRegisteredDone:   { ja: '登録しました',                          en: 'Registered!' },
+  bulkInputRegisterButton:   { ja: '選択した日に登録',                        en: 'Register selected dates' },
+  iconSheetTitleShort:       { ja: 'アイコン',                             en: 'Icon' },
+  bulkHistoryTitle:          { ja: '登録履歴',                             en: 'Registration history' },
+  bulkHistoryEmpty:          { ja: 'まだ登録履歴がありません',                    en: 'No registration history yet' },
+  bulkHistoryEntryMeta:      { ja: '{start}〜{end} · {days}日 · {date}登録',   en: '{start}–{end} · {days} day(s) · Registered {date}' },
+  bulkEditButton:            { ja: '一括編集',                             en: 'Bulk edit' },
+  bulkDeleteButton:          { ja: '一括削除',                             en: 'Bulk delete' },
+  bulkEditAllDaysNote:       { ja: '{n}日分すべてに反映されます',                 en: 'This will apply to all {n} day(s).' },
+  bulkDeleteAllDaysNote:     { ja: '{n}日分すべてのタスクが削除されます',            en: 'All tasks for {n} day(s) will be deleted.' },
 } as const;
 
 export type StringKey = keyof typeof STRINGS;

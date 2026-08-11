@@ -83,14 +83,14 @@ type RecommendationId = 'shoppingList'|'locationReminder'|'repeatTask';
 interface RecommendationDef {
   id: RecommendationId;
   usedKey: keyof Omit<FeatureUsage,'installedAt'|'lastRecommendationShownAt'>;
-  title: string; body: string; cta: string;
+  title: StringKey; body: StringKey; cta: StringKey;
   requiresLocationPermission?: boolean;
 }
-// 対象機能を増やす時はここに追記するだけでよい（優先順位はこの並び順）
+// 対象機能を増やす時はここに追記するだけでよい（優先順位はこの並び順）。title/body/ctaはtr()で参照するStringKey
 const RECOMMENDATION_DEFS: RecommendationDef[] = [
-  { id:'shoppingList', usedKey:'shoppingListUsedAt', title:'買い物リスト、使ってみませんか？', body:'買うものをまとめておくと、必要なときにすぐ確認できます。', cta:'使ってみる' },
-  { id:'locationReminder', usedKey:'locationReminderUsedAt', title:'場所で通知、使ってみませんか？', body:'よく行く場所に近づいたら、買い物リストを知らせてくれます。', cta:'使ってみる', requiresLocationPermission:true },
-  { id:'repeatTask', usedKey:'repeatTaskUsedAt', title:'繰り返しタスク、使ってみませんか？', body:'毎日・毎週のタスクは繰り返し設定にしておくと登録の手間が省けます。', cta:'使ってみる' },
+  { id:'shoppingList', usedKey:'shoppingListUsedAt', title:'recommendShoppingListTitle', body:'recommendShoppingListBody', cta:'recommendCta' },
+  { id:'locationReminder', usedKey:'locationReminderUsedAt', title:'recommendLocationTitle', body:'recommendLocationBody', cta:'recommendCta', requiresLocationPermission:true },
+  { id:'repeatTask', usedKey:'repeatTaskUsedAt', title:'recommendRepeatTitle', body:'recommendRepeatBody', cta:'recommendCta' },
 ];
 const daysBetween=(fromMs:number,toMs:number):number=>(toMs-fromMs)/86400000;
 type AuthUser = {uid:string;email?:string;displayName?:string;isPremium?:boolean};
@@ -783,83 +783,83 @@ function autoIcon(name: string): string {
   return '';
 }
 
-const ICON_CATEGORIES:{label:string;icons:{key:string;label:string;pro?:boolean}[]}[]=[
-  {label:'日常',icons:[
-    {key:'task',    label:'メモ'},
-    {key:'shopping',label:'買い物'},
-    {key:'food',    label:'食事'},
-    {key:'cooking', label:'料理'},
-    {key:'clean',   label:'掃除'},
-    {key:'washing', label:'洗濯'},
-    {key:'rest',    label:'休憩'},
-    {key:'sleep',   label:'睡眠'},
-    {key:'home',    label:'家'},
-    {key:'paw',     label:'散歩'},
-    {key:'health',  label:'健康'},
-    {key:'cake',    label:'お菓子',    pro:true},
-    {key:'pizza',   label:'ピザ',      pro:true},
-    {key:'bathtub', label:'お風呂',    pro:true},
-    {key:'bed',     label:'ベッド',    pro:true},
+const ICON_CATEGORIES:{label:string;labelEn:string;icons:{key:string;label:string;labelEn:string;pro?:boolean}[]}[]=[
+  {label:'日常',labelEn:'Daily',icons:[
+    {key:'task',    label:'メモ',   labelEn:'Note'},
+    {key:'shopping',label:'買い物', labelEn:'Shopping'},
+    {key:'food',    label:'食事',   labelEn:'Meal'},
+    {key:'cooking', label:'料理',   labelEn:'Cooking'},
+    {key:'clean',   label:'掃除',   labelEn:'Cleaning'},
+    {key:'washing', label:'洗濯',   labelEn:'Laundry'},
+    {key:'rest',    label:'休憩',   labelEn:'Break'},
+    {key:'sleep',   label:'睡眠',   labelEn:'Sleep'},
+    {key:'home',    label:'家',     labelEn:'Home'},
+    {key:'paw',     label:'散歩',   labelEn:'Walk'},
+    {key:'health',  label:'健康',   labelEn:'Health'},
+    {key:'cake',    label:'お菓子', labelEn:'Snack',    pro:true},
+    {key:'pizza',   label:'ピザ',   labelEn:'Pizza',    pro:true},
+    {key:'bathtub', label:'お風呂', labelEn:'Bath',     pro:true},
+    {key:'bed',     label:'ベッド', labelEn:'Bed',      pro:true},
   ]},
-  {label:'仕事・学習',icons:[
-    {key:'work',     label:'仕事'},
-    {key:'meeting',  label:'会議'},
-    {key:'document', label:'書類'},
-    {key:'mail',     label:'メール'},
-    {key:'calendar', label:'予定'},
-    {key:'study',    label:'勉強'},
-    {key:'book',     label:'読書'},
-    {key:'phone',    label:'電話'},
-    {key:'money',    label:'お金'},
-    {key:'payment',  label:'支払い'},
-    {key:'creditcard', label:'カード', pro:true},
-    {key:'piggybank',  label:'貯金',   pro:true},
+  {label:'仕事・学習',labelEn:'Work & Study',icons:[
+    {key:'work',     label:'仕事',   labelEn:'Work'},
+    {key:'meeting',  label:'会議',   labelEn:'Meeting'},
+    {key:'document', label:'書類',   labelEn:'Document'},
+    {key:'mail',     label:'メール', labelEn:'Mail'},
+    {key:'calendar', label:'予定',   labelEn:'Schedule'},
+    {key:'study',    label:'勉強',   labelEn:'Study'},
+    {key:'book',     label:'読書',   labelEn:'Reading'},
+    {key:'phone',    label:'電話',   labelEn:'Phone'},
+    {key:'money',    label:'お金',   labelEn:'Money'},
+    {key:'payment',  label:'支払い', labelEn:'Payment'},
+    {key:'creditcard', label:'カード', labelEn:'Card',    pro:true},
+    {key:'piggybank',  label:'貯金',   labelEn:'Savings', pro:true},
   ]},
-  {label:'健康・医療',icons:[
-    {key:'hospital', label:'病院'},
-    {key:'medicine', label:'薬'},
-    {key:'exercise', label:'運動'},
-    {key:'running',  label:'ランニング'},
-    {key:'yoga',     label:'ヨガ'},
-    {key:'bicycle',  label:'自転車'},
+  {label:'健康・医療',labelEn:'Health & Medical',icons:[
+    {key:'hospital', label:'病院',       labelEn:'Hospital'},
+    {key:'medicine', label:'薬',         labelEn:'Medicine'},
+    {key:'exercise', label:'運動',       labelEn:'Exercise'},
+    {key:'running',  label:'ランニング', labelEn:'Running'},
+    {key:'yoga',     label:'ヨガ',       labelEn:'Yoga'},
+    {key:'bicycle',  label:'自転車',     labelEn:'Cycling'},
   ]},
-  {label:'その他',icons:[
-    {key:'travel',   label:'移動'},
-    {key:'train',    label:'電車'},
-    {key:'music',    label:'音楽'},
-    {key:'game',     label:'ゲーム'},
-    {key:'gift',     label:'プレゼント'},
-    {key:'scissors', label:'趣味'},
-    {key:'camera',   label:'カメラ'},
-    {key:'question', label:'その他'},
+  {label:'その他',labelEn:'Other',icons:[
+    {key:'travel',   label:'移動',       labelEn:'Travel'},
+    {key:'train',    label:'電車',       labelEn:'Train'},
+    {key:'music',    label:'音楽',       labelEn:'Music'},
+    {key:'game',     label:'ゲーム',     labelEn:'Game'},
+    {key:'gift',     label:'プレゼント', labelEn:'Gift'},
+    {key:'scissors', label:'趣味',       labelEn:'Hobby'},
+    {key:'camera',   label:'カメラ',     labelEn:'Camera'},
+    {key:'question', label:'その他',     labelEn:'Other'},
   ]},
-  {label:'趣味・スポーツ',icons:[
-    {key:'guitar',     label:'ギター',   pro:true},
-    {key:'basketball', label:'バスケ',   pro:true},
-    {key:'soccer',     label:'サッカー', pro:true},
-    {key:'volleyball', label:'バレー',   pro:true},
-    {key:'paint',      label:'アート',   pro:true},
-    {key:'rocket',     label:'挑戦',     pro:true},
+  {label:'趣味・スポーツ',labelEn:'Hobbies & Sports',icons:[
+    {key:'guitar',     label:'ギター',     labelEn:'Guitar',     pro:true},
+    {key:'basketball', label:'バスケ',     labelEn:'Basketball', pro:true},
+    {key:'soccer',     label:'サッカー',   labelEn:'Soccer',     pro:true},
+    {key:'volleyball', label:'バレー',     labelEn:'Volleyball', pro:true},
+    {key:'paint',      label:'アート',     labelEn:'Art',        pro:true},
+    {key:'rocket',     label:'挑戦',       labelEn:'Challenge',  pro:true},
   ]},
-  {label:'生き物・自然',icons:[
-    {key:'cat',    label:'猫',   pro:true},
-    {key:'dog',    label:'犬',   pro:true},
-    {key:'bird',   label:'鳥',   pro:true},
-    {key:'fish',   label:'魚',   pro:true},
-    {key:'rabbit', label:'うさぎ',pro:true},
-    {key:'flower', label:'花',   pro:true},
-    {key:'tree',   label:'木',   pro:true},
-    {key:'sun',    label:'天気', pro:true},
+  {label:'生き物・自然',labelEn:'Animals & Nature',icons:[
+    {key:'cat',    label:'猫',     labelEn:'Cat',     pro:true},
+    {key:'dog',    label:'犬',     labelEn:'Dog',     pro:true},
+    {key:'bird',   label:'鳥',     labelEn:'Bird',    pro:true},
+    {key:'fish',   label:'魚',     labelEn:'Fish',    pro:true},
+    {key:'rabbit', label:'うさぎ', labelEn:'Rabbit',  pro:true},
+    {key:'flower', label:'花',     labelEn:'Flower',  pro:true},
+    {key:'tree',   label:'木',     labelEn:'Tree',    pro:true},
+    {key:'sun',    label:'天気',   labelEn:'Weather', pro:true},
   ]},
-  {label:'おでかけ',icons:[
-    {key:'airplane', label:'飛行機', pro:true},
-    {key:'bus',      label:'バス',   pro:true},
-    {key:'boat',     label:'船',     pro:true},
-    {key:'backpack', label:'旅行',   pro:true},
-    {key:'suitcase', label:'出張',   pro:true},
-    {key:'location', label:'場所',   pro:true},
-    {key:'tent',     label:'キャンプ',pro:true},
-    {key:'campfire', label:'焚き火', pro:true},
+  {label:'おでかけ',labelEn:'Outings',icons:[
+    {key:'airplane', label:'飛行機',   labelEn:'Flight',       pro:true},
+    {key:'bus',      label:'バス',     labelEn:'Bus',          pro:true},
+    {key:'boat',     label:'船',       labelEn:'Boat',         pro:true},
+    {key:'backpack', label:'旅行',     labelEn:'Trip',         pro:true},
+    {key:'suitcase', label:'出張',     labelEn:'Business trip',pro:true},
+    {key:'location', label:'場所',     labelEn:'Location',     pro:true},
+    {key:'tent',     label:'キャンプ', labelEn:'Camping',      pro:true},
+    {key:'campfire', label:'焚き火',   labelEn:'Campfire',     pro:true},
   ]},
 ];
 const ICON_OPTIONS=ICON_CATEGORIES.flatMap(c=>c.icons);
@@ -1133,8 +1133,8 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
     try{return JSON.parse(localStorage.getItem('tl-recent-icons')||'[]');}catch{return [];}
   });
   const [iconQuery,setIconQuery] = useState('');
-  const pickIcon=(opt:{key:string;label:string;pro?:boolean})=>{
-    if(opt.pro&&!isPremium){ setModalProPrompt(`アイコン「${opt.label}」の使用`); return; }
+  const pickIcon=(opt:{key:string;label:string;labelEn:string;pro?:boolean})=>{
+    if(opt.pro&&!isPremium){ setModalProPrompt(tr('proFeatureIconUse').replace('{name}',()=>language==='ja'?opt.label:opt.labelEn)); return; }
     setIcon(opt.key);
     setRecentIcons(prev=>{
       const next=[opt.key,...prev.filter(k=>k!==opt.key)].slice(0,5);
@@ -1142,7 +1142,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
       return next;
     });
   };
-  const renderIconBtn=(opt:{key:string;label:string;pro?:boolean})=>{
+  const renderIconBtn=(opt:{key:string;label:string;labelEn:string;pro?:boolean})=>{
     const Ic=getTaskIcon(opt.key);
     const sel=icon===opt.key;
     const locked=!!opt.pro&&!isPremium;
@@ -1552,7 +1552,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                 </div>
                 <div className="flex gap-2 overflow-x-auto pb-0.5" style={{scrollbarWidth:'none',WebkitOverflowScrolling:'touch'} as React.CSSProperties}>
                   {(['daily','weekly','monthly','yearly','custom'] as const).map((r,i)=>(
-                    <button key={r} onClick={()=>{if(r==='custom'&&!isPremium){setModalProPrompt('繰り返しのカスタム設定');return;}setRecur(r);}}
+                    <button key={r} onClick={()=>{if(r==='custom'&&!isPremium){setModalProPrompt(tr('proFeatureCustomRepeat'));return;}setRecur(r);}}
                       className={`shrink-0 px-4 py-2 rounded-full text-sm font-semibold inline-flex items-center gap-1.5 ${recur===r?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
                       {[tr('recPresetDaily'),tr('recPresetWeekly'),tr('recPresetMonthly'),tr('recPresetYearly'),tr('recPresetCustom')][i]}
                       {r==='custom'&&<span className={`inline-flex items-center border rounded px-1 py-0.5 text-[9px] font-bold leading-none tracking-wide ${recur===r?'border-white/60 text-white/80':'border-gray-300 text-gray-400'}`}>PRO</span>}
@@ -1852,7 +1852,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
               <>
                 <div className="h-px bg-gray-100 mx-4"/>
                 <button className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50"
-                  onClick={()=>{ if(!isPremium){setModalProPrompt('締切管理');return;} setDeadlineOpen(true); }}>
+                  onClick={()=>{ if(!isPremium){setModalProPrompt(tr('proFeatureDeadline'));return;} setDeadlineOpen(true); }}>
                   <AppIcons.deadline size={18} className="text-gray-400 shrink-0"/>
                   <span className="flex-1 text-left text-sm font-medium text-gray-800 flex items-center gap-1.5">
                     {tr('fieldDeadline')}
@@ -1939,7 +1939,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                 <div className="h-px bg-gray-100 mx-4"/>
                 <button className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50"
                   onClick={()=>{
-                    if(!isPremium){ setModalProPrompt('場所で通知'); return; }
+                    if(!isPremium){ setModalProPrompt(tr('proFeatureLocationNotify')); return; }
                     if(!taskLocation&&atLocationLimit){ setLocError('場所通知の登録上限に達しています。他の場所通知をオフにしてから追加してください。'); return; }
                     setLocAdding(o=>!o);
                   }}>
@@ -2166,7 +2166,8 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                 <div className="mb-5">
                   <p className="text-xs font-bold text-gray-400 mb-2">{tr('iconSearchResults')}</p>
                   {(()=>{
-                    const results=ICON_OPTIONS.filter(o=>o.label.includes(iconQuery.trim()));
+                    const q=iconQuery.trim().toLowerCase();
+                    const results=ICON_OPTIONS.filter(o=>o.label.includes(iconQuery.trim())||o.labelEn.toLowerCase().includes(q));
                     if(results.length===0) return <p className="text-sm text-gray-400 text-center py-6">{tr('iconSearchEmpty')}</p>;
                     return <div className="grid grid-cols-5 gap-2">{results.map(renderIconBtn)}</div>;
                   })()}
@@ -2198,7 +2199,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                 {/* Categories */}
                 {ICON_CATEGORIES.map(cat=>(
                   <div key={cat.label} className="mb-5">
-                    <p className="text-xs font-bold text-gray-400 mb-2">{cat.label}</p>
+                    <p className="text-xs font-bold text-gray-400 mb-2">{language==='ja'?cat.label:cat.labelEn}</p>
                     <div className="grid grid-cols-5 gap-2">
                       {cat.icons.map(renderIconBtn)}
                     </div>
@@ -3453,7 +3454,7 @@ function ShopLocationPanel({locations,onChange,isPremium,onProPrompt}:{
 
   const confirmAdd=async()=>{
     if(!pendingCoord) return;
-    if(!isPremium){ onProPrompt('場所で通知'); return; }
+    if(!isPremium){ onProPrompt(tr('proFeatureLocationNotify')); return; }
     const ok=await ensureGeofencePermission('shop_location');
     const status=await checkGeofencePermissions();
     setPermStatus(status);
@@ -3469,7 +3470,7 @@ function ShopLocationPanel({locations,onChange,isPremium,onProPrompt}:{
 
   const toggle=(id:string)=>{
     const target=locations.find(l=>l.id===id);
-    if(target&&!target.enabled&&!isPremium){ onProPrompt('場所で通知'); return; }
+    if(target&&!target.enabled&&!isPremium){ onProPrompt(tr('proFeatureLocationNotify')); return; }
     onChange(locations.map(l=>l.id===id?{...l,enabled:!l.enabled}:l));
   };
   const del=(id:string)=>onChange(locations.filter(l=>l.id!==id));
@@ -3736,7 +3737,7 @@ function ForgetAlertsPanel({alerts,onChange,isPremium,onProPrompt}:{
 
   const saveEditing=async()=>{
     if(!editing||!editing.location||!editing.name.trim()||editing.weekdays.length===0||editing.items.length===0) return;
-    if(adding&&!isPremium&&alerts.length>=1){ onProPrompt('忘れ物防止通知（2件目以降）'); return; }
+    if(adding&&!isPremium&&alerts.length>=1){ onProPrompt(tr('proFeatureForgetAlerts')); return; }
     const ok=await ensureGeofencePermission('forget_alert');
     if(!ok){ setPermError(tr('forgetAlertLocationPermError')); return; }
     const toSave:ForgetAlert={...editing,name:editing.name.trim(),location:editing.location};
@@ -3748,7 +3749,7 @@ function ForgetAlertsPanel({alerts,onChange,isPremium,onProPrompt}:{
   const [deleteId,setDeleteId]=useState<string|null>(null);
   const toggleEnabled=(id:string)=>{
     const idx=alerts.findIndex(a=>a.id===id);
-    if(idx>=0&&!alerts[idx].enabled&&isLockedByPlan(idx)){ onProPrompt('忘れ物防止通知（2件目以降）'); return; }
+    if(idx>=0&&!alerts[idx].enabled&&isLockedByPlan(idx)){ onProPrompt(tr('proFeatureForgetAlerts')); return; }
     onChange(alerts.map(a=>a.id===id?{...a,enabled:!a.enabled}:a));
   };
 
@@ -4277,6 +4278,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
 // ── Settings Screen ──────────────────────────────────────────────────────────
 
 function ProGateSheet({onClose,onView,feature}:{onClose:()=>void;onView?:()=>void;feature?:string}) {
+  const {tr} = useI18n();
   useEffect(()=>{ logAnalyticsEvent('paywall_viewed'); },[]);
   return (
     <div className="fixed inset-0 z-[200] bg-black/40 flex items-end justify-center" onClick={onClose}>
@@ -4286,11 +4288,11 @@ function ProGateSheet({onClose,onView,feature}:{onClose:()=>void;onView?:()=>voi
           <div className="w-14 h-14 rounded-full flex items-center justify-center" style={{background:'var(--c-primary)'}}>
             <AppIcons.star size={28} className="text-white"/>
           </div>
-          <p className="text-[17px] font-bold text-gray-900">Proプランが必要です</p>
-          <p className="text-sm text-gray-500 text-center leading-relaxed">{feature?`「${feature}」はProプランでご利用いただけます。`:'この機能はProプランでご利用いただけます。'}<br/>設定画面のPROから登録できます。</p>
+          <p className="text-[17px] font-bold text-gray-900">{tr('proSheetTitle')}</p>
+          <p className="text-sm text-gray-500 text-center leading-relaxed">{feature?tr('proSheetBodyFeature').replace('{feature}',()=>feature):tr('proSheetBodyGeneric')}<br/>{tr('proSheetNote')}</p>
         </div>
-        {onView&&<button onClick={onView} className="w-full py-3.5 rounded-2xl text-[15px] font-semibold text-white mb-2" style={{background:'var(--c-primary)'}}>PROプランを見る</button>}
-        <button onClick={onClose} className="w-full py-2.5 text-sm text-gray-400">閉じる</button>
+        {onView&&<button onClick={onView} className="w-full py-3.5 rounded-2xl text-[15px] font-semibold text-white mb-2" style={{background:'var(--c-primary)'}}>{tr('proSheetViewButton')}</button>}
+        <button onClick={onClose} className="w-full py-2.5 text-sm text-gray-400">{tr('proSheetClose')}</button>
       </div>
     </div>
   );
@@ -4487,7 +4489,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   const addTag = () => {
     const t = tagInput.trim();
     if(!t || globalTags.some(td=>td.name===t)) return;
-    if(!isPremium && globalTags.length >= 2) { setProPrompt('タグを3個以上作成'); return; }
+    if(!isPremium && globalTags.length >= 2) { setProPrompt(tr('proFeatureTags')); return; }
     onGlobalTags([...globalTags, {name:t, color:newTagColor}]);
     setTagInput('');
   };
@@ -4527,7 +4529,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
     const register=()=>{
       if(!bulkName.trim()||bulkDates.size===0) return;
       const thisMonth=todayStr().slice(0,7);
-      if(!isPremium&&bulkHistory.filter(e=>e.registeredAt.startsWith(thisMonth)).length>=1){setProPrompt('一括入力を月2回以上利用');return;}
+      if(!isPremium&&bulkHistory.filter(e=>e.registeredAt.startsWith(thisMonth)).length>=1){setProPrompt(tr('proFeatureBulkInput'));return;}
       onBulkAdd([...bulkDates].map(date=>({
         name:bulkName.trim(),startTime:bulkStart,duration:bDur,
         date,completed:false,isLater:false,memo:'',
@@ -4539,10 +4541,10 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
     };
     return (
       <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
-        {subHeader('タスク一括入力')}{proSheet}
+        {subHeader(tr('bulkInputTitle'))}{proSheet}
         <div className="flex-1 overflow-y-auto px-4 pb-10">
-          {!isPremium&&<p className="text-xs text-gray-400 px-1 mt-4 mb-4">月1回まで無料でご利用いただけます。2回目からPROが必要です。</p>}
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-4">タスク情報</p>
+          {!isPremium&&<p className="text-xs text-gray-400 px-1 mt-4 mb-4">{tr('bulkInputFreeLimitNote')}</p>}
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-4">{tr('bulkInputTaskInfoLabel')}</p>
           <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
             <div className="flex items-center gap-3 px-4 py-3.5 border-b border-gray-100">
               <button onClick={()=>setBulkIconSheet(true)}
@@ -4551,35 +4553,35 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                 {(()=>{const Ic=getTaskIcon(bulkIcon);return <Ic size={22} className="text-white"/>;})()}
               </button>
               <input value={bulkName} onChange={e=>setBulkName(e.target.value)}
-                placeholder="タスク名を入力"
+                placeholder={tr('bulkInputNamePlaceholder')}
                 className="flex-1 text-base font-medium text-gray-800 bg-transparent outline-none placeholder-gray-300"/>
             </div>
             <div className="flex items-center gap-3 px-4 py-3.5 border-b border-gray-100">
               <AppIcons.clock size={18} className="text-gray-400 shrink-0"/>
-              <span className="text-sm font-medium text-gray-500 shrink-0 whitespace-nowrap">開始時刻</span>
+              <span className="text-sm font-medium text-gray-500 shrink-0 whitespace-nowrap">{tr('fieldStartTime')}</span>
               <input type="time" value={bulkStart} onChange={e=>setBulkStart(e.target.value)}
                 className="flex-1 text-sm text-gray-800 bg-transparent outline-none"/>
             </div>
             <div className="flex items-center gap-3 px-4 py-3.5">
               <AppIcons.clock size={18} className="text-gray-400 shrink-0"/>
-              <span className="text-sm font-medium text-gray-500 shrink-0 whitespace-nowrap">終了時刻</span>
+              <span className="text-sm font-medium text-gray-500 shrink-0 whitespace-nowrap">{tr('fieldEndTime')}</span>
               <input type="time" value={bulkEnd} onChange={e=>setBulkEnd(e.target.value)}
                 className="flex-1 text-sm text-gray-800 bg-transparent outline-none"/>
             </div>
           </div>
           <div className="flex items-center justify-between px-1 mb-2 mt-6">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">日付を選択</p>
-            {bulkDates.size>0&&<span className="text-xs text-[var(--c-primary)] font-semibold">{bulkDates.size}日選択中</span>}
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">{tr('bulkInputSelectDateLabel')}</p>
+            {bulkDates.size>0&&<span className="text-xs text-[var(--c-primary)] font-semibold">{tr('bulkInputDaysSelected').replace('{n}',()=>String(bulkDates.size))}</span>}
           </div>
           <div className="bg-white rounded-2xl overflow-hidden shadow-sm px-3 py-3">
             <div className="flex items-center justify-between mb-3">
               <button onClick={()=>setBulkVm(m=>shiftMonth(m.year,m.month,-1))} className="w-9 h-9 flex items-center justify-center text-gray-600"><AppIcons.caretLeft/></button>
-              <span className="font-bold text-gray-900 text-base">{bulkVm.year}年{bulkVm.month+1}月</span>
+              <span className="font-bold text-gray-900 text-base">{language==='ja'?`${bulkVm.year}年${bulkVm.month+1}月`:`${MONTH_NAMES_EN[bulkVm.month]} ${bulkVm.year}`}</span>
               <button onClick={()=>setBulkVm(m=>shiftMonth(m.year,m.month,1))} className="w-9 h-9 flex items-center justify-center text-gray-600"><AppIcons.caretRight/></button>
             </div>
             <div className="grid grid-cols-7 mb-1">
               {DAY_NAMES.map((n,i)=>(
-                <div key={i} className={`text-center text-xs font-semibold py-1 text-gray-400`}>{n}</div>
+                <div key={i} className={`text-center text-xs font-semibold py-1 text-gray-400`}>{language==='ja'?n:DAY_NAMES_EN[i]}</div>
               ))}
             </div>
             <div className="grid grid-cols-7 gap-y-1">
@@ -4602,12 +4604,12 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           <div className="flex justify-center gap-3 mt-6">
             <button onClick={()=>setSub('bulkHistory')}
               className="flex-1 py-4 rounded-2xl text-sm font-semibold bg-white text-gray-600 shadow-sm">
-              履歴を見る
+              {tr('bulkInputViewHistoryButton')}
             </button>
             <button onClick={register}
               disabled={!bulkName.trim()||bulkDates.size===0}
               className={`flex-1 py-4 rounded-2xl text-sm font-bold transition-colors ${!bulkName.trim()||bulkDates.size===0?'bg-gray-100 text-gray-400':'bg-[var(--c-primary)] text-white'}`}>
-              {bulkDone?'登録しました':'選択した日に登録'}
+              {bulkDone?tr('bulkInputRegisteredDone'):tr('bulkInputRegisterButton')}
             </button>
           </div>
         </div>
@@ -4616,11 +4618,11 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             <div className="bg-white rounded-t-3xl max-h-[78vh] flex flex-col w-full max-w-md mx-auto" onClick={e=>e.stopPropagation()}>
               <div className="flex justify-center pt-3 shrink-0"><div className="w-10 h-1 bg-gray-200 rounded-full"/></div>
               <div className="flex items-center justify-between px-5 pt-3 pb-2 shrink-0">
-                <span className="text-base font-bold text-gray-900">アイコンとカラー</span>
-                <button onClick={()=>setBulkIconSheet(false)} className="px-4 py-1.5 bg-gray-700 text-white text-sm font-semibold rounded-full">完了</button>
+                <span className="text-base font-bold text-gray-900">{tr('iconColorSheetTitle')}</span>
+                <button onClick={()=>setBulkIconSheet(false)} className="px-4 py-1.5 bg-gray-700 text-white text-sm font-semibold rounded-full">{tr('taskModalDone')}</button>
               </div>
               <div className="overflow-y-auto px-5 pb-10 flex-1">
-                <p className="text-xs font-bold text-gray-400 mb-2 mt-1">カラー</p>
+                <p className="text-xs font-bold text-gray-400 mb-2 mt-1">{tr('colorSectionLabel')}</p>
                 <div className="flex gap-2 mb-5" style={{overflowX:'auto',WebkitOverflowScrolling:'touch',paddingTop:'4px',paddingBottom:'4px',paddingLeft:'4px'}}>
                   {TASK_COLORS.map((c,i)=>(
                     <button key={i} onClick={()=>setBulkColor(c)}
@@ -4630,7 +4632,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                 </div>
                 {ICON_CATEGORIES.map(cat=>(
                   <div key={cat.label} className="mb-5">
-                    <p className="text-xs font-bold text-gray-400 mb-2">{cat.label}</p>
+                    <p className="text-xs font-bold text-gray-400 mb-2">{language==='ja'?cat.label:cat.labelEn}</p>
                     <div className="grid grid-cols-5 gap-2">
                       {cat.icons.map(opt=>{
                         const Ic=getTaskIcon(opt.key);
@@ -4638,7 +4640,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                         const bg=bulkColor||'var(--c-primary)';
                         const locked=!!opt.pro&&!isPremium;
                         return (
-                          <button key={opt.key} onClick={()=>{if(locked){setProPrompt(`アイコン「${opt.label}」の使用`);return;}setBulkIconOverride(opt.key);}}
+                          <button key={opt.key} onClick={()=>{if(locked){setProPrompt(tr('proFeatureIconUse').replace('{name}',()=>language==='ja'?opt.label:opt.labelEn));return;}setBulkIconOverride(opt.key);}}
                             className={`relative flex flex-col items-center gap-1.5 py-3 rounded-2xl ${sel?'':'bg-gray-50'}`}
                             style={sel?{background:bg}:undefined}>
                             <Ic size={22} className={sel?'text-white':locked?'text-gray-300':'text-gray-700'}/>
@@ -4661,25 +4663,25 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
     const disp=bulkHistory.slice(0,10);
     return (
       <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
-        {subHeader('登録履歴')}{proSheet}
+        {subHeader(tr('bulkHistoryTitle'))}{proSheet}
         <div className="flex-1 overflow-y-auto px-4 pb-10">
           {disp.length===0&&(
             <div className="flex flex-col items-center justify-center pt-20 gap-3">
               <AppIcons.task size={40} className="text-gray-300"/>
-              <p className="text-sm text-gray-400">まだ登録履歴がありません</p>
+              <p className="text-sm text-gray-400">{tr('bulkHistoryEmpty')}</p>
             </div>
           )}
           <div className="mt-6 flex flex-col gap-3">
             {disp.map(entry=>{
               const isExp=histExp===entry.id;
               const dt=new Date(entry.registeredAt);
-              const dateLabel=`${dt.getMonth()+1}/${dt.getDate()}`;
+              const dateLabel=language==='ja'?`${dt.getMonth()+1}/${dt.getDate()}`:`${MONTH_NAMES_EN[dt.getMonth()].slice(0,3)} ${dt.getDate()}`;
               return (
                 <div key={entry.id} className="bg-white rounded-2xl overflow-hidden shadow-sm">
                   <button className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50" onClick={()=>setHistExp(isExp?null:entry.id)}>
                     <div className="flex-1 min-w-0 text-left">
                       <p className="text-sm font-semibold text-gray-800">{entry.name}</p>
-                      <p className="text-xs text-gray-400 mt-0.5">{entry.startTime}〜{entry.endTime} · {entry.dates.length}日 · {dateLabel}登録</p>
+                      <p className="text-xs text-gray-400 mt-0.5">{tr('bulkHistoryEntryMeta').replace('{start}',()=>entry.startTime).replace('{end}',()=>entry.endTime).replace('{days}',()=>String(entry.dates.length)).replace('{date}',()=>dateLabel)}</p>
                     </div>
                     <AppIcons.caretDown size={14} className={`text-gray-400 shrink-0 transition-transform ${isExp?'rotate-180':''}`}/>
                   </button>
@@ -4690,9 +4692,9 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                           setHEIcon(entry.icon??defaultIconKey(entry.name));setHEColor(entry.color??'');
                           setBulkEditId(entry.id);
                         }}
-                        className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-[var(--c-primary)] text-white">一括編集</button>
+                        className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-[var(--c-primary)] text-white">{tr('bulkEditButton')}</button>
                       <button onClick={()=>setBulkDeleteId(entry.id)}
-                        className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-[#D97A7A] text-white">一括削除</button>
+                        className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-[#D97A7A] text-white">{tr('bulkDeleteButton')}</button>
                     </div>
                   )}
                 </div>
@@ -4708,16 +4710,16 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
               <div className="bg-white rounded-t-3xl flex flex-col w-full max-w-md mx-auto" onClick={e=>e.stopPropagation()}>
                 <div className="flex justify-center pt-3 shrink-0"><div className="w-10 h-1 bg-gray-200 rounded-full"/></div>
                 <div className="flex items-center justify-between px-5 pt-3 pb-2 shrink-0">
-                  <button onClick={()=>setBulkEditId(null)} className="text-sm text-gray-400 font-medium">キャンセル</button>
-                  <span className="text-base font-bold text-gray-900">一括編集</span>
+                  <button onClick={()=>setBulkEditId(null)} className="text-sm text-gray-400 font-medium">{tr('cancelButton')}</button>
+                  <span className="text-base font-bold text-gray-900">{tr('bulkEditButton')}</span>
                   <button onClick={()=>{
                       onBulkHistoryEdit(entry.id,histEditName.trim()||entry.name,histEditStart,histEditEnd,histEditIcon,histEditColor);
                       setBulkEditId(null);setHistExp(null);
                     }}
-                    className="text-sm font-semibold text-[var(--c-primary)]">保存</button>
+                    className="text-sm font-semibold text-[var(--c-primary)]">{tr('taskModalSave')}</button>
                 </div>
                 <div className="px-5 pb-8">
-                  <p className="text-xs text-gray-400 mb-4">{entry.dates.length}日分すべてに反映されます</p>
+                  <p className="text-xs text-gray-400 mb-4">{tr('bulkEditAllDaysNote').replace('{n}',()=>String(entry.dates.length))}</p>
                   <div className="bg-gray-50 rounded-xl px-3 py-2.5 flex flex-col gap-2.5">
                     <div className="flex items-center gap-2">
                       <button onClick={()=>setHIconSh(true)}
@@ -4729,12 +4731,12 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                         className="flex-1 text-sm text-gray-800 bg-transparent outline-none border-b border-gray-200 pb-0.5"/>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-gray-500 shrink-0 whitespace-nowrap">開始時刻</span>
+                      <span className="text-xs text-gray-500 shrink-0 whitespace-nowrap">{tr('fieldStartTime')}</span>
                       <input type="time" value={histEditStart} onChange={e=>setHES(e.target.value)}
                         className="flex-1 text-sm text-gray-800 bg-transparent outline-none"/>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-gray-500 shrink-0 whitespace-nowrap">終了時刻</span>
+                      <span className="text-xs text-gray-500 shrink-0 whitespace-nowrap">{tr('fieldEndTime')}</span>
                       <input type="time" value={histEditEnd} onChange={e=>setHEE(e.target.value)}
                         className="flex-1 text-sm text-gray-800 bg-transparent outline-none"/>
                     </div>
@@ -4751,12 +4753,12 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             <div className="fixed inset-0 z-[100] flex items-end justify-center" onClick={()=>setBulkDeleteId(null)}>
               <div className="absolute inset-0 bg-black/40"/>
               <div className="relative bg-white rounded-t-2xl w-full max-w-md px-6 pt-6 pb-10" onClick={e=>e.stopPropagation()}>
-                <p className="text-center text-[17px] font-semibold text-gray-900 mb-1">「{dp.name}」を削除しますか？</p>
-                <p className="text-center text-[13px] text-gray-400 mb-6">{dp.dates.length}日分すべてのタスクが削除されます</p>
+                <p className="text-center text-[17px] font-semibold text-gray-900 mb-1">{tr('deleteNamedConfirmTitle').replace('{name}',()=>dp.name)}</p>
+                <p className="text-center text-[13px] text-gray-400 mb-6">{tr('bulkDeleteAllDaysNote').replace('{n}',()=>String(dp.dates.length))}</p>
                 <div className="flex flex-col gap-3">
                   <button onClick={()=>{onBulkHistoryDelete(dp.id);setHistExp(null);setBulkDeleteId(null);}}
-                    className="w-full py-3.5 rounded-2xl bg-[#D97A7A] text-white text-[15px] font-semibold">削除する</button>
-                  <button onClick={()=>setBulkDeleteId(null)} className="w-full py-3.5 rounded-2xl bg-gray-50 text-gray-500 text-[15px] font-semibold">キャンセル</button>
+                    className="w-full py-3.5 rounded-2xl bg-[#D97A7A] text-white text-[15px] font-semibold">{tr('deleteTaskButton')}</button>
+                  <button onClick={()=>setBulkDeleteId(null)} className="w-full py-3.5 rounded-2xl bg-gray-50 text-gray-500 text-[15px] font-semibold">{tr('cancelButton')}</button>
                 </div>
               </div>
             </div>
@@ -4767,11 +4769,11 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             <div className="bg-white rounded-t-3xl max-h-[78vh] flex flex-col w-full max-w-md mx-auto" onClick={e=>e.stopPropagation()}>
               <div className="flex justify-center pt-3 shrink-0"><div className="w-10 h-1 bg-gray-200 rounded-full"/></div>
               <div className="flex items-center justify-between px-5 pt-3 pb-2 shrink-0">
-                <span className="text-base font-bold text-gray-900">アイコン</span>
-                <button onClick={()=>setHIconSh(false)} className="px-4 py-1.5 bg-gray-700 text-white text-sm font-semibold rounded-full">完了</button>
+                <span className="text-base font-bold text-gray-900">{tr('iconSheetTitleShort')}</span>
+                <button onClick={()=>setHIconSh(false)} className="px-4 py-1.5 bg-gray-700 text-white text-sm font-semibold rounded-full">{tr('taskModalDone')}</button>
               </div>
               <div className="overflow-y-auto px-5 pb-10 flex-1">
-                <p className="text-xs font-bold text-gray-400 mb-2 mt-1">カラー</p>
+                <p className="text-xs font-bold text-gray-400 mb-2 mt-1">{tr('colorSectionLabel')}</p>
                 <div className="flex gap-2 mb-5 flex-wrap" style={{paddingLeft:'4px',paddingTop:'4px',paddingBottom:'4px'}}>
                   {TASK_COLORS.map((c,i)=>(
                     <button key={i} onClick={()=>setHEColor(c)}
@@ -4781,7 +4783,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                 </div>
                 {ICON_CATEGORIES.map(cat=>(
                   <div key={cat.label} className="mb-5">
-                    <p className="text-xs font-bold text-gray-400 mb-2">{cat.label}</p>
+                    <p className="text-xs font-bold text-gray-400 mb-2">{language==='ja'?cat.label:cat.labelEn}</p>
                     <div className="grid grid-cols-5 gap-2">
                       {cat.icons.map(opt=>{
                         const Ic=getTaskIcon(opt.key);
@@ -4789,7 +4791,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                         const bg=histEditColor||'var(--c-primary)';
                         const locked=!!opt.pro&&!isPremium;
                         return (
-                          <button key={opt.key} onClick={()=>{if(locked){setProPrompt(`アイコン「${opt.label}」の使用`);return;}setHEIcon(opt.key);}}
+                          <button key={opt.key} onClick={()=>{if(locked){setProPrompt(tr('proFeatureIconUse').replace('{name}',()=>language==='ja'?opt.label:opt.labelEn));return;}setHEIcon(opt.key);}}
                             className={`relative flex flex-col items-center gap-1.5 py-3 rounded-2xl ${sel?'':'bg-gray-50'}`}
                             style={sel?{background:bg}:undefined}>
                             <Ic size={22} className={sel?'text-white':locked?'text-gray-300':'text-gray-700'}/>
@@ -4824,10 +4826,10 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
         <div className="bg-white rounded-2xl shadow-sm px-4 py-3">
           <div className="flex gap-2 items-center">
             <input value={tabInput} onChange={e=>setTabInput(e.target.value)}
-              onKeyDown={e=>{if(e.key==='Enter'){const v=tabInput.trim();if(v){if(!isPremium&&customTabs.length>=1){setProPrompt('ファイルタブを2個以上作成');return;}onCustomTabs([...customTabs,{id:uid(),name:v}]);setTabInput('');}}} }
+              onKeyDown={e=>{if(e.key==='Enter'){const v=tabInput.trim();if(v){if(!isPremium&&customTabs.length>=1){setProPrompt(tr('proFeatureTabs'));return;}onCustomTabs([...customTabs,{id:uid(),name:v}]);setTabInput('');}}} }
               placeholder={tr('tabNamePlaceholder')}
               className="flex-1 text-[15px] bg-transparent outline-none text-gray-900 placeholder-gray-300 border-b border-gray-200 pb-1"/>
-            <button onClick={()=>{const v=tabInput.trim();if(v){if(!isPremium&&customTabs.length>=1){setProPrompt('ファイルタブを2個以上作成');return;}onCustomTabs([...customTabs,{id:uid(),name:v}]);setTabInput('');}}}
+            <button onClick={()=>{const v=tabInput.trim();if(v){if(!isPremium&&customTabs.length>=1){setProPrompt(tr('proFeatureTabs'));return;}onCustomTabs([...customTabs,{id:uid(),name:v}]);setTabInput('');}}}
               className="px-4 py-1.5 bg-[var(--c-primary)] text-white text-sm font-semibold rounded-xl shrink-0">{tr('addButton')}</button>
           </div>
         </div>
@@ -5105,7 +5107,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
               {(language==='ja'?LATER_REMINDER_OPTS:LATER_REMINDER_OPTS_EN).filter(o=>o.v!==0).map(o=>{
                 const locked=o.v!==72&&!isPremium;
                 return (
-                  <button key={o.v} onClick={()=>{if(locked){setProPrompt('タスク放置通知の間隔変更');return;}onSettings({...settings,laterReminderHours:o.v});}}
+                  <button key={o.v} onClick={()=>{if(locked){setProPrompt(tr('proFeatureLaterInterval'));return;}onSettings({...settings,laterReminderHours:o.v});}}
                     className={`px-3 py-1.5 rounded-xl text-sm font-medium transition-colors inline-flex items-center gap-1 ${(settings.laterReminderHours??72)===o.v?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
                     {locked&&<AppIcons.lock size={10} className="text-gray-400"/>}
                     {o.l}
@@ -5131,7 +5133,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
               {(language==='ja'?APP_INACTIVITY_OPTS:APP_INACTIVITY_OPTS_EN).filter(o=>o.v!==0).map(o=>{
                 const locked=o.v!==6&&!isPremium;
                 return (
-                  <button key={o.v} onClick={()=>{if(locked){setProPrompt('アプリ放置通知の間隔変更');return;}onSettings({...settings,appInactivityHours:o.v});}}
+                  <button key={o.v} onClick={()=>{if(locked){setProPrompt(tr('proFeatureInactiveInterval'));return;}onSettings({...settings,appInactivityHours:o.v});}}
                     className={`px-3 py-1.5 rounded-xl text-sm font-medium transition-colors inline-flex items-center gap-1 ${(settings.appInactivityHours??6)===o.v?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
                     {locked&&<AppIcons.lock size={10} className="text-gray-400"/>}
                     {o.l}
@@ -5332,7 +5334,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             const selected=effectiveTheme===t.id;
             const isFree=t.id==='mint';
             return (
-              <button key={t.id} onClick={()=>{if(!isPremium&&!isFree){setProPrompt('テーマカラーの変更');return;}onSettings({...settings,theme:t.id});}}
+              <button key={t.id} onClick={()=>{if(!isPremium&&!isFree){setProPrompt(tr('proFeatureThemeColor'));return;}onSettings({...settings,theme:t.id});}}
                 className="flex flex-col items-center gap-2 py-3">
                 <div className="relative w-14 h-14">
                   <div className="w-14 h-14 rounded-full flex items-center justify-center" style={{background:t.color}}>
@@ -5370,7 +5372,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             const selected=(settings.appIcon??'mint')===ic.id;
             const isFree=ic.id==='mint';
             return (
-              <button key={ic.id} onClick={()=>{if(!isPremium&&!isFree){setProPrompt('アプリアイコンの変更');return;}onSettings({...settings,appIcon:ic.id});setNativeAppIcon(ic.id);}}
+              <button key={ic.id} onClick={()=>{if(!isPremium&&!isFree){setProPrompt(tr('proFeatureAppIcon'));return;}onSettings({...settings,appIcon:ic.id});setNativeAppIcon(ic.id);}}
                 className="flex flex-col items-center gap-2 py-3">
                 <div className="relative w-14 h-14">
                   <div className="w-14 h-14 rounded-[16px] overflow-hidden">
@@ -5507,7 +5509,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             )}
           </div>
           {!lpAddMode&&(
-            <button onClick={()=>{if(!isPremium&&lifePatterns.length>=1){setProPrompt('生活パターンを2個以上登録');return;}setLpAddMode(true);setLpNewName('');setLpNewWake('07:00');setLpNewSleep('23:00');setLpNewColor('#94CFC8');}}
+            <button onClick={()=>{if(!isPremium&&lifePatterns.length>=1){setProPrompt(tr('proFeatureLifePatterns'));return;}setLpAddMode(true);setLpNewName('');setLpNewWake('07:00');setLpNewSleep('23:00');setLpNewColor('#94CFC8');}}
               className="w-full py-3 rounded-2xl text-sm font-semibold text-[var(--c-primary)] bg-white shadow-sm mb-5">{tr('addPatternButton')}</button>
           )}
 
@@ -5616,7 +5618,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           <div className="bg-white rounded-2xl overflow-hidden shadow-sm mb-5">
             <div className="px-4 py-4 flex flex-wrap items-center gap-3">
               <div className="flex items-center gap-3">
-                <button onClick={()=>{if(!isPremium){setProPrompt('起床・就寝アイコンの色変更');return;}setColorPicking(colorPicking==='wake'?null:'wake');}} className="relative shrink-0">
+                <button onClick={()=>{if(!isPremium){setProPrompt(tr('proFeatureWakeSleepColor'));return;}setColorPicking(colorPicking==='wake'?null:'wake');}} className="relative shrink-0">
                   <div className="w-9 h-9 rounded-full flex items-center justify-center" style={{background:settings.wakeColor||'var(--c-primary)'}}>
                     <AppIcons.wake size={16} className="text-white"/>
                   </div>
@@ -5630,7 +5632,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
               </div>
               <span className="text-gray-300 text-sm">〜</span>
               <div className="flex items-center gap-3">
-                <button onClick={()=>{if(!isPremium){setProPrompt('起床・就寝アイコンの色変更');return;}setColorPicking(colorPicking==='sleep'?null:'sleep');}} className="relative shrink-0">
+                <button onClick={()=>{if(!isPremium){setProPrompt(tr('proFeatureWakeSleepColor'));return;}setColorPicking(colorPicking==='sleep'?null:'sleep');}} className="relative shrink-0">
                   <div className="w-9 h-9 rounded-full flex items-center justify-center" style={{background:settings.sleepColor||'var(--c-primary)'}}>
                     <AppIcons.sleep size={16} className="text-white"/>
                   </div>
@@ -7598,7 +7600,7 @@ export default function App() {
         </div>
       )}
 
-      {appProPrompt&&<ProGateSheet onClose={()=>setAppProPrompt(false)} onView={()=>{setAppProPrompt(false);setSettingsInitSub('premium');setSOp(true);}} feature="起床・就寝アイコンの色変更"/>}
+      {appProPrompt&&<ProGateSheet onClose={()=>setAppProPrompt(false)} onView={()=>{setAppProPrompt(false);setSettingsInitSub('premium');setSOp(true);}} feature={tr('proFeatureWakeSleepColor')}/>}
 
       {showWakeSleepPrompt&&(
         <div className="fixed inset-0 z-[210] flex items-end justify-center">
@@ -7668,13 +7670,13 @@ export default function App() {
                 <AppIcons.sparkle size={18} className="text-[var(--c-primary)]"/>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-gray-800">{def.title}</p>
-                <p className="text-xs text-gray-400 mt-0.5 leading-relaxed">{def.body}</p>
+                <p className="text-sm font-bold text-gray-800">{tr(def.title)}</p>
+                <p className="text-xs text-gray-400 mt-0.5 leading-relaxed">{tr(def.body)}</p>
                 <div className="flex items-center gap-3 mt-2.5">
                   <button onClick={useRecommendation}
                     className="text-xs font-bold text-white px-3.5 py-1.5 rounded-xl"
-                    style={{background:'var(--c-primary)'}}>{def.cta}</button>
-                  <button onClick={dismissRecommendation} className="text-xs font-medium text-gray-400">今はしない</button>
+                    style={{background:'var(--c-primary)'}}>{tr(def.cta)}</button>
+                  <button onClick={dismissRecommendation} className="text-xs font-medium text-gray-400">{tr('recommendDismiss')}</button>
                 </div>
               </div>
             </div>
