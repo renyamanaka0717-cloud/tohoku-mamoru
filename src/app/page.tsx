@@ -4299,54 +4299,98 @@ function ReorderLaterPopup({tasks,onSave,onClose}:{tasks:Task[];onSave:(orderedI
   const byId = new Map(tasks.map(t=>[t.id,t]));
   const [dragId,setDragId] = useState<string|null>(null);
   const [dragDy,setDragDy] = useState(0);
+  const [targetIdx,setTargetIdx] = useState<number|null>(null);
+  const draggedIdxRef = useRef(-1);
+  const targetIdxRef = useRef(-1);
   const startY = useRef(0);
   const slots = useRef<{top:number;height:number}[]>([]);
   const rowRefs = useRef<Record<string,HTMLDivElement|null>>({});
+  const rafRef = useRef<number|null>(null);
+  const pendingDy = useRef(0);
 
+  // ドラッグ中はDOM順（order）自体を毎フレーム並び替えない——毎回のsplice+key変更で
+  // ブラウザがレイアウト全体を再計算し、かくついた動きの原因になっていた。代わりに、
+  // ドラッグ開始時に一度だけ計測した位置（slots）と現在のドラッグ先インデックス（targetIdx）
+  // から各行の見た目上のtranslateYを計算し、transformだけで動かす（コンポジタ合成のみで
+  // 済むため軽い）。実際にorder配列（DOM順）を並び替えるのはドロップ時（onEnd）に1回だけ
   const startDrag=(id:string,e:React.TouchEvent)=>{
     e.stopPropagation();
     const touch=e.touches[0];
     startY.current=touch.clientY;
+    const idx=order.indexOf(id);
+    draggedIdxRef.current=idx;
+    targetIdxRef.current=idx;
     slots.current=order.map(oid=>{
       const r=rowRefs.current[oid]?.getBoundingClientRect();
       return {top:r?.top??0, height:r?.height??60};
     });
+    setTargetIdx(idx);
     setDragId(id);
   };
 
   useEffect(()=>{
     if(!dragId) return;
+    // touchmoveのたびに直接setStateせず、次フレームまでまとめてrequestAnimationFrameで
+    // 1回だけ反映する（高頻度なtouchmoveをそのままReactの再レンダーに繋げると重くなる）
+    const applyMove=()=>{
+      rafRef.current=null;
+      const dy=pendingDy.current;
+      setDragDy(dy);
+      const s=slots.current;
+      const D=draggedIdxRef.current;
+      if(D===-1||!s[D]) return;
+      const draggedCenter=s[D].top+s[D].height/2+dy;
+      let newTarget=D;
+      for(let i=0;i<s.length;i++){
+        if(draggedCenter>=s[i].top&&draggedCenter<=s[i].top+s[i].height){newTarget=i;break;}
+      }
+      if(newTarget!==targetIdxRef.current){
+        targetIdxRef.current=newTarget;
+        setTargetIdx(newTarget);
+      }
+    };
     const onMove=(e:TouchEvent)=>{
       e.preventDefault();
       const touch=e.touches[0];
-      const dy=touch.clientY-startY.current;
-      setDragDy(dy);
-      setOrder(prev=>{
-        const s=slots.current;
-        const draggedIdx=prev.indexOf(dragId);
-        if(draggedIdx===-1||!s[draggedIdx]) return prev;
-        const draggedCenter=s[draggedIdx].top+s[draggedIdx].height/2+dy;
-        let targetIdx=draggedIdx;
-        for(let i=0;i<s.length;i++){
-          if(draggedCenter>=s[i].top&&draggedCenter<=s[i].top+s[i].height){targetIdx=i;break;}
-        }
-        if(targetIdx===draggedIdx) return prev;
-        const next=[...prev];
-        next.splice(draggedIdx,1);
-        next.splice(targetIdx,0,dragId);
-        return next;
-      });
+      pendingDy.current=touch.clientY-startY.current;
+      if(rafRef.current==null) rafRef.current=requestAnimationFrame(applyMove);
     };
-    const onEnd=()=>{setDragId(null);setDragDy(0);slots.current=[];};
+    const onEnd=()=>{
+      if(rafRef.current!=null){cancelAnimationFrame(rafRef.current);rafRef.current=null;}
+      const D=draggedIdxRef.current, T=targetIdxRef.current;
+      if(D!==-1&&T!==-1&&D!==T){
+        setOrder(prev=>{
+          const next=[...prev];
+          const [moved]=next.splice(D,1);
+          next.splice(T,0,moved);
+          return next;
+        });
+      }
+      setDragId(null);
+      setDragDy(0);
+      setTargetIdx(null);
+      draggedIdxRef.current=-1;
+      targetIdxRef.current=-1;
+      slots.current=[];
+    };
     document.addEventListener('touchmove',onMove,{passive:false});
     document.addEventListener('touchend',onEnd);
     document.addEventListener('touchcancel',onEnd);
     return ()=>{
+      if(rafRef.current!=null) cancelAnimationFrame(rafRef.current);
       document.removeEventListener('touchmove',onMove);
       document.removeEventListener('touchend',onEnd);
       document.removeEventListener('touchcancel',onEnd);
     };
   },[dragId]);
+
+  // 元の位置iの行が、ドラッグ中に見た目上どの位置(スロット)に来るかを計算
+  // （D:ドラッグ中の行の元位置、T:現在のドラッグ先位置）
+  const shiftedIndex=(i:number,D:number,T:number):number=>{
+    if(i===D) return T;
+    if(D<T) return (i>D&&i<=T) ? i-1 : i;
+    return (i>=T&&i<D) ? i+1 : i;
+  };
 
   return (
     <div className="fixed inset-0 z-[100] flex flex-col bg-black/30" onClick={onClose}>
@@ -4358,16 +4402,29 @@ function ReorderLaterPopup({tasks,onSave,onClose}:{tasks:Task[];onSave:(orderedI
         </div>
         <p className="text-xs text-gray-400 px-4 pt-3 pb-1">{tr('reorderPopupHint')}</p>
         <div className="overflow-y-auto px-4 pb-4 pt-2 space-y-2" style={{paddingBottom:'calc(1rem + env(safe-area-inset-bottom))'}}>
-          {order.map(id=>{
+          {order.map((id,i)=>{
             const t=byId.get(id);
             if(!t) return null;
             const dragging=dragId===id;
             const Ic=getTaskIcon(t.icon||defaultIconKey(t.name));
+            let translateY=0;
+            if(dragId){
+              if(dragging){
+                translateY=dragDy;
+              } else if(slots.current[i]){
+                const D=draggedIdxRef.current, T=targetIdx??D;
+                const newIdx=shiftedIndex(i,D,T);
+                translateY=(slots.current[newIdx]?.top??slots.current[i].top)-slots.current[i].top;
+              }
+            }
             return (
               <div key={id}
                 ref={el=>{rowRefs.current[id]=el;}}
-                className={`flex items-center gap-2.5 bg-white border border-gray-100 rounded-2xl shadow-sm px-3 py-3 select-none ${dragging?'relative z-10 shadow-lg border-[var(--c-primary)]':'transition-transform'}`}
-                style={dragging?{transform:`translateY(${dragDy}px)`}:undefined}>
+                className={`flex items-center gap-2.5 bg-white border rounded-2xl px-3 py-3 select-none ${dragging?'relative z-10 shadow-lg border-[var(--c-primary)] opacity-70':'shadow-sm border-gray-100'}`}
+                style={{
+                  transform: translateY?`translateY(${translateY}px)`:undefined,
+                  transition: dragging?'none':'transform 200ms cubic-bezier(0.2,0,0,1)',
+                }}>
                 <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{background:t.color||'color-mix(in srgb, var(--c-primary) 15%, white)'}}>
                   <Ic size={14} className={t.color?'text-white':'text-[var(--c-primary)]'}/>
                 </div>
