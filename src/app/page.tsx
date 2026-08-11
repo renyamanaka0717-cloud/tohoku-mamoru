@@ -2383,9 +2383,8 @@ function TaskCard({task,onToggle,onEdit,globalTags,onSubtaskToggle,tabName,iconD
 
 // ── FreeTimeCard ──────────────────────────────────────────────────────────────
 
-function FreeTimeCard({slot,fits,moreCount=0,height,onSchedule,onDragStart,onMoreClick,measureRef,outerRef,iconDelta=0}:{
+function FreeTimeCard({slot,fits,moreCount=0,height,onDragStart,onMoreClick,measureRef,outerRef,iconDelta=0}:{
   slot:FreeSlot;fits:Task[];moreCount?:number;height:number;
-  onSchedule:(t:Task,time:string)=>void;
   onDragStart:(t:Task,x:number,y:number)=>void;
   onMoreClick?:()=>void;
   measureRef?:(el:HTMLDivElement|null)=>void;
@@ -2431,7 +2430,7 @@ function FreeTimeCard({slot,fits,moreCount=0,height,onSchedule,onDragStart,onMor
           <div className="flex flex-wrap gap-1.5 mt-2">
             {fits.map(t=>(
               <button key={t.id}
-                onClick={()=>{if(didDrag.current){didDrag.current=false;return;}onSchedule(t,slot.start);}}
+                onClick={()=>{if(didDrag.current){didDrag.current=false;return;}onMoreClick?.();}}
                 onTouchStart={e=>startLP(t,e)}
                 onTouchEnd={cancelLP}
                 onTouchMove={cancelLP}
@@ -2478,10 +2477,10 @@ function CompactTaskCard({task,onToggle,onEdit}:{task:Task;onToggle:()=>void;onE
 
 // ── Timeline ──────────────────────────────────────────────────────────────────
 
-function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet,onSchedule,onAddAtTime,onDragStart,dragTaskId,yToTimeRef,layoutYRef,globalTags,todayHistory,onSubtaskToggle,lifePatterns=[],patternOverrides={},onPickColor,onEditTime,onOpenLater,customTabs=[]}:{
+function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet,onAddAtTime,onDragStart,dragTaskId,yToTimeRef,layoutYRef,globalTags,todayHistory,onSubtaskToggle,lifePatterns=[],patternOverrides={},onPickColor,onEditTime,onOpenLater,customTabs=[]}:{
   date:string;tasks:Task[];later:Task[];settings:Settings;now:string;
   onToggle:(id:string)=>void;onEdit:(t:Task)=>void;onEditIconSheet:(t:Task)=>void;
-  onSchedule:(t:Task,time:string)=>void;onAddAtTime:(time:string)=>void;
+  onAddAtTime:(time:string)=>void;
   onDragStart:(t:Task,x:number,y:number)=>void;dragTaskId?:string;
   yToTimeRef:React.MutableRefObject<((clientY:number)=>string)|null>;
   layoutYRef:React.MutableRefObject<((min:number)=>number)|null>;
@@ -3024,7 +3023,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
         const fits=laterPoolVisible;
         return (
           <div key={i} className="absolute z-10" style={{top:`${freeY}px`,left:`${CARD_LEFT}px`,right:'0px'}}>
-            <FreeTimeCard slot={slot} fits={fits} moreCount={laterPoolMoreCount} height={finalH} onSchedule={onSchedule} onDragStart={onDragStart} onMoreClick={onOpenLater} iconDelta={iconDelta}
+            <FreeTimeCard slot={slot} fits={fits} moreCount={laterPoolMoreCount} height={finalH} onDragStart={onDragStart} onMoreClick={onOpenLater} iconDelta={iconDelta}
               measureRef={el=>{if(el){el.dataset.gk=`free-${slot.start}`;roRef.current?.observe(el);}}}
               outerRef={el=>{
                 if(!el) return;
@@ -7326,7 +7325,6 @@ export default function App() {
       return replacement??t;
     });
   });
-  const scheduleInSlot=(task:Task,startTime:string)=>setModal({open:true,task:{...task,isLater:false,startTime,date,notifications:task.notifications?.length?task.notifications:[0]}});
   const moveToTimeline=(task:Task)=>setModal({open:true,task:{...task,isLater:false}});
   const handleMorningAction=(type:'done'|'later')=>{
     const ids=morningSelected;
@@ -7485,7 +7483,7 @@ export default function App() {
           if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)*1.5){const nd=shiftDate(date,dx<0?1:-1);setDate(nd);setWeekAnchor(nd);}
         }}>
         <Timeline date={date} tasks={filteredTasks} later={laterTasks} settings={effectiveSettings} now={now}
-          onToggle={toggle} onEdit={openEdit} onEditIconSheet={openEditIconSheet} onSchedule={scheduleInSlot} onAddAtTime={openAdd}
+          onToggle={toggle} onEdit={openEdit} onEditIconSheet={openEditIconSheet} onAddAtTime={openAdd}
           onDragStart={startDrag} dragTaskId={dragTask?.id} yToTimeRef={yToTimeRef} layoutYRef={layoutYRef} globalTags={globalTags}
           todayHistory={moveHistory.find(h=>h.date===date)} onSubtaskToggle={subtaskToggle}
           lifePatterns={lifePatterns} patternOverrides={patternOverrides}
