@@ -433,9 +433,9 @@ iOS標準のホーム画面ウィジェット（WidgetKit）。1つの大きい�
 
 ### データの流れ（アプリ → ウィジェット）
 
-1. `src/app/page.tsx` の App コンポーネントに、`tasks`/`shopItems`/`now`/`settings.theme` が変わるたびに次の予定4件・未購入アイテム6件・現在のテーマカラーを計算して `updateWidgetData()` を呼ぶ `useEffect` がある（各アイテムに `id` を含める。後述のタップ完了機能で必須）
-2. `src/app/components/WidgetData.ts` — `updateWidgetData(tasks, shopItems, themeColor)` がCapacitorカスタムプラグイン `WidgetDataPlugin` を呼ぶ（Web/開発環境では何もしない）
-3. `native-ios/WidgetDataPlugin.swift` / `.m` — JSON文字列とテーマカラー(hex文字列)をApp Group共有の `UserDefaults(suiteName: "group.jp.brainbox.app")` に書き込み、`WidgetCenter.shared.reloadAllTimelines()` でウィジェットを更新する
+1. `src/app/page.tsx` の App コンポーネントに、`tasks`/`shopItems`/`now`/`settings.theme`/`language` が変わるたびに次の予定4件・未購入アイテム6件・現在のテーマカラー・現在の言語設定を計算して `updateWidgetData()` を呼ぶ `useEffect` がある（各アイテムに `id` を含める。後述のタップ完了機能で必須）
+2. `src/app/components/WidgetData.ts` — `updateWidgetData(tasks, shopItems, laterItems, themeColor, language)` がCapacitorカスタムプラグイン `WidgetDataPlugin` を呼ぶ（Web/開発環境では何もしない）。`language`はウィジェット自体の表示には使わない（String Catalogでデバイス言語に自動追従するため）が、`GeofencePlugin`が場所通知の文言を組み立てる時に使う（後述）
+3. `native-ios/WidgetDataPlugin.swift` / `.m` — JSON文字列とテーマカラー(hex文字列)・言語コード(`"ja"`/`"en"`)をApp Group共有の `UserDefaults(suiteName: "group.jp.brainbox.app")` に書き込み、`WidgetCenter.shared.reloadAllTimelines()` でウィジェットを更新する
 4. `native-ios/Widgets/BrainBoxWidgets.swift` — 実際のウィジェット表示（Widget Extensionターゲット用、`CombinedWidget` 1つのみ）。同じApp Groupから読み取って描画する。時刻・チェックアイコンの色はアプリの現在のテーマカラーに追従する（`Color(hex:)` extensionでhex文字列から変換）
 
 ### データの流れ（ウィジェット → アプリ、タップ完了機能）
@@ -557,6 +557,8 @@ const SHOP_LOC_KEY = 'tl-shop-loc-v1';
 5. 通知タップ時（`didReceive response`）— `UserDefaults.standard` に `pendingOpenShopList=true` を立てる。JS側は `getPendingWidgetActions()` と同じ `visibilitychange`/起動時ポーリングの中で `getPendingGeofenceAction()` を呼び、trueなら `setActiveTab('shop')` で買い物リストを開く
 
 この`didReceive`ハンドラは`UNUserNotificationCenterDelegate`としてアプリ全体で1つしか存在しない（`GeofencePlugin.load()`で設定）ため、**他のプラグインが作った通知でも`userInfo["openShop"]==true`さえ立てておけば同じタップ処理が効く**。`LocalNotifyPlugin.swift`の`syncShopNotifs()`（買い物リストの時間指定通知）はこの仕組みを使って、JS側で`openShop:true`を付けたアラートだけ`content.userInfo=["openShop":true]`を設定している（`scheduleAlerts()`内、`ScheduledAlert.openShop`）。
+
+**通知文の英語対応:** 買い物リストの場所通知・「あとでやる」タスクの場所通知・忘れ物防止アラートはすべてバックグラウンド/未起動でも発火するため、`syncTaskAlerts`等のJS側通知（`tr()`で言語判定）と違い、`GeofencePlugin.swift`内で発火時点に直接ja/enを判定して文言を組み立てている。判定材料は`WidgetDataPlugin.updateWidgetData()`が（`tasks`/`shopItems`/`themeColor`変更のたびに呼ばれる既存の同期エフェクトに相乗りして）App Groupの`UserDefaults`に書き込む`appLanguage`キー（`"ja"`/`"en"`）。`GeofencePlugin.swift`の`isEnglish()`ヘルパーがこれを読んで判定する。新しくバックグラウンドで発火するネイティブ通知を追加する時は、JSの`tr()`は呼べないことを前提に、同じ`appLanguage`キー経由でja/enを判定するパターンに倣うこと。
 
 ### Xcodeでの手動セットアップ（`ios/`はgitignore対象なので毎回必要）
 

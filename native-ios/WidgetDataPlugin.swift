@@ -12,6 +12,10 @@ public class WidgetDataPlugin: CAPPlugin {
         let shopJson = call.getString("shopJson") ?? "[]"
         let laterJson = call.getString("laterJson") ?? "[]"
         let themeColor = call.getString("themeColor") ?? "#D9A3B2"
+        // ウィジェット自体の表示には使わない（String Catalogでデバイス言語に自動追従するため）が、
+        // GeofencePluginが場所通知・忘れ物防止アラートの本文を組み立てる時にアプリの言語設定と
+        // 一致させるために保存しておく
+        let language = call.getString("language") ?? "ja"
         guard let defaults = UserDefaults(suiteName: WidgetDataPlugin.appGroupId) else {
             call.reject("App Group not configured")
             return
@@ -20,6 +24,7 @@ public class WidgetDataPlugin: CAPPlugin {
         defaults.set(shopJson, forKey: "widgetShopJson")
         defaults.set(laterJson, forKey: "widgetLaterJson")
         defaults.set(themeColor, forKey: "widgetThemeColor")
+        defaults.set(language, forKey: "appLanguage")
         WidgetCenter.shared.reloadAllTimelines()
         call.resolve()
     }
