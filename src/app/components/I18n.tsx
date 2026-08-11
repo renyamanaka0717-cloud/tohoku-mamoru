@@ -405,6 +405,31 @@ export const STRINGS = {
   proRestoreButton:          { ja: '購入を復元',                      en: 'Restore purchase' },
   proPurchaseFailedAlert:    { ja: '購入処理に失敗しました。時間をおいて再度お試しください。', en: 'Purchase failed. Please try again later.' },
   proRestoreNotFoundAlert:   { ja: '復元できる購入履歴が見つかりませんでした', en: 'No purchase history found to restore' },
+
+  // プッシュ通知の本文（LocalNotify経由。タイトル・本文とも言語設定に追従させる）
+  notifTaskStartingSoon:     { ja: 'そろそろ始めましょう（{time}〜）',        en: 'Starting soon ({time})' },
+  notifTaskTomorrow:         { ja: '明日{time}から予定があります',           en: 'You have plans tomorrow at {time}' },
+  notifTaskIn1Hour:          { ja: 'あと1時間で始まります（{time}〜）',       en: 'Starting in 1 hour ({time})' },
+  notifTaskInMinutes:        { ja: 'あと{n}分で始まります（{time}〜）',       en: 'Starting in {n} min ({time})' },
+  notifDeadlineDays:         { ja: '{name}期限まで、あと{n}日です。',        en: '{n} day(s) left until {name} is due.' },
+  notifDeadlineHours:        { ja: '{name}期限まで、あと{n}時間です。',       en: '{n} hour(s) left until {name} is due.' },
+  notifDeadlineToday:        { ja: '{name}期限は今日です。',               en: '{name} is due today.' },
+  notifDeadlineNow:          { ja: '{name}の期限になりました。',            en: '{name} is now due.' },
+  notifThisTaskFallback:     { ja: 'このタスク',                        en: 'This task' },
+  notifWakeCheckinTitle:     { ja: 'おはようございます',                    en: 'Good morning' },
+  notifWakeCheckinBody:      { ja: '今日の予定をチェックしましょう',          en: "Check today's schedule" },
+  notifWakeCheckinBodyPast:  { ja: '今日の予定をチェックしましょう。昨日のタスクが{n}件残っています', en: "Check today's schedule. You have {n} unfinished task(s) from yesterday." },
+  notifYesterdayTasksTitle:  { ja: '昨日のタスクが残っています',              en: 'You have tasks left from yesterday' },
+  notifYesterdayTasksBody:   { ja: '昨日のタスクが{n}件残っています',         en: 'You have {n} unfinished task(s) from yesterday' },
+  notifShopListTitle:        { ja: '買い物リスト',                        en: 'Shopping list' },
+  notifShopListBody:         { ja: '未購入 {n}件: {names}',              en: '{n} item(s) left: {names}' },
+  notifLaterStaleTitle:      { ja: 'あとでやるが溜まっています',              en: 'Later tasks are piling up' },
+  notifLaterStaleBody:       { ja: '{n}件が長時間放置されています: {names}', en: '{n} task(s) left unfinished for a while: {names}' },
+  notifLaterStaleBodySingle: { ja: '「{name}」が長時間放置されています',       en: '"{name}" has been left unfinished for a while' },
+  notifFreeTimeTitle:        { ja: '空き時間ができました',                  en: 'You have free time' },
+  notifFreeTimeBodyMulti:    { ja: '「{name}」など{n}件のタスクがあります',    en: 'You have {n} tasks, including "{name}"' },
+  notifFreeTimeBodySingle:   { ja: '「{name}」をやってみませんか？',          en: 'Why not try "{name}"?' },
+  deadlinePreviewLabel:      { ja: '通知される内容（{n}件）',               en: 'Notifications to be sent ({n})' },
 } as const;
 
 export type StringKey = keyof typeof STRINGS;

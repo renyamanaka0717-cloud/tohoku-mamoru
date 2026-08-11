@@ -189,11 +189,11 @@ const DUR_OPTS_EN  = [
 const NOTIF_OPTS   = [{v:0,l:'開始時'},{v:5,l:'5分前'},{v:10,l:'10分前'},{v:15,l:'15分前'},{v:30,l:'30分前'},{v:60,l:'1時間前'},{v:1440,l:'前日'}];
 const NOTIF_OPTS_EN= [{v:0,l:'At start'},{v:5,l:'5m before'},{v:10,l:'10m before'},{v:15,l:'15m before'},{v:30,l:'30m before'},{v:60,l:'1h before'},{v:1440,l:'1 day before'}];
 
-const taskAlertBody = (startTime: string, offset: number): string => {
-  if(offset===0) return `そろそろ始めましょう（${startTime}〜）`;
-  if(offset===1440) return `明日${startTime}から予定があります`;
-  if(offset===60) return `あと1時間で始まります（${startTime}〜）`;
-  return `あと${offset}分で始まります（${startTime}〜）`;
+const taskAlertBody = (startTime: string, offset: number, tr:(key:StringKey)=>string): string => {
+  if(offset===0) return tr('notifTaskStartingSoon').replace('{time}',()=>startTime);
+  if(offset===1440) return tr('notifTaskTomorrow').replace('{time}',()=>startTime);
+  if(offset===60) return tr('notifTaskIn1Hour').replace('{time}',()=>startTime);
+  return tr('notifTaskInMinutes').replace('{n}',()=>String(offset)).replace('{time}',()=>startTime);
 };
 
 // ── 締切管理（PRO機能）─────────────────────────────────────────────────────────
@@ -232,11 +232,11 @@ const computeDeadlineFires = (deadlineAt: string, opt: DeadlineNotifyOpt): Deadl
   else if(opt==='auto'){ addDays(7,'week'); addDays(3,'3days'); addDays(1,'dayBefore'); addToday(); addHours(5,'5h'); addHours(3,'3h'); addHours(1,'1h'); addExact(); }
   return fires;
 };
-const deadlineAlertBody = (taskName:string, fire:DeadlineFire): string => {
-  if(fire.kind==='days') return `${taskName}期限まで、あと${fire.amount}日です。`;
-  if(fire.kind==='hours') return `${taskName}期限まで、あと${fire.amount}時間です。`;
-  if(fire.kind==='today') return `${taskName}期限は今日です。`;
-  return `${taskName}の期限になりました。`;
+const deadlineAlertBody = (taskName:string, fire:DeadlineFire, tr:(key:StringKey)=>string): string => {
+  if(fire.kind==='days') return tr('notifDeadlineDays').replace('{name}',()=>taskName).replace('{n}',()=>String(fire.amount));
+  if(fire.kind==='hours') return tr('notifDeadlineHours').replace('{name}',()=>taskName).replace('{n}',()=>String(fire.amount));
+  if(fire.kind==='today') return tr('notifDeadlineToday').replace('{name}',()=>taskName);
+  return tr('notifDeadlineNow').replace('{name}',()=>taskName);
 };
 // タイムライン等での「締切まであとN日」表示用。日数は時刻を無視したカレンダー日数で計算するが、
 // 当日（diff===0）だけは締切の時刻まで含めて「締切は本日の◯時」と表示する
@@ -1905,17 +1905,17 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                           </div>
                           {deadlineNotify==='auto'&&(
                             <div className="mt-2 bg-gray-50 rounded-xl p-3 space-y-2.5">
-                              <p className="text-xs font-semibold text-gray-500">通知される内容（8件）</p>
+                              <p className="text-xs font-semibold text-gray-500">{tr('deadlinePreviewLabel').replace('{n}',()=>String(computeDeadlineFires(`${deadlineDate}T${deadlineTime||'18:00'}`,'auto').length))}</p>
                               {computeDeadlineFires(`${deadlineDate}T${deadlineTime||'18:00'}`,'auto')
                                 .sort((a,b)=>a.fireMs-b.fireMs)
                                 .map(fire=>{
                                   const d=new Date(fire.fireMs);
-                                  const w=['日','月','火','水','木','金','土'][d.getDay()];
+                                  const w=(language==='ja'?DAY_NAMES:DAY_NAMES_EN)[d.getDay()];
                                   const label=`${d.getMonth()+1}/${d.getDate()}(${w}) ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
                                   return (
                                     <div key={fire.key}>
                                       <p className="text-[11px] text-gray-400">{label}</p>
-                                      <p className="text-xs text-gray-700">{deadlineAlertBody(name.trim()||'このタスク',fire)}</p>
+                                      <p className="text-xs text-gray-700">{deadlineAlertBody(name.trim()||tr('notifThisTaskFallback'),fire,tr)}</p>
                                     </div>
                                   );
                                 })}
@@ -6634,7 +6634,7 @@ export default function App() {
       localStorage.removeItem(MORNING_SNOOZE_KEY);
       morningShownRef.current=false;
       const past2=tasks.filter(t=>!t.completed&&!t.isLater&&!!t.startTime&&!t.recurrence&&t.date===shiftDate(today,-1));
-      if(past2.length>0) notify('昨日のタスクが残っています',`昨日のタスクが${past2.length}件残っています`);
+      if(past2.length>0) notify(tr('notifYesterdayTasksTitle'),tr('notifYesterdayTasksBody').replace('{n}',()=>String(past2.length)));
     }
     if(morningShownRef.current) return;
     const yesterday=shiftDate(today,-1);
@@ -6643,7 +6643,7 @@ export default function App() {
     morningShownRef.current=true;
     setMorningTasks(past);
     setMorningSel(new Set());
-  },[loaded,tasks,settings.wakeTime,now]);
+  },[loaded,tasks,settings.wakeTime,now,tr]);
 
   // 買い物リスト通知 — ネイティブでは syncShopNotifs の事前予約が発火を担うため、
   // ここは常時フォアグラウンドが前提のWeb/開発環境向けフォールバックとしてのみ動作する
@@ -6658,10 +6658,10 @@ export default function App() {
       const pending=shopItems.filter(i=>!i.checked);
       if(pending.length===0) return;
       localStorage.setItem(key,'1');
-      const names=pending.slice(0,3).map(i=>i.name).join('・')+(pending.length>3?'…':'');
-      notify('買い物リスト',`未購入 ${pending.length}件: ${names}`);
+      const names=pending.slice(0,3).map(i=>i.name).join(language==='ja'?'・':', ')+(pending.length>3?'…':'');
+      notify(tr('notifShopListTitle'),tr('notifShopListBody').replace('{n}',()=>String(pending.length)).replace('{names}',()=>names));
     });
-  },[loaded,now,shopNotifSettings,shopItems]);
+  },[loaded,now,shopNotifSettings,shopItems,language,tr]);
 
   // 買い物リストの時間指定通知をネイティブに事前スケジュール（バックグラウンド/未起動でも発火させるため）。
   // 直近7日分の該当曜日をまとめて予約する（tasks/shopItems変更のたびに現在の未購入内容で再計算される）
@@ -6670,8 +6670,8 @@ export default function App() {
     if(shopNotifSettings.length===0){ syncShopNotifs([]); return; }
     const pending=shopItems.filter(i=>!i.checked);
     if(pending.length===0){ syncShopNotifs([]); return; }
-    const names=pending.slice(0,3).map(i=>i.name).join('・')+(pending.length>3?'…':'');
-    const body=`未購入 ${pending.length}件: ${names}`;
+    const names=pending.slice(0,3).map(i=>i.name).join(language==='ja'?'・':', ')+(pending.length>3?'…':'');
+    const body=tr('notifShopListBody').replace('{n}',()=>String(pending.length)).replace('{names}',()=>names);
     const nowMs=Date.now();
     const alerts:{id:string;title:string;body:string;timestamp:number;openShop?:boolean}[]=[];
     shopNotifSettings.forEach(s=>{
@@ -6683,11 +6683,11 @@ export default function App() {
         const [hh,mm]=s.time.split(':').map(Number);
         dt.setHours(hh,mm,0,0);
         if(dt.getTime()<=nowMs) continue;
-        alerts.push({id:`shop-notif-${s.id}-${d}`,title:'買い物リスト',body,timestamp:Math.floor(dt.getTime()/1000),openShop:true});
+        alerts.push({id:`shop-notif-${s.id}-${d}`,title:tr('notifShopListTitle'),body,timestamp:Math.floor(dt.getTime()/1000),openShop:true});
       }
     });
     syncShopNotifs(alerts);
-  },[loaded,now,shopNotifSettings,shopItems]);
+  },[loaded,now,shopNotifSettings,shopItems,language,tr]);
 
   // 起床時間にアプリを開くよう促す通知（前日の未完了タスクがあれば1つにまとめる）— ネイティブでは
   // syncWakeCheckins の事前予約が発火を担うため、ここは常時フォアグラウンドが前提のWeb/開発環境向けフォールバックとしてのみ動作する
@@ -6698,9 +6698,9 @@ export default function App() {
     if(localStorage.getItem(WAKE_CHECKIN_NOTIF_KEY)===today) return;
     localStorage.setItem(WAKE_CHECKIN_NOTIF_KEY,today);
     const past=tasks.filter(t=>!t.completed&&!t.isLater&&!!t.startTime&&!t.recurrence&&t.date===shiftDate(today,-1));
-    const body=past.length>0?`今日の予定をチェックしましょう。昨日のタスクが${past.length}件残っています`:'今日の予定をチェックしましょう';
-    notify('おはようございます',body);
-  },[loaded,now,tasks,settings.wakeTime,settings.notificationsEnabled]);
+    const body=past.length>0?tr('notifWakeCheckinBodyPast').replace('{n}',()=>String(past.length)):tr('notifWakeCheckinBody');
+    notify(tr('notifWakeCheckinTitle'),body);
+  },[loaded,now,tasks,settings.wakeTime,settings.notificationsEnabled,tr]);
 
   // 起床時チェックイン通知をネイティブに事前スケジュール（バックグラウンド/未起動でも発火させるため）。
   // 直近7日分の起床時刻をまとめて予約する。当日分のみ「昨日の未完了タスク件数」を反映し、
@@ -6716,16 +6716,16 @@ export default function App() {
       dt.setDate(dt.getDate()+d);
       dt.setHours(Math.floor(wakeM/60),wakeM%60,0,0);
       if(dt.getTime()<=nowMs) continue;
-      let body='今日の予定をチェックしましょう';
+      let body=tr('notifWakeCheckinBody');
       if(d===0){
         const yesterday=shiftDate(todayStr(),-1);
         const past=tasks.filter(t=>!t.completed&&!t.isLater&&!!t.startTime&&!t.recurrence&&t.date===yesterday);
-        if(past.length>0) body=`今日の予定をチェックしましょう。昨日のタスクが${past.length}件残っています`;
+        if(past.length>0) body=tr('notifWakeCheckinBodyPast').replace('{n}',()=>String(past.length));
       }
-      alerts.push({id:`wake-checkin-${d}`,title:'おはようございます',body,timestamp:Math.floor(dt.getTime()/1000)});
+      alerts.push({id:`wake-checkin-${d}`,title:tr('notifWakeCheckinTitle'),body,timestamp:Math.floor(dt.getTime()/1000)});
     }
     syncWakeCheckins(alerts);
-  },[loaded,now,tasks,settings.wakeTime,settings.notificationsEnabled]);
+  },[loaded,now,tasks,settings.wakeTime,settings.notificationsEnabled,tr]);
 
   // タスクごとのアラート（開始時・何分前・前日）— ネイティブでは syncTaskAlerts の事前予約が発火を担うため、
   // ここは常時フォアグラウンドが前提のWeb/開発環境向けフォールバックとしてのみ動作する
@@ -6751,9 +6751,9 @@ export default function App() {
     if(toFire.length===0) return;
     localStorage.setItem(TASK_ALERT_FIRED_KEY,JSON.stringify([...firedKeys,...newFired].slice(-500)));
     toFire.forEach(({task,offset})=>{
-      notify(task.name,taskAlertBody(task.startTime!,offset));
+      notify(task.name,taskAlertBody(task.startTime!,offset,tr));
     });
-  },[loaded,now,tasks,settings.notificationsEnabled]);
+  },[loaded,now,tasks,settings.notificationsEnabled,tr]);
 
   // タスクごとのアラートをネイティブに事前スケジュール（バックグラウンド/未起動でも発火させるため）。
   // iOSは同時に予約できるローカル通知が最大64件までのため、直近60件に絞って予約する
@@ -6772,14 +6772,14 @@ export default function App() {
         alerts.push({
           id:`task-alert-${t.id}-${m}`,
           title:t.name,
-          body:taskAlertBody(t.startTime!,m),
+          body:taskAlertBody(t.startTime!,m,tr),
           timestamp:Math.floor(fireMs/1000),
         });
       });
     });
     alerts.sort((a,b)=>a.timestamp-b.timestamp);
     syncTaskAlerts(alerts.slice(0,60));
-  },[loaded,now,tasks,settings.notificationsEnabled]);
+  },[loaded,now,tasks,settings.notificationsEnabled,tr]);
 
   // 締切管理（PRO機能）の通知 — ネイティブでは syncDeadlineAlerts の事前予約が発火を担うため、
   // ここは常時フォアグラウンドが前提のWeb/開発環境向けフォールバックとしてのみ動作する
@@ -6804,9 +6804,9 @@ export default function App() {
     if(toFire.length===0) return;
     localStorage.setItem(DEADLINE_ALERT_FIRED_KEY,JSON.stringify([...firedKeys,...newFired].slice(-500)));
     toFire.forEach(({task,fire})=>{
-      notify(task.name,deadlineAlertBody(task.name,fire));
+      notify(task.name,deadlineAlertBody(task.name,fire,tr));
     });
-  },[loaded,now,tasks,settings.notificationsEnabled]);
+  },[loaded,now,tasks,settings.notificationsEnabled,tr]);
 
   // 締切管理（PRO機能）の通知をネイティブに事前スケジュール（バックグラウンド/未起動でも発火させるため）
   useEffect(()=>{
@@ -6821,14 +6821,14 @@ export default function App() {
         alerts.push({
           id:`deadline-${t.id}-${fire.key}`,
           title:t.name,
-          body:deadlineAlertBody(t.name,fire),
+          body:deadlineAlertBody(t.name,fire,tr),
           timestamp:Math.floor(fire.fireMs/1000),
         });
       });
     });
     alerts.sort((a,b)=>a.timestamp-b.timestamp);
     syncDeadlineAlerts(alerts.slice(0,60));
-  },[loaded,now,tasks,settings.notificationsEnabled]);
+  },[loaded,now,tasks,settings.notificationsEnabled,tr]);
 
   // 「あとでやる」に長時間放置されているタスクの通知 — ネイティブでは syncLaterStaleAlerts の
   // 事前予約が発火を担うため、ここは常時フォアグラウンドが前提のWeb/開発環境向けフォールバックとしてのみ動作する
@@ -6846,9 +6846,9 @@ export default function App() {
       &&!notifiedKeys.includes(`${t.id}:${t.laterSince}`));
     if(stale.length===0) return;
     localStorage.setItem(LATER_NOTIFIED_KEY,JSON.stringify([...notifiedKeys,...stale.map(t=>`${t.id}:${t.laterSince}`)]));
-    const names=stale.slice(0,3).map(t=>t.name).join('・')+(stale.length>3?'…':'');
-    notify('あとでやるが溜まっています',`${stale.length}件が長時間放置されています: ${names}`);
-  },[loaded,now,tasks,settings.notificationsEnabled,settings.laterReminderHours,settings.wakeTime,settings.sleepTime]);
+    const names=stale.slice(0,3).map(t=>t.name).join(language==='ja'?'・':', ')+(stale.length>3?'…':'');
+    notify(tr('notifLaterStaleTitle'),tr('notifLaterStaleBody').replace('{n}',()=>String(stale.length)).replace('{names}',()=>names));
+  },[loaded,now,tasks,settings.notificationsEnabled,settings.laterReminderHours,settings.wakeTime,settings.sleepTime,language,tr]);
 
   // 「あとでやる」放置タスクの通知をネイティブに事前スケジュール（バックグラウンド/未起動でも発火させるため）。
   // タスクごとにlaterSince+設定時間の絶対時刻で予約し、就寝時間帯に重なる場合は起床時刻まで後ろ倒しする。
@@ -6871,11 +6871,11 @@ export default function App() {
         // 同じタスクについて全く同じ内容の通知が同時刻に重複してしまうため、直前と同じ時刻ならスキップする
         if(fireMs===lastFireMs) continue;
         lastFireMs=fireMs;
-        alerts.push({id:`later-stale-${t.id}-${i}`,title:'あとでやるが溜まっています',body:`「${t.name}」が長時間放置されています`,timestamp:Math.floor(fireMs/1000)});
+        alerts.push({id:`later-stale-${t.id}-${i}`,title:tr('notifLaterStaleTitle'),body:tr('notifLaterStaleBodySingle').replace('{name}',()=>t.name),timestamp:Math.floor(fireMs/1000)});
       }
     });
     syncLaterStaleAlerts(alerts.slice(0,60));
-  },[loaded,tasks,settings.laterReminderHours,settings.notificationsEnabled,settings.wakeTime,settings.sleepTime]);
+  },[loaded,tasks,settings.laterReminderHours,settings.notificationsEnabled,settings.wakeTime,settings.sleepTime,tr]);
 
   // 空き時間が5分続いたら「あとでやる」タスクの消化を提案
   // ネイティブでは syncFreeSlotAlerts の事前予約が発火を担うため、
@@ -6893,9 +6893,9 @@ export default function App() {
     if(localStorage.getItem(key)) return;
     localStorage.setItem(key,'1');
     const first=laterPool[0];
-    const body=laterPool.length>1?`「${first.name}」など${laterPool.length}件のタスクがあります`:`「${first.name}」をやってみませんか？`;
-    notify('空き時間ができました',body);
-  },[loaded,now,tasks,settings,settings.notificationsEnabled]);
+    const body=laterPool.length>1?tr('notifFreeTimeBodyMulti').replace('{name}',()=>first.name).replace('{n}',()=>String(laterPool.length)):tr('notifFreeTimeBodySingle').replace('{name}',()=>first.name);
+    notify(tr('notifFreeTimeTitle'),body);
+  },[loaded,now,tasks,settings,settings.notificationsEnabled,tr]);
 
   // 空き時間の開始5分後をネイティブに事前スケジュール（バックグラウンド/未起動でも発火させるため）
   useEffect(()=>{
@@ -6904,19 +6904,19 @@ export default function App() {
     const laterPool=tasks.filter(t=>t.isLater&&!t.completed);
     if(laterPool.length===0){ syncFreeSlotAlerts([]); return; }
     const first=laterPool[0];
-    const body=laterPool.length>1?`「${first.name}」など${laterPool.length}件のタスクがあります`:`「${first.name}」をやってみませんか？`;
+    const body=laterPool.length>1?tr('notifFreeTimeBodyMulti').replace('{name}',()=>first.name).replace('{n}',()=>String(laterPool.length)):tr('notifFreeTimeBodySingle').replace('{name}',()=>first.name);
     const today=todayStr();
     const nowMs=Date.now();
     const alerts=calcFreeSlots(tasks,today,settings)
       .map(sl=>({
         id:`free-slot-${today}-${sl.start}`,
-        title:'空き時間ができました',
+        title:tr('notifFreeTimeTitle'),
         body,
         timestamp:Math.floor((new Date(`${today}T${sl.start}:00`).getTime()+5*60000)/1000),
       }))
       .filter(a=>a.timestamp*1000>nowMs);
     syncFreeSlotAlerts(alerts);
-  },[loaded,now,tasks,settings,settings.notificationsEnabled]);
+  },[loaded,now,tasks,settings,settings.notificationsEnabled,tr]);
 
   const filteredTasks = useMemo(()=>{
     // プロダクトツアー中はサンプルタスクを表示にだけ合成する（実データには保存しない）
