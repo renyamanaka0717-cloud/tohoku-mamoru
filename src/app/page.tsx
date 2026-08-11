@@ -4482,7 +4482,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   const comingSoon = (icon:React.ReactNode, msg:string) => (
     <div className="flex flex-col items-center justify-center pt-20 gap-3">
       <div className="text-gray-300">{icon}</div>
-      <p className="text-[17px] font-semibold text-gray-900">準備中</p>
+      <p className="text-[17px] font-semibold text-gray-900">{tr('comingSoonLabel')}</p>
       <p className="text-sm text-gray-400 text-center px-8 leading-relaxed">{msg}</p>
     </div>
   );
@@ -4813,8 +4813,8 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
 
   if(sub==='stats') return (
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
-      {subHeader('統計')}
-      <div className="flex-1 overflow-y-auto px-4 pb-8">{comingSoon(<AppIcons.stats size={48}/>,'タスク完了の統計機能は近日公開予定です')}</div>
+      {subHeader(tr('statsScreenTitle'))}
+      <div className="flex-1 overflow-y-auto px-4 pb-8">{comingSoon(<AppIcons.stats size={48}/>,tr('statsComingSoonDesc'))}</div>
     </div>
   );
 
@@ -6054,6 +6054,7 @@ function MorningCheckModal({tasks,selected,onToggle,onSelectAll,onAction,onSnooz
   tasks:Task[];selected:Set<string>;onToggle:(id:string)=>void;onSelectAll:()=>void;
   onAction:(type:'done'|'later')=>void;onSnooze:(minutes:number)=>void;onClose:()=>void;
 }){
+  const {tr,language} = useI18n();
   const [sub,setSub]=useState<'main'|'snooze'|'closeConfirm'>('main');
   const [snoozeIdx,setSnoozeIdx]=useState(0);
   const snoozeScrollRef=useRef<HTMLDivElement>(null);
@@ -6062,18 +6063,21 @@ function MorningCheckModal({tasks,selected,onToggle,onSelectAll,onAction,onSnooz
   const ITEM_H=44;
   const SNOOZE_ITEMS=Array.from({length:20},(_,i)=>{
     const m=(i+1)*15,h=Math.floor(m/60),rem=m%60;
-    return {m,l:h===0?`${m}分後`:rem===0?`${h}時間後`:`${h}時間${rem}分後`};
+    const l=language==='ja'
+      ?(h===0?`${m}分後`:rem===0?`${h}時間後`:`${h}時間${rem}分後`)
+      :(h===0?tr('morningSnoozeMinutes').replace('{m}',()=>String(m)):rem===0?tr('morningSnoozeHours').replace('{h}',()=>String(h)):tr('morningSnoozeHoursMinutes').replace('{h}',()=>String(h)).replace('{m}',()=>String(rem)));
+    return {m,l};
   });
 
   if(sub==='closeConfirm') return (
     <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/30 px-6">
       <div className="bg-white rounded-2xl w-full max-w-sm p-6 shadow-2xl">
-        <p className="text-sm text-gray-700 mb-6">このまま閉じると、昨日のタスクは前日に残ります。閉じますか？</p>
+        <p className="text-sm text-gray-700 mb-6">{tr('morningCloseConfirmBody')}</p>
         <div className="flex gap-3">
           <button onClick={()=>setSub('main')}
-            className="flex-1 py-3 bg-gray-100 rounded-xl text-sm font-semibold text-gray-800 active:bg-gray-200">戻る</button>
+            className="flex-1 py-3 bg-gray-100 rounded-xl text-sm font-semibold text-gray-800 active:bg-gray-200">{tr('backButton')}</button>
           <button onClick={onClose}
-            className="flex-1 py-3 rounded-xl text-sm font-semibold text-white active:opacity-80" style={{background:THEME.danger}}>閉じる</button>
+            className="flex-1 py-3 rounded-xl text-sm font-semibold text-white active:opacity-80" style={{background:THEME.danger}}>{tr('closeButton')}</button>
         </div>
       </div>
     </div>
@@ -6086,7 +6090,7 @@ function MorningCheckModal({tasks,selected,onToggle,onSelectAll,onAction,onSnooz
           <div className="w-10 h-1 bg-gray-300 rounded-full"/>
         </div>
         <div className="px-5 pt-3 pb-2">
-          <p className="text-[16px] font-bold text-gray-900">何時間後に再通知しますか？</p>
+          <p className="text-[16px] font-bold text-gray-900">{tr('morningSnoozeQuestion')}</p>
         </div>
         <div className="relative" style={{height:ITEM_H*5}}>
           <div style={{
@@ -6123,10 +6127,10 @@ function MorningCheckModal({tasks,selected,onToggle,onSelectAll,onAction,onSnooz
           <button onClick={()=>onSnooze(SNOOZE_ITEMS[snoozeIdx].m)}
             className="w-full py-3.5 rounded-xl text-sm font-semibold text-white active:opacity-80"
             style={{background:THEME.primary}}>
-            この時間後に再通知する
+            {tr('morningSnoozeConfirmButton')}
           </button>
           <button onClick={()=>setSub('main')}
-            className="w-full py-2.5 text-sm text-gray-400 font-medium">戻る</button>
+            className="w-full py-2.5 text-sm text-gray-400 font-medium">{tr('backButton')}</button>
         </div>
       </div>
     </div>
@@ -6141,8 +6145,8 @@ function MorningCheckModal({tasks,selected,onToggle,onSelectAll,onAction,onSnooz
             className="absolute right-4 top-1.5 w-7 h-7 flex items-center justify-center text-gray-400 text-lg active:text-gray-600">×</button>
         </div>
         <div className="px-5 pt-2 pb-3 shrink-0">
-          <p className="text-[17px] font-bold text-gray-900">昨日のタスク</p>
-          <p className="text-sm text-gray-400 mt-1">{tasks.length}件のタスクが残っています</p>
+          <p className="text-[17px] font-bold text-gray-900">{tr('morningTitle')}</p>
+          <p className="text-sm text-gray-400 mt-1">{tr('morningRemainingCount').replace('{n}',()=>String(tasks.length))}</p>
         </div>
         <div className="flex-1 overflow-y-auto">
           <button className="w-full flex items-center gap-3 px-5 py-2.5 border-b border-gray-100" onClick={onSelectAll}>
@@ -6150,7 +6154,7 @@ function MorningCheckModal({tasks,selected,onToggle,onSelectAll,onAction,onSnooz
               style={allSel?{background:THEME.primary,borderColor:THEME.primary}:{borderColor:'#D1D5DB'}}>
               {allSel&&<span className="text-white text-[10px] font-bold">✓</span>}
             </div>
-            <span className="text-sm text-gray-500 font-medium">すべて選択</span>
+            <span className="text-sm text-gray-500 font-medium">{tr('selectAllLabel')}</span>
           </button>
           {tasks.map(t=>{
             const isSel=selected.has(t.id);
@@ -6178,17 +6182,17 @@ function MorningCheckModal({tasks,selected,onToggle,onSelectAll,onAction,onSnooz
           <div className="grid grid-cols-2 gap-2 mb-2">
             <button disabled={selCount===0} onClick={()=>onAction('done')}
               className={`py-3 rounded-xl text-sm font-semibold ${selCount>0?'bg-gray-100 text-gray-800 active:bg-gray-200':'bg-gray-50 text-gray-300'}`}>
-              完了した
+              {tr('markDoneButton')}
             </button>
             <button disabled={selCount===0} onClick={()=>onAction('later')}
               className={`py-3 rounded-xl text-sm font-semibold ${selCount>0?'text-white active:opacity-80':'bg-gray-50 text-gray-300'}`}
               style={selCount>0?{background:THEME.primary}:{}}>
-              あとでやるに戻す
+              {tr('moveToLaterButton')}
             </button>
           </div>
           <button onClick={()=>setSub('snooze')}
             className="w-full py-2.5 text-sm text-gray-400 font-medium active:text-gray-600">
-            あとで確認する
+            {tr('checkLaterButton')}
           </button>
         </div>
       </div>
@@ -6258,17 +6262,18 @@ export default function App() {
   const [tourFocusNameSignal,setTourFocusNameSignal] = useState(0);
   const [tourFillTestNameSignal,setTourFillTestNameSignal] = useState(0);
   const [tourSampleTasks,setTourSampleTasks] = useState<Task[]>([]);
+  const { tr, language } = useI18n();
   // プロダクトツアー中だけ表示するサンプルタスク。実データ（tasks/localStorage）には
   // 一切保存せず、表示用にfilteredTasksへ合成するだけなのでツアー終了時に消せば痕跡は残らない
   useEffect(()=>{
     if(!showTour){ setTourSampleTasks([]); return; }
     const today=todayStr();
-    const names=['牛乳を買う','クリーニングを受け取る','振込をする'];
+    const names=language==='ja'?['牛乳を買う','クリーニングを受け取る','振込をする']:['Buy milk','Pick up dry cleaning','Make a bank transfer'];
     setTourSampleTasks(names.map((name,i)=>({
       id:`tour-sample-${i}`,name,startTime:null,duration:0,memo:'',icon:defaultIconKey(name),
       completed:false,date:today,isLater:true,recurrence:null,tags:[],notifications:[],subtasks:[],
     })));
-  },[showTour]);
+  },[showTour,language]);
   const [showWakeSleepPrompt,setShowWakeSleepPrompt] = useState(false);
   const [wsPromptWake,setWsPromptWake] = useState('07:00');
   const [wsPromptSleep,setWsPromptSleep] = useState('23:00');
@@ -6280,7 +6285,6 @@ export default function App() {
   const recommendStateRef = useRef<Partial<Record<RecommendationId,RecommendationState>>>({});
   const recommendPickedRef = useRef(false);
   const { isPremium } = usePremium();
-  const { tr, language } = useI18n();
 
   useEffect(()=>{
     try{
@@ -7037,7 +7041,7 @@ export default function App() {
   const deleteShop   = (id:string)   => setShopItems(prev=>prev.filter(i=>i.id!==id));
 
   const addCustomTab=()=>{
-    const newTab:CustomTab={id:uid(),name:`タブ${customTabs.length+1}`};
+    const newTab:CustomTab={id:uid(),name:`${tr('newTabDefaultName')}${customTabs.length+1}`};
     setCustomTabs(prev=>[...prev,newTab]);
     setActiveCat(newTab.id);
     setEditTabId(newTab.id);
@@ -7271,7 +7275,7 @@ export default function App() {
             <div className="flex items-center bg-white border-b border-gray-100 py-2 gap-3" style={{paddingLeft:'12px'}}>
               <div className="flex items-center gap-1 shrink-0">
                 <AppIcons.wake size={13} className="text-gray-400"/>
-                <span className="text-xs text-gray-400 font-medium whitespace-nowrap">終日</span>
+                <span className="text-xs text-gray-400 font-medium whitespace-nowrap">{tr('allDayLabel')}</span>
               </div>
               <div className="flex gap-4 overflow-x-auto flex-1 pr-3" style={{scrollbarWidth:'none',WebkitOverflowScrolling:'touch'}}>
                 {allDayTasks.map(t=>(
@@ -7336,7 +7340,7 @@ export default function App() {
           <div className="bg-white w-full max-w-md rounded-t-3xl px-5 pt-5 pb-8 shadow-2xl" onClick={e=>e.stopPropagation()}>
             <div className="flex justify-center mb-4"><div className="w-10 h-1 bg-gray-200 rounded-full"/></div>
             <div className="flex items-center gap-2 mb-4">
-              <p className="text-[15px] font-semibold text-gray-900">{colorPickTarget==='wake'?'起床':'就寝'}アイコンの色</p>
+              <p className="text-[15px] font-semibold text-gray-900">{tr('wakeSleepIconColorTitle').replace('{label}',()=>tr(colorPickTarget==='wake'?'timelineWake':'timelineSleep'))}</p>
               <span className="bg-gray-700 text-white rounded px-1.5 leading-none" style={{fontSize:'9px',fontWeight:700,paddingTop:'3px',paddingBottom:'3px'}}>PRO</span>
             </div>
             <div className="flex flex-wrap gap-3">
@@ -7356,7 +7360,7 @@ export default function App() {
         <div className="fixed inset-0 z-[120] bg-black/40 flex items-end justify-center" onClick={()=>setTimePickerTarget(null)}>
           <div className="bg-white w-full max-w-md rounded-t-3xl px-5 pt-5 pb-10 shadow-2xl" onClick={e=>e.stopPropagation()}>
             <div className="flex justify-center mb-4"><div className="w-10 h-1 bg-gray-200 rounded-full"/></div>
-            <p className="text-[15px] font-semibold text-gray-900 mb-5">{timePickerTarget==='wake'?'起床':'就寝'}時間を変更</p>
+            <p className="text-[15px] font-semibold text-gray-900 mb-5">{tr('wakeSleepTimeChangeTitle').replace('{label}',()=>tr(timePickerTarget==='wake'?'timelineWake':'timelineSleep'))}</p>
             <div className="flex items-center justify-center mb-6">
               <input type="time" value={timePickerValue} onChange={e=>setTimePickerValue(e.target.value)}
                 className="text-3xl font-bold text-gray-900 border-b-2 border-gray-300 focus:border-[var(--c-primary)] outline-none bg-transparent text-center py-2"/>
@@ -7364,7 +7368,7 @@ export default function App() {
             <button onClick={()=>{
               if(timePickerValue){setSettingConfirm({type:timePickerTarget,newTime:timePickerValue});}
               setTimePickerTarget(null);
-            }} className="w-full py-3.5 rounded-2xl text-[15px] font-semibold text-white" style={{background:'var(--c-primary)'}}>完了</button>
+            }} className="w-full py-3.5 rounded-2xl text-[15px] font-semibold text-white" style={{background:'var(--c-primary)'}}>{tr('taskModalDone')}</button>
           </div>
         </div>
       )}
@@ -7425,7 +7429,7 @@ export default function App() {
             }}>
               <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 px-4 py-3 w-44">
                 <p className="text-sm font-bold text-gray-900 truncate">{dragTask?.name}</p>
-                <p className="text-xs text-[var(--c-primary)] mt-0.5 font-semibold">{dropTime??'ドラッグして配置'}</p>
+                <p className="text-xs text-[var(--c-primary)] mt-0.5 font-semibold">{dropTime??tr('dragToPlaceLabel')}</p>
               </div>
             </div>
           )}
@@ -7433,11 +7437,11 @@ export default function App() {
           <div className="absolute bottom-0 left-0 right-0 h-24 flex">
             <div className={`flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors ${overTrash?'bg-[#D97A7A]':'bg-red-50'}`}>
               <AppIcons.trash size={28} className={overTrash?'text-white':'text-[#D97A7A]'}/>
-              <span className={`text-xs font-bold ${overTrash?'text-white':'text-[#D97A7A]'}`}>削除する</span>
+              <span className={`text-xs font-bold ${overTrash?'text-white':'text-[#D97A7A]'}`}>{tr('deleteTaskButton')}</span>
             </div>
             <div className={`flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors ${overLater?'bg-[var(--c-primary)]':'bg-pink-50'}`}>
               <AppIcons.postponed size={28} className={overLater?'text-white':'text-[var(--c-primary)]'}/>
-              <span className={`text-xs font-bold ${overLater?'text-white':'text-[var(--c-primary)]'}`}>あとでやるに戻す</span>
+              <span className={`text-xs font-bold ${overLater?'text-white':'text-[var(--c-primary)]'}`}>{tr('moveToLaterButton')}</span>
             </div>
           </div>
         </div>
@@ -7452,12 +7456,12 @@ export default function App() {
         return(
         <div className="fixed inset-0 z-[200] bg-black/50 flex items-end justify-center" onClick={()=>setSettingConfirm(null)}>
           <div className="bg-white w-full max-w-md rounded-t-3xl px-5 pt-6 pb-10 shadow-2xl" onClick={e=>e.stopPropagation()}>
-            <p className="text-base font-bold text-gray-900 mb-1">{settingConfirm.type==='wake'?'起床':'就寝'}時間を変更</p>
-            <p className="text-sm text-gray-500 mb-3">{settingConfirm.newTime} に変更します</p>
+            <p className="text-base font-bold text-gray-900 mb-1">{tr('wakeSleepTimeChangeTitle').replace('{label}',()=>tr(settingConfirm.type==='wake'?'timelineWake':'timelineSleep'))}</p>
+            <p className="text-sm text-gray-500 mb-3">{tr('settingConfirmNewTimeNote').replace('{time}',()=>settingConfirm.newTime)}</p>
             {activePat&&(
               <div className="bg-orange-50 border border-orange-100 rounded-xl px-3 py-2.5 mb-5">
-                <p className="text-xs text-orange-500 font-medium">「{activePat.name}」パターンが設定されています</p>
-                <p className="text-xs text-orange-400 mt-0.5">変更するとこの日のパターンが解除されます</p>
+                <p className="text-xs text-orange-500 font-medium">{tr('patternAppliedNote').replace('{name}',()=>activePat.name)}</p>
+                <p className="text-xs text-orange-400 mt-0.5">{tr('patternWillClearNote')}</p>
               </div>
             )}
             {!activePat&&<div className="mb-3"/>}
@@ -7467,7 +7471,7 @@ export default function App() {
                 if(activePat) clearPattern();
                 setDayOverrides(prev=>({...prev,[date]:{...prev[date],[key]:settingConfirm.newTime}}));
                 setSettingConfirm(null);
-              }} className="w-full py-3.5 bg-gray-100 rounded-2xl text-sm font-semibold text-gray-900">{activePat?'パターンを解除してこの日だけ変更':'この日だけ変更'}</button>
+              }} className="w-full py-3.5 bg-gray-100 rounded-2xl text-sm font-semibold text-gray-900">{tr(activePat?'clearPatternAndChangeTodayButton':'changeTodayOnlyButton')}</button>
               <button onClick={()=>{
                 const key=settingConfirm.type==='wake'?'wakeTime':'sleepTime';
                 if(activePat) clearPattern();
@@ -7478,8 +7482,8 @@ export default function App() {
                   return n;
                 });
                 setSettingConfirm(null);
-              }} className="w-full py-3.5 bg-[var(--c-primary)] rounded-2xl text-sm font-semibold text-white">他の日も全部この時間に変更</button>
-              <button onClick={()=>setSettingConfirm(null)} className="w-full py-2.5 text-sm text-gray-400 font-semibold">キャンセル</button>
+              }} className="w-full py-3.5 bg-[var(--c-primary)] rounded-2xl text-sm font-semibold text-white">{tr('changeAllDaysButton')}</button>
+              <button onClick={()=>setSettingConfirm(null)} className="w-full py-2.5 text-sm text-gray-400 font-semibold">{tr('cancelButton')}</button>
             </div>
           </div>
         </div>
@@ -7525,13 +7529,13 @@ export default function App() {
         <div className="fixed inset-0 z-[200] bg-black/40 flex items-end justify-center" onClick={()=>setShowTabFilter(false)}>
           <div className="bg-white w-full max-w-md rounded-t-3xl px-5 pt-5 pb-10 shadow-2xl" onClick={e=>e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
-              <p className="text-base font-bold text-gray-900">表示するタブを選択</p>
+              <p className="text-base font-bold text-gray-900">{tr('tabFilterTitle')}</p>
               {tabFilter.length>0&&(
-                <button onClick={()=>setTabFilter([])} className="text-sm font-medium" style={{color:'var(--c-primary)'}}>すべて表示</button>
+                <button onClick={()=>setTabFilter([])} className="text-sm font-medium" style={{color:'var(--c-primary)'}}>{tr('showAllButton')}</button>
               )}
             </div>
             {customTabs.length===0?(
-              <p className="text-sm text-gray-400 text-center py-4">タブが作成されていません</p>
+              <p className="text-sm text-gray-400 text-center py-4">{tr('noTabsCreatedYet')}</p>
             ):(
               <div className="space-y-1">
                 {customTabs.map(tab=>{
@@ -7552,7 +7556,7 @@ export default function App() {
             <button onClick={()=>setShowTabFilter(false)}
               className="mt-5 w-full py-3.5 rounded-2xl text-[15px] font-semibold"
               style={{background:'var(--c-primary)',color:'white'}}>
-              完了
+              {tr('taskModalDone')}
             </button>
           </div>
         </div>
@@ -7562,14 +7566,14 @@ export default function App() {
       {pendingDragMove&&(
         <div className="fixed inset-0 z-[200] bg-black/50 flex items-end justify-center" onClick={()=>setPendingDragMove(null)}>
           <div className="bg-white w-full max-w-md rounded-t-3xl px-5 pt-6 pb-10 shadow-2xl" onClick={e=>e.stopPropagation()}>
-            <p className="text-base font-bold text-gray-900 mb-1">繰り返し予定の移動</p>
-            <p className="text-sm text-gray-500 mb-6">「{pendingDragMove.task.name}」を {pendingDragMove.time} に移動しますか？</p>
+            <p className="text-base font-bold text-gray-900 mb-1">{tr('recurringMoveTitle')}</p>
+            <p className="text-sm text-gray-500 mb-6">{tr('recurringMoveConfirmBody').replace('{name}',()=>pendingDragMove.task.name).replace('{time}',()=>pendingDragMove.time)}</p>
             <div className="space-y-3">
               <button onClick={()=>{
                 const {task:orig,time}=pendingDragMove;
                 setTasks(prev=>prev.map(tk=>tk.id===orig.id?{...tk,startTime:time}:tk));
                 setPendingDragMove(null);
-              }} className="w-full py-3.5 bg-gray-100 rounded-2xl text-sm font-semibold text-gray-900">この予定のみ変更</button>
+              }} className="w-full py-3.5 bg-gray-100 rounded-2xl text-sm font-semibold text-gray-900">{tr('thisOccurrenceOnlyButton')}</button>
               <button onClick={()=>{
                 const {task:orig,time}=pendingDragMove;
                 setTasks(prev=>prev.map(tk=>
@@ -7577,9 +7581,9 @@ export default function App() {
                     ?{...tk,startTime:time}:tk
                 ));
                 setPendingDragMove(null);
-              }} className="w-full py-3.5 bg-[var(--c-primary)] rounded-2xl text-sm font-semibold text-white">すべての予定を変更</button>
+              }} className="w-full py-3.5 bg-[var(--c-primary)] rounded-2xl text-sm font-semibold text-white">{tr('allOccurrencesButton')}</button>
               <button onClick={()=>setPendingDragMove(null)}
-                className="w-full py-2.5 text-sm text-gray-400 font-semibold">キャンセル</button>
+                className="w-full py-2.5 text-sm text-gray-400 font-semibold">{tr('cancelButton')}</button>
             </div>
           </div>
         </div>
@@ -7587,15 +7591,15 @@ export default function App() {
       {recConfirm&&(
         <div className="fixed inset-0 z-[200] bg-black/50 flex items-end justify-center" onClick={()=>setRecConfirm(null)}>
           <div className="bg-white w-full max-w-md rounded-t-3xl px-5 pt-6 pb-10 shadow-2xl" onClick={e=>e.stopPropagation()}>
-            <p className="text-base font-bold text-gray-900 mb-1">繰り返し予定の変更</p>
-            <p className="text-sm text-gray-500 mb-6">「{recConfirm.name}」をどのように変更しますか？</p>
+            <p className="text-base font-bold text-gray-900 mb-1">{tr('recurringEditTitle')}</p>
+            <p className="text-sm text-gray-500 mb-6">{tr('recurringEditConfirmBody').replace('{name}',()=>recConfirm.name)}</p>
             <div className="space-y-3">
               <button onClick={()=>{setEditScope('one');setModal({open:true,task:recConfirm});setRecConfirm(null);}}
-                className="w-full py-3.5 bg-gray-100 rounded-2xl text-sm font-semibold text-gray-900">この予定のみ変更</button>
+                className="w-full py-3.5 bg-gray-100 rounded-2xl text-sm font-semibold text-gray-900">{tr('thisOccurrenceOnlyButton')}</button>
               <button onClick={()=>{setEditScope('all');setModal({open:true,task:recConfirm});setRecConfirm(null);}}
-                className="w-full py-3.5 bg-[var(--c-primary)] rounded-2xl text-sm font-semibold text-white">すべての予定を変更</button>
+                className="w-full py-3.5 bg-[var(--c-primary)] rounded-2xl text-sm font-semibold text-white">{tr('allOccurrencesButton')}</button>
               <button onClick={()=>setRecConfirm(null)}
-                className="w-full py-2.5 text-sm text-gray-400 font-semibold">キャンセル</button>
+                className="w-full py-2.5 text-sm text-gray-400 font-semibold">{tr('cancelButton')}</button>
             </div>
           </div>
         </div>
@@ -7612,8 +7616,8 @@ export default function App() {
                 <AppIcons.wake size={32} className="text-[var(--c-primary)]"/>
               </div>
             </div>
-            <p className="text-lg font-bold text-gray-900 text-center mb-2">起床・就寝時間を設定しよう</p>
-            <p className="text-sm text-gray-500 text-center mb-6 leading-relaxed">あなたの生活リズムに合わせてタイムラインを表示します。</p>
+            <p className="text-lg font-bold text-gray-900 text-center mb-2">{tr('wakeSleepSetupTitle')}</p>
+            <p className="text-sm text-gray-500 text-center mb-6 leading-relaxed">{tr('wakeSleepSetupBody')}</p>
             <div className="flex items-center justify-center gap-3 mb-7">
               <input type="time" value={wsPromptWake} onChange={e=>setWsPromptWake(e.target.value)}
                 className="border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50"/>
@@ -7623,9 +7627,9 @@ export default function App() {
             </div>
             <button onClick={confirmWakeSleepPrompt}
               className="w-full py-3.5 rounded-2xl text-[15px] font-bold text-white mb-3"
-              style={{background:'var(--c-primary)'}}>設定する</button>
+              style={{background:'var(--c-primary)'}}>{tr('taskLocationConfirmButton')}</button>
             <button onClick={dismissWakeSleepPrompt}
-              className="w-full py-2.5 text-sm font-medium text-gray-400">あとで</button>
+              className="w-full py-2.5 text-sm font-medium text-gray-400">{tr('laterButton')}</button>
           </div>
         </div>
       )}

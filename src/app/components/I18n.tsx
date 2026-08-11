@@ -517,6 +517,52 @@ export const STRINGS = {
   mapDragPinchHint:         { ja: 'ドラッグで移動、ピンチで拡大縮小できます', en: 'Drag to move, pinch to zoom' },
   mapConfirmingLabel:       { ja: '取得中...',                  en: 'Confirming...' },
   confirmThisLocationButton:{ ja: 'この位置に決定',              en: 'Confirm this location' },
+
+  // MorningCheckModal（起床時「昨日のタスク」確認）
+  morningCloseConfirmBody:    { ja: 'このまま閉じると、昨日のタスクは前日に残ります。閉じますか？', en: "If you close now, yesterday's tasks will stay on that day. Close anyway?" },
+  morningSnoozeQuestion:      { ja: '何時間後に再通知しますか？',        en: 'When should we remind you again?' },
+  morningSnoozeMinutes:       { ja: '{m}分後',                    en: 'In {m} min' },
+  morningSnoozeHours:         { ja: '{h}時間後',                   en: 'In {h}h' },
+  morningSnoozeHoursMinutes:  { ja: '{h}時間{m}分後',               en: 'In {h}h {m}m' },
+  morningSnoozeConfirmButton: { ja: 'この時間後に再通知する',          en: 'Remind me then' },
+  morningTitle:               { ja: '昨日のタスク',                 en: "Yesterday's tasks" },
+  morningRemainingCount:      { ja: '{n}件のタスクが残っています',        en: '{n} task(s) remaining' },
+  selectAllLabel:             { ja: 'すべて選択',                   en: 'Select all' },
+  markDoneButton:             { ja: '完了した',                    en: 'Mark done' },
+  moveToLaterButton:          { ja: 'あとでやるに戻す',               en: 'Move to Later' },
+  checkLaterButton:           { ja: 'あとで確認する',                en: "I'll check later" },
+
+  // 起床・就寝カラー/時間ピッカー・変更確認・初回設定プロンプト
+  allDayLabel:                { ja: '終日',                       en: 'All day' },
+  wakeSleepIconColorTitle:    { ja: '{label}アイコンの色',            en: '{label} icon color' },
+  wakeSleepTimeChangeTitle:   { ja: '{label}時間を変更',             en: 'Change {label} time' },
+  dragToPlaceLabel:           { ja: 'ドラッグして配置',               en: 'Drag to place' },
+  settingConfirmNewTimeNote:  { ja: '{time} に変更します',            en: 'Change to {time}' },
+  patternAppliedNote:         { ja: '「{name}」パターンが設定されています', en: '"{name}" pattern is applied' },
+  patternWillClearNote:       { ja: '変更するとこの日のパターンが解除されます', en: 'Changing this will clear the pattern for this day' },
+  clearPatternAndChangeTodayButton: { ja: 'パターンを解除してこの日だけ変更', en: 'Clear pattern and change today only' },
+  changeTodayOnlyButton:      { ja: 'この日だけ変更',                en: 'Change today only' },
+  changeAllDaysButton:        { ja: '他の日も全部この時間に変更',          en: 'Change this time for all days' },
+  wakeSleepSetupTitle:        { ja: '起床・就寝時間を設定しよう',          en: "Let's set your wake & sleep time" },
+  wakeSleepSetupBody:         { ja: 'あなたの生活リズムに合わせてタイムラインを表示します。', en: "We'll show your timeline based on your daily rhythm." },
+  laterButton:                { ja: 'あとで',                     en: 'Later' },
+
+  // タブ表示フィルター・繰り返し予定の移動/変更確認
+  tabFilterTitle:             { ja: '表示するタブを選択',              en: 'Choose tabs to show' },
+  showAllButton:              { ja: 'すべて表示',                   en: 'Show all' },
+  noTabsCreatedYet:           { ja: 'タブが作成されていません',           en: 'No tabs created yet' },
+  recurringMoveTitle:         { ja: '繰り返し予定の移動',              en: 'Move recurring task' },
+  recurringMoveConfirmBody:   { ja: '「{name}」を {time} に移動しますか？', en: 'Move "{name}" to {time}?' },
+  recurringEditTitle:         { ja: '繰り返し予定の変更',              en: 'Edit recurring task' },
+  recurringEditConfirmBody:   { ja: '「{name}」をどのように変更しますか？',   en: 'How do you want to change "{name}"?' },
+  thisOccurrenceOnlyButton:   { ja: 'この予定のみ変更',               en: 'Change this occurrence only' },
+  allOccurrencesButton:       { ja: 'すべての予定を変更',              en: 'Change all occurrences' },
+
+  // 統計画面（準備中）
+  statsScreenTitle:      { ja: '統計',                          en: 'Stats' },
+  comingSoonLabel:       { ja: '準備中',                         en: 'Coming soon' },
+  statsComingSoonDesc:   { ja: 'タスク完了の統計機能は近日公開予定です',      en: 'Task completion stats are coming soon' },
+  newTabDefaultName:     { ja: 'タブ',                          en: 'Tab' },
 } as const;
 
 export type StringKey = keyof typeof STRINGS;
