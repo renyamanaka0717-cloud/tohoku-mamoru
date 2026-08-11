@@ -3998,6 +3998,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
   const [reorderDy,setReorderDy] = useState(0);
   const reorderTimer = useRef<ReturnType<typeof setTimeout>|null>(null);
   const reorderStartY = useRef(0);
+  const reorderStartTouch = useRef<{x:number;y:number}>({x:0,y:0});
   const reorderSlots = useRef<{top:number;height:number}[]>([]);
   const rowRefs = useRef<Record<string,HTMLDivElement|null>>({});
   const swX=useRef(0), swY=useRef(0);
@@ -4040,6 +4041,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
   const startReorderPress=(task:Task,e:React.TouchEvent)=>{
     if(sortDir!==null) return;
     const touch=e.touches[0];
+    reorderStartTouch.current={x:touch.clientX,y:touch.clientY};
     setPressingId(task.id);
     reorderTimer.current=setTimeout(()=>{
       if(navigator.vibrate) navigator.vibrate(40);
@@ -4057,37 +4059,60 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
     if(reorderTimer.current){clearTimeout(reorderTimer.current);reorderTimer.current=null;}
     setPressingId(null);
   };
-  const onReorderMove=(e:React.TouchEvent)=>{
-    if(!reorderId){cancelReorderPress();return;}
+  // 長押し待ち（500ms）の間だけ使う。指の自然な微振動（数px）でキャンセルされないよう
+  // 許容範囲を設ける（実機で許容範囲なしだと長押し自体がほぼ成立せず「ドラッグしづらい」
+  // 不具合になった実績あり）。実際のドラッグ中の移動判定は下のuseEffect側が担当する
+  const onReorderPreMove=(e:React.TouchEvent)=>{
+    if(reorderId) return;
     const touch=e.touches[0];
-    const dy=touch.clientY-reorderStartY.current;
-    setReorderDy(dy);
-    setReorderIds(prev=>{
-      if(!prev) return prev;
-      const slots=reorderSlots.current;
-      const draggedIdx=prev.indexOf(reorderId);
-      if(draggedIdx===-1||!slots[draggedIdx]) return prev;
-      const draggedCenter=slots[draggedIdx].top+slots[draggedIdx].height/2+dy;
-      let targetIdx=draggedIdx;
-      for(let i=0;i<slots.length;i++){
-        const s=slots[i];
-        if(draggedCenter>=s.top&&draggedCenter<=s.top+s.height){targetIdx=i;break;}
-      }
-      if(targetIdx===draggedIdx) return prev;
-      const next=[...prev];
-      next.splice(draggedIdx,1);
-      next.splice(targetIdx,0,reorderId);
-      return next;
-    });
+    const dx=touch.clientX-reorderStartTouch.current.x;
+    const dy=touch.clientY-reorderStartTouch.current.y;
+    if(Math.hypot(dx,dy)>12) cancelReorderPress();
   };
-  const endReorder=()=>{
-    cancelReorderPress();
-    if(reorderId&&reorderIds) onReorderLater(reorderIds);
-    setReorderId(null);
-    setReorderIds(null);
-    setReorderDy(0);
-    reorderSlots.current=[];
-  };
+  // 実際のドラッグ中はdocumentに直接{passive:false}のtouchmoveリスナーを付けて
+  // preventDefault()する（Reactの合成touchイベントはpassiveで登録されpreventDefaultが
+  // 効かないため、これが無いとドラッグ中に一覧が裏でスクロールしてしまい操作が破綻する。
+  // App本体のタイムラインドラッグ（startDrag）と同じパターン）
+  useEffect(()=>{
+    if(!reorderId) return;
+    const onMove=(e:TouchEvent)=>{
+      e.preventDefault();
+      const touch=e.touches[0];
+      const dy=touch.clientY-reorderStartY.current;
+      setReorderDy(dy);
+      setReorderIds(prev=>{
+        if(!prev) return prev;
+        const slots=reorderSlots.current;
+        const draggedIdx=prev.indexOf(reorderId);
+        if(draggedIdx===-1||!slots[draggedIdx]) return prev;
+        const draggedCenter=slots[draggedIdx].top+slots[draggedIdx].height/2+dy;
+        let targetIdx=draggedIdx;
+        for(let i=0;i<slots.length;i++){
+          const s=slots[i];
+          if(draggedCenter>=s.top&&draggedCenter<=s.top+s.height){targetIdx=i;break;}
+        }
+        if(targetIdx===draggedIdx) return prev;
+        const next=[...prev];
+        next.splice(draggedIdx,1);
+        next.splice(targetIdx,0,reorderId);
+        return next;
+      });
+    };
+    const onEnd=()=>{
+      setReorderIds(curr=>{ if(curr) onReorderLater(curr); return null; });
+      setReorderId(null);
+      setReorderDy(0);
+      reorderSlots.current=[];
+    };
+    document.addEventListener('touchmove',onMove,{passive:false});
+    document.addEventListener('touchend',onEnd);
+    document.addEventListener('touchcancel',onEnd);
+    return ()=>{
+      document.removeEventListener('touchmove',onMove);
+      document.removeEventListener('touchend',onEnd);
+      document.removeEventListener('touchcancel',onEnd);
+    };
+  },[reorderId,onReorderLater]);
   const renderLaterRowContent=(t:Task)=>{
     const LaterIc=getTaskIcon(t.icon||defaultIconKey(t.name));
     return (
@@ -4195,9 +4220,9 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
                       className={`flex items-center gap-2.5 bg-white border border-gray-100 rounded-2xl shadow-sm px-3 py-3 select-none ${dragging?'relative z-10 shadow-lg border-blue-200':'transition-transform'} ${pressingId===t.id?'scale-95':''}`}
                       style={dragging?{transform:`translateY(${reorderDy}px)`}:undefined}
                       onTouchStart={e=>startReorderPress(t,e)}
-                      onTouchEnd={endReorder}
-                      onTouchMove={onReorderMove}
-                      onTouchCancel={endReorder}>
+                      onTouchEnd={cancelReorderPress}
+                      onTouchMove={onReorderPreMove}
+                      onTouchCancel={cancelReorderPress}>
                       {renderLaterRowContent(t)}
                     </div>
                   );})}
