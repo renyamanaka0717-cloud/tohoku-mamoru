@@ -1348,7 +1348,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
   const locConfirmPending=async()=>{
     if(!locPending) return;
     const ok=await ensureGeofencePermission('task_location');
-    if(!ok){ setLocError('場所に到着したときに通知するため、位置情報の利用を許可してください。'); return; }
+    if(!ok){ setLocError(tr('taskLocationPermError')); return; }
     setTaskLocation({name:locPending.name,lat:locPending.lat,lng:locPending.lng});
     setLocationNotify(true);
     setLocAdding(false);
@@ -1566,12 +1566,12 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                 <>
                   {/* Summary */}
                   <div className="mx-3 mt-3 bg-[var(--c-primary)] rounded-2xl px-4 py-3">
-                    <p className="text-white text-sm font-bold">{summarizeCustomRec(customRec)}</p>
+                    <p className="text-white text-sm font-bold">{language==='ja'?summarizeCustomRec(customRec):summarizeCustomRecEn(customRec)}</p>
                   </div>
 
                   {/* ① 間隔 */}
                   <div className="bg-white mx-3 mt-3 rounded-2xl p-4">
-                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-4">① 間隔</p>
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-4">{tr('customRecIntervalLabel')}</p>
                     <div className="flex items-center justify-center gap-5 mb-4">
                       <button onClick={()=>setCR('interval',Math.max(1,customRec.interval-1))}
                         className="w-11 h-11 rounded-full bg-gray-100 text-xl font-bold text-gray-600 flex items-center justify-center">−</button>
@@ -1583,7 +1583,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                       {(['hour','day','week','month','year'] as const).map((u,i)=>(
                         <button key={u} onClick={()=>setCR('frequency',u)}
                           className={`flex-1 py-2.5 rounded-full text-sm font-semibold ${customRec.frequency===u?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
-                          {['時','日','週','月','年'][i]}
+                          {tr((['customRecUnitHour','customRecUnitDay','customRecUnitWeek','customRecUnitMonth','customRecUnitYear'] as const)[i])}
                         </button>
                       ))}
                     </div>
@@ -1592,7 +1592,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                   {/* ② 実行タイミング */}
                   {customRec.frequency!=='day'&&customRec.frequency!=='hour'&&(
                     <div className="bg-white mx-3 mt-3 rounded-2xl p-4">
-                      <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-4">② 実行タイミング</p>
+                      <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-4">{tr('customRecTimingLabel')}</p>
 
                       {customRec.frequency==='week'&&(
                         <div className="flex gap-1.5">
@@ -1602,7 +1602,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                               setCR('weekdays',wds.includes(i)?wds.filter(x=>x!==i):[...wds,i]);
                             }}
                               className={`flex-1 h-10 rounded-full text-sm font-semibold ${(customRec.weekdays??[]).includes(i)?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
-                              {n}
+                              {language==='ja'?n:DAY_NAMES_EN[i]}
                             </button>
                           ))}
                         </div>
@@ -1613,11 +1613,11 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                           <div className="flex gap-2 mb-4">
                             <button onClick={()=>setCR('monthlyType','date')}
                               className={`flex-1 py-2 rounded-full text-sm font-semibold ${customRec.monthlyType!=='weekday'?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
-                              日付で指定
+                              {tr('customRecByDate')}
                             </button>
                             <button onClick={()=>setCR('monthlyType','weekday')}
                               className={`flex-1 py-2 rounded-full text-sm font-semibold ${customRec.monthlyType==='weekday'?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
-                              曜日で指定
+                              {tr('customRecByWeekday')}
                             </button>
                           </div>
                           {customRec.monthlyType!=='weekday'?(
@@ -1625,7 +1625,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                               {([1,5,10,15,20,25,'last' as const]).map(d=>(
                                 <button key={String(d)} onClick={()=>setCR('dayOfMonth',d)}
                                   className={`shrink-0 px-3 py-2 rounded-full text-sm font-semibold ${customRec.dayOfMonth===d?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
-                                  {d==='last'?'月末':`${d}日`}
+                                  {d==='last'?tr('customRecLastDay'):(language==='ja'?`${d}日`:String(d))}
                                 </button>
                               ))}
                             </div>
@@ -1635,7 +1635,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                                 {([1,2,3,4,'last' as const]).map(wn=>(
                                   <button key={String(wn)} onClick={()=>setCR('weekNumber',wn)}
                                     className={`shrink-0 flex-1 py-2 rounded-full text-sm font-semibold min-w-[3rem] ${customRec.weekNumber===wn?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
-                                    {wn==='last'?'最終':`第${wn}`}
+                                    {wn==='last'?tr('customRecLastWeek'):(language==='ja'?`第${wn}`:['','1st','2nd','3rd','4th'][wn])}
                                   </button>
                                 ))}
                               </div>
@@ -1643,7 +1643,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                                 {DAY_NAMES.map((n,i)=>(
                                   <button key={i} onClick={()=>setCR('weekday',i)}
                                     className={`flex-1 h-9 rounded-full text-sm font-semibold ${customRec.weekday===i?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
-                                    {n}
+                                    {language==='ja'?n:DAY_NAMES_EN[i]}
                                   </button>
                                 ))}
                               </div>
@@ -1655,23 +1655,23 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                       {customRec.frequency==='year'&&(
                         <div className="space-y-3">
                           <div>
-                            <p className="text-xs text-gray-400 mb-2">月</p>
+                            <p className="text-xs text-gray-400 mb-2">{tr('customRecMonthLabel')}</p>
                             <div className="flex gap-1.5 overflow-x-auto pb-0.5" style={{scrollbarWidth:'none'} as React.CSSProperties}>
                               {Array.from({length:12},(_,i)=>(
                                 <button key={i} onClick={()=>setCR('yearMonth',i+1)}
                                   className={`shrink-0 w-12 h-10 rounded-full text-sm font-semibold ${customRec.yearMonth===i+1?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
-                                  {i+1}月
+                                  {language==='ja'?`${i+1}月`:MONTH_NAMES_EN[i].slice(0,3)}
                                 </button>
                               ))}
                             </div>
                           </div>
                           <div>
-                            <p className="text-xs text-gray-400 mb-2">日</p>
+                            <p className="text-xs text-gray-400 mb-2">{tr('customRecDayLabel')}</p>
                             <div className="flex gap-1.5 overflow-x-auto pb-0.5" style={{scrollbarWidth:'none'} as React.CSSProperties}>
                               {[1,5,10,15,20,25,0].map(d=>(
                                 <button key={d} onClick={()=>setCR('yearDay',d)}
                                   className={`shrink-0 px-3 py-2 rounded-full text-sm font-semibold ${customRec.yearDay===d?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
-                                  {d===0?'末':`${d}日`}
+                                  {d===0?tr('customRecLastDay'):(language==='ja'?`${d}日`:String(d))}
                                 </button>
                               ))}
                             </div>
@@ -1683,12 +1683,12 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
 
                   {/* ③ 終了条件 */}
                   <div className="bg-white mx-3 mt-3 rounded-2xl p-4">
-                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-4">③ 終了条件</p>
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-4">{tr('customRecEndLabel')}</p>
                     <div className="flex gap-2 mb-4">
-                      {([['never','終了なし'],['date','指定日まで'],['count','回数で終了']] as const).map(([t,l])=>(
+                      {([['never','customRecEndNever'],['date','customRecEndDate'],['count','customRecEndCount']] as const).map(([t,lk])=>(
                         <button key={t} onClick={()=>setCR('endType',t)}
                           className={`flex-1 py-2 rounded-full text-xs font-semibold ${customRec.endType===t?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
-                          {l}
+                          {tr(lk)}
                         </button>
                       ))}
                     </div>
@@ -1703,7 +1703,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                         <span className="text-2xl font-black text-gray-900">{customRec.endCount??10}</span>
                         <button onClick={()=>setCR('endCount',(customRec.endCount??10)+1)}
                           className="w-10 h-10 rounded-full bg-gray-100 text-xl font-bold text-gray-600 flex items-center justify-center">+</button>
-                        <span className="text-sm text-gray-600">回で終了</span>
+                        <span className="text-sm text-gray-600">{tr('customRecTimesSuffix')}</span>
                       </div>
                     )}
                   </div>
@@ -1940,7 +1940,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                 <button className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50"
                   onClick={()=>{
                     if(!isPremium){ setModalProPrompt(tr('proFeatureLocationNotify')); return; }
-                    if(!taskLocation&&atLocationLimit){ setLocError('場所通知の登録上限に達しています。他の場所通知をオフにしてから追加してください。'); return; }
+                    if(!taskLocation&&atLocationLimit){ setLocError(tr('taskLocationLimitReached')); return; }
                     setLocAdding(o=>!o);
                   }}>
                   <AppIcons.location size={18} className="text-gray-400 shrink-0"/>
@@ -1955,7 +1955,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                 {locationNotify&&taskLocPermStatus&&
                   (taskLocPermStatus.location==='denied'||taskLocPermStatus.location==='limited'||taskLocPermStatus.notifications==='denied')&&(
                   <p className="text-xs text-[#D97A7A] px-4 pb-3 leading-relaxed">
-                    位置情報または通知の許可が取り消されているため、この通知は届きません。設定アプリ &gt; BrainBoxから「位置情報（常に）」と「通知」を許可してください。
+                    {tr('taskLocationPermRevokedNote')}
                   </p>
                 )}
                 {locAdding&&(
@@ -1971,29 +1971,29 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                           <AppIcons.location size={14} className="text-gray-400 shrink-0"/>
                           <p className="flex-1 text-sm text-gray-700 truncate">{taskLocation.name}</p>
                         </div>
-                        <p className="text-xs text-gray-400 mb-3">半径{TASK_LOCATION_RADIUS_M}m以内に入ったら通知します</p>
+                        <p className="text-xs text-gray-400 mb-3">{tr('taskLocationRadiusNote').replace('{r}',String(TASK_LOCATION_RADIUS_M))}</p>
                         <div className="flex gap-2">
                           <button onClick={()=>setLocPending(taskLocation)}
                             className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200">
-                            場所を変更
+                            {tr('changeLocationButton')}
                           </button>
                           <button onClick={()=>{setTaskLocation(null);setLocationNotify(false);setLocAdding(false);setLocError(null);}}
                             className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-gray-50 text-[#D97A7A]">
-                            解除
+                            {tr('clearButton')}
                           </button>
                         </div>
                       </>
                     ):!locPending?(
                       <>
-                        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">場所を検索</p>
+                        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">{tr('searchLocationSectionLabel')}</p>
                         <div className="flex gap-2 mb-3">
                           <input value={locSearchQuery} onChange={e=>setLocSearchQuery(e.target.value)}
                             onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();locDoSearch();}}}
-                            placeholder="住所や施設名を入力"
+                            placeholder={tr('addressPlaceholder')}
                             className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50"/>
                           <button onClick={locDoSearch} disabled={locSearching||!locSearchQuery.trim()}
                             className="px-4 py-2 bg-gray-100 rounded-xl text-sm font-semibold text-gray-700 shrink-0 disabled:opacity-40">
-                            {locSearching?'検索中':'検索'}
+                            {locSearching?tr('searchingLabel'):tr('searchLabel')}
                           </button>
                         </div>
                         {locSearchResults.length>0&&(
@@ -2008,35 +2008,35 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                         )}
                         <button onClick={locOpenMapMode} disabled={locLocating}
                           className="w-full py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200 mb-2 disabled:opacity-40">
-                          {locLocating?'取得中...':'地図で指定'}
+                          {locLocating?tr('gettingLocationLabel'):tr('pickOnMapButton')}
                         </button>
                         <button onClick={locUseCurrentLocation} disabled={locLocating}
                           className="w-full py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200 mb-3 disabled:opacity-40">
-                          {locLocating?'取得中...':'現在地から登録'}
+                          {locLocating?tr('gettingLocationLabel'):tr('useCurrentLocationButton')}
                         </button>
                         <button onClick={locCancelAdd} className="w-full py-2.5 rounded-xl text-sm font-semibold bg-gray-50 text-gray-400">
-                          キャンセル
+                          {tr('cancelButton')}
                         </button>
                       </>
                     ):(
                       <>
-                        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">名前</p>
+                        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">{tr('nameSectionLabel')}</p>
                         <input value={locPending.name} onChange={e=>setLocPending({...locPending,name:e.target.value})}
-                          placeholder="場所の名前"
+                          placeholder={tr('placeNamePlaceholder')}
                           className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50 mb-3"/>
-                        <p className="text-xs text-gray-400 mb-3">半径{TASK_LOCATION_RADIUS_M}m以内に入ったら通知します</p>
+                        <p className="text-xs text-gray-400 mb-3">{tr('taskLocationRadiusNote').replace('{r}',String(TASK_LOCATION_RADIUS_M))}</p>
                         <button onClick={()=>{setLocMapCenter({lat:locPending.lat,lng:locPending.lng});setLocMapMode(true);}}
                           className="w-full py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200 mb-3">
-                          地図で場所を変更
+                          {tr('changeOnMapButton')}
                         </button>
                         <div className="flex gap-2">
                           <button onClick={()=>setLocPending(null)}
                             className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200">
-                            戻る
+                            {tr('backButton')}
                           </button>
                           <button onClick={locConfirmPending}
                             className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-[var(--c-primary)] text-white active:opacity-80">
-                            設定する
+                            {tr('taskLocationConfirmButton')}
                           </button>
                         </div>
                       </>
@@ -3175,6 +3175,7 @@ function ShopMapPicker({initialCenter,onConfirm,onCancel}:{
   onConfirm:(loc:{name:string;lat:number;lng:number})=>void;
   onCancel:()=>void;
 }) {
+  const {tr} = useI18n();
   const TILE=256, W=304, H=240;
   const [center,setCenter]=useState(initialCenter);
   const [zoom,setZoom]=useState(17);
@@ -3259,7 +3260,7 @@ function ShopMapPicker({initialCenter,onConfirm,onCancel}:{
 
   const confirm=async()=>{
     setConfirming(true);
-    let name='地図で指定した場所';
+    let name=tr('mapPickedPlaceFallback');
     try{
       const res=await fetch(`https://mreversegeocoder.gsi.go.jp/reverse-geocoder/LonLatToAddress?lon=${center.lng}&lat=${center.lat}`);
       const data=await res.json() as {results?:{lv01Nm?:string;muniCd?:string}};
@@ -3294,7 +3295,7 @@ function ShopMapPicker({initialCenter,onConfirm,onCancel}:{
     setLocating(true);
     getCurrentCoords(10000).then(loc=>{
       setLocating(false);
-      if(!loc){ alert('現在地を取得できませんでした'); return; }
+      if(!loc){ alert(tr('couldNotGetLocation')); return; }
       setMyLocation(loc);
       setCenter(loc);
     });
@@ -3323,11 +3324,11 @@ function ShopMapPicker({initialCenter,onConfirm,onCancel}:{
       <div className="flex gap-2 mb-2">
         <input value={mapQuery} onChange={e=>setMapQuery(e.target.value)}
           onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();doMapSearch();}}}
-          placeholder="住所や施設名で検索"
+          placeholder={tr('addressPlaceholder')}
           className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50"/>
         <button onClick={doMapSearch} disabled={mapSearching||!mapQuery.trim()}
           className="px-4 py-2 bg-gray-100 rounded-xl text-sm font-semibold text-gray-700 shrink-0 disabled:opacity-40">
-          {mapSearching?'検索中':'検索'}
+          {mapSearching?tr('searchingLabel'):tr('searchLabel')}
         </button>
       </div>
       {mapResults.length>0&&(
@@ -3376,14 +3377,14 @@ function ShopMapPicker({initialCenter,onConfirm,onCancel}:{
           <AppIcons.crosshair size={16}/>
         </button>
       </div>
-      <p className="text-xs text-gray-400 text-center mb-3">ドラッグで移動、ピンチで拡大縮小できます</p>
+      <p className="text-xs text-gray-400 text-center mb-3">{tr('mapDragPinchHint')}</p>
       <div className="flex gap-2">
         <button onClick={onCancel} className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200">
-          戻る
+          {tr('backButton')}
         </button>
         <button onClick={confirm} disabled={confirming}
           className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-[var(--c-primary)] text-white active:opacity-80 disabled:opacity-50">
-          {confirming?'取得中...':'この位置に決定'}
+          {confirming?tr('mapConfirmingLabel'):tr('confirmThisLocationButton')}
         </button>
       </div>
     </div>

@@ -483,6 +483,40 @@ export const STRINGS = {
   bulkDeleteButton:          { ja: '一括削除',                             en: 'Bulk delete' },
   bulkEditAllDaysNote:       { ja: '{n}日分すべてに反映されます',                 en: 'This will apply to all {n} day(s).' },
   bulkDeleteAllDaysNote:     { ja: '{n}日分すべてのタスクが削除されます',            en: 'All tasks for {n} day(s) will be deleted.' },
+
+  // カスタム繰り返し設定（TaskModal、recur==='custom'）
+  customRecIntervalLabel:  { ja: '① 間隔',           en: '① Interval' },
+  customRecTimingLabel:    { ja: '② 実行タイミング',    en: '② Timing' },
+  customRecEndLabel:       { ja: '③ 終了条件',        en: '③ End condition' },
+  customRecUnitHour:       { ja: '時',              en: 'Hr' },
+  customRecUnitDay:        { ja: '日',              en: 'Day' },
+  customRecUnitWeek:       { ja: '週',              en: 'Wk' },
+  customRecUnitMonth:      { ja: '月',              en: 'Mo' },
+  customRecUnitYear:       { ja: '年',              en: 'Yr' },
+  customRecByDate:         { ja: '日付で指定',         en: 'By date' },
+  customRecByWeekday:      { ja: '曜日で指定',         en: 'By weekday' },
+  customRecLastDay:        { ja: '月末',             en: 'Last day' },
+  customRecLastWeek:       { ja: '最終',             en: 'Last' },
+  customRecMonthLabel:     { ja: '月',              en: 'Month' },
+  customRecDayLabel:       { ja: '日',              en: 'Day' },
+  customRecEndNever:       { ja: '終了なし',           en: 'No end' },
+  customRecEndDate:        { ja: '指定日まで',         en: 'Until date' },
+  customRecEndCount:       { ja: '回数で終了',         en: 'After N times' },
+  customRecTimesSuffix:    { ja: '回で終了',           en: 'times' },
+
+  // TaskModal 「あとでやる」の場所通知UI
+  taskLocationPermError:      { ja: '場所に到着したときに通知するため、位置情報の利用を許可してください。', en: 'To get notified when you arrive at a place, please allow location access.' },
+  taskLocationLimitReached:   { ja: '場所通知の登録上限に達しています。他の場所通知をオフにしてから追加してください。', en: "You've reached the location alert limit. Turn off another location alert before adding a new one." },
+  taskLocationPermRevokedNote:{ ja: '位置情報または通知の許可が取り消されているため、この通知は届きません。設定アプリ > BrainBoxから「位置情報（常に）」と「通知」を許可してください。', en: 'Location or notification permission has been revoked, so this alert won’t arrive. Please allow "Location (Always)" and "Notifications" for BrainBox in Settings.' },
+  taskLocationRadiusNote:      { ja: '半径{r}m以内に入ったら通知します',    en: "You'll be notified within {r}m" },
+  changeLocationButton:        { ja: '場所を変更',                    en: 'Change location' },
+  taskLocationConfirmButton:   { ja: '設定する',                     en: 'Set' },
+
+  // ShopMapPicker（地図ピッカー、共有コンポーネント）
+  mapPickedPlaceFallback:   { ja: '地図で指定した場所',            en: 'Location picked on map' },
+  mapDragPinchHint:         { ja: 'ドラッグで移動、ピンチで拡大縮小できます', en: 'Drag to move, pinch to zoom' },
+  mapConfirmingLabel:       { ja: '取得中...',                  en: 'Confirming...' },
+  confirmThisLocationButton:{ ja: 'この位置に決定',              en: 'Confirm this location' },
 } as const;
 
 export type StringKey = keyof typeof STRINGS;
