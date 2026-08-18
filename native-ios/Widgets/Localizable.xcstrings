@@ -20,6 +20,12 @@
             "state" : "translated",
             "value" : "4분할(예정·쇼핑·나중에·추가)"
           }
+        },
+        "zh-Hant-TW" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "四宮格（行程、購物、稍後辦、新增）"
+          }
         }
       }
     },
@@ -41,6 +47,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "나중에"
+          }
+        },
+        "zh-Hant-TW" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "稍後辦"
           }
         }
       }
@@ -64,6 +76,12 @@
             "state" : "translated",
             "value" : "나중에 할 일 추가"
           }
+        },
+        "zh-Hant-TW" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "新增稍後辦任務"
+          }
         }
       }
     },
@@ -85,6 +103,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "나중에 할 일 추가"
+          }
+        },
+        "zh-Hant-TW" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "新增稍後辦任務"
           }
         }
       }
@@ -108,6 +132,12 @@
             "state" : "translated",
             "value" : "없어요"
           }
+        },
+        "zh-Hant-TW" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "沒有"
+          }
         }
       }
     },
@@ -129,6 +159,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "구매 완료"
+          }
+        },
+        "zh-Hant-TW" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "標記已購買"
           }
         }
       }
@@ -152,6 +188,12 @@
             "state" : "translated",
             "value" : "쇼핑 목록"
           }
+        },
+        "zh-Hant-TW" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "購物清單"
+          }
         }
       }
     },
@@ -173,6 +215,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "살 것이 없어요"
+          }
+        },
+        "zh-Hant-TW" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "沒有要買的東西"
           }
         }
       }
@@ -196,6 +244,12 @@
             "state" : "translated",
             "value" : "다음 일정"
           }
+        },
+        "zh-Hant-TW" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下一項行程"
+          }
         }
       }
     },
@@ -217,6 +271,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "다음 일정 & 쇼핑 목록"
+          }
+        },
+        "zh-Hant-TW" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下一項行程與購物清單"
           }
         }
       }
@@ -240,6 +300,12 @@
             "state" : "translated",
             "value" : "다음 일정·쇼핑 목록·나중에 할 일을 4분할로 표시하고, + 탭으로 새 태스크를 추가할 수 있어요."
           }
+        },
+        "zh-Hant-TW" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "以四宮格顯示下一項行程、購物清單與稍後辦任務，點選＋即可新增任務。"
+          }
         }
       }
     },
@@ -261,6 +327,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "태스크 완료"
+          }
+        },
+        "zh-Hant-TW" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "完成任務"
           }
         }
       }
@@ -284,6 +356,12 @@
             "state" : "translated",
             "value" : "탭 한 번으로 '나중에 할 일' 추가 화면을 열 수 있어요."
           }
+        },
+        "zh-Hant-TW" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "點一下即可開啟「稍後辦」任務的新增畫面。"
+          }
         }
       }
     },
@@ -306,6 +384,12 @@
             "state" : "translated",
             "value" : "일정이 없어요"
           }
+        },
+        "zh-Hant-TW" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "沒有行程"
+          }
         }
       }
     },
@@ -327,6 +411,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "오늘의 일정과 쇼핑 목록을 한눈에 보여줘요. 탭하면 완료 처리할 수 있어요."
+          }
+        },
+        "zh-Hant-TW" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "一次顯示今天的行程與購物清單，點選即可標記完成。"
           }
         }
       }
