@@ -142,8 +142,10 @@ const DEADLINE_ALERT_FIRED_KEY = 'tl-deadline-alert-fired-v1';
 const WAKE_CHECKIN_NOTIF_KEY = 'tl-wake-checkin-notif-v1';
 const LATER_REMINDER_OPTS = [{v:0,l:'オフ'},{v:1,l:'1時間'},{v:3,l:'3時間'},{v:6,l:'6時間'},{v:12,l:'12時間'},{v:24,l:'1日'},{v:48,l:'2日'},{v:72,l:'3日'}];
 const LATER_REMINDER_OPTS_EN = [{v:0,l:'Off'},{v:1,l:'1h'},{v:3,l:'3h'},{v:6,l:'6h'},{v:12,l:'12h'},{v:24,l:'1d'},{v:48,l:'2d'},{v:72,l:'3d'}];
+const LATER_REMINDER_OPTS_KO = [{v:0,l:'꺼짐'},{v:1,l:'1시간'},{v:3,l:'3시간'},{v:6,l:'6시간'},{v:12,l:'12시간'},{v:24,l:'1일'},{v:48,l:'2일'},{v:72,l:'3일'}];
 const APP_INACTIVITY_OPTS = [{v:0,l:'オフ'},{v:6,l:'6時間'},{v:12,l:'12時間'},{v:24,l:'1日'},{v:48,l:'2日'},{v:72,l:'3日'}];
 const APP_INACTIVITY_OPTS_EN = [{v:0,l:'Off'},{v:6,l:'6h'},{v:12,l:'12h'},{v:24,l:'1d'},{v:48,l:'2d'},{v:72,l:'3d'}];
+const APP_INACTIVITY_OPTS_KO = [{v:0,l:'꺼짐'},{v:6,l:'6시간'},{v:12,l:'12시간'},{v:24,l:'1일'},{v:48,l:'2일'},{v:72,l:'3일'}];
 const AUTH_KEY          = 'tl-auth-v1';
 
 // テーマカラー — 将来的にここを差し替えるだけで全体の色が変わる
@@ -169,7 +171,11 @@ const PX_PER_HOUR  = 40;
 const PX_PER_MIN   = PX_PER_HOUR / 60;
 const DAY_NAMES    = ['日','月','火','水','木','金','土'];
 const DAY_NAMES_EN = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const DAY_NAMES_KO = ['일','월','화','수','목','금','토'];
 const MONTH_NAMES_EN = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+// 韓国語は英語と違い月名を専用の単語で持たない（日本語と同じく「{n}月」の数字表記）ため、
+// MONTH_NAMES_KOのような配列は用意せず、呼び出し側で`${i+1}월`のように組み立てる
+const dayNameFor = (language:Language, i:number) => language==='ja'?DAY_NAMES[i]:language==='ko'?DAY_NAMES_KO[i]:DAY_NAMES_EN[i];
 // 週の開始日設定（0=日曜始まり、1=月曜始まり）。カレンダー系グリッドはすべてこの2つのヘルパー経由で
 // 曜日の並び・月初オフセットを揃える
 const weekDayOrder = (weekStartsOn: 0|1): number[] => weekStartsOn===1 ? [1,2,3,4,5,6,0] : [0,1,2,3,4,5,6];
@@ -186,8 +192,15 @@ const DUR_OPTS_EN  = [
   {v:60,l:'1h'},{v:90,l:'1.5h'},{v:120,l:'2h'},
   {v:180,l:'3h'},{v:240,l:'4h'},{v:300,l:'5h'},
 ];
+const DUR_OPTS_KO  = [
+  {v:0,l:'없음'},
+  {v:5,l:'5분'},{v:10,l:'10분'},{v:15,l:'15분'},{v:20,l:'20분'},{v:30,l:'30분'},{v:45,l:'45분'},
+  {v:60,l:'1시간'},{v:90,l:'1시간 30분'},{v:120,l:'2시간'},
+  {v:180,l:'3시간'},{v:240,l:'4시간'},{v:300,l:'5시간'},
+];
 const NOTIF_OPTS   = [{v:0,l:'開始時'},{v:5,l:'5分前'},{v:10,l:'10分前'},{v:15,l:'15分前'},{v:30,l:'30分前'},{v:60,l:'1時間前'},{v:1440,l:'前日'}];
 const NOTIF_OPTS_EN= [{v:0,l:'At start'},{v:5,l:'5m before'},{v:10,l:'10m before'},{v:15,l:'15m before'},{v:30,l:'30m before'},{v:60,l:'1h before'},{v:1440,l:'1 day before'}];
+const NOTIF_OPTS_KO= [{v:0,l:'시작 시'},{v:5,l:'5분 전'},{v:10,l:'10분 전'},{v:15,l:'15분 전'},{v:30,l:'30분 전'},{v:60,l:'1시간 전'},{v:1440,l:'하루 전'}];
 
 const taskAlertBody = (startTime: string, offset: number, tr:(key:StringKey)=>string): string => {
   if(offset===0) return tr('notifTaskStartingSoon').replace('{time}',()=>startTime);
@@ -203,6 +216,9 @@ const DEADLINE_NOTIFY_OPTS: {v:DeadlineNotifyOpt;l:string}[] = [
 ];
 const DEADLINE_NOTIFY_OPTS_EN: {v:DeadlineNotifyOpt;l:string}[] = [
   {v:'auto',l:'Auto'},{v:'week',l:'1 week before'},{v:'3days',l:'3 days before'},{v:'dayBefore',l:'The day before'},{v:'sameDay',l:'Same day'},
+];
+const DEADLINE_NOTIFY_OPTS_KO: {v:DeadlineNotifyOpt;l:string}[] = [
+  {v:'auto',l:'자동'},{v:'week',l:'1주 전'},{v:'3days',l:'3일 전'},{v:'dayBefore',l:'하루 전'},{v:'sameDay',l:'당일'},
 ];
 // 「当日」通知を出す時刻（締切当日の朝）
 const DEADLINE_SAMEDAY_HOUR = 9;
@@ -409,6 +425,40 @@ const summarizeCustomRecEn=(r:CustomRec):string=>{
   return main;
 };
 
+const summarizeCustomRecKo=(r:CustomRec):string=>{
+  const WD=DAY_NAMES_KO;
+  const ordinal=(n:number)=>({1:'첫째',2:'둘째',3:'셋째',4:'넷째',5:'다섯째'} as Record<number,string>)[n]??`${n}번째`;
+  let main='';
+  if(r.frequency==='hour'){
+    main=r.interval===1?'매시간':`${r.interval}시간마다`;
+  } else if(r.frequency==='day'){
+    main=r.interval===1?'매일':`${r.interval}일마다`;
+  } else if(r.frequency==='week'){
+    const base=r.interval===1?'매주':`${r.interval}주마다`;
+    const days=(r.weekdays??[]).sort((a,b)=>a-b).map(d=>WD[d]).join(', ');
+    main=days?`${base} ${days}요일`:base;
+  } else if(r.frequency==='month'){
+    const base=r.interval===1?'매월':`${r.interval}개월마다`;
+    if(r.monthlyType==='weekday'){
+      const wn=r.weekNumber==='last'?'마지막':ordinal(r.weekNumber??1);
+      main=`${base} ${wn} ${WD[r.weekday??1]}요일`;
+    } else {
+      const d=r.dayOfMonth==='last'?'말일':`${r.dayOfMonth??1}일`;
+      main=`${base} ${d}`;
+    }
+  } else {
+    const base=r.interval===1?'매년':`${r.interval}년마다`;
+    const d=r.yearDay===0?'말일':`${r.yearDay??1}일`;
+    main=`${base} ${r.yearMonth??1}월 ${d}`;
+  }
+  if(r.endType==='count'&&r.endCount) main+=` · ${r.endCount}회로 종료`;
+  else if(r.endType==='date'&&r.endDate){
+    const dt=new Date(r.endDate+'T12:00:00');
+    main+=` · ${dt.getMonth()+1}월 ${dt.getDate()}일까지`;
+  }
+  return main;
+};
+
 const recLabel=(t:Task,lang:Language='ja'):string=>{
   if(lang==='en'){
     if(t.recurrence==='daily') return 'Daily';
@@ -416,6 +466,14 @@ const recLabel=(t:Task,lang:Language='ja'):string=>{
     if(t.recurrence==='monthly') return 'Monthly';
     if(t.recurrence==='yearly') return 'Yearly';
     if(t.recurrence==='custom'&&t.customRec) return summarizeCustomRecEn(t.customRec);
+    return '';
+  }
+  if(lang==='ko'){
+    if(t.recurrence==='daily') return '매일';
+    if(t.recurrence==='weekly') return '매주';
+    if(t.recurrence==='monthly') return '매월';
+    if(t.recurrence==='yearly') return '매년';
+    if(t.recurrence==='custom'&&t.customRec) return summarizeCustomRecKo(t.customRec);
     return '';
   }
   if(t.recurrence==='daily') return '毎日';
@@ -545,12 +603,12 @@ function MonthCalendar({selected,onSelect,onClose,tasks}:{selected:string;onSele
         <div className="px-4 pt-4 pb-2">
           <div className="flex items-center justify-between mb-3">
             <button onClick={()=>setVm(m=>shiftMonth(m.year,m.month,-1))} className="w-9 h-9 flex items-center justify-center text-gray-600"><AppIcons.caretLeft/></button>
-            <span className="font-bold text-gray-900 text-base">{language==='ja'?`${vm.year}年${vm.month+1}月`:`${MONTH_NAMES_EN[vm.month]} ${vm.year}`}</span>
+            <span className="font-bold text-gray-900 text-base">{language==='ja'?`${vm.year}年${vm.month+1}月`:language==='ko'?`${vm.year}년 ${vm.month+1}월`:`${MONTH_NAMES_EN[vm.month]} ${vm.year}`}</span>
             <button onClick={()=>setVm(m=>shiftMonth(m.year,m.month,1))} className="w-9 h-9 flex items-center justify-center text-gray-600"><AppIcons.caretRight/></button>
           </div>
           <div className="grid grid-cols-7 mb-1">
             {DAY_NAMES.map((n,i)=>(
-              <div key={i} className={`text-center text-xs font-semibold py-1 text-gray-400`}>{language==='ja'?n:DAY_NAMES_EN[i]}</div>
+              <div key={i} className={`text-center text-xs font-semibold py-1 text-gray-400`}>{dayNameFor(language,i)}</div>
             ))}
           </div>
         </div>
@@ -625,7 +683,7 @@ function CalendarPage({date,tasks,customTabs,onSelect,onClose,weekStartsOn=0}:{d
         <div className="flex items-center gap-3">
           <button onClick={()=>setVm(m=>shiftMonth(m.year,m.month,-1))}
             className="w-9 h-9 flex items-center justify-center text-gray-500 bg-gray-100 rounded-xl"><AppIcons.caretLeft/></button>
-          <span className="font-bold text-gray-900 text-base min-w-[7rem] text-center">{language==='ja'?`${vm.year}年${vm.month+1}月`:`${MONTH_NAMES_EN[vm.month]} ${vm.year}`}</span>
+          <span className="font-bold text-gray-900 text-base min-w-[7rem] text-center">{language==='ja'?`${vm.year}年${vm.month+1}月`:language==='ko'?`${vm.year}년 ${vm.month+1}월`:`${MONTH_NAMES_EN[vm.month]} ${vm.year}`}</span>
           <button onClick={()=>setVm(m=>shiftMonth(m.year,m.month,1))}
             className="w-9 h-9 flex items-center justify-center text-gray-500 bg-gray-100 rounded-xl"><AppIcons.caretRight/></button>
         </div>
@@ -658,7 +716,7 @@ function CalendarPage({date,tasks,customTabs,onSelect,onClose,weekStartsOn=0}:{d
       {/* Day headers */}
       <div className="grid grid-cols-7 px-2 pt-3 pb-1">
         {weekDayOrder(weekStartsOn).map(dow=>(
-          <div key={dow} className={`text-center text-xs font-semibold text-gray-400`}>{language==='ja'?DAY_NAMES[dow]:DAY_NAMES_EN[dow]}</div>
+          <div key={dow} className={`text-center text-xs font-semibold text-gray-400`}>{dayNameFor(language,dow)}</div>
         ))}
       </div>
 
@@ -741,7 +799,7 @@ function SearchPage({tasks,onClose,onSelect}:{tasks:Task[];onClose:()=>void;onSe
           <div className="py-20 text-center"><AppIcons.smileySad className="mx-auto mb-2 text-gray-300"/><p className="text-sm text-gray-400">{tr('searchNoResults').replace('{q}',()=>query)}</p></div>
         ):(
           <div>
-            <p className="text-xs text-gray-400 px-4 pt-3 pb-1">{language==='ja'?`${results.length}件`:`${results.length} result${results.length===1?'':'s'}`}</p>
+            <p className="text-xs text-gray-400 px-4 pt-3 pb-1">{language==='ja'?`${results.length}件`:language==='ko'?`${results.length}개`:`${results.length} result${results.length===1?'':'s'}`}</p>
             {results.map(t=>(
               <button key={t.id} onClick={()=>onSelect(t)}
                 className="w-full flex items-center gap-3 px-4 py-3.5 border-b border-gray-50 active:bg-gray-50 text-left">
@@ -871,26 +929,26 @@ const TASK_COLORS=[
   '#C4888E','#C47A5E','#C4A44A','#7A9E8A','#6A8FAF','#8F82B8','#A67899','#8F8880',
 ];
 const APP_ICONS=[
-  {id:'mint',    name:'ミント',           nameEn:'Mint',        file:'mint.png'},
-  {id:'sage',    name:'セージグリーン',   nameEn:'Sage Green',  file:'sage.png'},
-  {id:'lilac',   name:'ライラック',       nameEn:'Lilac',       file:'lilac.png'},
-  {id:'rose',    name:'ダスティローズ',   nameEn:'Dusty Rose',  file:'rose.png'},
-  {id:'dusty',   name:'ダスティブルー',   nameEn:'Dusty Blue',  file:'dusty.png'},
-  {id:'apricot', name:'アプリコット',     nameEn:'Apricot',     file:'apricot.png'},
-  {id:'greige',  name:'グレージュ',       nameEn:'Greige',      file:'greige.png'},
-  {id:'charcoal',name:'チャコールグレー', nameEn:'Charcoal Gray', file:'charcoal.png'},
-  {id:'mocha',   name:'モカベージュ',     nameEn:'Mocha Beige', file:'mocha.png'},
+  {id:'mint',    name:'ミント',           nameEn:'Mint',        nameKo:'민트',           file:'mint.png'},
+  {id:'sage',    name:'セージグリーン',   nameEn:'Sage Green',  nameKo:'세이지 그린',    file:'sage.png'},
+  {id:'lilac',   name:'ライラック',       nameEn:'Lilac',       nameKo:'라일락',         file:'lilac.png'},
+  {id:'rose',    name:'ダスティローズ',   nameEn:'Dusty Rose',  nameKo:'더스티 로즈',    file:'rose.png'},
+  {id:'dusty',   name:'ダスティブルー',   nameEn:'Dusty Blue',  nameKo:'더스티 블루',    file:'dusty.png'},
+  {id:'apricot', name:'アプリコット',     nameEn:'Apricot',     nameKo:'애프리콧',       file:'apricot.png'},
+  {id:'greige',  name:'グレージュ',       nameEn:'Greige',      nameKo:'그레이지',       file:'greige.png'},
+  {id:'charcoal',name:'チャコールグレー', nameEn:'Charcoal Gray', nameKo:'차콜 그레이',  file:'charcoal.png'},
+  {id:'mocha',   name:'モカベージュ',     nameEn:'Mocha Beige', nameKo:'모카 베이지',    file:'mocha.png'},
 ];
 const THEMES=[
-  {id:'mint',    name:'ミント',             nameEn:'Mint',           color:'#94CFC8'},
-  {id:'coral',   name:'コーラルピンク',     nameEn:'Coral Pink',     color:'#E88878'},
-  {id:'sunset',  name:'サンセットオレンジ', nameEn:'Sunset Orange',  color:'#E8906A'},
-  {id:'forest',  name:'フォレストグリーン', nameEn:'Forest Green',   color:'#5A8A6A'},
-  {id:'sky',     name:'スカイブルー',       nameEn:'Sky Blue',       color:'#7CB9E8'},
-  {id:'navy',    name:'ネイビー',           nameEn:'Navy',           color:'#5F7EA8'},
-  {id:'lavender',name:'ラベンダー',         nameEn:'Lavender',       color:'#9B8EC4'},
-  {id:'peach',   name:'ピーチ',             nameEn:'Peach',          color:'#E8A0B0'},
-  {id:'mono',    name:'モノクロ',           nameEn:'Monochrome',     color:'#666666'},
+  {id:'mint',    name:'ミント',             nameEn:'Mint',           nameKo:'민트',           color:'#94CFC8'},
+  {id:'coral',   name:'コーラルピンク',     nameEn:'Coral Pink',     nameKo:'코랄 핑크',      color:'#E88878'},
+  {id:'sunset',  name:'サンセットオレンジ', nameEn:'Sunset Orange',  nameKo:'선셋 오렌지',    color:'#E8906A'},
+  {id:'forest',  name:'フォレストグリーン', nameEn:'Forest Green',   nameKo:'포레스트 그린',  color:'#5A8A6A'},
+  {id:'sky',     name:'スカイブルー',       nameEn:'Sky Blue',       nameKo:'스카이 블루',    color:'#7CB9E8'},
+  {id:'navy',    name:'ネイビー',           nameEn:'Navy',           nameKo:'네이비',         color:'#5F7EA8'},
+  {id:'lavender',name:'ラベンダー',         nameEn:'Lavender',       nameKo:'라벤더',         color:'#9B8EC4'},
+  {id:'peach',   name:'ピーチ',             nameEn:'Peach',          nameKo:'피치',           color:'#E8A0B0'},
+  {id:'mono',    name:'モノクロ',           nameEn:'Monochrome',     nameKo:'모노크롬',       color:'#666666'},
 ];
 
 function getTaskIcon(key:string){
@@ -1566,7 +1624,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                 <>
                   {/* Summary */}
                   <div className="mx-3 mt-3 bg-[var(--c-primary)] rounded-2xl px-4 py-3">
-                    <p className="text-white text-sm font-bold">{language==='ja'?summarizeCustomRec(customRec):summarizeCustomRecEn(customRec)}</p>
+                    <p className="text-white text-sm font-bold">{language==='ja'?summarizeCustomRec(customRec):language==='ko'?summarizeCustomRecKo(customRec):summarizeCustomRecEn(customRec)}</p>
                   </div>
 
                   {/* ① 間隔 */}
@@ -1602,7 +1660,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                               setCR('weekdays',wds.includes(i)?wds.filter(x=>x!==i):[...wds,i]);
                             }}
                               className={`flex-1 h-10 rounded-full text-sm font-semibold ${(customRec.weekdays??[]).includes(i)?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
-                              {language==='ja'?n:DAY_NAMES_EN[i]}
+                              {dayNameFor(language,i)}
                             </button>
                           ))}
                         </div>
@@ -1625,7 +1683,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                               {([1,5,10,15,20,25,'last' as const]).map(d=>(
                                 <button key={String(d)} onClick={()=>setCR('dayOfMonth',d)}
                                   className={`shrink-0 px-3 py-2 rounded-full text-sm font-semibold ${customRec.dayOfMonth===d?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
-                                  {d==='last'?tr('customRecLastDay'):(language==='ja'?`${d}日`:String(d))}
+                                  {d==='last'?tr('customRecLastDay'):(language==='ja'?`${d}日`:language==='ko'?`${d}일`:String(d))}
                                 </button>
                               ))}
                             </div>
@@ -1635,7 +1693,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                                 {([1,2,3,4,'last' as const]).map(wn=>(
                                   <button key={String(wn)} onClick={()=>setCR('weekNumber',wn)}
                                     className={`shrink-0 flex-1 py-2 rounded-full text-sm font-semibold min-w-[3rem] ${customRec.weekNumber===wn?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
-                                    {wn==='last'?tr('customRecLastWeek'):(language==='ja'?`第${wn}`:['','1st','2nd','3rd','4th'][wn])}
+                                    {wn==='last'?tr('customRecLastWeek'):(language==='ja'?`第${wn}`:language==='ko'?['','첫째','둘째','셋째','넷째'][wn]:['','1st','2nd','3rd','4th'][wn])}
                                   </button>
                                 ))}
                               </div>
@@ -1643,7 +1701,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                                 {DAY_NAMES.map((n,i)=>(
                                   <button key={i} onClick={()=>setCR('weekday',i)}
                                     className={`flex-1 h-9 rounded-full text-sm font-semibold ${customRec.weekday===i?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
-                                    {language==='ja'?n:DAY_NAMES_EN[i]}
+                                    {dayNameFor(language,i)}
                                   </button>
                                 ))}
                               </div>
@@ -1660,7 +1718,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                               {Array.from({length:12},(_,i)=>(
                                 <button key={i} onClick={()=>setCR('yearMonth',i+1)}
                                   className={`shrink-0 w-12 h-10 rounded-full text-sm font-semibold ${customRec.yearMonth===i+1?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
-                                  {language==='ja'?`${i+1}月`:MONTH_NAMES_EN[i].slice(0,3)}
+                                  {language==='ja'?`${i+1}月`:language==='ko'?`${i+1}월`:MONTH_NAMES_EN[i].slice(0,3)}
                                 </button>
                               ))}
                             </div>
@@ -1671,7 +1729,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                               {[1,5,10,15,20,25,0].map(d=>(
                                 <button key={d} onClick={()=>setCR('yearDay',d)}
                                   className={`shrink-0 px-3 py-2 rounded-full text-sm font-semibold ${customRec.yearDay===d?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
-                                  {d===0?tr('customRecLastDay'):(language==='ja'?`${d}日`:String(d))}
+                                  {d===0?tr('customRecLastDay'):(language==='ja'?`${d}日`:language==='ko'?`${d}일`:String(d))}
                                 </button>
                               ))}
                             </div>
@@ -1726,7 +1784,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                 {dateOpen&&(
                   <div className="border-t border-gray-100 px-3 pb-3">
                     <div className="flex items-center justify-between py-2">
-                      <span className="text-sm font-bold text-gray-800">{language==='ja'?`${calVm.year}年${calVm.month+1}月`:`${MONTH_NAMES_EN[calVm.month]} ${calVm.year}`}</span>
+                      <span className="text-sm font-bold text-gray-800">{language==='ja'?`${calVm.year}年${calVm.month+1}月`:language==='ko'?`${calVm.year}년 ${calVm.month+1}월`:`${MONTH_NAMES_EN[calVm.month]} ${calVm.year}`}</span>
                       <div className="flex gap-1">
                         <button onClick={()=>setCalVm(m=>shiftMonth(m.year,m.month,-1))} className="w-7 h-7 flex items-center justify-center text-gray-500 rounded-lg bg-gray-100"><AppIcons.caretLeft size={14}/></button>
                         <button onClick={()=>setCalVm(m=>shiftMonth(m.year,m.month,1))} className="w-7 h-7 flex items-center justify-center text-gray-500 rounded-lg bg-gray-100"><AppIcons.caretRight size={14}/></button>
@@ -1734,7 +1792,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                     </div>
                     <div className="grid grid-cols-7 mb-1">
                       {DAY_NAMES.map((n,i)=>(
-                        <div key={i} className={`text-center text-[11px] font-semibold py-1 text-gray-400`}>{language==='ja'?n:DAY_NAMES_EN[i]}</div>
+                        <div key={i} className={`text-center text-[11px] font-semibold py-1 text-gray-400`}>{dayNameFor(language,i)}</div>
                       ))}
                     </div>
                     <div className="grid grid-cols-7">
@@ -1782,7 +1840,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                 <AppIcons.clock size={18} className="text-gray-400 shrink-0"/>
                 <span className="text-sm font-medium text-gray-800 shrink-0">{tr('fieldDuration')}</span>
                 <div className="flex gap-1.5 overflow-x-auto" style={{scrollbarWidth:'none',WebkitOverflowScrolling:'touch'} as React.CSSProperties}>
-                  {(language==='ja'?DUR_OPTS:DUR_OPTS_EN).map(({v,l})=>(
+                  {(language==='ja'?DUR_OPTS:language==='ko'?DUR_OPTS_KO:DUR_OPTS_EN).map(({v,l})=>(
                     <button key={v} onClick={()=>{setDur(v);setCDurOpen(false);}}
                       className={`shrink-0 px-3 py-1 rounded-full text-xs font-semibold ${duration===v&&!custDurOpen?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
                       {l}
@@ -1814,7 +1872,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                   <AppIcons.bell size={18} className="text-gray-400 shrink-0"/>
                   <span className="text-sm font-medium text-gray-800 shrink-0">{tr('fieldAlert')}</span>
                   <div className="flex gap-1.5 overflow-x-auto" style={{scrollbarWidth:'none',WebkitOverflowScrolling:'touch'} as React.CSSProperties}>
-                    {(language==='ja'?NOTIF_OPTS:NOTIF_OPTS_EN).map(({v,l})=>(
+                    {(language==='ja'?NOTIF_OPTS:language==='ko'?NOTIF_OPTS_KO:NOTIF_OPTS_EN).map(({v,l})=>(
                       <button key={v} onClick={()=>toggleNotif(v)}
                         className={`shrink-0 px-3 py-1 rounded-full text-xs font-semibold ${notifications.includes(v)?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
                         {l}
@@ -1831,7 +1889,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                     <input type="number" value={custNotifMin} min={1}
                       onChange={e=>setCNMin(Math.max(1,Number(e.target.value)))}
                       className="w-20 border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none text-center"/>
-                    <span className="text-sm text-gray-600">{language==='ja'?'分前':'min before'}</span>
+                    <span className="text-sm text-gray-600">{language==='ja'?'分前':language==='ko'?'분 전':'min before'}</span>
                     <button onClick={addCustNotif} className="px-3 py-2 bg-[var(--c-primary)] text-white rounded-xl text-sm font-semibold">{tr('addButton')}</button>
                   </div>
                 )}
@@ -1839,7 +1897,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                   <div className="flex flex-wrap gap-2 px-4 pb-3">
                     {notifications.filter(v=>!NOTIF_OPTS.find(o=>o.v===v)).map(v=>(
                       <span key={v} className="inline-flex items-center gap-1 bg-[var(--c-primary)] text-white text-xs font-semibold px-2.5 py-1.5 rounded-full">
-                        {language==='ja'?`${v}分前`:`${v}m before`}<button onClick={()=>setNotifs(prev=>prev.filter(x=>x!==v))} className="opacity-70 leading-none ml-0.5">×</button>
+                        {language==='ja'?`${v}分前`:language==='ko'?`${v}분 전`:`${v}m before`}<button onClick={()=>setNotifs(prev=>prev.filter(x=>x!==v))} className="opacity-70 leading-none ml-0.5">×</button>
                       </span>
                     ))}
                   </div>
@@ -1898,7 +1956,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                         <>
                           <p className="text-xs text-gray-400 mb-1.5">{tr('deadlineNotifyTiming')}</p>
                           <div className="flex flex-wrap gap-1.5 pb-1">
-                            {(language==='ja'?DEADLINE_NOTIFY_OPTS:DEADLINE_NOTIFY_OPTS_EN).map(({v,l})=>(
+                            {(language==='ja'?DEADLINE_NOTIFY_OPTS:language==='ko'?DEADLINE_NOTIFY_OPTS_KO:DEADLINE_NOTIFY_OPTS_EN).map(({v,l})=>(
                               <button key={v} onClick={()=>setDeadlineNotify(v)}
                                 className={`px-3 py-1 rounded-full text-xs font-semibold ${deadlineNotify===v?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>{l}</button>
                             ))}
@@ -1910,7 +1968,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                                 .sort((a,b)=>a.fireMs-b.fireMs)
                                 .map(fire=>{
                                   const d=new Date(fire.fireMs);
-                                  const w=(language==='ja'?DAY_NAMES:DAY_NAMES_EN)[d.getDay()];
+                                  const w=dayNameFor(language,d.getDay());
                                   const label=`${d.getMonth()+1}/${d.getDate()}(${w}) ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
                                   return (
                                     <div key={fire.key}>
@@ -3056,7 +3114,7 @@ function ShopNotifPanel({settings,onChange,notificationsEnabled=true,onEnableNot
   onEnableNotifications?:()=>void;
 }) {
   const {tr,language} = useI18n();
-  const DOW=language==='ja'?['日','月','火','水','木','金','土']:DAY_NAMES_EN;
+  const DOW=language==='ja'?['日','月','火','水','木','金','土']:language==='ko'?DAY_NAMES_KO:DAY_NAMES_EN;
   const [editing,setEditing]=useState<ShopNotifSetting|null>(null);
   const [adding,setAdding]=useState(false);
   const fmtDays=(days:number[])=>{
@@ -3637,7 +3695,7 @@ function ForgetAlertsPanel({alerts,onChange,isPremium,onProPrompt}:{
   onProPrompt:(feature:string)=>void;
 }) {
   const {tr,language} = useI18n();
-  const DOW=language==='ja'?['日','月','火','水','木','金','土']:DAY_NAMES_EN;
+  const DOW=language==='ja'?['日','月','火','水','木','金','土']:language==='ko'?DAY_NAMES_KO:DAY_NAMES_EN;
   const [editing,setEditing]=useState<ForgetAlertDraft|null>(null);
   const [adding,setAdding]=useState(false);
   const [mapMode,setMapMode]=useState(false);
@@ -4640,7 +4698,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
 
       <button onClick={back} className="flex items-center gap-0.5 shrink-0 min-w-[44px]" style={{color:'var(--c-primary)'}}>
         <AppIcons.caretLeft size={20}/>
-        {language==='ja'&&<span className="text-[15px] whitespace-nowrap">{tr('settingsTitle')}</span>}
+        {(language==='ja'||language==='ko')&&<span className="text-[15px] whitespace-nowrap">{tr('settingsTitle')}</span>}
       </button>
       <h2 className="flex-1 text-center text-[17px] font-semibold text-gray-900 truncate px-1">{title}</h2>
       <div className="shrink-0 min-w-[44px]"/>
@@ -4745,12 +4803,12 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           <div className="bg-white rounded-2xl overflow-hidden shadow-sm px-3 py-3">
             <div className="flex items-center justify-between mb-3">
               <button onClick={()=>setBulkVm(m=>shiftMonth(m.year,m.month,-1))} className="w-9 h-9 flex items-center justify-center text-gray-600"><AppIcons.caretLeft/></button>
-              <span className="font-bold text-gray-900 text-base">{language==='ja'?`${bulkVm.year}年${bulkVm.month+1}月`:`${MONTH_NAMES_EN[bulkVm.month]} ${bulkVm.year}`}</span>
+              <span className="font-bold text-gray-900 text-base">{language==='ja'?`${bulkVm.year}年${bulkVm.month+1}月`:language==='ko'?`${bulkVm.year}년 ${bulkVm.month+1}월`:`${MONTH_NAMES_EN[bulkVm.month]} ${bulkVm.year}`}</span>
               <button onClick={()=>setBulkVm(m=>shiftMonth(m.year,m.month,1))} className="w-9 h-9 flex items-center justify-center text-gray-600"><AppIcons.caretRight/></button>
             </div>
             <div className="grid grid-cols-7 mb-1">
               {DAY_NAMES.map((n,i)=>(
-                <div key={i} className={`text-center text-xs font-semibold py-1 text-gray-400`}>{language==='ja'?n:DAY_NAMES_EN[i]}</div>
+                <div key={i} className={`text-center text-xs font-semibold py-1 text-gray-400`}>{dayNameFor(language,i)}</div>
               ))}
             </div>
             <div className="grid grid-cols-7 gap-y-1">
@@ -4844,7 +4902,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             {disp.map(entry=>{
               const isExp=histExp===entry.id;
               const dt=new Date(entry.registeredAt);
-              const dateLabel=language==='ja'?`${dt.getMonth()+1}/${dt.getDate()}`:`${MONTH_NAMES_EN[dt.getMonth()].slice(0,3)} ${dt.getDate()}`;
+              const dateLabel=language==='ja'?`${dt.getMonth()+1}/${dt.getDate()}`:language==='ko'?`${dt.getMonth()+1}월 ${dt.getDate()}일`:`${MONTH_NAMES_EN[dt.getMonth()].slice(0,3)} ${dt.getDate()}`;
               return (
                 <div key={entry.id} className="bg-white rounded-2xl overflow-hidden shadow-sm">
                   <button className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50" onClick={()=>setHistExp(isExp?null:entry.id)}>
@@ -5218,7 +5276,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             </div>
           ):(
             <>
-              <p className="text-xs text-gray-400 px-1 mt-4 mb-2">{language==='ja'?`${recurTasks.length}件`:`${recurTasks.length}`}</p>
+              <p className="text-xs text-gray-400 px-1 mt-4 mb-2">{language==='ja'?`${recurTasks.length}件`:language==='ko'?`${recurTasks.length}개`:`${recurTasks.length}`}</p>
               <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
                 {recurTasks.map((t,i)=>{
                   const Icon=getTaskIcon(t.icon||'task');
@@ -5273,7 +5331,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           </div>
           {(settings.laterReminderHours??72)!==0&&(
             <div className="flex gap-2 flex-wrap">
-              {(language==='ja'?LATER_REMINDER_OPTS:LATER_REMINDER_OPTS_EN).filter(o=>o.v!==0).map(o=>{
+              {(language==='ja'?LATER_REMINDER_OPTS:language==='ko'?LATER_REMINDER_OPTS_KO:LATER_REMINDER_OPTS_EN).filter(o=>o.v!==0).map(o=>{
                 const locked=o.v!==72&&!isPremium;
                 return (
                   <button key={o.v} onClick={()=>{if(locked){setProPrompt(tr('proFeatureLaterInterval'));return;}onSettings({...settings,laterReminderHours:o.v});}}
@@ -5299,7 +5357,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           </div>
           {(settings.appInactivityHours??6)!==0&&(
             <div className="flex gap-2 flex-wrap">
-              {(language==='ja'?APP_INACTIVITY_OPTS:APP_INACTIVITY_OPTS_EN).filter(o=>o.v!==0).map(o=>{
+              {(language==='ja'?APP_INACTIVITY_OPTS:language==='ko'?APP_INACTIVITY_OPTS_KO:APP_INACTIVITY_OPTS_EN).filter(o=>o.v!==0).map(o=>{
                 const locked=o.v!==6&&!isPremium;
                 return (
                   <button key={o.v} onClick={()=>{if(locked){setProPrompt(tr('proFeatureInactiveInterval'));return;}onSettings({...settings,appInactivityHours:o.v});}}
@@ -5374,6 +5432,8 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                 {([30,60,90,120,150,180] as const).map(m=>{
                   const label=language==='ja'
                     ?(m<60?`${m}分`:m===60?'1時間':m===90?'1.5時間':m===120?'2時間':m===150?'2.5時間':'3時間')
+                    :language==='ko'
+                    ?(m<60?`${m}분`:m===60?'1시간':m===90?'1시간 30분':m===120?'2시간':m===150?'2시간 30분':'3시간')
                     :(m<60?`${m}m`:m===60?'1h':m===90?'1.5h':m===120?'2h':m===150?'2.5h':'3h');
                   const active=(settings.freeCardMinMin??120)===m;
                   return (
@@ -5398,12 +5458,12 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm mt-6">
           <SettingsRow icon={<AppIcons.palette/>} iconBg="bg-gray-100"
             title={tr('themeColorRowTitle')}
-            desc={(language==='ja'?THEMES.find(t=>t.id===(settings.theme??'mint'))?.name:THEMES.find(t=>t.id===(settings.theme??'mint'))?.nameEn)??'Mint'}
+            desc={(language==='ja'?THEMES.find(t=>t.id===(settings.theme??'mint'))?.name:language==='ko'?THEMES.find(t=>t.id===(settings.theme??'mint'))?.nameKo:THEMES.find(t=>t.id===(settings.theme??'mint'))?.nameEn)??'Mint'}
             onClick={()=>setSub('themeColor')}/>
           <div className="h-px bg-gray-100 mx-4"/>
           <SettingsRow icon={<AppIcons.home/>} iconBg="bg-gray-100"
             title={tr('appIconRowTitle')}
-            desc={(language==='ja'?APP_ICONS.find(t=>t.id===(settings.appIcon??'mint'))?.name:APP_ICONS.find(t=>t.id===(settings.appIcon??'mint'))?.nameEn)??'Mint'}
+            desc={(language==='ja'?APP_ICONS.find(t=>t.id===(settings.appIcon??'mint'))?.name:language==='ko'?APP_ICONS.find(t=>t.id===(settings.appIcon??'mint'))?.nameKo:APP_ICONS.find(t=>t.id===(settings.appIcon??'mint'))?.nameEn)??'Mint'}
             onClick={()=>setSub('appIcon')}/>
           <div className="h-px bg-gray-100 mx-4"/>
           <SettingsRow icon={<AppIcons.freeTime size={18}/>} iconBg="bg-gray-100"
@@ -5422,8 +5482,8 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             onClick={()=>setSub('fontSize')}/>
           <div className="h-px bg-gray-100 mx-4"/>
           <SettingsRow icon={<AppIcons.book size={18}/>} iconBg="bg-gray-100"
-            title="言語 / Language"
-            desc={language==='ja'?'日本語':'English'}
+            title="言語 / Language / 언어"
+            desc={language==='ja'?'日本語':language==='ko'?'한국어':'English'}
             onClick={()=>setSub('language')} isLast/>
         </div>
       </div>
@@ -5432,16 +5492,16 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
 
   if(sub==='language') return (
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
-      {subHeader('言語 / Language')}
+      {subHeader('言語 / Language / 언어')}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm mt-6">
-          {(['auto','ja','en'] as LanguagePref[]).map((code,i)=>(
+          {(['auto','ja','en','ko'] as LanguagePref[]).map((code,i)=>(
             <div key={code}>
               {i>0&&<div className="h-px bg-gray-100 mx-4"/>}
               <button onClick={()=>setLanguage(code)}
                 className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50">
                 <div className="flex-1 text-left">
-                  <p className="text-sm font-medium text-gray-800">{code==='auto'?tr('languageAutoLabel'):code==='ja'?'日本語':'English'}</p>
+                  <p className="text-sm font-medium text-gray-800">{code==='auto'?tr('languageAutoLabel'):code==='ja'?'日本語':code==='ko'?'한국어':'English'}</p>
                   {code==='auto'&&<p className="text-xs text-gray-400 mt-0.5">{tr('languageAutoDesc')}</p>}
                 </div>
                 {languagePref===code&&<AppIcons.checkSquare size={18} className="text-[var(--c-primary)] shrink-0"/>}
@@ -5521,7 +5581,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                     </div>
                   )}
                 </div>
-                <span className={`text-xs text-center leading-tight ${selected?'font-bold text-gray-900':'text-gray-500'}`}>{language==='ja'?t.name:t.nameEn}</span>
+                <span className={`text-xs text-center leading-tight ${selected?'font-bold text-gray-900':'text-gray-500'}`}>{language==='ja'?t.name:language==='ko'?t.nameKo:t.nameEn}</span>
                 {!isFree&&!isPremium&&<span className="text-[8px] font-bold text-gray-400 border border-gray-300 rounded px-1 py-0.5 leading-none">PRO</span>}
               </button>
             );
@@ -5563,7 +5623,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                     </div>
                   )}
                 </div>
-                <span className={`text-xs text-center leading-tight ${selected?'font-bold text-gray-900':'text-gray-500'}`}>{language==='ja'?ic.name:ic.nameEn}</span>
+                <span className={`text-xs text-center leading-tight ${selected?'font-bold text-gray-900':'text-gray-500'}`}>{language==='ja'?ic.name:language==='ko'?ic.nameKo:ic.nameEn}</span>
                 {!isFree&&!isPremium&&<span className="text-[8px] font-bold text-gray-400 border border-gray-300 rounded px-1 py-0.5 leading-none">PRO</span>}
               </button>
             );
@@ -5689,7 +5749,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                 className="w-8 h-8 flex items-center justify-center rounded-full active:bg-gray-100">
                 <AppIcons.caretLeft size={16} className="text-gray-600"/>
               </button>
-              <p className="text-[15px] font-semibold text-gray-900">{language==='ja'?`${lpVm.year}年${lpVm.month+1}月`:`${MONTH_NAMES_EN[lpVm.month]} ${lpVm.year}`}</p>
+              <p className="text-[15px] font-semibold text-gray-900">{language==='ja'?`${lpVm.year}年${lpVm.month+1}月`:language==='ko'?`${lpVm.year}년 ${lpVm.month+1}월`:`${MONTH_NAMES_EN[lpVm.month]} ${lpVm.year}`}</p>
               <button onClick={()=>setLpVm(prev=>shiftMonth(lpVm.year,lpVm.month,1))}
                 className="w-8 h-8 flex items-center justify-center rounded-full active:bg-gray-100">
                 <AppIcons.caretRight size={16} className="text-gray-600"/>
@@ -5697,7 +5757,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             </div>
             <div className="grid grid-cols-7 px-2 pt-2">
               {weekDayOrder(weekStartsOn).map(dow=>(
-                <div key={dow} className="text-center text-xs text-gray-400 pb-1">{language==='ja'?DAY_NAMES[dow]:DAY_NAMES_EN[dow]}</div>
+                <div key={dow} className="text-center text-xs text-gray-400 pb-1">{dayNameFor(language,dow)}</div>
               ))}
             </div>
             <div className="grid grid-cols-7 px-2 pb-3">
@@ -6436,7 +6496,7 @@ export default function App() {
   useEffect(()=>{
     if(!showTour){ setTourSampleTasks([]); return; }
     const today=todayStr();
-    const names=language==='ja'?['牛乳を買う','クリーニングを受け取る','振込をする']:['Buy milk','Pick up dry cleaning','Make a bank transfer'];
+    const names=language==='ja'?['牛乳を買う','クリーニングを受け取る','振込をする']:language==='ko'?['우유 사기','세탁물 찾기','계좌 이체하기']:['Buy milk','Pick up dry cleaning','Make a bank transfer'];
     setTourSampleTasks(names.map((name,i)=>({
       id:`tour-sample-${i}`,name,startTime:null,duration:0,memo:'',icon:defaultIconKey(name),
       completed:false,date:today,isLater:true,recurrence:null,tags:[],notifications:[],subtasks:[],
@@ -7364,11 +7424,11 @@ export default function App() {
         <div className="px-4 pt-1 pb-0">
           {/* Date + nav */}
           <div className="flex items-center justify-between mb-1">
-            <span className="text-2xl font-bold text-gray-900 whitespace-nowrap">{language==='ja'?`${year}年${month}月`:`${MONTH_NAMES_EN[month-1].slice(0,3)} ${year}`}</span>
+            <span className="text-2xl font-bold text-gray-900 whitespace-nowrap">{language==='ja'?`${year}年${month}月`:language==='ko'?`${year}년 ${month}월`:`${MONTH_NAMES_EN[month-1].slice(0,3)} ${year}`}</span>
             <div className="flex items-center gap-1">
               <button onClick={()=>setSettings(s=>({...s,showFreeCard:!(s.showFreeCard??true)}))}
                 className={`relative h-7 rounded-full font-medium transition-colors duration-200 mr-1 overflow-hidden ${(settings.showFreeCard??true)?'bg-[var(--c-primary)] text-white':'bg-gray-200 text-gray-500'}`}
-                style={{width:language==='ja'?'84px':'104px',fontSize:'12px'}}>
+                style={{width:language==='ja'?'84px':language==='ko'?'92px':'104px',fontSize:'12px'}}>
                 <span className="absolute inset-0 flex items-center justify-center whitespace-nowrap" style={{paddingLeft:(settings.showFreeCard??true)?'0':'12px',paddingRight:(settings.showFreeCard??true)?'12px':'0',transition:'padding 0.2s'}}>{tr('headerFreeTimeToggle')}</span>
                 <span className="absolute top-1.5 w-4 h-4 bg-white rounded-full" style={{boxShadow:'0 1px 3px rgba(0,0,0,0.2)',transition:'left 0.2s',left:(settings.showFreeCard??true)?'calc(100% - 22px)':'6px'}}/>
               </button>
@@ -7391,7 +7451,7 @@ export default function App() {
               const isSel=d===date, isToday=d===today;
               return (
                 <button key={i} onClick={()=>{setDate(d);setWeekAnchor(d);}} className="flex flex-col items-center py-1">
-                  <span className="text-[13px] font-medium text-gray-400">{language==='ja'?DAY_NAMES[dow]:DAY_NAMES_EN[dow]}</span>
+                  <span className="text-[13px] font-medium text-gray-400">{dayNameFor(language,dow)}</span>
                   <span className={`w-8 h-8 flex items-center justify-center rounded-full font-bold transition-colors ${isSel?'bg-[var(--c-primary)] text-white':isToday?'bg-gray-200 text-gray-900':'text-gray-600'}`} style={{fontSize:'17px'}}>
                     {new Date(d+'T12:00:00').getDate()}
                   </span>
