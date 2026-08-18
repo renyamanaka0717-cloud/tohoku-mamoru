@@ -267,6 +267,14 @@ const deadlineRemainLabel = (deadlineAt:string, lang:Language='ja'): string => {
     }
     return `Due in ${diff} day${diff===1?'':'s'}`;
   }
+  if(lang==='ko'){
+    if(diff<0) return `마감에서 ${-diff}일 초과`;
+    if(diff===0){
+      const [h,m]=deadlineAt.slice(11,16).split(':').map(Number);
+      return m>0?`마감은 오늘 ${h}시 ${m}분`:`마감은 오늘 ${h}시`;
+    }
+    return `마감까지 ${diff}일 남음`;
+  }
   if(diff<0) return `締切から${-diff}日超過`;
   if(diff===0){
     const [h,m]=deadlineAt.slice(11,16).split(':').map(Number);
@@ -348,6 +356,7 @@ const uid         = () => `${Date.now()}-${Math.random().toString(36).slice(2)}`
 const durLabel    = (m: number, lang: Language = 'ja') => {
   if(m<=0) return '';
   if(lang==='en') return m>=60?`${Math.floor(m/60)}h${m%60?` ${m%60}m`:''}`:`${m}m`;
+  if(lang==='ko') return m>=60?`${Math.floor(m/60)}시간${m%60?` ${m%60}분`:''}`:`${m}분`;
   return m>=60?`${Math.floor(m/60)}時間${m%60?`${m%60}分`:''}` :`${m}分`;
 };
 const getDateInfo = (s: string) => { const d=new Date(s+'T12:00:00'); return {day:d.getDate(),month:d.getMonth()+1,year:d.getFullYear()}; };
@@ -774,6 +783,7 @@ function SearchPage({tasks,onClose,onSelect}:{tasks:Task[];onClose:()=>void;onSe
   const fmtDate=(d:string)=>{
     const dt=new Date(d+'T12:00:00');
     if(language==='en') return `${MONTH_NAMES_EN[dt.getMonth()].slice(0,3)} ${dt.getDate()} (${DAY_NAMES_EN[dt.getDay()]})`;
+    if(language==='ko') return `${dt.getMonth()+1}월 ${dt.getDate()}일 (${DAY_NAMES_KO[dt.getDay()]})`;
     return `${dt.getMonth()+1}月${dt.getDate()}日（${DAY_NAMES[dt.getDay()]}）`;
   };
 
@@ -1366,6 +1376,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
     const dt=new Date(taskDate+'T12:00:00');
     const m=dt.getMonth()+1, d=dt.getDate(), dow=DAY_NAMES[dt.getDay()];
     if(language==='en') return `${taskDate===today?'Today, ':''}${MONTH_NAMES_EN[dt.getMonth()].slice(0,3)} ${d} (${DAY_NAMES_EN[dt.getDay()]})`;
+    if(language==='ko') return `${taskDate===today?'오늘 ':''}${m}월 ${d}일 (${DAY_NAMES_KO[dt.getDay()]})`;
     return `${taskDate===today?'今日 ':''}${m}月${d}日（${dow}）`;
   };
 

@@ -393,7 +393,7 @@ export const STRINGS = {
   proValFull:                { ja: '完全対応',                       en: 'Full',                          ko: '완전 지원' },
   proValBasicOnly:           { ja: '基本のみ',                       en: 'Basic only',                    ko: '기본만' },
   proValMintOnly:            { ja: 'ミントのみ',                      en: 'Mint only',                     ko: '민트만' },
-  proVal9Colors:             { ja: '9色',                          en: '9 colors',                      ko: '9가지 색상' },
+  proVal9Colors:             { ja: '9色',                          en: '9 colors',                      ko: '9색' },
   proValSupported:           { ja: '対応',                         en: 'Supported',                     ko: '지원' },
   proValDefaultOnly:         { ja: '既定のみ',                       en: 'Default only',                  ko: '기본값만' },
   proActiveTitle:            { ja: 'PROプランを利用中です',              en: 'You’re on the PRO plan',        ko: 'PRO 플랜을 이용 중이에요' },
