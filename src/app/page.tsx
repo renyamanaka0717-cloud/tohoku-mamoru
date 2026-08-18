@@ -841,83 +841,83 @@ function autoIcon(name: string): string {
   return '';
 }
 
-const ICON_CATEGORIES:{label:string;labelEn:string;icons:{key:string;label:string;labelEn:string;pro?:boolean}[]}[]=[
-  {label:'日常',labelEn:'Daily',icons:[
-    {key:'task',    label:'メモ',   labelEn:'Note'},
-    {key:'shopping',label:'買い物', labelEn:'Shopping'},
-    {key:'food',    label:'食事',   labelEn:'Meal'},
-    {key:'cooking', label:'料理',   labelEn:'Cooking'},
-    {key:'clean',   label:'掃除',   labelEn:'Cleaning'},
-    {key:'washing', label:'洗濯',   labelEn:'Laundry'},
-    {key:'rest',    label:'休憩',   labelEn:'Break'},
-    {key:'sleep',   label:'睡眠',   labelEn:'Sleep'},
-    {key:'home',    label:'家',     labelEn:'Home'},
-    {key:'paw',     label:'散歩',   labelEn:'Walk'},
-    {key:'health',  label:'健康',   labelEn:'Health'},
-    {key:'cake',    label:'お菓子', labelEn:'Snack',    pro:true},
-    {key:'pizza',   label:'ピザ',   labelEn:'Pizza',    pro:true},
-    {key:'bathtub', label:'お風呂', labelEn:'Bath',     pro:true},
-    {key:'bed',     label:'ベッド', labelEn:'Bed',      pro:true},
+const ICON_CATEGORIES:{label:string;labelEn:string;labelKo:string;icons:{key:string;label:string;labelEn:string;labelKo:string;pro?:boolean}[]}[]=[
+  {label:'日常',labelEn:'Daily',labelKo:'일상',icons:[
+    {key:'task',    label:'メモ',   labelEn:'Note',     labelKo:'메모'},
+    {key:'shopping',label:'買い物', labelEn:'Shopping', labelKo:'쇼핑'},
+    {key:'food',    label:'食事',   labelEn:'Meal',     labelKo:'식사'},
+    {key:'cooking', label:'料理',   labelEn:'Cooking',  labelKo:'요리'},
+    {key:'clean',   label:'掃除',   labelEn:'Cleaning', labelKo:'청소'},
+    {key:'washing', label:'洗濯',   labelEn:'Laundry',  labelKo:'빨래'},
+    {key:'rest',    label:'休憩',   labelEn:'Break',    labelKo:'휴식'},
+    {key:'sleep',   label:'睡眠',   labelEn:'Sleep',    labelKo:'수면'},
+    {key:'home',    label:'家',     labelEn:'Home',     labelKo:'집'},
+    {key:'paw',     label:'散歩',   labelEn:'Walk',     labelKo:'산책'},
+    {key:'health',  label:'健康',   labelEn:'Health',   labelKo:'건강'},
+    {key:'cake',    label:'お菓子', labelEn:'Snack',    labelKo:'간식',  pro:true},
+    {key:'pizza',   label:'ピザ',   labelEn:'Pizza',    labelKo:'피자',  pro:true},
+    {key:'bathtub', label:'お風呂', labelEn:'Bath',     labelKo:'목욕',  pro:true},
+    {key:'bed',     label:'ベッド', labelEn:'Bed',      labelKo:'침대',  pro:true},
   ]},
-  {label:'仕事・学習',labelEn:'Work & Study',icons:[
-    {key:'work',     label:'仕事',   labelEn:'Work'},
-    {key:'meeting',  label:'会議',   labelEn:'Meeting'},
-    {key:'document', label:'書類',   labelEn:'Document'},
-    {key:'mail',     label:'メール', labelEn:'Mail'},
-    {key:'calendar', label:'予定',   labelEn:'Schedule'},
-    {key:'study',    label:'勉強',   labelEn:'Study'},
-    {key:'book',     label:'読書',   labelEn:'Reading'},
-    {key:'phone',    label:'電話',   labelEn:'Phone'},
-    {key:'money',    label:'お金',   labelEn:'Money'},
-    {key:'payment',  label:'支払い', labelEn:'Payment'},
-    {key:'creditcard', label:'カード', labelEn:'Card',    pro:true},
-    {key:'piggybank',  label:'貯金',   labelEn:'Savings', pro:true},
+  {label:'仕事・学習',labelEn:'Work & Study',labelKo:'업무·학습',icons:[
+    {key:'work',     label:'仕事',   labelEn:'Work',     labelKo:'업무'},
+    {key:'meeting',  label:'会議',   labelEn:'Meeting',  labelKo:'회의'},
+    {key:'document', label:'書類',   labelEn:'Document', labelKo:'서류'},
+    {key:'mail',     label:'メール', labelEn:'Mail',     labelKo:'메일'},
+    {key:'calendar', label:'予定',   labelEn:'Schedule', labelKo:'일정'},
+    {key:'study',    label:'勉強',   labelEn:'Study',    labelKo:'공부'},
+    {key:'book',     label:'読書',   labelEn:'Reading',  labelKo:'독서'},
+    {key:'phone',    label:'電話',   labelEn:'Phone',    labelKo:'전화'},
+    {key:'money',    label:'お金',   labelEn:'Money',    labelKo:'돈'},
+    {key:'payment',  label:'支払い', labelEn:'Payment',  labelKo:'결제'},
+    {key:'creditcard', label:'カード', labelEn:'Card',    labelKo:'카드', pro:true},
+    {key:'piggybank',  label:'貯金',   labelEn:'Savings', labelKo:'저축', pro:true},
   ]},
-  {label:'健康・医療',labelEn:'Health & Medical',icons:[
-    {key:'hospital', label:'病院',       labelEn:'Hospital'},
-    {key:'medicine', label:'薬',         labelEn:'Medicine'},
-    {key:'exercise', label:'運動',       labelEn:'Exercise'},
-    {key:'running',  label:'ランニング', labelEn:'Running'},
-    {key:'yoga',     label:'ヨガ',       labelEn:'Yoga'},
-    {key:'bicycle',  label:'自転車',     labelEn:'Cycling'},
+  {label:'健康・医療',labelEn:'Health & Medical',labelKo:'건강·의료',icons:[
+    {key:'hospital', label:'病院',       labelEn:'Hospital', labelKo:'병원'},
+    {key:'medicine', label:'薬',         labelEn:'Medicine', labelKo:'약'},
+    {key:'exercise', label:'運動',       labelEn:'Exercise', labelKo:'운동'},
+    {key:'running',  label:'ランニング', labelEn:'Running',  labelKo:'러닝'},
+    {key:'yoga',     label:'ヨガ',       labelEn:'Yoga',     labelKo:'요가'},
+    {key:'bicycle',  label:'自転車',     labelEn:'Cycling',  labelKo:'자전거'},
   ]},
-  {label:'その他',labelEn:'Other',icons:[
-    {key:'travel',   label:'移動',       labelEn:'Travel'},
-    {key:'train',    label:'電車',       labelEn:'Train'},
-    {key:'music',    label:'音楽',       labelEn:'Music'},
-    {key:'game',     label:'ゲーム',     labelEn:'Game'},
-    {key:'gift',     label:'プレゼント', labelEn:'Gift'},
-    {key:'scissors', label:'趣味',       labelEn:'Hobby'},
-    {key:'camera',   label:'カメラ',     labelEn:'Camera'},
-    {key:'question', label:'その他',     labelEn:'Other'},
+  {label:'その他',labelEn:'Other',labelKo:'기타',icons:[
+    {key:'travel',   label:'移動',       labelEn:'Travel', labelKo:'이동'},
+    {key:'train',    label:'電車',       labelEn:'Train',  labelKo:'전철'},
+    {key:'music',    label:'音楽',       labelEn:'Music',  labelKo:'음악'},
+    {key:'game',     label:'ゲーム',     labelEn:'Game',   labelKo:'게임'},
+    {key:'gift',     label:'プレゼント', labelEn:'Gift',   labelKo:'선물'},
+    {key:'scissors', label:'趣味',       labelEn:'Hobby',  labelKo:'취미'},
+    {key:'camera',   label:'カメラ',     labelEn:'Camera', labelKo:'카메라'},
+    {key:'question', label:'その他',     labelEn:'Other',  labelKo:'기타'},
   ]},
-  {label:'趣味・スポーツ',labelEn:'Hobbies & Sports',icons:[
-    {key:'guitar',     label:'ギター',     labelEn:'Guitar',     pro:true},
-    {key:'basketball', label:'バスケ',     labelEn:'Basketball', pro:true},
-    {key:'soccer',     label:'サッカー',   labelEn:'Soccer',     pro:true},
-    {key:'volleyball', label:'バレー',     labelEn:'Volleyball', pro:true},
-    {key:'paint',      label:'アート',     labelEn:'Art',        pro:true},
-    {key:'rocket',     label:'挑戦',       labelEn:'Challenge',  pro:true},
+  {label:'趣味・スポーツ',labelEn:'Hobbies & Sports',labelKo:'취미·스포츠',icons:[
+    {key:'guitar',     label:'ギター',     labelEn:'Guitar',     labelKo:'기타(악기)', pro:true},
+    {key:'basketball', label:'バスケ',     labelEn:'Basketball', labelKo:'농구',       pro:true},
+    {key:'soccer',     label:'サッカー',   labelEn:'Soccer',     labelKo:'축구',       pro:true},
+    {key:'volleyball', label:'バレー',     labelEn:'Volleyball', labelKo:'배구',       pro:true},
+    {key:'paint',      label:'アート',     labelEn:'Art',        labelKo:'미술',       pro:true},
+    {key:'rocket',     label:'挑戦',       labelEn:'Challenge',  labelKo:'도전',       pro:true},
   ]},
-  {label:'生き物・自然',labelEn:'Animals & Nature',icons:[
-    {key:'cat',    label:'猫',     labelEn:'Cat',     pro:true},
-    {key:'dog',    label:'犬',     labelEn:'Dog',     pro:true},
-    {key:'bird',   label:'鳥',     labelEn:'Bird',    pro:true},
-    {key:'fish',   label:'魚',     labelEn:'Fish',    pro:true},
-    {key:'rabbit', label:'うさぎ', labelEn:'Rabbit',  pro:true},
-    {key:'flower', label:'花',     labelEn:'Flower',  pro:true},
-    {key:'tree',   label:'木',     labelEn:'Tree',    pro:true},
-    {key:'sun',    label:'天気',   labelEn:'Weather', pro:true},
+  {label:'生き物・自然',labelEn:'Animals & Nature',labelKo:'동물·자연',icons:[
+    {key:'cat',    label:'猫',     labelEn:'Cat',     labelKo:'고양이', pro:true},
+    {key:'dog',    label:'犬',     labelEn:'Dog',     labelKo:'강아지', pro:true},
+    {key:'bird',   label:'鳥',     labelEn:'Bird',    labelKo:'새',     pro:true},
+    {key:'fish',   label:'魚',     labelEn:'Fish',    labelKo:'물고기', pro:true},
+    {key:'rabbit', label:'うさぎ', labelEn:'Rabbit',  labelKo:'토끼',   pro:true},
+    {key:'flower', label:'花',     labelEn:'Flower',  labelKo:'꽃',     pro:true},
+    {key:'tree',   label:'木',     labelEn:'Tree',    labelKo:'나무',   pro:true},
+    {key:'sun',    label:'天気',   labelEn:'Weather', labelKo:'날씨',   pro:true},
   ]},
-  {label:'おでかけ',labelEn:'Outings',icons:[
-    {key:'airplane', label:'飛行機',   labelEn:'Flight',       pro:true},
-    {key:'bus',      label:'バス',     labelEn:'Bus',          pro:true},
-    {key:'boat',     label:'船',       labelEn:'Boat',         pro:true},
-    {key:'backpack', label:'旅行',     labelEn:'Trip',         pro:true},
-    {key:'suitcase', label:'出張',     labelEn:'Business trip',pro:true},
-    {key:'location', label:'場所',     labelEn:'Location',     pro:true},
-    {key:'tent',     label:'キャンプ', labelEn:'Camping',      pro:true},
-    {key:'campfire', label:'焚き火',   labelEn:'Campfire',     pro:true},
+  {label:'おでかけ',labelEn:'Outings',labelKo:'외출',icons:[
+    {key:'airplane', label:'飛行機',   labelEn:'Flight',       labelKo:'비행기', pro:true},
+    {key:'bus',      label:'バス',     labelEn:'Bus',          labelKo:'버스',   pro:true},
+    {key:'boat',     label:'船',       labelEn:'Boat',         labelKo:'배',     pro:true},
+    {key:'backpack', label:'旅行',     labelEn:'Trip',         labelKo:'여행',   pro:true},
+    {key:'suitcase', label:'出張',     labelEn:'Business trip',labelKo:'출장',   pro:true},
+    {key:'location', label:'場所',     labelEn:'Location',     labelKo:'장소',   pro:true},
+    {key:'tent',     label:'キャンプ', labelEn:'Camping',      labelKo:'캠핑',   pro:true},
+    {key:'campfire', label:'焚き火',   labelEn:'Campfire',     labelKo:'모닥불', pro:true},
   ]},
 ];
 const ICON_OPTIONS=ICON_CATEGORIES.flatMap(c=>c.icons);
@@ -1191,8 +1191,8 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
     try{return JSON.parse(localStorage.getItem('tl-recent-icons')||'[]');}catch{return [];}
   });
   const [iconQuery,setIconQuery] = useState('');
-  const pickIcon=(opt:{key:string;label:string;labelEn:string;pro?:boolean})=>{
-    if(opt.pro&&!isPremium){ setModalProPrompt(tr('proFeatureIconUse').replace('{name}',()=>language==='ja'?opt.label:opt.labelEn)); return; }
+  const pickIcon=(opt:{key:string;label:string;labelEn:string;labelKo:string;pro?:boolean})=>{
+    if(opt.pro&&!isPremium){ setModalProPrompt(tr('proFeatureIconUse').replace('{name}',()=>language==='ja'?opt.label:language==='ko'?opt.labelKo:opt.labelEn)); return; }
     setIcon(opt.key);
     setRecentIcons(prev=>{
       const next=[opt.key,...prev.filter(k=>k!==opt.key)].slice(0,5);
@@ -1200,7 +1200,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
       return next;
     });
   };
-  const renderIconBtn=(opt:{key:string;label:string;labelEn:string;pro?:boolean})=>{
+  const renderIconBtn=(opt:{key:string;label:string;labelEn:string;labelKo:string;pro?:boolean})=>{
     const Ic=getTaskIcon(opt.key);
     const sel=icon===opt.key;
     const locked=!!opt.pro&&!isPremium;
@@ -2225,7 +2225,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                   <p className="text-xs font-bold text-gray-400 mb-2">{tr('iconSearchResults')}</p>
                   {(()=>{
                     const q=iconQuery.trim().toLowerCase();
-                    const results=ICON_OPTIONS.filter(o=>o.label.includes(iconQuery.trim())||o.labelEn.toLowerCase().includes(q));
+                    const results=ICON_OPTIONS.filter(o=>o.label.includes(iconQuery.trim())||o.labelEn.toLowerCase().includes(q)||o.labelKo.includes(iconQuery.trim()));
                     if(results.length===0) return <p className="text-sm text-gray-400 text-center py-6">{tr('iconSearchEmpty')}</p>;
                     return <div className="grid grid-cols-5 gap-2">{results.map(renderIconBtn)}</div>;
                   })()}
@@ -2257,7 +2257,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                 {/* Categories */}
                 {ICON_CATEGORIES.map(cat=>(
                   <div key={cat.label} className="mb-5">
-                    <p className="text-xs font-bold text-gray-400 mb-2">{language==='ja'?cat.label:cat.labelEn}</p>
+                    <p className="text-xs font-bold text-gray-400 mb-2">{language==='ja'?cat.label:language==='ko'?cat.labelKo:cat.labelEn}</p>
                     <div className="grid grid-cols-5 gap-2">
                       {cat.icons.map(renderIconBtn)}
                     </div>
@@ -4859,7 +4859,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                 </div>
                 {ICON_CATEGORIES.map(cat=>(
                   <div key={cat.label} className="mb-5">
-                    <p className="text-xs font-bold text-gray-400 mb-2">{language==='ja'?cat.label:cat.labelEn}</p>
+                    <p className="text-xs font-bold text-gray-400 mb-2">{language==='ja'?cat.label:language==='ko'?cat.labelKo:cat.labelEn}</p>
                     <div className="grid grid-cols-5 gap-2">
                       {cat.icons.map(opt=>{
                         const Ic=getTaskIcon(opt.key);
@@ -4867,7 +4867,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                         const bg=bulkColor||'var(--c-primary)';
                         const locked=!!opt.pro&&!isPremium;
                         return (
-                          <button key={opt.key} onClick={()=>{if(locked){setProPrompt(tr('proFeatureIconUse').replace('{name}',()=>language==='ja'?opt.label:opt.labelEn));return;}setBulkIconOverride(opt.key);}}
+                          <button key={opt.key} onClick={()=>{if(locked){setProPrompt(tr('proFeatureIconUse').replace('{name}',()=>language==='ja'?opt.label:language==='ko'?opt.labelKo:opt.labelEn));return;}setBulkIconOverride(opt.key);}}
                             className={`relative flex flex-col items-center gap-1.5 py-3 rounded-2xl ${sel?'':'bg-gray-50'}`}
                             style={sel?{background:bg}:undefined}>
                             <Ic size={22} className={sel?'text-white':locked?'text-gray-300':'text-gray-700'}/>
@@ -5010,7 +5010,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                 </div>
                 {ICON_CATEGORIES.map(cat=>(
                   <div key={cat.label} className="mb-5">
-                    <p className="text-xs font-bold text-gray-400 mb-2">{language==='ja'?cat.label:cat.labelEn}</p>
+                    <p className="text-xs font-bold text-gray-400 mb-2">{language==='ja'?cat.label:language==='ko'?cat.labelKo:cat.labelEn}</p>
                     <div className="grid grid-cols-5 gap-2">
                       {cat.icons.map(opt=>{
                         const Ic=getTaskIcon(opt.key);
@@ -5018,7 +5018,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                         const bg=histEditColor||'var(--c-primary)';
                         const locked=!!opt.pro&&!isPremium;
                         return (
-                          <button key={opt.key} onClick={()=>{if(locked){setProPrompt(tr('proFeatureIconUse').replace('{name}',()=>language==='ja'?opt.label:opt.labelEn));return;}setHEIcon(opt.key);}}
+                          <button key={opt.key} onClick={()=>{if(locked){setProPrompt(tr('proFeatureIconUse').replace('{name}',()=>language==='ja'?opt.label:language==='ko'?opt.labelKo:opt.labelEn));return;}setHEIcon(opt.key);}}
                             className={`relative flex flex-col items-center gap-1.5 py-3 rounded-2xl ${sel?'':'bg-gray-50'}`}
                             style={sel?{background:bg}:undefined}>
                             <Ic size={22} className={sel?'text-white':locked?'text-gray-300':'text-gray-700'}/>
