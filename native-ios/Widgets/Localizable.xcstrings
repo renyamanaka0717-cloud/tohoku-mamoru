@@ -14,6 +14,12 @@
             "state" : "translated",
             "value" : "4分割（予定・買い物・あとでやる・追加）"
           }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "4분할(예정·쇼핑·나중에·추가)"
+          }
         }
       }
     },
@@ -29,6 +35,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "あとでやる"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "나중에"
           }
         }
       }
@@ -46,6 +58,12 @@
             "state" : "translated",
             "value" : "あとでやるタスクを追加"
           }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "나중에 할 일 추가"
+          }
         }
       }
     },
@@ -61,6 +79,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "あとでやるを追加"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "나중에 할 일 추가"
           }
         }
       }
@@ -78,6 +102,12 @@
             "state" : "translated",
             "value" : "ありません"
           }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "없어요"
+          }
         }
       }
     },
@@ -93,6 +123,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "買い物を完了"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "구매 완료"
           }
         }
       }
@@ -110,6 +146,12 @@
             "state" : "translated",
             "value" : "買い物リスト"
           }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "쇼핑 목록"
+          }
         }
       }
     },
@@ -125,6 +167,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "買うものはありません"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "살 것이 없어요"
           }
         }
       }
@@ -142,6 +190,12 @@
             "state" : "translated",
             "value" : "次の予定"
           }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "다음 일정"
+          }
         }
       }
     },
@@ -157,6 +211,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "次の予定 & 買い物リスト"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "다음 일정 & 쇼핑 목록"
           }
         }
       }
@@ -174,6 +234,12 @@
             "state" : "translated",
             "value" : "次の予定・買い物リスト・あとでやるタスクを4分割で表示し、＋タップで新規タスクを追加できます。"
           }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "다음 일정·쇼핑 목록·나중에 할 일을 4분할로 표시하고, + 탭으로 새 태스크를 추가할 수 있어요."
+          }
         }
       }
     },
@@ -189,6 +255,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "タスクを完了"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "태스크 완료"
           }
         }
       }
@@ -206,6 +278,12 @@
             "state" : "translated",
             "value" : "タップするだけで「あとでやる」タスクの追加画面を開けます。"
           }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "탭 한 번으로 '나중에 할 일' 추가 화면을 열 수 있어요."
+          }
         }
       }
     },
@@ -222,6 +300,12 @@
             "state" : "translated",
             "value" : "予定はありません"
           }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "일정이 없어요"
+          }
         }
       }
     },
@@ -237,6 +321,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "今日の予定と買い物リストをまとめて表示します。タップで完了にできます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "오늘의 일정과 쇼핑 목록을 한눈에 보여줘요. 탭하면 완료 처리할 수 있어요."
           }
         }
       }

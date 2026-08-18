@@ -280,8 +280,13 @@ public class GeofencePlugin: CAPPlugin, CLLocationManagerDelegate, UNUserNotific
 
         defaults.set(now, forKey: cooldownKey)
 
-        let en = isEnglish()
-        var placeName = en ? "a saved place" : "登録した場所"
+        let lang = appLang()
+        var placeName: String
+        switch lang {
+        case .ja: placeName = "登録した場所"
+        case .ko: placeName = "저장된 장소"
+        case .en: placeName = "a saved place"
+        }
         if let namesJson = defaults.string(forKey: "geofenceNames"),
            let namesData = namesJson.data(using: .utf8),
            let names = try? JSONDecoder().decode([String: String].self, from: namesData),
@@ -289,12 +294,31 @@ public class GeofencePlugin: CAPPlugin, CLLocationManagerDelegate, UNUserNotific
             placeName = n
         }
 
-        let names = items.prefix(5).map { $0.name }.joined(separator: en ? ", " : "、")
-        let body = items.count > 5 ? (en ? "\(names) and \(items.count - 5) more" : "\(names) 他\(items.count - 5)件") : names
+        let separator = lang == .ja ? "、" : ", "
+        let names = items.prefix(5).map { $0.name }.joined(separator: separator)
+        let body: String
+        if items.count > 5 {
+            switch lang {
+            case .ja: body = "\(names) 他\(items.count - 5)件"
+            case .ko: body = "\(names) 외 \(items.count - 5)개"
+            case .en: body = "\(names) and \(items.count - 5) more"
+            }
+        } else {
+            body = names
+        }
 
         let content = UNMutableNotificationContent()
-        content.title = en ? "Near \(placeName)" : "\(placeName)の近くです"
-        content.body = en ? "Shopping list: \(body)" : "買い物リスト: \(body)"
+        switch lang {
+        case .ja:
+            content.title = "\(placeName)の近くです"
+            content.body = "買い物リスト: \(body)"
+        case .ko:
+            content.title = "\(placeName) 근처예요"
+            content.body = "쇼핑 목록: \(body)"
+        case .en:
+            content.title = "Near \(placeName)"
+            content.body = "Shopping list: \(body)"
+        }
         content.sound = .default
         content.userInfo = ["openShop": true]
         let request = UNNotificationRequest(
@@ -326,8 +350,13 @@ public class GeofencePlugin: CAPPlugin, CLLocationManagerDelegate, UNUserNotific
             defaults.set(json, forKey: "taskLocationFiredIds")
         }
 
-        let en = isEnglish()
-        var taskName = en ? "Later task" : "あとでやるタスク"
+        let lang = appLang()
+        var taskName: String
+        switch lang {
+        case .ja: taskName = "あとでやるタスク"
+        case .ko: taskName = "나중에 할 일"
+        case .en: taskName = "Later task"
+        }
         if let namesJson = defaults.string(forKey: "taskLocationNames"),
            let namesData = namesJson.data(using: .utf8),
            let names = try? JSONDecoder().decode([String: String].self, from: namesData),
@@ -337,7 +366,11 @@ public class GeofencePlugin: CAPPlugin, CLLocationManagerDelegate, UNUserNotific
 
         let content = UNMutableNotificationContent()
         content.title = taskName
-        content.body = en ? "You've arrived at this location." : "この場所に着きました。"
+        switch lang {
+        case .ja: content.body = "この場所に着きました。"
+        case .ko: content.body = "이 장소에 도착했어요."
+        case .en: content.body = "You've arrived at this location."
+        }
         content.sound = .default
         content.userInfo = ["openLater": true]
         let request = UNNotificationRequest(identifier: "task-loc-fire-\(taskId)-\(Int(Date().timeIntervalSince1970))", content: content, trigger: nil)
@@ -393,21 +426,31 @@ public class GeofencePlugin: CAPPlugin, CLLocationManagerDelegate, UNUserNotific
 
         defaults.set(now, forKey: cooldownKey)
 
-        let en = isEnglish()
+        let lang = appLang()
         let content = UNMutableNotificationContent()
         if isEnter {
-            content.title = en ? "Arrived at \(entry.name)" : "\(entry.name)に着きました"
-            if en {
-                content.body = entry.items.isEmpty ? "Anything to check?" : "Check: \(entry.items.joined(separator: ", "))."
-            } else {
+            switch lang {
+            case .ja:
+                content.title = "\(entry.name)に着きました"
                 content.body = entry.items.isEmpty ? "確認することはありませんか？" : "\(entry.items.joined(separator: "、"))を確認しましょう。"
+            case .ko:
+                content.title = "\(entry.name)에 도착했어요"
+                content.body = entry.items.isEmpty ? "확인할 것이 있나요?" : "\(entry.items.joined(separator: ", "))을(를) 확인하세요."
+            case .en:
+                content.title = "Arrived at \(entry.name)"
+                content.body = entry.items.isEmpty ? "Anything to check?" : "Check: \(entry.items.joined(separator: ", "))."
             }
         } else {
-            content.title = en ? "Left \(entry.name)" : "\(entry.name)を出ました"
-            if en {
-                content.body = entry.items.isEmpty ? "Forgot anything?" : "Do you have: \(entry.items.joined(separator: ", "))?"
-            } else {
+            switch lang {
+            case .ja:
+                content.title = "\(entry.name)を出ました"
                 content.body = entry.items.isEmpty ? "忘れ物はありませんか？" : "\(entry.items.joined(separator: "、"))を持ちましたか？"
+            case .ko:
+                content.title = "\(entry.name)에서 나왔어요"
+                content.body = entry.items.isEmpty ? "놓고 온 것은 없나요?" : "\(entry.items.joined(separator: ", "))을(를) 챙기셨나요?"
+            case .en:
+                content.title = "Left \(entry.name)"
+                content.body = entry.items.isEmpty ? "Forgot anything?" : "Do you have: \(entry.items.joined(separator: ", "))?"
             }
         }
         content.sound = .default
@@ -417,9 +460,15 @@ public class GeofencePlugin: CAPPlugin, CLLocationManagerDelegate, UNUserNotific
 
     // JS側がupdateWidgetData()呼び出しのたびにApp Groupへ書き込む現在の言語設定。
     // Geofenceの発火はバックグラウンド/未起動でも起こるためJSのtr()を呼べず、
-    // ここで直接ja/enを判定して通知文を組み立てる
-    private func isEnglish() -> Bool {
-        UserDefaults(suiteName: GeofencePlugin.appGroupId)?.string(forKey: "appLanguage") == "en"
+    // ここで直接appLanguageの生の値を判定して通知文を組み立てる。
+    // 3言語以上になったので単純なBool（isEnglish）ではなくenumで分岐する
+    private enum AppLang { case ja, en, ko }
+    private func appLang() -> AppLang {
+        switch UserDefaults(suiteName: GeofencePlugin.appGroupId)?.string(forKey: "appLanguage") {
+        case "ja": return .ja
+        case "ko": return .ko
+        default: return .en
+        }
     }
 
     private func minutesFromTimeString(_ s: String) -> Int? {

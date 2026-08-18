@@ -1504,7 +1504,7 @@ native-ios/BridgeViewController.swift … capacitorDidLoad() 内で FirebaseApp.
 
 **アプリ全体の英語対応は完了済み。** ウェルカム画面・プロダクトツアー・タイムライン・タスクモーダル・設定画面各項目・アイコン選択・PROペイウォール・おすすめ機能・タスク一括入力・カスタム繰り返し設定・場所通知UI・地図ピッカー・朝の確認ポップアップ・起床/就寝設定・繰り返し予定の確認ダイアログ・タブ表示フィルター・プッシュ通知本文・ホーム画面ウィジェット・場所通知/忘れ物防止アラートの通知文（ネイティブ側）・PRO価格表示、まで`STRINGS`/`tr()`（または`language==='ja'?...`分岐）でja/en両対応済み。唯一意図的に未対応のままなのは**開発者モード画面**（アプリバージョン7回タップの検証用メニュー。一般ユーザーには表示されないため）。新しい画面・機能を追加する時は同じ`STRINGS`/`tr()`の仕組みに1文言ずつ追加していく。
 
-**韓国語（`ko`）はJS/Web側（`STRINGS`全項目・曜日/月名/DUR_OPTS等のオプション配列・テーマ/アプリアイコン名・カスタム繰り返しの要約文・タイムラインヘッダー・アイコン選択画面のカテゴリ名と約90件の個別アイコン名`labelKo`）まで対応済み。** ネイティブiOS側（ホーム画面ウィジェットのString Catalog・`GeofencePlugin.swift`等の`appLanguage`判定）はまだ未対応。次にこの続きをやる時は本節の「③ ネイティブiOS側」の手順から進める。
+**韓国語（`ko`）はJS/Web側（`STRINGS`全項目・曜日/月名/DUR_OPTS等のオプション配列・テーマ/アプリアイコン名・カスタム繰り返しの要約文・タイムラインヘッダー・アイコン選択画面のカテゴリ名と約90件の個別アイコン名）とネイティブiOS側（ホーム画面ウィジェットのString Catalog・`GeofencePlugin.swift`の言語判定）まで対応済み。**
 
 ### アーキテクチャ
 
@@ -1557,7 +1557,7 @@ grep -n "[ぁ-んァ-ヶ一-龯]" src/app/page.tsx | grep -v "tr(" | grep -v "la
 
 - **ホーム画面ウィジェット**: `native-ios/Widgets/Localizable.xcstrings`（String Catalog）に新言語の翻訳を追加。**ウィジェットはアプリ内の言語設定ではなく端末本体のシステム言語（設定→一般→言語と地域）で自動的に切り替わる**（SwiftUIの`Text(_:LocalizedStringKey)`がOSのロケールを見るため、アプリ内`tl-language-v1`とは完全に独立）。確認時は端末のシステム言語を切り替えたあと、ホーム画面からウィジェットを一度削除して再追加する（キャッシュされたタイムラインが残ると反映されないことがある）
   - SwiftUIの罠: `Text(someStringVariable)`のように一度`String`型を経由すると自動ローカライズされない。`Text("リテラル")`か`LocalizedStringKey`型のパラメータ経由で渡すこと
-- **バックグラウンドで発火するネイティブ通知**（`GeofencePlugin.swift`等、Swift側からJSの`tr()`を呼べない箇所）: JS側が`WidgetDataPlugin.updateWidgetData()`経由でApp Group共有の`UserDefaults`に`appLanguage`キー（現在は`"ja"`/`"en"`の生の言語コード文字列）を書き込み、Swift側の`isEnglish()`ヘルパーがこれを読んで判定している。**3言語以上になったら`isEnglish(): Bool`という二値ヘルパーはそのままでは使えない**ので、`appLanguage`の生の値を直接比較する分岐（`switch`文など）に書き換える必要がある
+- **バックグラウンドで発火するネイティブ通知**（`GeofencePlugin.swift`等、Swift側からJSの`tr()`を呼べない箇所）: JS側が`WidgetDataPlugin.updateWidgetData()`経由でApp Group共有の`UserDefaults`に`appLanguage`キー（`"ja"`/`"en"`/`"ko"`の生の言語コード文字列）を書き込み、Swift側がこれを読んで判定している。**韓国語対応時に旧`isEnglish(): Bool`という二値ヘルパーを`appLang() -> AppLang`（`private enum AppLang { case ja, en, ko }`）に置き換え済み。** 呼び出し側は`let lang = appLang()`のあと`switch lang { case .ja: ...; case .ko: ...; case .en: ... }`で分岐する。4言語目を追加する時はこの`AppLang` enumに新しいcaseを追加し、`appLang()`のswitch文と各呼び出し箇所のswitch文（`GeofencePlugin.swift`内に3箇所: 買い物リストの場所通知・タスクの場所通知・忘れ物防止アラート）に新しいcaseを追加する
   - `ios/`はgitignore対象のため、Swiftファイルを編集した後は必ずXcode上で対象ファイルの中身を手動差し替える（新規ファイルはTarget Membership追加、既存ファイルは中身をコピペで上書き）
 
 **④ 課金・価格表示**
