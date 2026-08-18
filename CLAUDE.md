@@ -1573,6 +1573,62 @@ grep -n "[ぁ-んァ-ヶ一-龯]" src/app/page.tsx | grep -v "tr(" | grep -v "la
 
 ---
 
+## App Store Connect の英語対応（配信メタデータ、進行中）
+
+アプリ本体（JS側UI）の英語対応は完了済みだが、**App Store Connect側の「英語（アメリカ）」ロケール（説明文・スクリーンショット等）は作業が難航し、一旦保留にした。** 次にこの続きをやる時のための記録。
+
+### 静的ページ（利用規約・プライバシーポリシー・サポート）は日英とも用意済み
+
+| 内容 | 日本語 | 英語 |
+|---|---|---|
+| 利用規約 | `public/terms.html` | `public/terms-en.html` |
+| プライバシーポリシー | `public/privacy.html` | `public/privacy-en.html` |
+| サポート | `public/support.html` | `public/support-en.html` |
+
+App Store Connectの各ロケール設定でURLを入力する時、**英語ロケールなら必ず `-en.html` の方を使うこと。** `terms.html`のような無印のファイル名は日本語版なので、英語ロケールにそのまま使うと英語ユーザーに日本語ページが表示されてしまう（実際に説明文のURLで`terms.html`のまま貼ろうとしていて気づいた）。
+
+### 英語版App Store説明文・キーワード・バージョンの最新情報（下書き済み）
+
+説明文は本文中で確定済み（"Clear your mind."から始まる長文、利用規約リンクは`terms-en.html`）。キーワード欄（100文字以内）は以下で確定:
+
+```
+adhd,task,todo,planner,reminder,schedule,timeline,deadline,forgetful,shift,routine,focus,checklist
+```
+
+バージョン1.0.7のリリースノート（英語）:
+
+```
+Clear your mind and stay on top of everything new in this update:
+
+・Product tour — a guided walkthrough for first-time users
+・Deadline management — set due dates and reminders for your tasks
+・Location reminders for "Later" tasks — get notified when you arrive somewhere
+・Don't-forget alerts — check what to bring when you head out
+・Added LINE as a new contact option
+・Added English language support (Settings → Display → Language)
+・Choose from 4 text sizes (Small, Standard, Large, Extra Large)
+・Choose whether the week starts on Sunday or Monday
+
+Plus various small bug fixes.
+```
+
+### 既知の不具合: 英語ロケール追加時にスクリーンショットが保存できない
+
+英語（アメリカ）ロケールを追加後、6.5インチスクリーンショットをアップロードして「保存」しても「スクリーンショットまたはプレビューをアップロードする前に、新しいロケールを保存してください」という警告が繰り返し出て先に進めない、という不具合に遭遇した。
+
+切り分けで確認したが原因ではなかったもの:
+- 画像の透過（JPEGなので透過は無い）
+- 画像サイズ（`1242×2688`px ぴったりで規定通り）
+- カラーモデル（sRGB、DPI 96で問題なし）
+
+最終的に、**画像ファイル名に日本語・全角記号・スペースが含まれていた**（例:「頭の中を空っぽに。英語用 - 2.jpg」）ことが有力な原因と判断し、`screenshot-1.jpg`のような半角英数字のみのファイル名にリネームしてから再アップロードしたところ警告が解消した。**新しくApp Store Connectにスクリーンショット等をアップロードする時は、最初から半角英数字のファイル名にしておくこと。**（他にも「保存」ボタンが赤い＝単に未保存の変更があるだけで異常ではない、という基本挙動を何度か再確認する場面があった。赤色自体はエラーの意味ではない）
+
+### 現在の方針: バージョン1.0.7は日本語のみで先に提出
+
+上記の不具合対応に時間がかかったため、**1.0.7は日本語ロケールのみで先に審査提出し、英語ロケールは次のアップデート（1.0.8以降）で改めて追加する方針にした。** 英語ロケールが中途半端な状態（説明文やスクリーンショットが未完成）のまま残っていると審査提出時にエラーになる可能性があるため、提出前にApp Store Connect上で英語（アメリカ）ロケール自体を削除してから提出する運用にしている。次回英語対応を再開する時は、この節にある下書き済みのテキスト・キーワード・修正済みURLをそのまま使えばよい。
+
+---
+
 ## 開発者モード（検証用の隠しメニュー）
 
 一般ユーザーには表示されない検証用のメニュー。設定画面の「アプリバージョン」行を**7回タップ**すると解放され、以後「開発者向け」セクションに「開発者モード」の行が常に表示されるようになる（`localStorage`の`DEV_MODE_UNLOCKED_KEY`で永続化。一度解放したら再度タップし直す必要はない）。
