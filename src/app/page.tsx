@@ -1357,6 +1357,10 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
     const d=new Date((task?.date??currentDate)+'T12:00:00');
     return {year:d.getFullYear(),month:d.getMonth()};
   });
+  const [deadlineCalVm,setDeadlineCalVm] = useState(()=>{
+    const d=new Date((deadlineDate||currentDate)+'T12:00:00');
+    return {year:d.getFullYear(),month:d.getMonth()};
+  });
   const computedEnd = (startTime&&duration>0) ? fromMin(toMin(startTime)+duration) : null;
 
   // ── Auto-save (edit mode only) ─────────────────────────────────────────────
@@ -1435,6 +1439,18 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
     for(let d=1;d<=total;d++) arr.push(dateToStr(new Date(year,month,d)));
     return arr;
   },[calVm]);
+
+  // 締切日カレンダー。ネイティブ<input type="date">はブラウザ/端末のシステム言語で
+  // 表示され、アプリ内の言語設定（STRINGS/tr()）が一切効かない不具合があったため、
+  // 上のcalDays（時間指定タスクの日付選択）と同じ自前描画カレンダーに差し替えた
+  const deadlineCalDays = useMemo(()=>{
+    const {year,month}=deadlineCalVm;
+    const first=new Date(year,month,1).getDay();
+    const total=new Date(year,month+1,0).getDate();
+    const arr:(string|null)[]=Array(first).fill(null);
+    for(let d=1;d<=total;d++) arr.push(dateToStr(new Date(year,month,d)));
+    return arr;
+  },[deadlineCalVm]);
 
   const taskDateLabel=()=>{
     const today=todayStr();
@@ -2015,16 +2031,38 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                           <button onClick={()=>setDeadlineDate('')} className="text-xs text-gray-400 px-2">{tr('clearButton')}</button>
                         )}
                       </div>
-                      {/* w-fullだとネイティブの日付・時刻UIが実際の値に対して横に間延びして
-                          見えたため、値の表示に必要な分だけの幅（カード幅の半分程度）に
-                          縮めている。時刻は日付と同じ幅に揃える */}
-                      <div className="relative mb-2" style={{width:'55%'}}>
-                        <input type="date" value={deadlineDate} onChange={e=>setDeadlineDate(e.target.value)}
-                          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-gray-50 outline-none" style={{boxSizing:'border-box'}}/>
-                        {/* iOS(WebKit)のtype="date"はplaceholder属性を表示しないため、
-                            未入力時だけ重ねて表示する（クリックは下の実inputに通す） */}
+                      {/* 締切日: ネイティブ<input type="date">は端末のシステム言語に従ってしまい
+                          アプリ内の言語設定と食い違うため、時間指定タスクの日付選択と同じ
+                          自前描画カレンダーを使う（下のcalDays/dayNameForと同じパターン） */}
+                      <div className="mb-3">
+                        <div className="flex items-center justify-between py-1">
+                          <span className="text-sm font-bold text-gray-800">
+                            {language==='ja'?`${deadlineCalVm.year}年${deadlineCalVm.month+1}月`:language==='ko'?`${deadlineCalVm.year}년 ${deadlineCalVm.month+1}월`:language==='zh-TW'?`${deadlineCalVm.year}年${deadlineCalVm.month+1}月`:`${MONTH_NAMES_EN[deadlineCalVm.month]} ${deadlineCalVm.year}`}
+                          </span>
+                          <div className="flex gap-1">
+                            <button onClick={()=>setDeadlineCalVm(m=>shiftMonth(m.year,m.month,-1))} className="w-7 h-7 flex items-center justify-center text-gray-500 rounded-lg bg-gray-100"><AppIcons.caretLeft size={14}/></button>
+                            <button onClick={()=>setDeadlineCalVm(m=>shiftMonth(m.year,m.month,1))} className="w-7 h-7 flex items-center justify-center text-gray-500 rounded-lg bg-gray-100"><AppIcons.caretRight size={14}/></button>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-7 mb-1">
+                          {DAY_NAMES.map((n,i)=>(
+                            <div key={i} className="text-center text-[11px] font-semibold py-1 text-gray-400">{dayNameFor(language,i)}</div>
+                          ))}
+                        </div>
+                        <div className="grid grid-cols-7">
+                          {deadlineCalDays.map((d,i)=>{
+                            const isSel=d===deadlineDate, isToday=d===todayStr();
+                            return (
+                              <button key={i} disabled={!d} onClick={()=>{if(d) setDeadlineDate(d);}} className="flex items-center justify-center py-1">
+                                <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${!d?'':isSel?'bg-[var(--c-primary)] text-white':isToday?'bg-gray-100 font-bold text-gray-900':'text-gray-600'}`}>
+                                  {d?new Date(d+'T12:00:00').getDate():''}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
                         {!deadlineDate&&(
-                          <span className="absolute inset-y-0 left-3 flex items-center text-sm text-gray-400 pointer-events-none">{tr('deadlineDatePlaceholder')}</span>
+                          <p className="text-xs text-gray-400 mt-1">{tr('deadlineDatePlaceholder')}</p>
                         )}
                       </div>
                       <input type="time" value={deadlineTime} onChange={e=>setDeadlineTime(e.target.value)}
