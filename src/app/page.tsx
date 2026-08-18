@@ -3819,14 +3819,22 @@ function ForgetAlertsPanel({alerts,onChange,isPremium,onProPrompt}:{
   const previewText=(d:ForgetAlertDraft)=>{
     const day=dayPreset(d.weekdays)==='カスタム'?fmtDays(d.weekdays):presetLabel(dayPreset(d.weekdays));
     const place=d.name||tr('previewNoPlace');
-    const items=d.items.length>0?d.items.join(language==='ja'?'、':', '):tr('previewNoItems');
+    const items=d.items.length>0?d.items.join((language==='ja'||language==='zh-TW')?'、':', '):tr('previewNoItems');
     const itemsBody=tr('previewCheckItemsBody').replace('{items}',()=>items);
-    if(language!=='ja'){
+    if(language==='en'){
       const timeClause=d.timeStart&&d.timeEnd?` from ${d.timeStart} to ${d.timeEnd}`:'';
       const triggerClause=d.trigger==='enter'?`you arrive at ${place}`:`you leave ${place}`;
       return `On ${day}${timeClause}, when ${triggerClause}, check:\n${itemsBody}`;
     }
-    const triggerLabel=d.trigger==='enter'?tr('forgetAlertArriveLabel').replace('{place}',()=>place):tr('forgetAlertLeaveLabel').replace('{place}',()=>place);
+    const triggerLabel=(d.trigger==='enter'?tr('forgetAlertArriveLabel'):tr('forgetAlertLeaveLabel')).replace('{place}',()=>place);
+    if(language==='ko'){
+      const dayClause=d.timeStart&&d.timeEnd?`${day} ${d.timeStart}~${d.timeEnd}에`:`${day},`;
+      return `${dayClause} ${triggerLabel},\n${itemsBody}`;
+    }
+    if(language==='zh-TW'){
+      const dayClause=d.timeStart&&d.timeEnd?`${day}的${d.timeStart}〜${d.timeEnd}`:`${day}，`;
+      return `${dayClause}${triggerLabel}，\n${itemsBody}`;
+    }
     const dayClause=d.timeStart&&d.timeEnd?`${day}の${d.timeStart}〜${d.timeEnd}に`:`${day}、`;
     return `${dayClause}${triggerLabel}、\n${itemsBody}`;
   };
