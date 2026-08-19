@@ -1201,13 +1201,15 @@ function PickerCol({items,value,onChange}:{items:string[];value:string;onChange:
 
 // ── TaskModal ─────────────────────────────────────────────────────────────────
 
-function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:initIconSheet,onSave,onUpdate,onDelete,onClose,onBulkInput,globalTags,customTabs,notificationsEnabled,onEnableNotifications,isPremium=true,onOpenTagSettings,atLocationLimit=false,suppressAutoFocus=false,focusNameSignal,fillTestNameSignal}:{
+function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:initIconSheet,onSave,onUpdate,onDelete,onClose,onBulkInput,globalTags,customTabs,notificationsEnabled,onEnableNotifications,isPremium=true,onOpenTagSettings,onOpenPro,atLocationLimit=false,suppressAutoFocus=false,focusNameSignal,fillTestNameSignal}:{
   task:Task|null; currentDate:string; prefillTime?:string; prefillCategory?:string; openIconSheet?:boolean;
   onSave:(tasks:Omit<Task,'id'>[])=>void; onUpdate?:(data:Omit<Task,'id'>)=>void; onDelete?:()=>void; onClose:()=>void; onBulkInput?:()=>void;
   isPremium?:boolean;
   globalTags:TagDef[]; customTabs:CustomTab[];
   notificationsEnabled?:boolean; onEnableNotifications?:()=>void;
   onOpenTagSettings?:()=>void;
+  // PROゲートシートの「PROプランを見る」ボタン用。モーダルを閉じてから設定→PRO画面を開く
+  onOpenPro?:()=>void;
   atLocationLimit?:boolean;
   // タスク名入力欄の自動フォーカスを抑止する（プロダクトツアーで、あとで入力ステップに来るまで
   // キーボードを出したくないため）。focusNameSignalが変化した時点で改めてフォーカスする
@@ -2448,7 +2450,8 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
           </div>
         </div>
       )}
-      {modalProPrompt&&<ProGateSheet onClose={()=>setModalProPrompt(null)} feature={modalProPrompt}/>}
+      {modalProPrompt&&<ProGateSheet onClose={()=>setModalProPrompt(null)} feature={modalProPrompt}
+        onView={onOpenPro?()=>{setModalProPrompt(null);flushAndClose();onOpenPro?.();}:undefined}/>}
       {deleteConfirm&&(
         <div className="absolute inset-0 z-[110] flex items-center justify-center px-6" onClick={e=>e.stopPropagation()}>
           <div className="bg-white rounded-2xl p-5 shadow-xl w-full max-w-xs">
@@ -7874,6 +7877,7 @@ export default function App() {
           onDelete={modal.task?()=>delTask(modal.task!.id):undefined}
           onClose={closeModal} onBulkInput={()=>{closeModal();setSettingsInitSub('bulkInput');setSOp(true);}}
           onOpenTagSettings={()=>{closeModal();setSettingsInitSub('tags');setSOp(true);}}
+          onOpenPro={()=>{setSettingsInitSub('premium');setSOp(true);}}
           globalTags={globalTags} customTabs={customTabs}
           notificationsEnabled={settings.notificationsEnabled??true}
           onEnableNotifications={()=>setSettings(s=>({...s,notificationsEnabled:true}))}
