@@ -7345,8 +7345,8 @@ export default function App() {
     };
     const TRASH_H=100;
     const isInBottomZone=(y:number)=>y>window.innerHeight-TRASH_H;
-    const isInTrash=(x:number,y:number)=>isInBottomZone(y)&&x<window.innerWidth/2;
-    const isInLater=(x:number,y:number)=>isInBottomZone(y)&&x>=window.innerWidth/2;
+    const isInTrash=(x:number,y:number)=>isInBottomZone(y)&&x>=window.innerWidth/2;
+    const isInLater=(x:number,y:number)=>isInBottomZone(y)&&x<window.innerWidth/2;
     const onMove=(e:TouchEvent)=>{
       e.preventDefault();
       const t=e.touches[0];
@@ -7808,13 +7808,13 @@ export default function App() {
           )}
           {/* Bottom drop zones */}
           <div className="absolute bottom-0 left-0 right-0 h-24 flex">
-            <div className={`flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors ${overTrash?'bg-[#D97A7A]':'bg-red-50'}`}>
-              <AppIcons.trash size={28} className={overTrash?'text-white':'text-[#D97A7A]'}/>
-              <span className={`text-xs font-bold ${overTrash?'text-white':'text-[#D97A7A]'}`}>{tr('deleteTaskButton')}</span>
-            </div>
             <div className={`flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors ${overLater?'bg-[var(--c-primary)]':'bg-pink-50'}`}>
               <AppIcons.postponed size={28} className={overLater?'text-white':'text-[var(--c-primary)]'}/>
               <span className={`text-xs font-bold ${overLater?'text-white':'text-[var(--c-primary)]'}`}>{tr('moveToLaterButton')}</span>
+            </div>
+            <div className={`flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors ${overTrash?'bg-[#D97A7A]':'bg-red-50'}`}>
+              <AppIcons.trash size={28} className={overTrash?'text-white':'text-[#D97A7A]'}/>
+              <span className={`text-xs font-bold ${overTrash?'text-white':'text-[#D97A7A]'}`}>{tr('deleteTaskButton')}</span>
             </div>
           </div>
         </div>
