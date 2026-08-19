@@ -11,7 +11,8 @@
   .logo { width: 36px; height: 36px; background: #D9A3B2; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
   .logo svg { width: 20px; height: 20px; fill: white; }
   header h1 { font-size: 17px; font-weight: 700; color: #1F2937; }
-  header a { margin-left: auto; font-size: 14px; color: #D9A3B2; text-decoration: none; font-weight: 600; }
+  header nav { margin-left: auto; display: flex; gap: 16px; }
+  header a { font-size: 14px; color: #D9A3B2; text-decoration: none; font-weight: 600; }
   main { max-width: 720px; margin: 0 auto; padding: 40px 24px 80px; }
   .page-title { font-size: 28px; font-weight: 800; color: #1F2937; margin-bottom: 6px; }
   .subtitle { font-size: 15px; color: #6B7280; margin-bottom: 40px; }
@@ -25,12 +26,15 @@
   .faq-item:last-child { border-bottom: none; padding-bottom: 0; }
   .faq-q { font-size: 15px; font-weight: 600; color: #1F2937; margin-bottom: 6px; }
   .faq-a { font-size: 15px; color: #374151; }
-  .contact-btn { display: inline-block; background: #D9A3B2; color: #fff; font-weight: 700; font-size: 15px; padding: 12px 28px; border-radius: 12px; text-decoration: none; margin-top: 8px; }
+  .contact-btn { display: inline-flex; align-items: center; gap: 8px; background: #D9A3B2; color: #fff; font-weight: 700; font-size: 15px; padding: 12px 28px; border-radius: 12px; text-decoration: none; margin-top: 8px; margin-right: 10px; }
+  .contact-btn.line { background: #06C755; }
+  .contact-btn.email { background: #fff; color: #1F2937; border: 1px solid #E5E7EB; }
   .contact-btn:hover { opacity: 0.9; }
   a { color: #D9A3B2; }
   .feature-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; margin-top: 4px; }
   .feature-item { background: #F9FAFB; border-radius: 12px; padding: 14px 16px; }
   .feature-title { font-size: 14px; font-weight: 600; color: #1F2937; margin-bottom: 4px; }
+  .feature-title .pro-badge { display: inline-block; font-size: 10px; font-weight: 700; color: #D9A3B2; border: 1px solid #D9A3B2; border-radius: 4px; padding: 1px 5px; margin-left: 6px; vertical-align: middle; }
   .feature-desc { font-size: 13px; color: #6B7280; }
   footer { text-align: center; padding: 24px; font-size: 13px; color: #9CA3AF; }
   footer a { color: #D9A3B2; text-decoration: none; }
@@ -42,7 +46,10 @@
     <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg>
   </div>
   <h1>BrainBox</h1>
-  <a href="privacy-en.html">Privacy Policy</a>
+  <nav>
+    <a href="privacy-en.html">Privacy Policy</a>
+    <a href="terms-en.html">Terms of Service</a>
+  </nav>
 </header>
 
 <main>
@@ -62,30 +69,90 @@
         <div class="feature-desc">Clearly see the gaps between your plans</div>
       </div>
       <div class="feature-item">
-        <div class="feature-title">Recurring tasks</div>
-        <div class="feature-desc">Set up daily, weekly, and other repeating tasks</div>
-      </div>
-      <div class="feature-item">
         <div class="feature-title">Later list</div>
         <div class="feature-desc">Manage tasks without a set time in one place</div>
       </div>
       <div class="feature-item">
-        <div class="feature-title">Subtasks & notes</div>
+        <div class="feature-title">Shopping list</div>
+        <div class="feature-desc">Keep track of what you need to buy</div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-title">Recurring tasks</div>
+        <div class="feature-desc">Set up daily, weekly, and other repeating tasks</div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-title">Subtasks, notes & photos</div>
         <div class="feature-desc">Track task details in depth</div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-title">Tags & file tabs</div>
+        <div class="feature-desc">Organize tasks by category</div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-title">Deadline management<span class="pro-badge">PRO</span></div>
+        <div class="feature-desc">Set due dates and reminder timing</div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-title">Location alerts<span class="pro-badge">PRO</span></div>
+        <div class="feature-desc">Get notified when you're near a place</div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-title">Don't-forget alerts<span class="pro-badge">PRO</span></div>
+        <div class="feature-desc">Check your belongings when you leave a place</div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-title">Life patterns<span class="pro-badge">PRO</span></div>
+        <div class="feature-desc">Switch wake/sleep times for shifts or days off</div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-title">Home screen widget</div>
+        <div class="feature-desc">Check what's next and your shopping list at a glance</div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-title">Multiple languages</div>
+        <div class="feature-desc">Japanese, English, Korean, and Traditional Chinese</div>
       </div>
     </div>
   </section>
 
   <section>
+    <h2>FAQ</h2>
+    <div class="faq-item">
+      <div class="faq-q">Q. Where is my data stored?</div>
+      <div class="faq-a">A. All data is stored in local storage on your device. Nothing is sent to external servers.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Q. What happens to my data if I delete the app?</div>
+      <div class="faq-a">A. All data is deleted when you uninstall the app. There is currently no cloud backup feature.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Q. I accidentally deleted a task. Can I restore it?</div>
+      <div class="faq-a">A. Sorry, there is currently no way to restore a deleted task. Please double-check before deleting important tasks.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Q. Can I delete just one occurrence of a recurring task?</div>
+      <div class="faq-a">A. Yes. When deleting a recurring task, you can choose "Delete this occurrence only" or "Delete all occurrences."</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Q. Where do I subscribe to or cancel the PRO plan?</div>
+      <div class="faq-a">A. You can subscribe from PRO in the app's Settings. You can cancel any time from your Apple ID account settings (Subscriptions) in your device's Settings app.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Q. Where can I see tasks moved to "Later"?</div>
+      <div class="faq-a">A. Tap the "Later" button on the bottom bar to see the Later list.</div>
+    </div>
+  </section>
+
+  <section>
     <h2>How to Contact Us</h2>
-    <p>If you have any questions or requests, please feel free to reach out at the email address below.</p>
-    <p>Please note that it may take a few days to receive a reply.</p>
-    <a class="contact-btn" href="mailto:support.brainbox.jp@gmail.com">Contact us by email</a>
+    <p>If you have any questions or requests, please feel free to reach out using one of the methods below. We usually reply within 1–3 days.</p>
+    <a class="contact-btn line" href="https://lin.ee/TeaJYTJ">Contact us on LINE</a>
+    <a class="contact-btn email" href="mailto:support.brainbox.jp@gmail.com">Contact us by email</a>
   </section>
 
   <section>
     <h2>Reporting a Bug</h2>
-    <p>If you find a bug in the app, please include the following information when contacting our support email.</p>
+    <p>If you find a bug in the app, please include the following information when reaching out to us.</p>
     <ul style="padding-left:20px;margin-top:8px;">
       <li style="font-size:15px;color:#374151;margin-bottom:6px;">Your device model and OS version</li>
       <li style="font-size:15px;color:#374151;margin-bottom:6px;">The app version (available in Settings)</li>
@@ -95,14 +162,15 @@
   </section>
 
   <section>
-    <h2>Privacy Policy</h2>
-    <p>For information on how we handle personal data, please see our Privacy Policy.</p>
+    <h2>Privacy Policy & Terms of Service</h2>
+    <p>For information on how we handle personal data, see our Privacy Policy. For the terms of the PRO plan, see our Terms of Service.</p>
     <p><a href="privacy-en.html">Read the Privacy Policy →</a></p>
+    <p><a href="terms-en.html">Read the Terms of Service →</a></p>
   </section>
 </main>
 
 <footer>
-  &copy; 2026 BrainBox. All rights reserved. &nbsp;|&nbsp; <a href="privacy-en.html">Privacy Policy</a>
+  &copy; 2026 BrainBox. All rights reserved. &nbsp;|&nbsp; <a href="privacy-en.html">Privacy Policy</a> &nbsp;|&nbsp; <a href="terms-en.html">Terms of Service</a>
 </footer>
 </body>
 </html>

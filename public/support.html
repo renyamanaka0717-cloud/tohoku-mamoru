@@ -11,7 +11,8 @@
   .logo { width: 36px; height: 36px; background: #D9A3B2; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
   .logo svg { width: 20px; height: 20px; fill: white; }
   header h1 { font-size: 17px; font-weight: 700; color: #1F2937; }
-  header a { margin-left: auto; font-size: 14px; color: #D9A3B2; text-decoration: none; font-weight: 600; }
+  header nav { margin-left: auto; display: flex; gap: 16px; }
+  header a { font-size: 14px; color: #D9A3B2; text-decoration: none; font-weight: 600; }
   main { max-width: 720px; margin: 0 auto; padding: 40px 24px 80px; }
   .page-title { font-size: 28px; font-weight: 800; color: #1F2937; margin-bottom: 6px; }
   .subtitle { font-size: 15px; color: #6B7280; margin-bottom: 40px; }
@@ -25,12 +26,16 @@
   .faq-item:last-child { border-bottom: none; padding-bottom: 0; }
   .faq-q { font-size: 15px; font-weight: 600; color: #1F2937; margin-bottom: 6px; }
   .faq-a { font-size: 15px; color: #374151; }
-  .contact-btn { display: inline-block; background: #D9A3B2; color: #fff; font-weight: 700; font-size: 15px; padding: 12px 28px; border-radius: 12px; text-decoration: none; margin-top: 8px; }
+  .contact-btn { display: inline-flex; align-items: center; gap: 8px; background: #D9A3B2; color: #fff; font-weight: 700; font-size: 15px; padding: 12px 28px; border-radius: 12px; text-decoration: none; margin-top: 8px; margin-right: 10px; }
+  .contact-btn.line { background: #06C755; }
+  .contact-btn.email { background: #fff; color: #1F2937; border: 1px solid #E5E7EB; }
   .contact-btn:hover { opacity: 0.9; }
+  .contact-note { font-size: 13px; color: #9CA3AF; margin-top: 10px; }
   a { color: #D9A3B2; }
   .feature-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; margin-top: 4px; }
   .feature-item { background: #F9FAFB; border-radius: 12px; padding: 14px 16px; }
   .feature-title { font-size: 14px; font-weight: 600; color: #1F2937; margin-bottom: 4px; }
+  .feature-title .pro-badge { display: inline-block; font-size: 10px; font-weight: 700; color: #D9A3B2; border: 1px solid #D9A3B2; border-radius: 4px; padding: 1px 5px; margin-left: 6px; vertical-align: middle; }
   .feature-desc { font-size: 13px; color: #6B7280; }
   footer { text-align: center; padding: 24px; font-size: 13px; color: #9CA3AF; }
   footer a { color: #D9A3B2; text-decoration: none; }
@@ -42,7 +47,10 @@
     <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg>
   </div>
   <h1>BrainBox</h1>
-  <a href="privacy.html">プライバシーポリシー</a>
+  <nav>
+    <a href="privacy.html">プライバシーポリシー</a>
+    <a href="terms.html">利用規約</a>
+  </nav>
 </header>
 
 <main>
@@ -62,30 +70,90 @@
         <div class="feature-desc">予定の隙間をわかりやすく表示</div>
       </div>
       <div class="feature-item">
-        <div class="feature-title">繰り返しタスク</div>
-        <div class="feature-desc">毎日・毎週などの繰り返し設定</div>
-      </div>
-      <div class="feature-item">
         <div class="feature-title">あとでやるリスト</div>
         <div class="feature-desc">時間未定タスクをまとめて管理</div>
       </div>
       <div class="feature-item">
-        <div class="feature-title">サブタスク・メモ</div>
+        <div class="feature-title">買い物リスト</div>
+        <div class="feature-desc">買うものをまとめて管理</div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-title">繰り返しタスク</div>
+        <div class="feature-desc">毎日・毎週などの繰り返し設定</div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-title">サブタスク・メモ・写真</div>
         <div class="feature-desc">タスクの詳細を細かく管理</div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-title">タグ・ファイルタブ</div>
+        <div class="feature-desc">目的別にタスクを整理</div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-title">締切管理<span class="pro-badge">PRO</span></div>
+        <div class="feature-desc">締切日と通知タイミングを設定</div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-title">場所で通知<span class="pro-badge">PRO</span></div>
+        <div class="feature-desc">登録した場所に近づいたら通知</div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-title">忘れ物防止アラート<span class="pro-badge">PRO</span></div>
+        <div class="feature-desc">場所を出るときに持ち物を確認</div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-title">生活パターン<span class="pro-badge">PRO</span></div>
+        <div class="feature-desc">シフトや休日で起床・就寝時間を切り替え</div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-title">ホーム画面ウィジェット</div>
+        <div class="feature-desc">次の予定・買い物リストをすぐ確認</div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-title">多言語対応</div>
+        <div class="feature-desc">日本語・英語・韓国語・繁体字中国語</div>
       </div>
     </div>
   </section>
 
   <section>
+    <h2>よくある質問</h2>
+    <div class="faq-item">
+      <div class="faq-q">Q. データはどこに保存されますか？</div>
+      <div class="faq-a">A. すべてのデータはお使いのデバイスのローカルストレージに保存されます。外部サーバーへの送信は行いません。</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Q. アプリを削除するとデータはどうなりますか？</div>
+      <div class="faq-a">A. アプリをアンインストールするとすべてのデータが削除されます。現在、クラウドバックアップ機能はありません。</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Q. タスクを誤って削除してしまいました。復元できますか？</div>
+      <div class="faq-a">A. 申し訳ありませんが、削除したタスクの復元機能は現在ありません。重要なタスクは削除前にご確認ください。</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Q. 繰り返しタスクの一部だけ削除できますか？</div>
+      <div class="faq-a">A. はい。繰り返しタスクを削除する際、「この予定のみ削除」または「すべての予定を削除」を選択できます。</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Q. PROプランはどこから登録・解約できますか？</div>
+      <div class="faq-a">A. 登録は設定画面のPROから行えます。解約は端末の「設定」アプリ内のApple IDアカウント設定（サブスクリプション）からいつでも行えます。</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Q. 「あとでやる」に移動したタスクはどこで確認できますか？</div>
+      <div class="faq-a">A. 画面下部のバーにある「あとでやる」ボタンをタップすると、あとでやるリストが表示されます。</div>
+    </div>
+  </section>
+
+  <section>
     <h2>お問い合わせ方法</h2>
-    <p>ご質問・ご要望がございましたら、以下のメールアドレスまでお気軽にお問い合わせください。</p>
-    <p>お返事まで数日いただく場合があります。あらかじめご了承ください。</p>
-    <a class="contact-btn" href="mailto:support.brainbox.jp@gmail.com">メールで問い合わせる</a>
+    <p>ご質問・ご要望がございましたら、以下のいずれかの方法でお気軽にお問い合わせください。通常、1〜3日以内にお返事いたします。</p>
+    <a class="contact-btn line" href="https://lin.ee/TeaJYTJ">LINEで問い合わせる</a>
+    <a class="contact-btn email" href="mailto:support.brainbox.jp@gmail.com">メールで問い合わせる</a>
   </section>
 
   <section>
     <h2>不具合報告方法</h2>
-    <p>アプリの不具合を発見された場合は、以下の情報をご記載の上、サポートメールまでご連絡ください。</p>
+    <p>アプリの不具合を発見された場合は、以下の情報をご記載の上、上記のいずれかの方法でご連絡ください。</p>
     <ul style="padding-left:20px;margin-top:8px;">
       <li style="font-size:15px;color:#374151;margin-bottom:6px;">お使いのデバイスの機種名・OSバージョン</li>
       <li style="font-size:15px;color:#374151;margin-bottom:6px;">アプリのバージョン（設定画面から確認できます）</li>
@@ -95,14 +163,15 @@
   </section>
 
   <section>
-    <h2>プライバシーポリシー</h2>
-    <p>個人情報の取り扱いについては、プライバシーポリシーをご確認ください。</p>
+    <h2>プライバシーポリシー・利用規約</h2>
+    <p>個人情報の取り扱いについてはプライバシーポリシーを、PROプランのご利用条件については利用規約をご確認ください。</p>
     <p><a href="privacy.html">プライバシーポリシーを読む →</a></p>
+    <p><a href="terms.html">利用規約を読む →</a></p>
   </section>
 </main>
 
 <footer>
-  &copy; 2026 BrainBox. All rights reserved. &nbsp;|&nbsp; <a href="privacy.html">プライバシーポリシー</a>
+  &copy; 2026 BrainBox. All rights reserved. &nbsp;|&nbsp; <a href="privacy.html">プライバシーポリシー</a> &nbsp;|&nbsp; <a href="terms.html">利用規約</a>
 </footer>
 </body>
 </html>

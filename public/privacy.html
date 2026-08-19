@@ -11,7 +11,8 @@
   .logo { width: 36px; height: 36px; background: #D9A3B2; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
   .logo svg { width: 20px; height: 20px; fill: white; }
   header h1 { font-size: 17px; font-weight: 700; color: #1F2937; }
-  header a { margin-left: auto; font-size: 14px; color: #D9A3B2; text-decoration: none; font-weight: 600; }
+  header nav { margin-left: auto; display: flex; gap: 16px; }
+  header a { font-size: 14px; color: #D9A3B2; text-decoration: none; font-weight: 600; }
   main { max-width: 720px; margin: 0 auto; padding: 40px 24px 80px; }
   .page-title { font-size: 28px; font-weight: 800; color: #1F2937; margin-bottom: 6px; }
   .updated { font-size: 13px; color: #9CA3AF; margin-bottom: 40px; }
@@ -20,10 +21,12 @@
   h2::before { content: ''; width: 4px; height: 18px; background: #D9A3B2; border-radius: 2px; display: inline-block; flex-shrink: 0; }
   p { font-size: 15px; color: #374151; margin-bottom: 10px; }
   p:last-child { margin-bottom: 0; }
-  ul { padding-left: 20px; margin-top: 8px; }
+  ul { padding-left: 20px; margin-top: 8px; margin-bottom: 10px; }
+  ul:last-child { margin-bottom: 0; }
   li { font-size: 15px; color: #374151; margin-bottom: 6px; }
   a { color: #D9A3B2; }
   footer { text-align: center; padding: 24px; font-size: 13px; color: #9CA3AF; }
+  footer a { color: #D9A3B2; text-decoration: none; }
 </style>
 </head>
 <body>
@@ -32,12 +35,15 @@
     <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg>
   </div>
   <h1>BrainBox</h1>
-  <a href="support.html">サポート</a>
+  <nav>
+    <a href="terms.html">利用規約</a>
+    <a href="support.html">サポート</a>
+  </nav>
 </header>
 
 <main>
   <div class="page-title">プライバシーポリシー</div>
-  <div class="updated">最終更新日：2026年7月3日</div>
+  <div class="updated">最終更新日：2026年8月19日</div>
 
   <section>
     <h2>BrainBoxについて</h2>
@@ -47,13 +53,14 @@
 
   <section>
     <h2>取得する情報</h2>
-    <p>本アプリは、以下の情報をお客様のデバイス上にのみ保存します。</p>
+    <p>本アプリは、以下の情報をお客様のデバイス上にのみ保存します。これらはお客様のデバイス内のみで管理され、外部サーバーへ送信されることはありません。</p>
     <ul>
       <li>タスク名・日時・メモ・サブタスクなどの入力データ</li>
       <li>起床・就寝時間などの設定情報</li>
-      <li>タグ・カテゴリ・繰り返し設定などのカスタマイズ情報</li>
+      <li>タグ・ファイルタブ・繰り返し設定などのカスタマイズ情報</li>
+      <li>買い物リスト・忘れ物防止アラートに登録した場所の名前や緯度経度</li>
     </ul>
-    <p>これらの情報は外部サーバーには送信されず、お客様のデバイス内のみで管理されます。</p>
+    <p>また、後述の「位置情報について」「利用状況データについて」に記載する情報を、それぞれの目的のためにのみ取得します。</p>
   </section>
 
   <section>
@@ -63,22 +70,50 @@
       <li>タスクの表示・管理・検索機能の提供</li>
       <li>繰り返しタスクのスケジュール生成</li>
       <li>アプリ設定の保持</li>
+      <li>登録した場所に近づいた（または離れた）ときの通知</li>
+      <li>アプリの品質改善・不具合の把握</li>
     </ul>
   </section>
 
   <section>
+    <h2>位置情報について</h2>
+    <p>本アプリは、以下の機能をご利用の場合にのみ、端末の位置情報（緯度経度）を取得します。</p>
+    <ul>
+      <li>買い物リストの場所通知（登録した場所に近づいたら通知）</li>
+      <li>「あとでやる」タスクの場所通知</li>
+      <li>忘れ物防止アラート（登録した場所に着いた・離れたときに持ち物を確認）</li>
+    </ul>
+    <p>これらの機能で取得した位置情報は、通知を発生させる判定のためだけに端末内で使用され、外部サーバーへ送信・保存されることはありません。位置情報の利用を許可するかどうかは、端末の設定でいつでも変更いただけます。機能を利用しない場合、位置情報は一切取得されません。</p>
+  </section>
+
+  <section>
+    <h2>利用状況データについて</h2>
+    <p>本アプリは、アプリの改善を目的として、Firebase Analytics（Google社が提供するサービス）を利用し、機能の利用状況に関する統計データを取得しています。</p>
+    <p>送信される情報は、タスクの作成・完了・通知の許可状況といった操作イベントと、言語設定などの端末の一般的な情報に限られます。タスク名・メモ・買い物リストの中身・登録した場所の名前や緯度経度・メールアドレスなど、内容や個人を特定できる情報は一切送信されません。</p>
+    <p>Firebase Analyticsで取得された情報の取り扱いについては、<a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Googleのプライバシーポリシー</a>もあわせてご確認ください。</p>
+  </section>
+
+  <section>
+    <h2>サブスクリプション（PROプラン）について</h2>
+    <p>本アプリは、一部機能を無料でご利用いただけるほか、追加機能が利用できる有料のサブスクリプション（PROプラン）を提供しています。</p>
+    <p>PROプランの購入・更新・解約はApp Store（Apple ID）を通じて行われ、お支払い情報はAppleが管理します。本アプリおよび開発者がクレジットカード番号などの決済情報を取得することはありません。</p>
+    <p>購入状況の管理には、サブスクリプション管理サービスのRevenueCat社を利用しています。RevenueCat社には、購入したプランの識別子や購入日時などの情報が連携されますが、タスクの内容など本アプリ内のデータが共有されることはありません。詳細は<a href="https://www.revenuecat.com/privacy" target="_blank" rel="noopener">RevenueCat社のプライバシーポリシー</a>をご確認ください。</p>
+  </section>
+
+  <section>
     <h2>第三者提供について</h2>
-    <p>本アプリは、お客様の個人情報を第三者に提供することはありません。</p>
-    <p>ただし、オプション機能としてAI文章生成機能（Groq APIを使用）をご利用いただく場合、入力したタスク情報が当該APIに送信されることがあります。詳細はGroq社のプライバシーポリシーをご確認ください。</p>
+    <p>本アプリは、お客様の個人情報（タスクの内容や登録した場所など）を第三者に提供することはありません。</p>
+    <p>ただし、オプション機能としてAI文章生成機能（Groq APIを使用）をご利用いただく場合、入力したタスク情報が当該APIに送信されることがあります。詳細は<a href="https://groq.com/privacy-policy/" target="_blank" rel="noopener">Groq社のプライバシーポリシー</a>をご確認ください。</p>
+    <p>上記のほか、本ページで説明したFirebase Analytics（Google社）およびRevenueCat社への情報連携があります。</p>
   </section>
 
   <section>
     <h2>データの管理について</h2>
-    <p>本アプリのデータはすべてお客様のデバイス内（localStorage）に保存されます。</p>
+    <p>本アプリのタスク・設定などのデータはすべてお客様のデバイス内（localStorage）に保存されます。</p>
     <ul>
       <li>アプリをアンインストールするとすべてのデータが削除されます</li>
       <li>デバイスの初期化によってデータが失われる場合があります</li>
-      <li>本アプリはデータのクラウドバックアップ機能を持ちません</li>
+      <li>本アプリはタスクデータのクラウドバックアップ機能を持ちません</li>
     </ul>
   </section>
 
@@ -96,7 +131,7 @@
 </main>
 
 <footer>
-  &copy; 2026 BrainBox. All rights reserved.
+  &copy; 2026 BrainBox. All rights reserved. &nbsp;|&nbsp; <a href="terms.html">利用規約</a> &nbsp;|&nbsp; <a href="support.html">サポート</a>
 </footer>
 </body>
 </html>

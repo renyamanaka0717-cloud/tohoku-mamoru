@@ -11,7 +11,8 @@
   .logo { width: 36px; height: 36px; background: #D9A3B2; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
   .logo svg { width: 20px; height: 20px; fill: white; }
   header h1 { font-size: 17px; font-weight: 700; color: #1F2937; }
-  header a { margin-left: auto; font-size: 14px; color: #D9A3B2; text-decoration: none; font-weight: 600; }
+  header nav { margin-left: auto; display: flex; gap: 16px; }
+  header a { font-size: 14px; color: #D9A3B2; text-decoration: none; font-weight: 600; }
   main { max-width: 720px; margin: 0 auto; padding: 40px 24px 80px; }
   .page-title { font-size: 28px; font-weight: 800; color: #1F2937; margin-bottom: 6px; }
   .updated { font-size: 13px; color: #9CA3AF; margin-bottom: 40px; }
@@ -20,10 +21,12 @@
   h2::before { content: ''; width: 4px; height: 18px; background: #D9A3B2; border-radius: 2px; display: inline-block; flex-shrink: 0; }
   p { font-size: 15px; color: #374151; margin-bottom: 10px; }
   p:last-child { margin-bottom: 0; }
-  ul { padding-left: 20px; margin-top: 8px; }
+  ul { padding-left: 20px; margin-top: 8px; margin-bottom: 10px; }
+  ul:last-child { margin-bottom: 0; }
   li { font-size: 15px; color: #374151; margin-bottom: 6px; }
   a { color: #D9A3B2; }
   footer { text-align: center; padding: 24px; font-size: 13px; color: #9CA3AF; }
+  footer a { color: #D9A3B2; text-decoration: none; }
 </style>
 </head>
 <body>
@@ -32,12 +35,15 @@
     <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg>
   </div>
   <h1>BrainBox</h1>
-  <a href="support-en.html">Support</a>
+  <nav>
+    <a href="terms-en.html">Terms of Service</a>
+    <a href="support-en.html">Support</a>
+  </nav>
 </header>
 
 <main>
   <div class="page-title">Privacy Policy</div>
-  <div class="updated">Last updated: July 3, 2026</div>
+  <div class="updated">Last updated: August 19, 2026</div>
 
   <section>
     <h2>About BrainBox</h2>
@@ -47,13 +53,14 @@
 
   <section>
     <h2>Information We Collect</h2>
-    <p>This App stores the following information only on your device.</p>
+    <p>This App stores the following information only on your device. It is managed only on your device and is never sent to external servers.</p>
     <ul>
       <li>Input data such as task names, dates/times, memos, and subtasks</li>
       <li>Settings such as wake and sleep times</li>
-      <li>Customization information such as tags, categories, and recurrence settings</li>
+      <li>Customization information such as tags, file tabs, and recurrence settings</li>
+      <li>Names and coordinates of places you register for the shopping list or forgotten-item alerts</li>
     </ul>
-    <p>This information is never sent to external servers and is managed only on your device.</p>
+    <p>In addition, we collect the information described in "About Location Information" and "About Usage Data" below, solely for the purposes described there.</p>
   </section>
 
   <section>
@@ -63,22 +70,50 @@
       <li>Providing task display, management, and search features</li>
       <li>Generating schedules for recurring tasks</li>
       <li>Retaining app settings</li>
+      <li>Sending a notification when you arrive at (or leave) a registered place</li>
+      <li>Improving app quality and identifying issues</li>
     </ul>
   </section>
 
   <section>
+    <h2>About Location Information</h2>
+    <p>This App accesses your device's location (latitude/longitude) only when you use one of the following features.</p>
+    <ul>
+      <li>Shopping list location alerts (notified when you're near a registered place)</li>
+      <li>Location alerts for "Later" tasks</li>
+      <li>Don't-forget alerts (check your belongings when you arrive at or leave a registered place)</li>
+    </ul>
+    <p>Location data collected for these features is used only on your device to decide when to trigger a notification, and is never sent to or stored on external servers. You can change whether location access is allowed at any time in your device settings. If you don't use these features, no location data is collected.</p>
+  </section>
+
+  <section>
+    <h2>About Usage Data</h2>
+    <p>To help us improve the App, we use Firebase Analytics (a service provided by Google) to collect statistical data about how features are used.</p>
+    <p>The information sent is limited to operational events such as creating or completing a task and notification permission status, along with general device information such as your language setting. We never send task names, memos, shopping list contents, the names or coordinates of registered places, email addresses, or any other information that identifies you or your content.</p>
+    <p>For details on how information collected by Firebase Analytics is handled, please also see <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Google's Privacy Policy</a>.</p>
+  </section>
+
+  <section>
+    <h2>About the Subscription (PRO Plan)</h2>
+    <p>In addition to features available for free, this App offers a paid subscription (the "PRO plan") that unlocks additional features.</p>
+    <p>Purchases, renewals, and cancellations of the PRO plan are handled through the App Store (your Apple ID), and Apple manages your payment information. Neither the App nor the developer ever receives your credit card details or other payment information.</p>
+    <p>We use RevenueCat, a subscription management service, to keep track of purchases. RevenueCat receives information such as your purchased plan identifier and purchase date, but data from within the App — such as your tasks — is never shared with it. For details, please see <a href="https://www.revenuecat.com/privacy" target="_blank" rel="noopener">RevenueCat's Privacy Policy</a>.</p>
+  </section>
+
+  <section>
     <h2>Third-Party Disclosure</h2>
-    <p>This App does not provide your personal information to any third party.</p>
-    <p>However, if you use the optional AI text generation feature (which uses the Groq API), the task information you enter may be sent to that API. Please review Groq's privacy policy for details.</p>
+    <p>This App does not provide your personal information (such as your task content or registered places) to any third party.</p>
+    <p>However, if you use the optional AI text generation feature (which uses the Groq API), the task information you enter may be sent to that API. Please review <a href="https://groq.com/privacy-policy/" target="_blank" rel="noopener">Groq's privacy policy</a> for details.</p>
+    <p>In addition to the above, information is shared with Firebase Analytics (Google) and RevenueCat as described elsewhere on this page.</p>
   </section>
 
   <section>
     <h2>Data Management</h2>
-    <p>All data for this App is stored on your device (localStorage).</p>
+    <p>All of this App's task and settings data is stored on your device (localStorage).</p>
     <ul>
       <li>All data is deleted when you uninstall the App</li>
       <li>Data may be lost if your device is reset</li>
-      <li>This App has no cloud backup feature for data</li>
+      <li>This App has no cloud backup feature for your task data</li>
     </ul>
   </section>
 
@@ -96,7 +131,7 @@
 </main>
 
 <footer>
-  &copy; 2026 BrainBox. All rights reserved.
+  &copy; 2026 BrainBox. All rights reserved. &nbsp;|&nbsp; <a href="terms-en.html">Terms of Service</a> &nbsp;|&nbsp; <a href="support-en.html">Support</a>
 </footer>
 </body>
 </html>

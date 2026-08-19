@@ -11,7 +11,8 @@
   .logo { width: 36px; height: 36px; background: #D9A3B2; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
   .logo svg { width: 20px; height: 20px; fill: white; }
   header h1 { font-size: 17px; font-weight: 700; color: #1F2937; }
-  header a { margin-left: auto; font-size: 14px; color: #D9A3B2; text-decoration: none; font-weight: 600; }
+  header nav { margin-left: auto; display: flex; gap: 16px; }
+  header a { font-size: 14px; color: #D9A3B2; text-decoration: none; font-weight: 600; }
   main { max-width: 720px; margin: 0 auto; padding: 40px 24px 80px; }
   .page-title { font-size: 28px; font-weight: 800; color: #1F2937; margin-bottom: 6px; }
   .updated { font-size: 13px; color: #9CA3AF; margin-bottom: 40px; }
@@ -20,10 +21,12 @@
   h2::before { content: ''; width: 4px; height: 18px; background: #D9A3B2; border-radius: 2px; display: inline-block; flex-shrink: 0; }
   p { font-size: 15px; color: #374151; margin-bottom: 10px; }
   p:last-child { margin-bottom: 0; }
-  ul { padding-left: 20px; margin-top: 8px; }
+  ul { padding-left: 20px; margin-top: 8px; margin-bottom: 10px; }
+  ul:last-child { margin-bottom: 0; }
   li { font-size: 15px; color: #374151; margin-bottom: 6px; }
   a { color: #D9A3B2; }
   footer { text-align: center; padding: 24px; font-size: 13px; color: #9CA3AF; }
+  footer a { color: #D9A3B2; text-decoration: none; }
 </style>
 </head>
 <body>
@@ -32,12 +35,15 @@
     <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg>
   </div>
   <h1>BrainBox</h1>
-  <a href="support-en.html">Support</a>
+  <nav>
+    <a href="privacy-en.html">Privacy Policy</a>
+    <a href="support-en.html">Support</a>
+  </nav>
 </header>
 
 <main>
   <div class="page-title">Terms of Service</div>
-  <div class="updated">Last updated: July 3, 2026</div>
+  <div class="updated">Last updated: August 19, 2026</div>
 
   <section>
     <h2>Introduction</h2>
@@ -47,12 +53,25 @@
 
   <section>
     <h2>Conditions of Use</h2>
-    <p>This App is provided free of charge for personal, non-commercial use only.</p>
+    <p>The App's basic features are provided free of charge for personal, non-commercial use only. Some features are available by subscribing to the paid subscription (the "PRO plan") described below.</p>
     <ul>
       <li>Copying, modifying, or redistributing this App is prohibited</li>
       <li>Using this App for commercial purposes is prohibited</li>
       <li>Reverse engineering this App is prohibited</li>
     </ul>
+  </section>
+
+  <section>
+    <h2>About the Subscription (PRO Plan)</h2>
+    <p>This App offers an auto-renewing subscription, "BrainBox PRO," under the following terms.</p>
+    <ul>
+      <li>Renewal period: monthly</li>
+      <li>Price: as displayed on the App Store (varies by region and storefront)</li>
+      <li>A free trial period (7 days) may be offered when you first subscribe</li>
+    </ul>
+    <p>Payment is charged to your Apple ID account at confirmation of purchase. The subscription renews automatically unless auto-renewal is turned off at least 24 hours before the end of the current period, and the renewal charge is applied to your Apple ID within 24 hours prior to the end of the current period.</p>
+    <p>You can manage or cancel your subscription at any time from your Apple ID account settings (Subscriptions) in your device's Settings app. If you cancel during a free trial, you will not be charged for any unused portion.</p>
+    <p>Transactions for purchasing, renewing, and canceling the subscription are processed through the App Store, and Apple's <a href="https://www.apple.com/legal/internet-services/itunes/dev/stdeula/" target="_blank" rel="noopener">Standard End User License Agreement</a> applies.</p>
   </section>
 
   <section>
@@ -88,7 +107,7 @@
 </main>
 
 <footer>
-  &copy; 2026 BrainBox. All rights reserved.
+  &copy; 2026 BrainBox. All rights reserved. &nbsp;|&nbsp; <a href="privacy-en.html">Privacy Policy</a> &nbsp;|&nbsp; <a href="support-en.html">Support</a>
 </footer>
 </body>
 </html>
