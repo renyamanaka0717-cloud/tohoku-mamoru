@@ -2677,6 +2677,12 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
   const roRef = useRef<ResizeObserver|null>(null);
   const {tr} = useI18n();
   const iconDelta = FONT_SIZE_ICON_DELTA[settings.fontSize??'standard'];
+  // measuredH/freeChromeRefのキーは日付を含めること（重要・過去の不具合）: Timelineはdateが変わっても
+  // 再マウントされない（<Timeline>にkeyを付けていない）ため、キーが単なる時刻文字列（"09:30"等）だと
+  // 別の日の同じ時刻のタスク/空き時間カードの実測値を誤って使い回してしまい、日によって内容の高さが
+  // 違う場合にカードの重なりが発生する。必ずこの2つのヘルパー経由で日付付きキーを使うこと
+  const gkTime=(t:string)=>`${date}-${t}`;
+  const gkFree=(t:string)=>`${date}-free-${t}`;
   // 空き時間カードの外枠(padding+border)の高さ。measuredH['free-*']は内側のcontentのみの高さなので、
   // 積み上げ計算で外枠込みの実際の高さに戻すために使う。フォントサイズやborder幅の環境差（実機WebKit等）
   // で固定px値だと合わないことがあったため、outerRefでマウント時に実際のcomputed styleから算出する
@@ -2733,7 +2739,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
   const COLS=5, ROW_GAP=6;
 
   const groupStackH=(g:{tasks:Task[];h:number;startTime:string}):number=>{
-    if(g.tasks.length===1) return Math.max(measuredH[g.startTime]??g.h,56);
+    if(g.tasks.length===1) return Math.max(measuredH[gkTime(g.startTime)]??g.h,56);
     const CAPSULE_H=56,GAP=16;
     const heights=g.tasks.map(t=>Math.max(measuredH[t.id]??MIN_CARD_H,CAPSULE_H));
     return heights.reduce((a,h)=>a+h,0)+(g.tasks.length-1)*GAP;
@@ -2751,7 +2757,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
     .map(([startTime,tasks])=>{
       const rows=Math.ceil(tasks.length/COLS);
       const h=tasks.length===1
-        ?(measuredH[startTime]??MIN_CARD_H)
+        ?(measuredH[gkTime(startTime)]??MIN_CARD_H)
         :tasks.reduce((sum,t)=>sum+Math.max(measuredH[t.id]??MIN_CARD_H,56),0)+(tasks.length-1)*16+DUP_LABEL_H;
       return {startTime,tasks,rows,h};
     });
@@ -2818,8 +2824,8 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
       .filter(g=>{const m=adjM(g.startTime);return m>=wakeMin&&m<=sleepMinEff;})
       .map(g=>({kind:'task' as const,g,startMin:adjM(g.startTime),h:g.h})),
     ...freeSlots.map(s=>({kind:'free' as const,slot:s,startMin:adjM(s.start),
-      h:measuredH[`free-${s.start}`]!=null
-        ?measuredH[`free-${s.start}`]+(freeChromeRef.current[`free-${s.start}`]??FREE_CARD_CHROME_FALLBACK)
+      h:measuredH[gkFree(s.start)]!=null
+        ?measuredH[gkFree(s.start)]+(freeChromeRef.current[gkFree(s.start)]??FREE_CARD_CHROME_FALLBACK)
         :calcFreeContentH(laterPoolForEstimate)})),
   ].sort((a,b)=>a.startMin-b.startMin);
 
@@ -2930,7 +2936,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
         if(nodes.length===0) return null;
 
         const freeRanges=freeLayout.map(({slot,freeY,finalH})=>({
-          top:freeY, h:measuredH[`free-${slot.start}`]??finalH
+          top:freeY, h:measuredH[gkFree(slot.start)]??finalH
         }));
 
         const renderSeg=(key:string|number,top:number,h:number,c1:string,c2:string)=>{
@@ -3116,14 +3122,14 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
           const CapsuleIc=getTaskIcon(task.icon||defaultIconKey(task.name));
           return [
             <div key={`cap-${g.startTime}`} className="absolute z-10 cursor-pointer"
-              style={{top:`${top}px`,left:`${AXIS_X-28}px`,width:'56px',height:`${Math.max(measuredH[g.startTime]??g.h,56)}px`}}
+              style={{top:`${top}px`,left:`${AXIS_X-28}px`,width:'56px',height:`${Math.max(measuredH[gkTime(g.startTime)]??g.h,56)}px`}}
               onClick={e=>{e.stopPropagation();onEditIconSheet(task);}}>
               <div className="w-full h-full flex items-center justify-center active:opacity-70 transition-opacity" style={{borderRadius:'28px',background:task.color||'var(--c-primary)'}}>
                 <CapsuleIc size={24} className={task.color?'text-white':'text-white'}/>
               </div>
             </div>,
             <div key={g.startTime} className={`absolute z-10 transition-transform select-none ${isPressing?'scale-95':''}`}
-              ref={el=>{if(el){el.dataset.gk=g.startTime;roRef.current?.observe(el);}}}
+              ref={el=>{if(el){el.dataset.gk=gkTime(g.startTime);roRef.current?.observe(el);}}}
               style={{top:`${top}px`,left:`${CARD_LEFT}px`,right:'0px',
                 opacity:isDragging?0.25:1,pointerEvents:isDragging?'none':'auto'}}
               onTouchStart={e=>startLP(task,e)}
@@ -3200,10 +3206,10 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
         return (
           <div key={i} className="absolute z-10" style={{top:`${freeY}px`,left:`${CARD_LEFT}px`,right:'0px'}}>
             <FreeTimeCard slot={slot} fits={fits} moreCount={laterPoolMoreCount} height={finalH} onDragStart={onDragStart} onMoreClick={onOpenLater} iconDelta={iconDelta}
-              measureRef={el=>{if(el){el.dataset.gk=`free-${slot.start}`;roRef.current?.observe(el);}}}
+              measureRef={el=>{if(el){el.dataset.gk=gkFree(slot.start);roRef.current?.observe(el);}}}
               outerRef={el=>{
                 if(!el) return;
-                const key=`free-${slot.start}`;
+                const key=gkFree(slot.start);
                 const cs=getComputedStyle(el);
                 freeChromeRef.current[key]=parseFloat(cs.paddingTop)+parseFloat(cs.paddingBottom)+parseFloat(cs.borderTopWidth)+parseFloat(cs.borderBottomWidth);
               }}/>
