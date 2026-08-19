@@ -21,7 +21,7 @@ export const STRINGS = {
   tourLaterNameTitle:    { ja: 'タスクを入力してみましょう。',          en: 'Try entering a task name.',       ko: '태스크를 입력해 볼까요.',             'zh-TW': '試著輸入任務名稱看看。' },
   tourLaterConfirmTitle: { ja: '保存ボタンを押しましょう。',            en: 'Tap the save button.',            ko: '저장 버튼을 눌러보세요.',             'zh-TW': '點一下儲存按鈕吧。' },
   tourLaterConfirmBody:  { ja: '「あとでやる」タスク一覧に追加されます。', en: 'It will be added to your "Later" list.', ko: '\'나중에 할 일\' 목록에 추가돼요.',       'zh-TW': '會加進「稍後辦」清單裡。' },
-  tourDragTitle:         { ja: 'あとでやるタスクが空き時間カードに表示されます。', en: 'Your "Later" tasks appear on the free-time card.', ko: '나중에 할 일이 여유 시간 카드에 표시돼요.', 'zh-TW': '稍後辦的任務會顯示在空閒時間卡片上。' },
+  tourDragTitle:         { ja: 'あとでやるタスクが空き時間カードに表示されます。', en: 'Your "Later" tasks appear on the free-time card.', ko: '나중에 할 일이 여유 시간 카드에 표시돼요.', 'zh-TW': '稍後辦的任務會顯示在空檔時間卡片上。' },
   tourDragBody:          { ja: 'タスクを長押ししてタイムラインにドラッグしてみましょう。', en: 'Long-press a task and drag it onto the timeline.', ko: '태스크를 길게 눌러 타임라인으로 드래그해 보세요.', 'zh-TW': '長按任務並拖曳到時間軸上試試看。' },
   tourNext:              { ja: '次へ',                          en: 'Next',                             ko: '다음',                        'zh-TW': '下一步' },
   tourDefaultTaskName:   { ja: 'テスト',                        en: 'Test',                             ko: '테스트',                       'zh-TW': '測試' },
@@ -43,13 +43,13 @@ export const STRINGS = {
   timelineDuplicateNotice:   { ja: 'タスクが重複しています',          en: 'Tasks overlap',                 ko: '태스크가 겹쳐 있어요',               'zh-TW': '任務時間重疊了' },
   timelineEmptyTitle:        { ja: 'タスクがありません',             en: 'No tasks',                      ko: '태스크가 없어요',                  'zh-TW': '沒有任務' },
   timelineEmptySubtitle:     { ja: '時間をタップして追加',           en: 'Tap a time to add one',         ko: '시간을 탭해서 추가',                'zh-TW': '點選時間即可新增' },
-  freeTimeRange:             { ja: '空き時間 {start}〜{end}',       en: 'Free time {start}–{end}',       ko: '여유 시간 {start}~{end}',          'zh-TW': '空閒時間 {start}〜{end}' },
+  freeTimeRange:             { ja: '空き時間 {start}〜{end}',       en: 'Free time {start}–{end}',       ko: '여유 시간 {start}~{end}',          'zh-TW': '空檔時間 {start}〜{end}' },
   durUnitHour:               { ja: '時間',                        en: 'h',                             ko: '시간',                        'zh-TW': '小時' },
   durUnitMin:                { ja: '分',                          en: 'm',                             ko: '분',                         'zh-TW': '分鐘' },
   moreCountChip:             { ja: '+{n}件',                      en: '+{n} more',                     ko: '+{n}개',                      'zh-TW': '+{n}項' },
 
   // ヘッダー（App本体）
-  headerFreeTimeToggle:      { ja: '空き時間',                     en: 'Free time',                     ko: '여유 시간',                     'zh-TW': '空閒時間' },
+  headerFreeTimeToggle:      { ja: '空き時間',                     en: 'Free time',                     ko: '여유 시간',                     'zh-TW': '空檔時間' },
   fileTabAll:                { ja: 'すべて',                       en: 'All',                           ko: '전체',                        'zh-TW': '全部' },
   loading:                   { ja: '読み込み中…',                  en: 'Loading…',                      ko: '불러오는 중…',                  'zh-TW': '載入中…' },
 
@@ -261,8 +261,8 @@ export const STRINGS = {
   couldNotGetLocation:       { ja: '現在地を取得できませんでした',         en: 'Couldn’t get your current location', ko: '현재 위치를 가져올 수 없었어요', 'zh-TW': '無法取得目前位置' },
 
   // 設定 → 表示設定（空き時間カード・テーマカラー・アプリアイコン）
-  freeCardScreenTitle:       { ja: '空き時間カード',                  en: 'Free time cards',               ko: '여유 시간 카드',                  'zh-TW': '空閒時間卡片' },
-  showFreeCardLabel:         { ja: '空き時間カードを表示',              en: 'Show free time cards',          ko: '여유 시간 카드 표시',                'zh-TW': '顯示空閒時間卡片' },
+  freeCardScreenTitle:       { ja: '空き時間カード',                  en: 'Free time cards',               ko: '여유 시간 카드',                  'zh-TW': '空檔時間卡片' },
+  showFreeCardLabel:         { ja: '空き時間カードを表示',              en: 'Show free time cards',          ko: '여유 시간 카드 표시',                'zh-TW': '顯示空檔時間卡片' },
   minDisplayTimeLabel:       { ja: '最小表示時間',                   en: 'Minimum duration to show',      ko: '최소 표시 시간',                   'zh-TW': '最短顯示時間' },
   themeColorRowTitle:        { ja: 'テーマカラー',                    en: 'Theme color',                   ko: '테마 색상',                     'zh-TW': '主題顏色' },
   appIconRowTitle:           { ja: 'アプリアイコン',                   en: 'App icon',                      ko: '앱 아이콘',                     'zh-TW': '應用程式圖示' },
@@ -428,7 +428,7 @@ export const STRINGS = {
   notifLaterStaleTitle:      { ja: 'あとでやるが溜まっています',              en: 'Later tasks are piling up',     ko: '나중에 할 일이 쌓이고 있어요',          'zh-TW': '稍後辦的任務累積中' },
   notifLaterStaleBody:       { ja: '{n}件が長時間放置されています: {names}', en: '{n} task(s) left unfinished for a while: {names}', ko: '{n}개가 오래 방치되고 있어요: {names}', 'zh-TW': '{n} 項任務已擱置一段時間：{names}' },
   notifLaterStaleBodySingle: { ja: '「{name}」が長時間放置されています',       en: '"{name}" has been left unfinished for a while', ko: '\'{name}\'이(가) 오래 방치되고 있어요', 'zh-TW': '「{name}」已擱置一段時間' },
-  notifFreeTimeTitle:        { ja: '空き時間ができました',                  en: 'You have free time',            ko: '여유 시간이 생겼어요',                'zh-TW': '有空閒時間了' },
+  notifFreeTimeTitle:        { ja: '空き時間ができました',                  en: 'You have free time',            ko: '여유 시간이 생겼어요',                'zh-TW': '有空檔時間了' },
   notifFreeTimeBodyMulti:    { ja: '「{name}」など{n}件のタスクがあります',    en: 'You have {n} tasks, including "{name}"', ko: '\'{name}\' 외 {n}개의 태스크가 있어요', 'zh-TW': '有「{name}」等 {n} 項任務' },
   notifFreeTimeBodySingle:   { ja: '「{name}」をやってみませんか？',          en: 'Why not try "{name}"?',          ko: '\'{name}\'을(를) 해보는 건 어때요?',      'zh-TW': '要不要來做「{name}」？' },
   deadlinePreviewLabel:      { ja: '通知される内容（{n}件）',               en: 'Notifications to be sent ({n})', ko: '전송될 알림 내용 ({n}건)',             'zh-TW': '將發送的通知內容（{n} 則）' },
