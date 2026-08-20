@@ -2569,11 +2569,13 @@ function FreeTimeCard({slot,fits,moreCount=0,height,onDragStart,onMoreClick,meas
 }) {
   const [pressingId,setPressingId] = useState<string|null>(null);
   const lpTimer = useRef<ReturnType<typeof setTimeout>|null>(null);
+  const lpStart = useRef<{x:number;y:number}|null>(null);
   const didDrag = useRef(false);
   const {tr} = useI18n();
 
   const startLP=(task:Task,e:React.TouchEvent)=>{
     const touch=e.touches[0];
+    lpStart.current={x:touch.clientX,y:touch.clientY};
     setPressingId(task.id);
     lpTimer.current=setTimeout(()=>{
       navigator.vibrate?.(40);
@@ -2584,7 +2586,13 @@ function FreeTimeCard({slot,fits,moreCount=0,height,onDragStart,onMoreClick,meas
   };
   const cancelLP=()=>{
     if(lpTimer.current){clearTimeout(lpTimer.current);lpTimer.current=null;}
+    lpStart.current=null;
     setPressingId(null);
+  };
+  const moveLP=(e:React.TouchEvent)=>{
+    if(!lpStart.current) return;
+    const touch=e.touches[0];
+    if(Math.abs(touch.clientX-lpStart.current.x)>12||Math.abs(touch.clientY-lpStart.current.y)>12) cancelLP();
   };
 
   const h=Math.floor(slot.min/60), m=slot.min%60;
@@ -2609,7 +2617,7 @@ function FreeTimeCard({slot,fits,moreCount=0,height,onDragStart,onMoreClick,meas
                 onClick={()=>{if(didDrag.current){didDrag.current=false;return;}onMoreClick?.();}}
                 onTouchStart={e=>startLP(t,e)}
                 onTouchEnd={cancelLP}
-                onTouchMove={cancelLP}
+                onTouchMove={moveLP}
                 data-tour="tour-draggable"
                 className={`inline-flex items-center gap-1 bg-gray-100 rounded-full px-2.5 py-1 text-xs font-medium text-gray-500 select-none transition-transform${pressingId===t.id?' scale-95':''}`}>
                 {t.deadlineAt&&<AppIcons.deadline size={10+iconDelta} className={deadlineLabelColor(t.deadlineAt)}/>}
@@ -7683,7 +7691,7 @@ export default function App() {
           lifePatterns={lifePatterns} patternOverrides={patternOverrides}
           onPickColor={(target)=>{if(!isPremium){setAppProPrompt(true);return;}setColorPickTarget(target);}}
           onEditTime={openTimePicker}
-          onOpenLater={()=>setActiveTab('later')}
+          onOpenLater={()=>{if(showTour) return;setActiveTab('later');}}
           customTabs={activeCategory===null?customTabs:[]}/>
       </main>
 
