@@ -2824,7 +2824,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
   for(const g of taskGroupList.filter(g=>{const rawM=toMin(g.startTime);return rawM<wakeMin&&sleepMin>wakeMin;})){
     const top=prevBottom+16;
     groupLayout.push({g,top});
-    prevBottom=top+(g.tasks.length>1?MIN_CARD_H:g.h);
+    prevBottom=top+g.h;
   }
 
   // Wake card: right after pre-wake items (no clock-time gap)
@@ -2880,7 +2880,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
   for(const g of taskGroupList.filter(g=>{const rawM=toMin(g.startTime);return adjM(g.startTime)>sleepMinEff&&(rawM>=wakeMin||(sleepMin<wakeMin&&rawM>=sleepMin));})){
     const top=prevBottom+16;
     groupLayout.push({g,top});
-    prevBottom=top+(g.tasks.length>1?MIN_CARD_H:g.h);
+    prevBottom=top+g.h;
   }
 
   const hasHistoryCard=!!(todayHistory&&todayHistory.taskNames.length>0)&&date===todayStr();
