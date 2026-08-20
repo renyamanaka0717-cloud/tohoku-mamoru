@@ -164,18 +164,21 @@ const roRef = useRef<ResizeObserver|null>(null);
 
 **さらに別の不具合: `measuredH`のキーに日付が入っておらず、日をまたいだ古い実測値を使い回してカードが重なる不具合があった。** `Timeline`は`date`が変わっても再マウントされない（`<Timeline date={date} .../>`に`key`を付けていない設計）ため、`measuredH` stateは日付をまたいでも同じコンポーネントインスタンスに保持され続ける。ここで`data-gk`のキーが`g.startTime`（`"09:30"`のような時刻文字列のみ）や`` `free-${slot.start}` ``（同様）だと、**別の日の同じ時刻に内容の高さが違うタスク・空き時間があった場合、古い日で測定した高さを新しい日のレイアウト計算に誤って使い回してしまう**（例: A日の09:30に短い1行タスクがあり`measuredH["09:30"]`が60pxで記録された後、B日の09:30に長いメモ・サブタスク付きの重いタスクがあると、B日を開いた瞬間は前者の60pxがそのまま使われ、実際のカードは140px近くまで伸びるのに後続の空き時間・就寝カードは60px分の位置にしか配置されず、カード同士が視覚的に重なる）。修正: `Timeline`内に`gkTime(t)=>\`${date}-${t}\``・`gkFree(t)=>\`${date}-free-${t}\``という日付付きキー生成ヘルパーを追加し、`data-gk`の設定・`measuredH`の参照・`freeChromeRef`の参照のすべてをこの2つ経由に統一した（`task.id`はグローバルに一意なのでこの対応は不要）。**タイムラインの測定系に新しいキーを追加する時は、必ず日付を含めること。** 単なる時刻文字列やタスク内の相対的な値だけをキーにすると、`Timeline`が日付間で使い回されるこのコンポーネント構造では同じ不具合が再発する。
 
+**さらに別の不具合: 未測定タスクの高さ見積り(`MIN_CARD_H=60`固定)がサブタスク・メモ付きタスクだと実際の高さより大幅に低く、日付変更でタスクを移動した直後に一瞬（ResizeObserverが実測補正するまでの間）後続カードと重なって見えることがあった。** タスクを別日に移動する（`TaskModal`の日付フィールドを変更する）と、移動先の日付+時刻の組み合わせは`measuredH`に一度も記録されたことのない新規キーになるため、`groupStackH`・`taskGroupList`の`h`計算・アイコンスタックの`cardHeights`はいずれも`MIN_CARD_H=60`にフォールバックする。サブタスクやメモを持つタスクは実際には100px前後まで伸びるため、実測で補正されるまでの間、後続の空き時間カード・次のタスクカードが本来より上に詰めて配置され、視覚的に重なることがあった。修正: `MIN_CARD_H`固定の代わりに`estimateTaskH(t)`（Timeline内）で、タスクが持つ要素（締切ラベル・タグ行・サブタスク or メモのアイコン行）に応じて見積りを底上げするようにした。`calcFreeContentH`（空き時間カードの内容量見積り）と同じ「実測優先・見積りはフォールバック」パターンで、見積り自体の精度を上げることで実測までのズレを縮める狙い。新しくタスクカードの高さ見積りを使う箇所を追加する時は、`MIN_CARD_H`に直接フォールバックせず`estimateTaskH(t)`を使うこと。
+
 ### taskGroupList の高さ計算（`g.h`）
 
 ```typescript
 const h = tasks.length === 1
-  ? Math.max(measuredH[startTime] ?? MIN_CARD_H, (tasks[0].duration ?? 0) * PX_PER_MIN)
-  : tasks.reduce((sum, t) => sum + Math.max(measuredH[t.id] ?? MIN_CARD_H, 56), 0)
+  ? measuredH[gkTime(startTime)] ?? estimateTaskH(tasks[0])
+  : tasks.reduce((sum, t) => sum + Math.max(measuredH[t.id] ?? estimateTaskH(t), 56), 0)
     + (tasks.length - 1) * 16
     + DUP_LABEL_H;  // 重複ラベル分の高さを加算
 ```
 
 - `DUP_LABEL_H=24` — 同一時刻グループ先頭の「●タスクが重複しています」ラベル用スペース
 - `MIN_CARD_H=60`, `WAKE_CARD_H=52`, `SLEEP_CARD_H=52`
+- `estimateTaskH(t)` — 未測定タスクの高さ見積り。`MIN_CARD_H`をベースに、締切ラベル(+18)・タグ行(+20)・サブタスク or メモのアイコン行(+40)の有無に応じて底上げする
 
 ### 同一時刻タスク（重複タスク）のアイコン表示（重要）
 

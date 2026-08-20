@@ -2746,10 +2746,24 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
   const DUP_LABEL_H=24;
   const COLS=5, ROW_GAP=6;
 
+  // 未測定（このタスクをこの日付・時刻の組み合わせで初めて描画する）状態でのカード高さの見積り。
+  // 単純にMIN_CARD_H固定だと、サブタスク・メモ・タグ行を持つタスクは実際の高さより大幅に低く
+  // 見積もられ、ResizeObserverが実測して補正するまでの一瞬、後続のカード（空き時間・次のタスク）
+  // と重なって見える不具合があった（日付変更でタスクを別日に移動した直後などに発生）。
+  // calcFreeContentHと同じ「実測優先・見積りはフォールバック」の考え方で、タスクの内容に応じて
+  // 見積り自体をMIN_CARD_Hより底上げする。
+  const estimateTaskH=(t:Task):number=>{
+    let h=MIN_CARD_H;
+    if(t.deadlineAt&&!t.completed) h+=18;
+    if((t.tags??[]).length>0) h+=20;
+    if((t.subtasks??[]).length>0||t.memo) h+=40;
+    return h;
+  };
+
   const groupStackH=(g:{tasks:Task[];h:number;startTime:string}):number=>{
     if(g.tasks.length===1) return Math.max(measuredH[gkTime(g.startTime)]??g.h,56);
     const CAPSULE_H=56,GAP=16;
-    const heights=g.tasks.map(t=>Math.max(measuredH[t.id]??MIN_CARD_H,CAPSULE_H));
+    const heights=g.tasks.map(t=>Math.max(measuredH[t.id]??estimateTaskH(t),CAPSULE_H));
     return heights.reduce((a,h)=>a+h,0)+(g.tasks.length-1)*GAP;
   };
   const groupIconTop=(g:{tasks:Task[]}):number=>g.tasks.length>1?DUP_LABEL_H:0;
@@ -2765,8 +2779,8 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
     .map(([startTime,tasks])=>{
       const rows=Math.ceil(tasks.length/COLS);
       const h=tasks.length===1
-        ?(measuredH[gkTime(startTime)]??MIN_CARD_H)
-        :tasks.reduce((sum,t)=>sum+Math.max(measuredH[t.id]??MIN_CARD_H,56),0)+(tasks.length-1)*16+DUP_LABEL_H;
+        ?(measuredH[gkTime(startTime)]??estimateTaskH(tasks[0]))
+        :tasks.reduce((sum,t)=>sum+Math.max(measuredH[t.id]??estimateTaskH(t),56),0)+(tasks.length-1)*16+DUP_LABEL_H;
       return {startTime,tasks,rows,h};
     });
 
@@ -3149,7 +3163,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
         }
         const CAPSULE_H=56,GAP=16,n=g.tasks.length;
         const stackTop=top+DUP_LABEL_H;
-        const cardHeights=g.tasks.map(t=>Math.max(measuredH[t.id]??MIN_CARD_H,CAPSULE_H));
+        const cardHeights=g.tasks.map(t=>Math.max(measuredH[t.id]??estimateTaskH(t),CAPSULE_H));
         const cardTops:number[]=[];
         { let acc=0; for(let i=0;i<n;i++){cardTops.push(acc);acc+=cardHeights[i]+GAP;} }
         const stackH=cardTops[n-1]+cardHeights[n-1];
