@@ -1516,8 +1516,11 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
     setLocSearchQuery('');setLocSearchResults([]);setLocError(null);
   };
 
+  const savedOnceRef=useRef(false);
   const save=()=>{
     if(!name.trim()) return;
+    if(savedOnceRef.current) return;
+    savedOnceRef.current=true;
     const dur=duration;
     const base:Omit<Task,'id'>={
       name:name.trim(),
