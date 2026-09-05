@@ -1,6 +1,6 @@
 'use client';
 // v2026-06-12
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { AppIcons } from './components/Icons';
 import { usePremium } from './components/Premium';
 import { setNativeAppIcon } from './components/AppIcon';
@@ -6654,6 +6654,10 @@ export default function App() {
   const [tourDragSignal,setTourDragSignal] = useState(0);
   const [tourTaskSavedSignal,setTourTaskSavedSignal] = useState(0);
   const [tourFocusNameSignal,setTourFocusNameSignal] = useState(0);
+  // ProductTourのuseEffectがこのコールバックの参照をdepsに含んでいるため、インライン関数だと
+  // 毎レンダーで参照が変わり「effect発火→setState→再レンダー→参照変化→再度effect発火」の
+  // 無限ループになる不具合があった。useCallbackで参照を安定させて修正
+  const onEnterLaterNameStep = useCallback(()=>setTourFocusNameSignal(n=>n+1),[]);
   const [tourFillTestNameSignal,setTourFillTestNameSignal] = useState(0);
   const [tourSampleTasks,setTourSampleTasks] = useState<Task[]>([]);
   const { tr, language } = useI18n();
@@ -8062,7 +8066,7 @@ export default function App() {
       {showTour&&!settingsOpen&&!calendarOpen&&!searchOpen&&(
         <ProductTour gestureSignal={tourDragSignal} modalOpen={modal.open} taskSavedSignal={tourTaskSavedSignal}
           isDragging={!!dragTask}
-          onEnterLaterNameStep={()=>setTourFocusNameSignal(n=>n+1)}
+          onEnterLaterNameStep={onEnterLaterNameStep}
           onSkipLaterName={()=>setTourFillTestNameSignal(n=>n+1)}
           onFinish={(skipped)=>{
             localStorage.setItem(TOUR_COMPLETED_KEY,'1');
