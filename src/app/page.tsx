@@ -3614,6 +3614,7 @@ function ShopLocationPanel({locations,onChange,isPremium,onProPrompt}:{
   const [radius,setRadius]=useState<100|300|500>(300);
   const [locating,setLocating]=useState(false);
   const [permStatus,setPermStatus]=useState<{location:string;notifications:string}|null>(null);
+  const confirmAddingRef=useRef(false);
 
   useEffect(()=>{ checkGeofencePermissions().then(setPermStatus); },[]);
 
@@ -3650,7 +3651,7 @@ function ShopLocationPanel({locations,onChange,isPremium,onProPrompt}:{
 
   const [editLocId,setEditLocId]=useState<string|null>(null);
 
-  const cancelAdd=()=>{ setAdding(false);setMapMode(false);setMapCenter(null);setPendingCoord(null);setSearchQuery('');setSearchResults([]);setRadius(300);setEditLocId(null); };
+  const cancelAdd=()=>{ confirmAddingRef.current=false;setAdding(false);setMapMode(false);setMapCenter(null);setPendingCoord(null);setSearchQuery('');setSearchResults([]);setRadius(300);setEditLocId(null); };
 
   const startEditLocation=(l:ShopLocation)=>{
     setEditLocId(l.id);
@@ -3662,10 +3663,12 @@ function ShopLocationPanel({locations,onChange,isPremium,onProPrompt}:{
   const confirmAdd=async()=>{
     if(!pendingCoord) return;
     if(!isPremium){ onProPrompt(tr('proFeatureLocationNotify')); return; }
+    if(confirmAddingRef.current) return;
+    confirmAddingRef.current=true;
     const ok=await ensureGeofencePermission('shop_location');
     const status=await checkGeofencePermissions();
     setPermStatus(status);
-    if(!ok) return;
+    if(!ok){ confirmAddingRef.current=false; return; }
     if(editLocId){
       onChange(locations.map(l=>l.id===editLocId?{...l,name:pendingCoord.name,lat:pendingCoord.lat,lng:pendingCoord.lng,radius}:l));
     }else{
@@ -3853,6 +3856,7 @@ function ForgetAlertsPanel({alerts,onChange,isPremium,onProPrompt}:{
   const [itemInput,setItemInput]=useState('');
   const [permError,setPermError]=useState<string|null>(null);
   const [customDayOpen,setCustomDayOpen]=useState(false);
+  const savingEditingRef=useRef(false);
   // 登録済みアラートが有効なまま、設定後に位置情報/通知の許可を取り消された場合に気づけるよう、
   // 画面を開くたびに現在の許可状態を確認する（ShopLocationPanelと同じパターン）
   const [permStatus,setPermStatus]=useState<{location:string;notifications:string}|null>(null);
@@ -3912,6 +3916,7 @@ function ForgetAlertsPanel({alerts,onChange,isPremium,onProPrompt}:{
   };
 
   const cancelEdit=()=>{
+    savingEditingRef.current=false;
     setEditing(null);setAdding(false);setMapMode(false);setMapCenter(null);
     setPermError(null);setItemInput('');setCustomDayOpen(false);
   };
@@ -3953,8 +3958,10 @@ function ForgetAlertsPanel({alerts,onChange,isPremium,onProPrompt}:{
   const saveEditing=async()=>{
     if(!editing||!editing.location||!editing.name.trim()||editing.weekdays.length===0||editing.items.length===0) return;
     if(adding&&!isPremium&&alerts.length>=1){ onProPrompt(tr('proFeatureForgetAlerts')); return; }
+    if(savingEditingRef.current) return;
+    savingEditingRef.current=true;
     const ok=await ensureGeofencePermission('forget_alert');
-    if(!ok){ setPermError(tr('forgetAlertLocationPermError')); return; }
+    if(!ok){ savingEditingRef.current=false; setPermError(tr('forgetAlertLocationPermError')); return; }
     const toSave:ForgetAlert={...editing,name:editing.name.trim(),location:editing.location};
     if(adding){ onChange([...alerts,toSave]); logAnalyticsEvent('location_notification_created',{radius:toSave.radius}); }
     else onChange(alerts.map(a=>a.id===toSave.id?toSave:a));
