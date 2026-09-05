@@ -7575,9 +7575,11 @@ export default function App() {
   };
   const carryOver=()=>{
     const next=shiftDate(date,1);
-    const toMove=tasks.filter(t=>t.date===date&&!t.completed&&!t.isLater);
-    const rest=tasks.filter(t=>!(t.date===date&&!t.completed&&!t.isLater));
-    setTasks([...rest,...toMove.map(t=>({...t,id:uid(),date:next}))]);
+    setTasks(prev=>{
+      const toMove=prev.filter(t=>t.date===date&&!t.completed&&!t.isLater);
+      const rest=prev.filter(t=>!(t.date===date&&!t.completed&&!t.isLater));
+      return [...rest,...toMove.map(t=>({...t,id:uid(),date:next}))];
+    });
     setDate(next); setSOp(false);
   };
 
