@@ -299,7 +299,7 @@ const pkg = offerings.current?.monthly;
 |---|---|
 | 製品ID | `jp.brainbox.app.premium.monthly` |
 | サブスクリプショングループ | PROプラン |
-| Apple ID | 6787816884 |
+| Apple ID | 6787616578 |
 | 価格 | ¥200/月 |
 | ローカリゼーション（日本語） | 表示名: BrainBox PRO / 説明: PRO機能が使い放題に |
 
