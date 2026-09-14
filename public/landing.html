@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BrainBox - 頭の中を、空っぽに。</title>
+<meta name="description" content="ADHD気質の方やToDoリストが続かない方向けの、1日タイムライン型タスク管理アプリ「BrainBox」。今日やることを時間軸で見える化し、先延ばしを防ぎます。">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', sans-serif; background: #F9FAFB; color: #1F2937; line-height: 1.7; font-size: 16px; }
+
+  header { background: rgba(255,255,255,0.92); backdrop-filter: blur(8px); border-bottom: 1px solid #F3F4F6; padding: 14px 24px; display: flex; align-items: center; gap: 12px; position: sticky; top: 0; z-index: 20; }
+  .logo { width: 32px; height: 32px; background: #D9A3B2; border-radius: 9px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .logo svg { width: 18px; height: 18px; fill: white; }
+  header h1 { font-size: 16px; font-weight: 700; color: #1F2937; }
+  header nav { margin-left: auto; display: flex; align-items: center; gap: 18px; }
+  header nav a.textlink { font-size: 13px; color: #6B7280; text-decoration: none; font-weight: 600; }
+  header nav a.textlink:hover { color: #D9A3B2; }
+  header .store-btn-sm { display: none; }
+  @media (min-width: 560px) {
+    header .store-btn-sm { display: inline-flex; align-items: center; gap: 6px; background: #1F1F1F; color: #fff; font-weight: 700; font-size: 12.5px; padding: 8px 14px; border-radius: 20px; text-decoration: none; white-space: nowrap; }
+  }
+
+  a { color: #D9A3B2; }
+
+  /* Hero */
+  .hero { background: linear-gradient(180deg, #EFF6F3 0%, #F9FAFB 65%); padding: 56px 24px 48px; text-align: center; }
+  .hero-icon { width: 96px; height: 96px; border-radius: 24px; box-shadow: 0 10px 30px rgba(31,31,31,0.14); margin: 0 auto 24px; display: block; }
+  .hero h2 { font-size: clamp(28px, 6vw, 40px); font-weight: 800; color: #1F2937; letter-spacing: -0.01em; margin-bottom: 14px; }
+  .hero h2 span { color: #D9A3B2; }
+  .hero p.lead { font-size: 16px; color: #4B5563; max-width: 460px; margin: 0 auto 28px; }
+  .cta-row { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .store-btn { display: inline-flex; align-items: center; gap: 8px; background: #1F1F1F; color: #fff; font-weight: 700; font-size: 15px; padding: 13px 26px; border-radius: 14px; text-decoration: none; }
+  .store-btn:hover { opacity: 0.9; }
+  .store-btn svg { width: 18px; height: 18px; fill: white; flex-shrink: 0; }
+  .free-note { font-size: 13px; color: #9CA3AF; }
+
+  main { max-width: 760px; margin: 0 auto; padding: 8px 24px 40px; }
+
+  section.block { padding: 44px 0; border-top: 1px solid #F0F1F3; }
+  section.block:first-child { border-top: none; }
+  .eyebrow { font-size: 12px; font-weight: 800; color: #D9A3B2; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 8px; text-align: center; }
+  .block h3.title { font-size: 24px; font-weight: 800; color: #1F2937; text-align: center; margin-bottom: 10px; letter-spacing: -0.01em; }
+  .block p.desc { font-size: 15px; color: #6B7280; text-align: center; max-width: 480px; margin: 0 auto 32px; }
+
+  .reason-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+  .reason-card { background: #fff; border-radius: 16px; padding: 22px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+  .reason-card .num { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 9px; background: color-mix(in srgb, #D9A3B2 14%, white); color: #D9A3B2; font-weight: 800; font-size: 14px; margin-bottom: 12px; }
+  .reason-card h4 { font-size: 15px; font-weight: 700; color: #1F2937; margin-bottom: 6px; }
+  .reason-card p { font-size: 13.5px; color: #6B7280; }
+
+  .feature-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; }
+  .feature-item { background: #fff; border-radius: 14px; padding: 16px 18px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
+  .feature-title { font-size: 14px; font-weight: 700; color: #1F2937; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
+  .feature-title .pro-badge { display: inline-block; font-size: 10px; font-weight: 700; color: #D9A3B2; border: 1px solid #D9A3B2; border-radius: 4px; padding: 1px 5px; vertical-align: middle; }
+  .feature-desc { font-size: 13px; color: #6B7280; }
+
+  .pro-card { background: #1F1F1F; border-radius: 20px; padding: 32px 28px; color: #fff; text-align: center; }
+  .pro-card .pro-tag { display: inline-block; font-size: 12px; font-weight: 800; letter-spacing: 0.04em; background: #D9A3B2; color: #fff; padding: 4px 12px; border-radius: 20px; margin-bottom: 16px; }
+  .pro-card h3 { font-size: 22px; font-weight: 800; margin-bottom: 10px; }
+  .pro-card p { font-size: 14px; color: rgba(255,255,255,0.7); max-width: 420px; margin: 0 auto 20px; }
+  .pro-list { list-style: none; text-align: left; max-width: 360px; margin: 0 auto 24px; display: grid; gap: 8px; }
+  .pro-list li { font-size: 14px; color: rgba(255,255,255,0.9); display: flex; align-items: center; gap: 8px; }
+  .pro-list li::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: #D9A3B2; flex-shrink: 0; }
+  .price-note { font-size: 12.5px; color: rgba(255,255,255,0.45); margin-top: 4px; }
+
+  .lang-strip { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+  .lang-pill { background: #fff; border-radius: 20px; padding: 8px 18px; font-size: 13.5px; font-weight: 600; color: #4B5563; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
+
+  .faq-item { border-bottom: 1px solid #F3F4F6; padding: 16px 0; }
+  .faq-item:first-child { padding-top: 0; }
+  .faq-item:last-child { border-bottom: none; padding-bottom: 0; }
+  .faq-q { font-size: 14.5px; font-weight: 700; color: #1F2937; margin-bottom: 4px; }
+  .faq-a { font-size: 14.5px; color: #6B7280; }
+
+  .final-cta { text-align: center; padding: 48px 24px 8px; }
+  .final-cta h3 { font-size: 22px; font-weight: 800; margin-bottom: 20px; }
+
+  footer { text-align: center; padding: 28px 24px; font-size: 13px; color: #9CA3AF; }
+  footer nav { display: flex; justify-content: center; gap: 16px; margin-bottom: 10px; flex-wrap: wrap; }
+  footer a { color: #9CA3AF; text-decoration: none; }
+  footer a:hover { color: #D9A3B2; }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">
+    <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg>
+  </div>
+  <h1>BrainBox</h1>
+  <nav>
+    <a class="textlink" href="support.html">サポート</a>
+    <a class="textlink" href="privacy.html">プライバシー</a>
+    <a class="textlink" href="terms.html">利用規約</a>
+    <a class="store-btn-sm" href="https://apps.apple.com/jp/app/brainbox/id6787816884">App Storeで見る</a>
+  </nav>
+</header>
+
+<section class="hero">
+  <img class="hero-icon" src="app-icons/dusty.png" alt="BrainBox アプリアイコン">
+  <h2>頭の中を、<span>空っぽに。</span></h2>
+  <p class="lead">今日やることを時間軸で見える化する、タイムライン型タスク管理アプリ。あとは、BrainBoxにおまかせ。</p>
+  <div class="cta-row">
+    <a class="store-btn" href="https://apps.apple.com/jp/app/brainbox/id6787816884">
+      <svg viewBox="0 0 384 512"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/></svg>
+      App Storeでダウンロード
+    </a>
+    <span class="free-note">基本機能は無料 ・ 7日間の無料トライアル付きPROあり</span>
+  </div>
+</section>
+
+<main>
+  <section class="block">
+    <div class="eyebrow">こんな悩みに</div>
+    <h3 class="title">ToDoリストが続かないあなたへ</h3>
+    <p class="desc">やることは分かっているのに、後回しにしてしまう。優先順位が付けられない。それはあなたのせいではなく、ただの「見える化」不足かもしれません。</p>
+    <div class="reason-grid">
+      <div class="reason-card">
+        <div class="num">1</div>
+        <h4>時間軸で見える化</h4>
+        <p>今日のタスクを時間の流れに沿って並べるだけで、頭の中を整理できます。</p>
+      </div>
+      <div class="reason-card">
+        <div class="num">2</div>
+        <h4>空き時間も見つかる</h4>
+        <p>予定の合間の空き時間を自動で表示。「あとでやる」タスクを無理なく片付けられます。</p>
+      </div>
+      <div class="reason-card">
+        <div class="num">3</div>
+        <h4>忘れ物・締切も安心</h4>
+        <p>場所での通知や締切リマインダーで、うっかり忘れを防ぎます。</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="eyebrow">Features</div>
+    <h3 class="title">主な機能</h3>
+    <p class="desc">シンプルな手帳のような使い心地はそのままに、必要な機能をひとつずつ。</p>
+    <div class="feature-grid">
+      <div class="feature-item"><div class="feature-title">タイムライン表示</div><div class="feature-desc">1日のタスクを時間軸で一覧表示</div></div>
+      <div class="feature-item"><div class="feature-title">空き時間の可視化</div><div class="feature-desc">予定の隙間をわかりやすく表示</div></div>
+      <div class="feature-item"><div class="feature-title">あとでやるリスト</div><div class="feature-desc">時間未定タスクをまとめて管理</div></div>
+      <div class="feature-item"><div class="feature-title">買い物リスト</div><div class="feature-desc">買うものをまとめて管理</div></div>
+      <div class="feature-item"><div class="feature-title">繰り返しタスク</div><div class="feature-desc">毎日・毎週などの繰り返し設定</div></div>
+      <div class="feature-item"><div class="feature-title">サブタスク・メモ・写真</div><div class="feature-desc">タスクの詳細を細かく管理</div></div>
+      <div class="feature-item"><div class="feature-title">タグ・ファイルタブ</div><div class="feature-desc">目的別にタスクを整理</div></div>
+      <div class="feature-item"><div class="feature-title">締切管理<span class="pro-badge">PRO</span></div><div class="feature-desc">締切日と通知タイミングを設定</div></div>
+      <div class="feature-item"><div class="feature-title">場所で通知<span class="pro-badge">PRO</span></div><div class="feature-desc">登録した場所に近づいたら通知</div></div>
+      <div class="feature-item"><div class="feature-title">忘れ物防止アラート<span class="pro-badge">PRO</span></div><div class="feature-desc">場所を出るときに持ち物を確認</div></div>
+      <div class="feature-item"><div class="feature-title">生活パターン<span class="pro-badge">PRO</span></div><div class="feature-desc">シフトや休日で起床・就寝を切り替え</div></div>
+      <div class="feature-item"><div class="feature-title">ホーム画面ウィジェット</div><div class="feature-desc">次の予定・買い物リストをすぐ確認</div></div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="eyebrow">Pro</div>
+    <div class="pro-card">
+      <span class="pro-tag">BrainBox PRO</span>
+      <h3>もっと自由に、もっと便利に</h3>
+      <p>締切管理・場所での通知・忘れ物防止アラートなど、暮らしに寄り添う機能が使い放題になります。</p>
+      <ul class="pro-list">
+        <li>締切管理・場所での通知・忘れ物防止アラート</li>
+        <li>生活パターンの切り替え（シフト勤務・休日対応）</li>
+        <li>テーマカラー・アプリアイコンの変更</li>
+        <li>放置タスク・アプリ放置アラートの間隔を細かく調整</li>
+      </ul>
+      <div class="free-note" style="color:rgba(255,255,255,0.85)">7日間無料トライアル付き</div>
+      <div class="price-note">価格はApp Store上に表示される金額（地域により異なります）</div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="eyebrow">Language</div>
+    <h3 class="title">多言語対応</h3>
+    <p class="desc">日本語・英語・韓国語・繁体字中国語に対応しています。</p>
+    <div class="lang-strip">
+      <span class="lang-pill">日本語</span>
+      <span class="lang-pill">English</span>
+      <span class="lang-pill">한국어</span>
+      <span class="lang-pill">繁體中文</span>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="eyebrow">FAQ</div>
+    <h3 class="title">よくある質問</h3>
+    <div class="faq-item">
+      <div class="faq-q">Q. データはどこに保存されますか？</div>
+      <div class="faq-a">A. すべてのデータはお使いのデバイスのローカルストレージに保存されます。外部サーバーへの送信は行いません。</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Q. 無料でどこまで使えますか？</div>
+      <div class="faq-a">A. タイムライン表示・あとでやるリスト・買い物リスト・繰り返しタスクなど基本機能は無料でご利用いただけます。締切管理や場所での通知など一部機能はPROプランが必要です。</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Q. PROプランはどこから登録・解約できますか？</div>
+      <div class="faq-a">A. 登録はアプリ内の設定画面から行えます。解約は端末の「設定」アプリ内のApple IDアカウント設定（サブスクリプション）からいつでも行えます。</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Q. Androidには対応していますか？</div>
+      <div class="faq-a">A. 現在はiOS（iPhone）のみの対応です。</div>
+    </div>
+  </section>
+
+  <section class="final-cta">
+    <h3>今日から、頭の中を空っぽに。</h3>
+    <a class="store-btn" href="https://apps.apple.com/jp/app/brainbox/id6787816884">
+      <svg viewBox="0 0 384 512"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/></svg>
+      App Storeでダウンロード
+    </a>
+  </section>
+</main>
+
+<footer>
+  <nav>
+    <a href="support.html">サポート</a>
+    <a href="privacy.html">プライバシーポリシー</a>
+    <a href="terms.html">利用規約</a>
+  </nav>
+  &copy; 2026 BrainBox. All rights reserved.
+</footer>
+</body>
+</html>
