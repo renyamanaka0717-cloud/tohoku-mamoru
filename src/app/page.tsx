@@ -1203,7 +1203,7 @@ function PickerCol({items,value,onChange}:{items:string[];value:string;onChange:
 
 function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:initIconSheet,onSave,onUpdate,onDelete,onClose,onBulkInput,globalTags,customTabs,notificationsEnabled,onEnableNotifications,isPremium=true,onOpenTagSettings,onOpenPro,atLocationLimit=false,suppressAutoFocus=false,focusNameSignal,fillTestNameSignal}:{
   task:Task|null; currentDate:string; prefillTime?:string; prefillCategory?:string; openIconSheet?:boolean;
-  onSave:(tasks:Omit<Task,'id'>[])=>void; onUpdate?:(data:Omit<Task,'id'>)=>void; onDelete?:()=>void; onClose:()=>void; onBulkInput?:()=>void;
+  onSave:(tasks:Omit<Task,'id'>[])=>void; onUpdate?:(data:Omit<Task,'id'>)=>void; onDelete?:(scope:'one'|'all')=>void; onClose:()=>void; onBulkInput?:()=>void;
   isPremium?:boolean;
   globalTags:TagDef[]; customTabs:CustomTab[];
   notificationsEnabled?:boolean; onEnableNotifications?:()=>void;
@@ -2461,8 +2461,15 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
             <h3 className="text-base font-bold text-gray-900 mb-1">{tr('deleteTaskConfirmTitle')}</h3>
             <p className="text-sm text-gray-500 mb-5">{tr('deleteTaskConfirmBody')}</p>
             <div className="flex flex-col gap-2">
-              <button onClick={()=>{onDelete?.();onClose();}}
-                className="py-2.5 bg-[#D97A7A] text-white rounded-xl text-sm font-semibold">{tr('deleteTaskButton')}</button>
+              {task?.recurrence?(<>
+                <button onClick={()=>{onDelete?.('one');onClose();}}
+                  className="py-2.5 bg-[#D97A7A] text-white rounded-xl text-sm font-semibold">{tr('deleteThisOccurrenceButton')}</button>
+                <button onClick={()=>{onDelete?.('all');onClose();}}
+                  className="py-2.5 bg-[#D97A7A] text-white rounded-xl text-sm font-semibold">{tr('deleteAllOccurrencesButton')}</button>
+              </>):(
+                <button onClick={()=>{onDelete?.('one');onClose();}}
+                  className="py-2.5 bg-[#D97A7A] text-white rounded-xl text-sm font-semibold">{tr('deleteTaskButton')}</button>
+              )}
               <button onClick={()=>setDeleteConfirm(false)}
                 className="py-2.5 bg-gray-100 text-gray-900 rounded-xl text-sm font-semibold">{tr('cancelButton')}</button>
             </div>
@@ -7534,8 +7541,12 @@ export default function App() {
     setTasks(prev=>prev.map(t=>t.id===taskId
       ?{...t,subtasks:t.subtasks?.map(s=>s.id===subtaskId?{...s,completed:!s.completed}:s)}
       :t));
-  const delTask  = (id:string) => {
-    setTasks(prev=>prev.filter(t=>t.id!==id));
+  const delTask  = (id:string, seriesOf?:Task) => {
+    if(seriesOf){
+      setTasks(prev=>prev.filter(t=>!(t.name===seriesOf.name&&t.recurrence===seriesOf.recurrence&&t.startTime===seriesOf.startTime)));
+    } else {
+      setTasks(prev=>prev.filter(t=>t.id!==id));
+    }
     logAnalyticsEvent('task_deleted');
   };
   const toggle   = (id:string) => setTasks(prev=>{
@@ -7918,7 +7929,7 @@ export default function App() {
       {modal.open&&(
         <TaskModal task={modal.task} currentDate={date} prefillTime={modal.prefillTime} prefillCategory={modal.prefillCategory} openIconSheet={!!modal.iconSheet}
           onSave={saveTasks} onUpdate={modal.task?updateTask:undefined}
-          onDelete={modal.task?()=>delTask(modal.task!.id):undefined}
+          onDelete={modal.task?(scope)=>delTask(modal.task!.id,scope==='all'&&modal.task!.recurrence?modal.task!:undefined):undefined}
           onClose={closeModal} onBulkInput={()=>{closeModal();setSettingsInitSub('bulkInput');setSOp(true);}}
           onOpenTagSettings={()=>{closeModal();setSettingsInitSub('tags');setSOp(true);}}
           onOpenPro={()=>{setSettingsInitSub('premium');setSOp(true);}}

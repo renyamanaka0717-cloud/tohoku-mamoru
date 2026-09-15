@@ -1493,7 +1493,11 @@ native-ios/BridgeViewController.swift … capacitorDidLoad() 内で FirebaseApp.
 
 - ドラッグ＆ドロップはタッチイベントで実装（長押し500ms → vibrate → drag開始）
 - **繰り返しタスクのドラッグ**: drop後に `pendingDragMove` state を介して確認ポップアップを表示
-- 繰り返しタスクは `generateCustomDates()` で将来日程を生成し、`tasks` に展開して保存
+- 繰り返しタスクは `generateCustomDates()` で将来日程を生成し、`tasks` に展開して保存（`weekly`なら最大52件など、1つの繰り返し設定で`tasks`配列に数十件の個別インスタンスが一度に生成される）
+
+**過去の不具合（実際のテスターからの報告で発覚）: 繰り返しタスクを「すべての予定を変更」で編集すると時間が保存されない／削除しても一覧から消えない。**
+1. `saveTasks()`の`editScope==='all'`分岐（`name`/`recurrence`/`startTime`が一致するタスクをまとめて更新）が更新フィールドに`startTime`と`color`を含めておらず、時間を変更して保存しても実際には反映されなかった（`duration`は含まれているのに`startTime`が抜けているという非対称な漏れだった）。修正済み。
+2. 削除は`delTask(id)`が常に**IDが一致する1件のみ**を削除する実装だった。`generateCustomDates()`は1つの繰り返し設定で数十件のインスタンスを`tasks`に一度に生成するため、BottomTabsの「重複」セクション（`recurringGroups`、`name||recurrence||startTime`でユニーク化した代表1件だけを表示）でその代表行を削除しても、残り数十件の同一シリーズのインスタンスはそのまま残り、次の描画で別のインスタンスが新しい代表として選ばれて同じ行が再び表示される（＝「削除してもずっとリストに残り続ける」ように見える）。サポートページのFAQ（`faqA4`、I18n.tsx）には「この予定のみ削除／すべての予定を削除」を選べると書かれていたが、実際には「すべての予定を削除」自体が実装されていなかった（ドキュメントと実装の乖離）。修正: `TaskModal`の削除確認ポップアップを、`task.recurrence`がある場合は`onDelete('one'|'all')`のスコープ選択2ボタン（`deleteThisOccurrenceButton`/`deleteAllOccurrencesButton`）に変更し、`delTask(id, seriesOf?)`が`seriesOf`（`name`/`recurrence`/`startTime`が一致する全件）を渡された時はシリーズ全体を`filter`で削除するようにした。**繰り返しタスクに新しい一括操作（編集・削除）を追加する時は、`tasks`配列がシリーズごとに多数の個別インスタンスとしてフラットに保持されている前提を踏まえ、IDベースの単純な1件操作だけで済ませないこと。**
 - 「あとでやる」タスクは `isLater: true`、日付をまたいで持ち越し可能
 - **過去日付へのタスク追加・ドラッグが可能**（日付制限なし）
 - スマートフォン最適化済み（`userScalable: false`、`overscroll-none`）

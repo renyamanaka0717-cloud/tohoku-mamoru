@@ -559,6 +559,8 @@ export const STRINGS = {
   recurringEditConfirmBody:   { ja: '「{name}」をどのように変更しますか？',   en: 'How do you want to change "{name}"?', ko: '\'{name}\'을(를) 어떻게 변경할까요?', 'zh-TW': '要如何變更「{name}」？' },
   thisOccurrenceOnlyButton:   { ja: 'この予定のみ変更',               en: 'Change this occurrence only',   ko: '이 일정만 변경',                   'zh-TW': '只變更這一次' },
   allOccurrencesButton:       { ja: 'すべての予定を変更',              en: 'Change all occurrences',        ko: '모든 일정 변경',                   'zh-TW': '變更所有排程' },
+  deleteThisOccurrenceButton: { ja: 'この予定のみ削除',               en: 'Delete this occurrence only',   ko: '이 일정만 삭제',                   'zh-TW': '只刪除這一次' },
+  deleteAllOccurrencesButton: { ja: 'すべての予定を削除',              en: 'Delete all occurrences',        ko: '모든 일정 삭제',                   'zh-TW': '刪除所有排程' },
 
   // 統計画面（準備中）
   statsScreenTitle:      { ja: '統計',                          en: 'Stats',                          ko: '통계',                        'zh-TW': '統計' },
