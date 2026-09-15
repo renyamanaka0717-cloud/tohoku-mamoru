@@ -1114,6 +1114,8 @@ if(dragTask.recurrence){
 - `pendingDragMove: {task:Task; time:string} | null` — ドロップ後の確認待ち状態
 - ポップアップで「この予定のみ変更」「すべての予定を変更」「キャンセル」を選択
 
+**過去の不具合: ゴミ箱ドロップ（削除）だけ`dragTask.recurrence`のチェックが無く、繰り返しタスクの1件を確認なしで即削除していた。** タイムライン内の時刻変更ドラッグは`pendingDragMove`で確認するのに、画面下部の「あとでやる／ゴミ箱」ドロップゾーンへのドラッグ（`onEnd`内の`isInTrash`/`isInLater`分岐）はどちらも`dragTask.id`だけを見て即座に`setTasks`していた。「あとでやる」への移動は非繰り返しタスクと同じ単一インスタンス操作として妥当だが、ゴミ箱（削除）は`TaskModal`の削除確認（この予定のみ削除／すべての予定を削除）と一貫性が無く、繰り返しタスクの特定の1日分だけが確認なしで消えてしまう不具合だった。修正: `isInTrash`分岐に`dragTask.recurrence`のチェックを追加し、繰り返しタスクなら`pendingDragDelete`state経由で`TaskModal`と同じ`deleteThisOccurrenceButton`/`deleteAllOccurrencesButton`の確認ポップアップを表示するようにした（`delTask(id, seriesOf?)`を流用）。**新しくドラッグ&ドロップの分岐を追加する時は、タイムライン内リスケジュールだけでなく、ゴミ箱・あとでやるドロップゾーンも含めて`dragTask.recurrence`のチェック漏れがないか確認すること。**
+
 ### 起床・就寝カード（Timeline 内）
 
 **ドラッグ＆ドロップは廃止済み。** カード・アイコンともにタップで時間変更する。

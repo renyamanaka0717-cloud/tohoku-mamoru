@@ -6639,6 +6639,7 @@ export default function App() {
   const dragSettingInitMin = useRef<number>(0);
   const [recConfirm,setRecConfirm] = useState<Task|null>(null);
   const [pendingDragMove,setPendingDragMove] = useState<{task:Task;time:string}|null>(null);
+  const [pendingDragDelete,setPendingDragDelete] = useState<Task|null>(null);
   const [editScope,setEditScope]   = useState<'one'|'all'>('one');
   const [overTrash,setOverTrash]   = useState(false);
   const [overLater,setOverLater]   = useState(false);
@@ -7401,8 +7402,12 @@ export default function App() {
     const onEnd=(e:TouchEvent)=>{
       const t=e.changedTouches[0];
       if(isInTrash(t.clientX,t.clientY)){
-        setTasks(prev=>prev.filter(tk=>tk.id!==dragTask.id));
-        logAnalyticsEvent('task_deleted');
+        if(dragTask.recurrence){
+          setPendingDragDelete(dragTask);
+        } else {
+          setTasks(prev=>prev.filter(tk=>tk.id!==dragTask.id));
+          logAnalyticsEvent('task_deleted');
+        }
       } else if(isInLater(t.clientX,t.clientY)){
         setTasks(prev=>prev.map(tk=>tk.id===dragTask.id
           ? {...tk,isLater:true,startTime:null,laterSince:tk.laterSince??new Date().toISOString()}
@@ -8006,6 +8011,22 @@ export default function App() {
                 setPendingDragMove(null);
               }} className="w-full py-3.5 bg-[var(--c-primary)] rounded-2xl text-sm font-semibold text-white">{tr('allOccurrencesButton')}</button>
               <button onClick={()=>setPendingDragMove(null)}
+                className="w-full py-2.5 text-sm text-gray-400 font-semibold">{tr('cancelButton')}</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {pendingDragDelete&&(
+        <div className="fixed inset-0 z-[200] bg-black/50 flex items-end justify-center" onClick={()=>setPendingDragDelete(null)}>
+          <div className="bg-white w-full max-w-md rounded-t-3xl px-5 pt-6 pb-10 shadow-2xl" onClick={e=>e.stopPropagation()}>
+            <p className="text-base font-bold text-gray-900 mb-1">{tr('deleteTaskConfirmTitle')}</p>
+            <p className="text-sm text-gray-500 mb-6">{tr('recurringEditConfirmBody').replace('{name}',()=>pendingDragDelete.name)}</p>
+            <div className="space-y-3">
+              <button onClick={()=>{delTask(pendingDragDelete.id);setPendingDragDelete(null);}}
+                className="w-full py-3.5 bg-gray-100 rounded-2xl text-sm font-semibold text-gray-900">{tr('deleteThisOccurrenceButton')}</button>
+              <button onClick={()=>{delTask(pendingDragDelete.id,pendingDragDelete);setPendingDragDelete(null);}}
+                className="w-full py-3.5 bg-[#D97A7A] rounded-2xl text-sm font-semibold text-white">{tr('deleteAllOccurrencesButton')}</button>
+              <button onClick={()=>setPendingDragDelete(null)}
                 className="w-full py-2.5 text-sm text-gray-400 font-semibold">{tr('cancelButton')}</button>
             </div>
           </div>
