@@ -4288,7 +4288,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
   // Recurring tasks grouped (one row per series)
   const recurringMap = new Map<string,Task>();
   [...laterPending.filter(t=>t.recurrence),
-   ...tasks.filter(t=>!t.isLater&&t.startTime&&!t.completed&&t.recurrence)
+   ...tasks.filter(t=>!t.isLater&&t.startTime&&!t.completed&&t.recurrence&&t.date>=todayStr())
   ].forEach(t=>{
     const key=`${t.name}||${t.recurrence}||${t.startTime??''}`;
     if(!recurringMap.has(key)) recurringMap.set(key,t);
