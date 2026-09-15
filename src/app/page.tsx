@@ -7507,7 +7507,7 @@ export default function App() {
       const orig=modal.task, d=data[0];
       setTasks(prev=>prev.map(t=>
         t.name===orig.name&&t.recurrence===orig.recurrence&&t.startTime===orig.startTime
-          ?{...t,name:d.name,duration:d.duration,memo:d.memo,icon:d.icon,category:d.category,tags:d.tags,notifications:d.notifications}
+          ?{...t,name:d.name,startTime:d.startTime,duration:d.duration,memo:d.memo,icon:d.icon,color:d.color,category:d.category,tags:d.tags,notifications:d.notifications}
           :t
       ));
     } else {
