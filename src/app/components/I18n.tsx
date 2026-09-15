@@ -561,6 +561,7 @@ export const STRINGS = {
   allOccurrencesButton:       { ja: 'すべての予定を変更',              en: 'Change all occurrences',        ko: '모든 일정 변경',                   'zh-TW': '變更所有排程' },
   deleteThisOccurrenceButton: { ja: 'この予定のみ削除',               en: 'Delete this occurrence only',   ko: '이 일정만 삭제',                   'zh-TW': '只刪除這一次' },
   deleteAllOccurrencesButton: { ja: 'すべての予定を削除',              en: 'Delete all occurrences',        ko: '모든 일정 삭제',                   'zh-TW': '刪除所有排程' },
+  laterRecurringDateLabel:    { ja: '{date}の分',                    en: 'For {date}',                    ko: '{date}분',                       'zh-TW': '{date}的份' },
 
   // 統計画面（準備中）
   statsScreenTitle:      { ja: '統計',                          en: 'Stats',                          ko: '통계',                        'zh-TW': '統計' },

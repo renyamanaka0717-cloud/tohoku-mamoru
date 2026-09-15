@@ -4242,14 +4242,22 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
 
   // Pinned tasks always appear first, then sorted by sortDir within the group
   const normalLater = (() => {
-    const pinned  = laterPending.filter(t=>t.pinned&&!t.recurrence);
-    const normal  = laterPending.filter(t=>!t.pinned&&!t.recurrence);
+    const pinned  = laterPending.filter(t=>t.pinned);
+    const normal  = laterPending.filter(t=>!t.pinned);
     const ordered = sortDir!=='desc' ? normal : [...normal].reverse();
     return [...pinned,...ordered];
   })();
   const pinnedLater    = normalLater.filter(t=>t.pinned);
   const nonPinnedLater = normalLater.filter(t=>!t.pinned);
 
+  const laterRecDateLabel=(d:string):string=>{
+    const dt=new Date(d+'T12:00:00');
+    const m=dt.getMonth()+1, day=dt.getDate();
+    const date=language==='en'?`${MONTH_NAMES_EN[dt.getMonth()].slice(0,3)} ${day}`
+      :language==='ko'?`${m}월 ${day}일`
+      :`${m}月${day}日`;
+    return tr('laterRecurringDateLabel').replace('{date}',date);
+  };
   const renderLaterRowContent=(t:Task)=>{
     const LaterIc=getTaskIcon(t.icon||defaultIconKey(t.name));
     return (
@@ -4258,7 +4266,8 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
           <LaterIc size={14} className={t.color?'text-white':'text-[var(--c-primary)]'}/>
         </div>
         <div className="flex-1 min-w-0" onClick={()=>onEdit(t)}>
-          {(t.duration??0)>0&&<p className="text-xs text-gray-400">{durLabel(t.duration??0,language)}</p>}
+          {t.recurrence&&t.date&&<p className="text-xs text-gray-400">{laterRecDateLabel(t.date)}</p>}
+          {!t.recurrence&&(t.duration??0)>0&&<p className="text-xs text-gray-400">{durLabel(t.duration??0,language)}</p>}
           <p className="text-sm font-semibold text-gray-900">{t.name}</p>
           {t.deadlineAt&&(
             <p className={`text-[11px] font-semibold mt-0.5 flex items-center gap-1 ${deadlineLabelColor(t.deadlineAt)}`}>
@@ -4287,9 +4296,8 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
 
   // Recurring tasks grouped (one row per series)
   const recurringMap = new Map<string,Task>();
-  [...laterPending.filter(t=>t.recurrence),
-   ...tasks.filter(t=>!t.isLater&&t.startTime&&!t.completed&&t.recurrence&&t.date>=todayStr())
-  ].forEach(t=>{
+  tasks.filter(t=>!t.isLater&&t.startTime&&!t.completed&&t.recurrence&&t.date>=todayStr())
+  .forEach(t=>{
     const key=`${t.name}||${t.recurrence}||${t.startTime??''}`;
     if(!recurringMap.has(key)) recurringMap.set(key,t);
   });
