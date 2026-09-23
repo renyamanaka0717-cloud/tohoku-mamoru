@@ -81,8 +81,8 @@ ios/                    # Capacitor iOS プロジェクト（Xcode）
 |---|---|
 | `App` | ルートコンポーネント。state管理・localStorage同期・ドラッグ処理 |
 | `Timeline` | タイムライン描画。絶対配置で構築 |
-| `TaskModal` | タスク作成・編集モーダル（繰り返し設定・写真添付含む） |
-| `TaskCard` | タイムライン上のタスクカード（サブタスク・メモ・写真プルダウン付き） |
+| `TaskModal` | タスク作成・編集モーダル（繰り返し設定含む） |
+| `TaskCard` | タイムライン上のタスクカード（サブタスク・メモプルダウン付き） |
 | `FreeTimeCard` | 空き時間スロットカード |
 | `MonthCalendar` | ポップアップ型月間カレンダー |
 | `CalendarPage` | フルスクリーン月間カレンダー（タスク一覧付き） |
@@ -766,7 +766,7 @@ interface ForgetAlert {
 
 | 型 | 説明 |
 |---|---|
-| `Task` | id, name, startTime, duration, memo, icon, completed, date, isLater, recurrence, customRec, pinned, tags, notifications, incompleteReminder, category, postponedCount, color, subtasks, photoCount, **deadlineAt?:string, deadlineNotify?:'week'\|'3days'\|'dayBefore'\|'sameDay'\|'auto'（PRO）**, **locationNotify?:boolean, location?:{name,lat,lng}（あとでやる限定・PRO）** |
+| `Task` | id, name, startTime, duration, memo, icon, completed, date, isLater, recurrence, customRec, pinned, tags, notifications, incompleteReminder, category, postponedCount, color, subtasks, **deadlineAt?:string, deadlineNotify?:'week'\|'3days'\|'dayBefore'\|'sameDay'\|'auto'（PRO）**, **locationNotify?:boolean, location?:{name,lat,lng}（あとでやる限定・PRO）** |
 | `Settings` | wakeTime, sleepTime, **keepIncomplete?:boolean**, **weekStartsOn?:0\|1（0=日曜始まり・デフォルト、1=月曜始まり）**, **fontSize?:'small'\|'standard'\|'large'\|'xlarge'（デフォルト'standard'）** |
 | `FreeSlot` | タイムライン上の空き時間スロット |
 | `ShopItem` | 買い物リストのアイテム（7日後に自動削除） |
@@ -782,7 +782,6 @@ interface ForgetAlert {
 
 `Task.subtasks` は `{id:string; name:string; completed:boolean}[]` 型。  
 `Task.tags` は `string[]`（タグ名を直接格納）。  
-`Task.photoCount` は添付写真枚数（写真データ本体は `PHOTOS_KEY` に別途保存）。  
 `Settings.keepIncomplete` — true: 未完了タスクをタイムラインに残す / false（デフォルト）: 就寝後に「あとでやる」へ移動。
 
 ## localStorage キー
@@ -796,7 +795,6 @@ interface ForgetAlert {
 | `TAGS_KEY` | `'tl-tags-v1'` | グローバルタグ定義 |
 | `HISTORY_KEY` | `'tl-history-v1'` | 移動履歴 |
 | `CUSTOM_TABS_KEY` | `'tl-custom-tabs-v1'` | ユーザー定義ファイルタブ |
-| `PHOTOS_KEY` | `'tl-photos-v1'` | タスクIDをキーとした写真データ（base64） |
 | `SHOP_NOTIF_KEY` | `'tl-shop-notif-v1'` | 買い物リストの時間指定通知設定 |
 | `SHOP_LOC_KEY` | `'tl-shop-loc-v1'` | 買い物リストの場所通知設定（`ShopLocation[]`） |
 | `FORGET_ALERTS_KEY` | `'tl-forget-alerts-v1'` | 忘れ物防止アラート設定（`ForgetAlert[]`） |
@@ -1028,7 +1026,7 @@ Capacitor（WKWebView）でネイティブ表示するため、すべてのフ�
 
 タイムライン上のタスクカード。下部にアイコン行を持つ。
 
-**アイコン行（サブタスクあり OR メモあり OR 写真あり）**
+**アイコン行（サブタスクあり OR メモあり）**
 
 ```jsx
 <div className="flex items-center gap-2 mt-2">
@@ -1041,14 +1039,9 @@ Capacitor（WKWebView）でネイティブ表示するため、すべてのフ�
   <button className="inline-flex items-center justify-center bg-gray-100 rounded-xl active:bg-gray-200" style={{width:'32px',height:'32px'}}>
     <AppIcons.task size={14}/>
   </button>
-  {/* カメラアイコン（写真ありの場合） */}
-  <button className="inline-flex items-center justify-center bg-gray-100 rounded-xl active:bg-gray-200" style={{width:'32px',height:'32px'}}>
-    <AppIcons.camera size={14}/>
-  </button>
 </div>
 ```
 
-- カメラボタンはメモ・サブタスクボタンと同じスタイル（`bg-gray-100 rounded-xl`、32×32px）
 - `openPanel: 'subtask' | 'memo' | null` — 排他的プルダウン
 
 ### FreeTimeCard（空き時間カード）
@@ -1086,8 +1079,7 @@ const headerBg = (() => {
 1. 繰り返し設定カード（繰り返しモード時のみ）
 2. 設定カード（日付・時間・アラート・タグ・サブタスク）
 3. メモカード
-4. 写真カード（`ref={photoSectionRef}`）
-5. 削除ボタン（編集時のみ）
+4. 削除ボタン（編集時のみ）
 
 **自動保存のdeps（重要）:**
 ```typescript
@@ -1507,7 +1499,6 @@ native-ios/BridgeViewController.swift … capacitorDidLoad() 内で FirebaseApp.
 - 「あとでやる」タスクは `isLater: true`、日付をまたいで持ち越し可能
 - **過去日付へのタスク追加・ドラッグが可能**（日付制限なし）
 - スマートフォン最適化済み（`userScalable: false`、`overscroll-none`）
-- 写真データ（base64）は `PHOTOS_KEY` に `{[taskId]: string[]}` 形式で保存。タスク削除時は必ずクリーンアップ
 - BottomTabs のタブパネルは `visibility:hidden` + `pointer-events:none` で非表示にする（`display:none` にするとレイアウト崩れ）
 - TaskModal の auto-save useEffect deps に `icon` と `color` を含めること（抜けるとアイコン変更が保存されない）
 - 空き時間カードの高さは `minHeight` で指定（`height` では内容がクリップされる）
