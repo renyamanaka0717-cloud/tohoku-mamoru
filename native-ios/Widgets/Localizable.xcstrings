@@ -32,6 +32,12 @@
             "state": "translated",
             "value": "4 paneles (tareas, compras, más tarde, agregar)"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "4 painéis (tarefas, compras, mais tarde, adicionar)"
+          }
         }
       }
     },
@@ -65,6 +71,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Más tarde"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mais tarde"
           }
         }
       }
@@ -100,6 +112,12 @@
             "state": "translated",
             "value": "Agregar tarea para más tarde"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Adicionar tarefa para mais tarde"
+          }
         }
       }
     },
@@ -133,6 +151,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Agregar tarea para más tarde"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Adicionar tarefa para mais tarde"
           }
         }
       }
@@ -168,6 +192,12 @@
             "state": "translated",
             "value": "Nada aquí"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nada aqui"
+          }
         }
       }
     },
@@ -198,6 +228,12 @@
           }
         },
         "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Marcar como comprado"
+          }
+        },
+        "pt-BR": {
           "stringUnit": {
             "state": "translated",
             "value": "Marcar como comprado"
@@ -236,6 +272,12 @@
             "state": "translated",
             "value": "Lista de compras"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lista de compras"
+          }
         }
       }
     },
@@ -270,6 +312,12 @@
             "state": "translated",
             "value": "No hay artículos por comprar"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nenhum item para comprar"
+          }
         }
       }
     },
@@ -300,6 +348,12 @@
           }
         },
         "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Próximo"
+          }
+        },
+        "pt-BR": {
           "stringUnit": {
             "state": "translated",
             "value": "Próximo"
@@ -338,6 +392,12 @@
             "state": "translated",
             "value": "Próximos eventos y lista de compras"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Próximos eventos e lista de compras"
+          }
         }
       }
     },
@@ -371,6 +431,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Muestra los próximos eventos, tu lista de compras y las tareas de Más tarde en cuatro paneles. Toca + para agregar una nueva tarea."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostra os próximos eventos, sua lista de compras e as tarefas de Mais tarde em quatro painéis. Toque em + para adicionar uma nova tarefa."
           }
         }
       }
@@ -406,6 +472,12 @@
             "state": "translated",
             "value": "Completar tarea"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Concluir tarefa"
+          }
         }
       }
     },
@@ -439,6 +511,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Toca para abrir la pantalla de agregar tarea para Más tarde."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Toque para abrir a tela de adicionar tarefa para Mais tarde."
           }
         }
       }
@@ -474,6 +552,12 @@
             "state": "translated",
             "value": "No hay eventos"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nenhum evento"
+          }
         }
       }
     },
@@ -507,6 +591,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Muestra juntos el horario de hoy y la lista de compras. Puedes marcarlos como completados con un toque."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostra juntos a agenda de hoje e a lista de compras. Toque para marcar como concluído."
           }
         }
       }

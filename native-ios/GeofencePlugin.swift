@@ -287,6 +287,7 @@ public class GeofencePlugin: CAPPlugin, CLLocationManagerDelegate, UNUserNotific
         case .ko: placeName = "저장된 장소"
         case .zhTW: placeName = "已儲存的地點"
         case .es: placeName = "un lugar guardado"
+        case .pt: placeName = "um lugar salvo"
         case .en: placeName = "a saved place"
         }
         if let namesJson = defaults.string(forKey: "geofenceNames"),
@@ -305,6 +306,7 @@ public class GeofencePlugin: CAPPlugin, CLLocationManagerDelegate, UNUserNotific
             case .ko: body = "\(names) 외 \(items.count - 5)개"
             case .zhTW: body = "\(names) 等\(items.count - 5)項"
             case .es: body = "\(names) y \(items.count - 5) más"
+            case .pt: body = "\(names) e mais \(items.count - 5)"
             case .en: body = "\(names) and \(items.count - 5) more"
             }
         } else {
@@ -324,6 +326,9 @@ public class GeofencePlugin: CAPPlugin, CLLocationManagerDelegate, UNUserNotific
             content.body = "購物清單：\(body)"
         case .es:
             content.title = "Cerca de \(placeName)"
+            content.body = "Lista de compras: \(body)"
+        case .pt:
+            content.title = "Perto de \(placeName)"
             content.body = "Lista de compras: \(body)"
         case .en:
             content.title = "Near \(placeName)"
@@ -367,6 +372,7 @@ public class GeofencePlugin: CAPPlugin, CLLocationManagerDelegate, UNUserNotific
         case .ko: taskName = "나중에 할 일"
         case .zhTW: taskName = "稍後辦任務"
         case .es: taskName = "Tarea de Más tarde"
+        case .pt: taskName = "Tarefa de Mais tarde"
         case .en: taskName = "Later task"
         }
         if let namesJson = defaults.string(forKey: "taskLocationNames"),
@@ -383,6 +389,7 @@ public class GeofencePlugin: CAPPlugin, CLLocationManagerDelegate, UNUserNotific
         case .ko: content.body = "이 장소에 도착했어요."
         case .zhTW: content.body = "您已抵達此地點。"
         case .es: content.body = "Llegaste a este lugar."
+        case .pt: content.body = "Você chegou a este lugar."
         case .en: content.body = "You've arrived at this location."
         }
         content.sound = .default
@@ -456,6 +463,9 @@ public class GeofencePlugin: CAPPlugin, CLLocationManagerDelegate, UNUserNotific
             case .es:
                 content.title = "Llegaste a \(entry.name)"
                 content.body = entry.items.isEmpty ? "¿Algo que revisar?" : "Revisa: \(entry.items.joined(separator: ", "))."
+            case .pt:
+                content.title = "Você chegou a \(entry.name)"
+                content.body = entry.items.isEmpty ? "Tem algo para conferir?" : "Confira: \(entry.items.joined(separator: ", "))."
             case .en:
                 content.title = "Arrived at \(entry.name)"
                 content.body = entry.items.isEmpty ? "Anything to check?" : "Check: \(entry.items.joined(separator: ", "))."
@@ -474,6 +484,9 @@ public class GeofencePlugin: CAPPlugin, CLLocationManagerDelegate, UNUserNotific
             case .es:
                 content.title = "Saliste de \(entry.name)"
                 content.body = entry.items.isEmpty ? "¿Olvidaste algo?" : "¿Llevas contigo: \(entry.items.joined(separator: ", "))?"
+            case .pt:
+                content.title = "Você saiu de \(entry.name)"
+                content.body = entry.items.isEmpty ? "Esqueceu de algo?" : "Você está levando: \(entry.items.joined(separator: ", "))?"
             case .en:
                 content.title = "Left \(entry.name)"
                 content.body = entry.items.isEmpty ? "Forgot anything?" : "Do you have: \(entry.items.joined(separator: ", "))?"
@@ -488,13 +501,14 @@ public class GeofencePlugin: CAPPlugin, CLLocationManagerDelegate, UNUserNotific
     // Geofenceの発火はバックグラウンド/未起動でも起こるためJSのtr()を呼べず、
     // ここで直接appLanguageの生の値を判定して通知文を組み立てる。
     // 3言語以上になったので単純なBool（isEnglish）ではなくenumで分岐する
-    private enum AppLang { case ja, en, ko, zhTW, es }
+    private enum AppLang { case ja, en, ko, zhTW, es, pt }
     private func appLang() -> AppLang {
         switch UserDefaults(suiteName: GeofencePlugin.appGroupId)?.string(forKey: "appLanguage") {
         case "ja": return .ja
         case "ko": return .ko
         case "zh-TW": return .zhTW
         case "es": return .es
+        case "pt": return .pt
         default: return .en
         }
     }
