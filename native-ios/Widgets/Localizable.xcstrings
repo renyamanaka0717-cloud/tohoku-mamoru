@@ -38,6 +38,12 @@
             "state": "translated",
             "value": "4 painéis (tarefas, compras, mais tarde, adicionar)"
           }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "4 ô (công việc, mua sắm, để sau, thêm)"
+          }
         }
       }
     },
@@ -77,6 +83,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Mais tarde"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Để sau"
           }
         }
       }
@@ -118,6 +130,12 @@
             "state": "translated",
             "value": "Adicionar tarefa para mais tarde"
           }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thêm công việc để sau"
+          }
         }
       }
     },
@@ -157,6 +175,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Adicionar tarefa para mais tarde"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thêm công việc để sau"
           }
         }
       }
@@ -198,6 +222,12 @@
             "state": "translated",
             "value": "Nada aqui"
           }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không có gì ở đây"
+          }
         }
       }
     },
@@ -237,6 +267,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Marcar como comprado"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đánh dấu đã mua"
           }
         }
       }
@@ -278,6 +314,12 @@
             "state": "translated",
             "value": "Lista de compras"
           }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Danh sách mua sắm"
+          }
         }
       }
     },
@@ -317,6 +359,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Nenhum item para comprar"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không có mục nào cần mua"
           }
         }
       }
@@ -358,6 +406,12 @@
             "state": "translated",
             "value": "Próximo"
           }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sắp tới"
+          }
         }
       }
     },
@@ -397,6 +451,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Próximos eventos e lista de compras"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sắp tới & Danh sách mua sắm"
           }
         }
       }
@@ -438,6 +498,12 @@
             "state": "translated",
             "value": "Mostra os próximos eventos, sua lista de compras e as tarefas de Mais tarde em quatro painéis. Toque em + para adicionar uma nova tarefa."
           }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hiển thị các sự kiện sắp tới, danh sách mua sắm và công việc Để sau trong bốn ô. Chạm vào + để thêm công việc mới."
+          }
         }
       }
     },
@@ -477,6 +543,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Concluir tarefa"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hoàn thành công việc"
           }
         }
       }
@@ -518,6 +590,12 @@
             "state": "translated",
             "value": "Toque para abrir a tela de adicionar tarefa para Mais tarde."
           }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chạm để mở màn hình thêm công việc Để sau."
+          }
         }
       }
     },
@@ -558,6 +636,12 @@
             "state": "translated",
             "value": "Nenhum evento"
           }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không có sự kiện"
+          }
         }
       }
     },
@@ -597,6 +681,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Mostra juntos a agenda de hoje e a lista de compras. Toque para marcar como concluído."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hiển thị cùng lúc lịch trình hôm nay và danh sách mua sắm. Chạm để đánh dấu hoàn thành."
           }
         }
       }
