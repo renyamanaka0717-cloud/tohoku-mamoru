@@ -1512,7 +1512,7 @@ native-ios/BridgeViewController.swift … capacitorDidLoad() 内で FirebaseApp.
 
 **アプリ全体の英語対応は完了済み。** ウェルカム画面・プロダクトツアー・タイムライン・タスクモーダル・設定画面各項目・アイコン選択・PROペイウォール・おすすめ機能・タスク一括入力・カスタム繰り返し設定・場所通知UI・地図ピッカー・朝の確認ポップアップ・起床/就寝設定・繰り返し予定の確認ダイアログ・タブ表示フィルター・プッシュ通知本文・ホーム画面ウィジェット・場所通知/忘れ物防止アラートの通知文（ネイティブ側）・PRO価格表示、まで`STRINGS`/`tr()`（または`language==='ja'?...`分岐）でja/en両対応済み。唯一意図的に未対応のままなのは**開発者モード画面**（アプリバージョン7回タップの検証用メニュー。一般ユーザーには表示されないため）。新しい画面・機能を追加する時は同じ`STRINGS`/`tr()`の仕組みに1文言ずつ追加していく。
 
-**韓国語（`ko`）・繁体字中国語（台湾、`zh-TW`）はどちらもJS/Web側（`STRINGS`全項目・曜日/月名/DUR_OPTS等のオプション配列・テーマ/アプリアイコン名・カスタム繰り返しの要約文・タイムラインヘッダー・アイコン選択画面のカテゴリ名と約90件の個別アイコン名）とネイティブiOS側（ホーム画面ウィジェットのString Catalog・`GeofencePlugin.swift`の言語判定）まで対応済み。** 対応言語は現在 `ja`/`en`/`ko`/`zh-TW` の4つ。`zh-TW`追加時は韓国語追加時に見つかった「`lang`引数を取る関数（`deadlineRemainLabel`/`durLabel`）や`language==='en'`を直接チェックするローカル関数（`SearchPage`の`fmtDate`・`TaskModal`の`taskDateLabel`）はモジュール共通の`language`変数を使った`grep "language==='ja'"`の監査網に引っかからない」という教訓を踏まえ、実装と同時にこれら4関数へ`zh-TW`分岐を追加済み（別途QAパスで見つけ直す必要はなかった）。`detectLanguage()`は`ja`→`ko`の次に、`zh`で始まる端末ロケール（`zh-CN`等の簡体字ロケールも含む）を`zh-TW`にフォールバックさせる設計にした（このアプリは簡体字に対応していないため、「近い言語の方が何も無いよりまし」という判断）。
+**韓国語（`ko`）・繁体字中国語（台湾、`zh-TW`）・スペイン語（`es`）はいずれもJS/Web側（`STRINGS`全項目・曜日/月名/DUR_OPTS等のオプション配列・テーマ/アプリアイコン名・カスタム繰り返しの要約文・タイムラインヘッダー・アイコン選択画面のカテゴリ名と約90件の個別アイコン名）とネイティブiOS側（ホーム画面ウィジェットのString Catalog・`GeofencePlugin.swift`の言語判定）まで対応済み。** 対応言語は現在 `ja`/`en`/`ko`/`zh-TW`/`es` の5つ。`zh-TW`追加時は韓国語追加時に見つかった「`lang`引数を取る関数（`deadlineRemainLabel`/`durLabel`）や`language==='en'`を直接チェックするローカル関数（`SearchPage`の`fmtDate`・`TaskModal`の`taskDateLabel`）はモジュール共通の`language`変数を使った`grep "language==='ja'"`の監査網に引っかからない」という教訓を踏まえ、実装と同時にこれら4関数へ`zh-TW`分岐を追加済み（別途QAパスで見つけ直す必要はなかった）。`es`追加時もこの教訓を踏まえ実装と同時に同じ関数群へ`es`分岐を追加済み。`detectLanguage()`は`ja`→`ko`→`zh`の次に、`es`で始まる端末ロケールを`es`と判定する設計にした（このアプリは簡体字に対応していないため、`zh-CN`等の簡体字ロケールは「近い言語の方が何も無いよりまし」という判断で`zh-TW`にフォールバックさせている）。スペイン語追加はApp Storeの説明文・キーワード・スクリーンショット等（App Store Connect側のメタデータ）を含まない、アプリ本体のみのスコープで実施した（後日別途対応の予定）。
 
 ### アーキテクチャ
 
@@ -1529,14 +1529,14 @@ native-ios/BridgeViewController.swift … capacitorDidLoad() 内で FirebaseApp.
 
 ### 新しい言語を追加する時の手順（3言語目以降を追加する時のプレイブック）
 
-英語対応を一通り終えた際に確立した手順。**韓国語（`ko`）・繁体字中国語（台湾、`zh-TW`）はどちらもこの手順に沿って①〜③まで完了済み**（`zh-TW`は韓国語の完了後、同じ手順をなぞって追加した）——次の言語（例: `es`）を追加する時もこの順で進める。
+英語対応を一通り終えた際に確立した手順。**韓国語（`ko`）・繁体字中国語（台湾、`zh-TW`）・スペイン語（`es`）はいずれもこの手順に沿って①〜③まで完了済み**（`zh-TW`は韓国語の完了後、`es`は`zh-TW`の完了後、それぞれ同じ手順をなぞって追加した）——次の言語（ポルトガル語・ベトナム語・タイ語・インドネシア語の順で追加予定）を追加する時もこの順で進める。
 
 **① Web/JS側（`src/app/components/I18n.tsx`）**
 
 1. `export type Language = 'ja'|'en'|'ko';` に新しいコードを追加（例: `'ja'|'en'|'ko'|'zh-TW'`。ハイフンを含むコードはオブジェクトリテラルのプロパティ名としてクォートが必要）。`STRINGS[key][language]`という添字アクセスの型チェックにより、`STRINGS`の全項目に新言語のフィールドが無いとビルドが通らない（＝抜け漏れをコンパイル時に検出できる）ので、Language型を広げた直後に一度`npm run build`してエラー箇所を確認するとよい
 2. `STRINGS`の全キーに新言語のフィールドを追加（韓国語・繁体字中国語どちらも約250項目、`ja,en,ko`の隣に新言語を1行で追記する形式に統一した）。翻訳の質は人力レビューが必要
 3. `detectLanguage()`（端末言語からの自動判定フォールバック）を更新。新言語のロケールプレフィックス判定を追加する（`zh-TW`追加時は`ja`→`ko`の次に`zh`で始まる端末ロケールすべて＝簡体字ロケールも含めて`zh-TW`にフォールバックさせた。このアプリは簡体字非対応のため「近い言語の方が何も無いよりまし」という割り切り）。`getStoredLanguage()`のバリデーションにも新言語コードを追加すること（忘れるとlocalStorageに保存された値が無効値扱いされ`auto`に戻ってしまう）
-4. `DAY_NAMES_EN`/`MONTH_NAMES_EN`のような言語別の固定配列（曜日名・月名）がある箇所は同様に新言語版配列を追加し、対応する`language==='ja'?...:...`の2値〜3値分岐をすべて対応する値数の分岐に書き換える（`page.tsx`内に散在しているため後述の監査grepで洗い出す）。曜日1文字の取得は`dayNameFor(language,i)`ヘルパー（`I18n.tsx`）に集約したので、新しい曜日表示を追加する時もこれを使うこと（月名は日本語・韓国語・繁体字中国語とも「数字+単位」で専用の名前配列を持たないため、月名だけの配列は英語版`MONTH_NAMES_EN`しか存在しない。ja/ko/zh-TW側は呼び出し側で`${month+1}月`/`${month+1}월`/`${month+1}月`のように組み立てる）
+4. `DAY_NAMES_EN`/`MONTH_NAMES_EN`のような言語別の固定配列（曜日名・月名）がある箇所は同様に新言語版配列を追加し、対応する`language==='ja'?...:...`の2値〜4値分岐をすべて対応する値数の分岐に書き換える（`page.tsx`内に散在しているため後述の監査grepで洗い出す）。曜日1文字の取得は`dayNameFor(language,i)`ヘルパー（`I18n.tsx`）に集約したので、新しい曜日表示を追加する時もこれを使うこと（月名は日本語・韓国語・繁体字中国語は「数字+単位」で専用の名前配列を持たないため、月名だけの配列は英語版`MONTH_NAMES_EN`とスペイン語版`MONTH_NAMES_ES`のみ存在する。ja/ko/zh-TW側は呼び出し側で`${month+1}月`/`${month+1}월`/`${month+1}月`のように組み立てるが、スペイン語は英語と同じく月ごとに専用の単語（`enero`,`febrero`...）を持つ言語なので`MONTH_NAMES_ES`を用意した。新しい言語を追加する時、その言語が「数字+単位」型か「月ごとの固有名詞」型かをまず確認すること）
 5. `DUR_OPTS`/`NOTIF_OPTS`/`DEADLINE_NOTIFY_OPTS`/`LATER_REMINDER_OPTS`/`APP_INACTIVITY_OPTS`のような選択肢配列、`THEMES`/`APP_ICONS`の色名・アイコン名（`name`/`nameEn`）にも新言語版（`zh-TW`は`_ZH_TW`サフィックス・`nameZhTw`）を追加し、対応箇所を分岐にする
 6. `summarizeCustomRecEn`（カスタム繰り返しの要約文生成）のような言語別ロジック関数がある場合、同様の新言語版関数を追加し、呼び出し元（`recLabel()`等、`lang`引数を取る関数は`if(lang==='en')`ブロックの並びに新言語の分岐を追加する形）を更新する
 7. 設定 → 表示設定 → 言語ピッカー画面（`sub==='language'`）の選択肢配列と、「言語 / Language / 언어 / 語言」固定ヘッダー文字列（`subHeader`呼び出し・`SettingsRow`の`title`の両方）に新言語を追加する
@@ -1560,14 +1560,16 @@ grep -n "[ぁ-んァ-ヶ一-龯]" src/app/page.tsx | grep -v "tr(" | grep -v "la
   - ドラッグ&ドロップ中に一時的に表示されるラベル（「削除する」「ドラッグして配置」等）
   - PROゲート時に表示される機能名（`setProPrompt('機能名')`のように呼び出し側でベタ書きされた説明文。呼び出し箇所が20箇所近く散らばっているため見落としやすい）
 
-`ICON_CATEGORIES`（アイコン選択画面のカテゴリ見出し・約90件の個別アイコン名）にも`labelKo`・`labelZhTw`を追加済み（該当する3箇所（アイコンシート・一括入力のアイコン変更・生活パターンのアイコン変更）の分岐を4値化した）。アイコン検索（`iconQuery`）も`labelKo`/`labelZhTw`を含めてマッチするようにしてある。**「기타」が「ギター（楽器）」と「その他」の両方の訳語になっている**（趣味・スポーツカテゴリの`guitar`アイコンは表記揺れを避けて`기타(악기)`にしている）——これは韓国語の同綴同音異義語で、既存のUIパターン（各アイコンは実際のグラフィックと一緒に表示される）で実用上は問題にならない。
+`ICON_CATEGORIES`（アイコン選択画面のカテゴリ見出し・約90件の個別アイコン名）にも`labelKo`・`labelZhTw`・`labelEs`を追加済み（該当する3箇所（アイコンシート・一括入力のアイコン変更・生活パターンのアイコン変更）の分岐を5値化した）。アイコン検索（`iconQuery`）も`labelKo`/`labelZhTw`/`labelEs`を含めてマッチするようにしてある。**「기타」が「ギター（楽器）」と「その他」の両方の訳語になっている**（趣味・スポーツカテゴリの`guitar`アイコンは表記揺れを避けて`기타(악기)`にしている）——これは韓国語の同綴同音異義語で、既存のUIパターン（各アイコンは実際のグラフィックと一緒に表示される）で実用上は問題にならない。
+
+**スペイン語追加時に見つかった教訓（UIの固定px幅がラテン文字圏の言語で不足するケース）**: ヘッダーの「空き時間」トグルボタンは`width:language==='ja'?'84px':language==='ko'?'92px':language==='zh-TW'?'84px':'104px'`のように文言の長さに応じて固定pxで幅を出し分けていたが、`headerFreeTimeToggle`のスペイン語訳「Tiempo libre」（12文字）は英語版「Free time」（9文字）より長く、既定の`104px`にesを含めるとテキストがボタンの丸角からはみ出して見えた（Playwrightのスクリーンショットで実際に確認して発覚）。修正: esだけ`118px`の専用値を追加した。**新しい言語を追加する時、英語より単語が長くなりがちな言語（スペイン語・ポルトガル語等）では、英語の`else`分岐に自動的に乗せるのではなく、固定px幅を使っているUI要素がないか探し、実際にPlaywrightでスクリーンショットを撮って確認すること。**
 
 **③ ネイティブiOS側（Swift）**
 
 - **ホーム画面ウィジェット**: `native-ios/Widgets/Localizable.xcstrings`（String Catalog）に新言語の翻訳を追加。**ウィジェットはアプリ内の言語設定ではなく端末本体のシステム言語（設定→一般→言語と地域）で自動的に切り替わる**（SwiftUIの`Text(_:LocalizedStringKey)`がOSのロケールを見るため、アプリ内`tl-language-v1`とは完全に独立）。確認時は端末のシステム言語を切り替えたあと、ホーム画面からウィジェットを一度削除して再追加する（キャッシュされたタイムラインが残ると反映されないことがある）
   - SwiftUIの罠: `Text(someStringVariable)`のように一度`String`型を経由すると自動ローカライズされない。`Text("リテラル")`か`LocalizedStringKey`型のパラメータ経由で渡すこと
   - **繁体字中国語（台湾）のString Catalogロケールキーは`"zh-TW"`ではなく`"zh-Hant-TW"`を使う**（Appleの文字体系＋地域を明示するロケール識別子の慣例。アプリ内`Language`型の値`'zh-TW'`とキー文字列が一致しないので、`appLanguage`側の値と混同しないこと——String Catalog側は完全にOSロケール任せで、`appLanguage`キーの値とは無関係）
-- **バックグラウンドで発火するネイティブ通知**（`GeofencePlugin.swift`等、Swift側からJSの`tr()`を呼べない箇所）: JS側が`WidgetDataPlugin.updateWidgetData()`経由でApp Group共有の`UserDefaults`に`appLanguage`キー（`"ja"`/`"en"`/`"ko"`/`"zh-TW"`の生の言語コード文字列。こちらはアプリ内`Language`型の値そのものをそのまま書き込む）を書き込み、Swift側がこれを読んで判定している。**韓国語対応時に旧`isEnglish(): Bool`という二値ヘルパーを`appLang() -> AppLang`（`private enum AppLang { case ja, en, ko, zhTW }`。繁体字中国語対応時に`zhTW` caseを追加済み）に置き換え済み。** 呼び出し側は`let lang = appLang()`のあと`switch lang { case .ja: ...; case .ko: ...; case .zhTW: ...; case .en: ... }`で分岐する。5言語目を追加する時はこの`AppLang` enumに新しいcaseを追加し、`appLang()`のswitch文と各呼び出し箇所のswitch文（`GeofencePlugin.swift`内に7箇所: 買い物リストの場所通知2箇所・タスクの場所通知2箇所・忘れ物防止アラート3箇所）に新しいcaseを追加する
+- **バックグラウンドで発火するネイティブ通知**（`GeofencePlugin.swift`等、Swift側からJSの`tr()`を呼べない箇所）: JS側が`WidgetDataPlugin.updateWidgetData()`経由でApp Group共有の`UserDefaults`に`appLanguage`キー（`"ja"`/`"en"`/`"ko"`/`"zh-TW"`/`"es"`の生の言語コード文字列。こちらはアプリ内`Language`型の値そのものをそのまま書き込む）を書き込み、Swift側がこれを読んで判定している。**韓国語対応時に旧`isEnglish(): Bool`という二値ヘルパーを`appLang() -> AppLang`（`private enum AppLang { case ja, en, ko, zhTW, es }`。繁体字中国語対応時に`zhTW` case、スペイン語対応時に`es` caseを追加済み）に置き換え済み。** 呼び出し側は`let lang = appLang()`のあと`switch lang { case .ja: ...; case .ko: ...; case .zhTW: ...; case .es: ...; case .en: ... }`で分岐する。6言語目を追加する時はこの`AppLang` enumに新しいcaseを追加し、`appLang()`のswitch文と各呼び出し箇所のswitch文（`GeofencePlugin.swift`内に7箇所: 買い物リストの場所通知2箇所・タスクの場所通知2箇所・忘れ物防止アラート3箇所）に新しいcaseを追加する
   - `ios/`はgitignore対象のため、Swiftファイルを編集した後は必ずXcode上で対象ファイルの中身を手動差し替える（新規ファイルはTarget Membership追加、既存ファイルは中身をコピペで上書き）
 
 **④ 課金・価格表示**
