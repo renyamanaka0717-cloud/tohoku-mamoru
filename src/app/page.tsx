@@ -2185,7 +2185,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                     </div>
                     {customRec.endType==='date'&&(
                       <input type="date" value={customRec.endDate??''} onChange={e=>setCR('endDate',e.target.value)}
-                        className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-gray-50 outline-none w-full"/>
+                        className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-gray-50 outline-none w-full block" style={{boxSizing:'border-box'}}/>
                     )}
                     {customRec.endType==='count'&&(
                       <div className="flex items-center gap-3">
