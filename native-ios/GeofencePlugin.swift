@@ -289,6 +289,7 @@ public class GeofencePlugin: CAPPlugin, CLLocationManagerDelegate, UNUserNotific
         case .es: placeName = "un lugar guardado"
         case .pt: placeName = "um lugar salvo"
         case .vi: placeName = "một địa điểm đã lưu"
+        case .th: placeName = "สถานที่ที่บันทึกไว้"
         case .en: placeName = "a saved place"
         }
         if let namesJson = defaults.string(forKey: "geofenceNames"),
@@ -309,6 +310,7 @@ public class GeofencePlugin: CAPPlugin, CLLocationManagerDelegate, UNUserNotific
             case .es: body = "\(names) y \(items.count - 5) más"
             case .pt: body = "\(names) e mais \(items.count - 5)"
             case .vi: body = "\(names) và \(items.count - 5) mục khác"
+            case .th: body = "\(names) และอีก \(items.count - 5) รายการ"
             case .en: body = "\(names) and \(items.count - 5) more"
             }
         } else {
@@ -335,6 +337,9 @@ public class GeofencePlugin: CAPPlugin, CLLocationManagerDelegate, UNUserNotific
         case .vi:
             content.title = "Gần \(placeName)"
             content.body = "Danh sách mua sắm: \(body)"
+        case .th:
+            content.title = "อยู่ใกล้ \(placeName)"
+            content.body = "รายการซื้อของ: \(body)"
         case .en:
             content.title = "Near \(placeName)"
             content.body = "Shopping list: \(body)"
@@ -379,6 +384,7 @@ public class GeofencePlugin: CAPPlugin, CLLocationManagerDelegate, UNUserNotific
         case .es: taskName = "Tarea de Más tarde"
         case .pt: taskName = "Tarefa de Mais tarde"
         case .vi: taskName = "Công việc Để sau"
+        case .th: taskName = "งานไว้ทีหลัง"
         case .en: taskName = "Later task"
         }
         if let namesJson = defaults.string(forKey: "taskLocationNames"),
@@ -397,6 +403,7 @@ public class GeofencePlugin: CAPPlugin, CLLocationManagerDelegate, UNUserNotific
         case .es: content.body = "Llegaste a este lugar."
         case .pt: content.body = "Você chegou a este lugar."
         case .vi: content.body = "Bạn đã đến địa điểm này."
+        case .th: content.body = "คุณมาถึงสถานที่นี้แล้ว"
         case .en: content.body = "You've arrived at this location."
         }
         content.sound = .default
@@ -476,6 +483,9 @@ public class GeofencePlugin: CAPPlugin, CLLocationManagerDelegate, UNUserNotific
             case .vi:
                 content.title = "Bạn đã đến \(entry.name)"
                 content.body = entry.items.isEmpty ? "Có gì cần kiểm tra không?" : "Kiểm tra: \(entry.items.joined(separator: ", "))."
+            case .th:
+                content.title = "มาถึง \(entry.name) แล้ว"
+                content.body = entry.items.isEmpty ? "มีอะไรต้องตรวจสอบไหม" : "ตรวจสอบ: \(entry.items.joined(separator: ", "))"
             case .en:
                 content.title = "Arrived at \(entry.name)"
                 content.body = entry.items.isEmpty ? "Anything to check?" : "Check: \(entry.items.joined(separator: ", "))."
@@ -500,6 +510,9 @@ public class GeofencePlugin: CAPPlugin, CLLocationManagerDelegate, UNUserNotific
             case .vi:
                 content.title = "Bạn đã rời khỏi \(entry.name)"
                 content.body = entry.items.isEmpty ? "Bạn có quên gì không?" : "Bạn đã mang theo: \(entry.items.joined(separator: ", "))?"
+            case .th:
+                content.title = "ออกจาก \(entry.name) แล้ว"
+                content.body = entry.items.isEmpty ? "ลืมอะไรหรือเปล่า" : "คุณพกพา \(entry.items.joined(separator: ", ")) มาหรือยัง"
             case .en:
                 content.title = "Left \(entry.name)"
                 content.body = entry.items.isEmpty ? "Forgot anything?" : "Do you have: \(entry.items.joined(separator: ", "))?"
@@ -514,7 +527,7 @@ public class GeofencePlugin: CAPPlugin, CLLocationManagerDelegate, UNUserNotific
     // Geofenceの発火はバックグラウンド/未起動でも起こるためJSのtr()を呼べず、
     // ここで直接appLanguageの生の値を判定して通知文を組み立てる。
     // 3言語以上になったので単純なBool（isEnglish）ではなくenumで分岐する
-    private enum AppLang { case ja, en, ko, zhTW, es, pt, vi }
+    private enum AppLang { case ja, en, ko, zhTW, es, pt, vi, th }
     private func appLang() -> AppLang {
         switch UserDefaults(suiteName: GeofencePlugin.appGroupId)?.string(forKey: "appLanguage") {
         case "ja": return .ja
@@ -523,6 +536,7 @@ public class GeofencePlugin: CAPPlugin, CLLocationManagerDelegate, UNUserNotific
         case "es": return .es
         case "pt": return .pt
         case "vi": return .vi
+        case "th": return .th
         default: return .en
         }
     }

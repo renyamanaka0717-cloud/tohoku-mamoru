@@ -44,6 +44,12 @@
             "state": "translated",
             "value": "4 ô (công việc, mua sắm, để sau, thêm)"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "4 ช่อง (งาน, ช้อปปิ้ง, ไว้ทีหลัง, เพิ่ม)"
+          }
         }
       }
     },
@@ -89,6 +95,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Để sau"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ไว้ทีหลัง"
           }
         }
       }
@@ -136,6 +148,12 @@
             "state": "translated",
             "value": "Thêm công việc để sau"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เพิ่มงานไว้ทีหลัง"
+          }
         }
       }
     },
@@ -181,6 +199,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Thêm công việc để sau"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เพิ่มงานไว้ทีหลัง"
           }
         }
       }
@@ -228,6 +252,12 @@
             "state": "translated",
             "value": "Không có gì ở đây"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ไม่มีอะไรที่นี่"
+          }
         }
       }
     },
@@ -273,6 +303,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Đánh dấu đã mua"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ทำเครื่องหมายว่าซื้อแล้ว"
           }
         }
       }
@@ -320,6 +356,12 @@
             "state": "translated",
             "value": "Danh sách mua sắm"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "รายการซื้อของ"
+          }
         }
       }
     },
@@ -365,6 +407,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Không có mục nào cần mua"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ไม่มีของที่ต้องซื้อ"
           }
         }
       }
@@ -412,6 +460,12 @@
             "state": "translated",
             "value": "Sắp tới"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "กำหนดการถัดไป"
+          }
         }
       }
     },
@@ -457,6 +511,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sắp tới & Danh sách mua sắm"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "กำหนดการถัดไปและรายการซื้อของ"
           }
         }
       }
@@ -504,6 +564,12 @@
             "state": "translated",
             "value": "Hiển thị các sự kiện sắp tới, danh sách mua sắm và công việc Để sau trong bốn ô. Chạm vào + để thêm công việc mới."
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "แสดงกำหนดการถัดไป รายการซื้อของ และงานไว้ทีหลังแบบ 4 ช่อง แตะ ＋ เพื่อเพิ่มงานใหม่"
+          }
         }
       }
     },
@@ -549,6 +615,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hoàn thành công việc"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ทำงานเสร็จ"
           }
         }
       }
@@ -596,6 +668,12 @@
             "state": "translated",
             "value": "Chạm để mở màn hình thêm công việc Để sau."
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "แตะเพื่อเปิดหน้าจอเพิ่มงานไว้ทีหลัง"
+          }
         }
       }
     },
@@ -642,6 +720,12 @@
             "state": "translated",
             "value": "Không có sự kiện"
           }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ไม่มีกำหนดการ"
+          }
         }
       }
     },
@@ -687,6 +771,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hiển thị cùng lúc lịch trình hôm nay và danh sách mua sắm. Chạm để đánh dấu hoàn thành."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "แสดงกำหนดการวันนี้และรายการซื้อของรวมกัน แตะเพื่อทำเครื่องหมายว่าเสร็จ"
           }
         }
       }
