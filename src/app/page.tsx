@@ -61,6 +61,7 @@ interface Task {
   deadlineNotify?: 'week'|'3days'|'dayBefore'|'sameDay'|'auto';
   locationNotify?: boolean;               // 「あとでやる」の場所通知 ON/OFF。PRO機能
   location?: { name:string; lat:number; lng:number };  // 選択した場所
+  completedAt?: string;  // 完了した日時（ISO文字列）。「あとでやる」完了済みの7日後自動削除の起点
 }
 
 type FontSize = 'small'|'standard'|'large'|'xlarge';
@@ -4775,7 +4776,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
             {/* completed */}
             {laterDone.length>0&&(
               <div className="mt-4">
-                <p className="text-xs text-gray-300 pb-2">{tr('doneSectionLabel')}</p>
+                <p className="text-xs text-gray-300 pb-2">{tr('laterDoneNotice')}</p>
                 <div className="space-y-2">
                   {laterDone.map(t=>(
                     <div key={t.id} className="flex items-center gap-2.5 bg-gray-50 border border-gray-100 rounded-2xl px-3 py-3 opacity-60">
@@ -7045,7 +7046,11 @@ export default function App() {
       const s=localStorage.getItem(SETTINGS_KEY);
       const sh=localStorage.getItem(SHOP_KEY);
       const tg=localStorage.getItem(TAGS_KEY);
-      if(t) setTasks((JSON.parse(t) as Task[]).map(tk=>({...tk,recurrence:tk.recurrence??null,customRec:tk.customRec,pinned:tk.pinned??false,tags:tk.tags??[],notifications:tk.notifications??[],incompleteReminder:tk.incompleteReminder??false,category:tk.category,postponedCount:tk.postponedCount??0,lastPostponedDate:tk.lastPostponedDate})));
+      if(t){
+        const now=Date.now();
+        const parsedTasks=(JSON.parse(t) as Task[]).map(tk=>({...tk,recurrence:tk.recurrence??null,customRec:tk.customRec,pinned:tk.pinned??false,tags:tk.tags??[],notifications:tk.notifications??[],incompleteReminder:tk.incompleteReminder??false,category:tk.category,postponedCount:tk.postponedCount??0,lastPostponedDate:tk.lastPostponedDate}));
+        setTasks(parsedTasks.filter(tk=>!(tk.isLater&&tk.completed&&tk.completedAt&&now-new Date(tk.completedAt).getTime()>=7*24*60*60*1000)));
+      }
       if(s) setSettings(JSON.parse(s));
       if(sh){
         const parsed:ShopItem[]=JSON.parse(sh);
@@ -7904,7 +7909,10 @@ export default function App() {
   const toggle   = (id:string) => setTasks(prev=>{
     const target=prev.find(t=>t.id===id);
     if(target&&!target.completed) logAnalyticsEvent('task_completed');
-    return prev.map(t=>t.id===id?{...t,completed:!t.completed}:t);
+    const now=Date.now();
+    return prev
+      .map(t=>t.id===id?{...t,completed:!t.completed,completedAt:!t.completed?new Date().toISOString():t.completedAt}:t)
+      .filter(t=>!(t.isLater&&t.completed&&t.completedAt&&now-new Date(t.completedAt).getTime()>=7*24*60*60*1000));
   });
   // 「あとでやる」一覧のドラッグ並び替え確定時に1回だけ呼ばれる。tasks配列内での
   // 該当タスク群のスロット位置はそのままに、中身の並び順だけorderedIdsの順序に差し替える
