@@ -286,6 +286,7 @@ public class GeofencePlugin: CAPPlugin, CLLocationManagerDelegate, UNUserNotific
         case .ja: placeName = "登録した場所"
         case .ko: placeName = "저장된 장소"
         case .zhTW: placeName = "已儲存的地點"
+        case .es: placeName = "un lugar guardado"
         case .en: placeName = "a saved place"
         }
         if let namesJson = defaults.string(forKey: "geofenceNames"),
@@ -303,6 +304,7 @@ public class GeofencePlugin: CAPPlugin, CLLocationManagerDelegate, UNUserNotific
             case .ja: body = "\(names) 他\(items.count - 5)件"
             case .ko: body = "\(names) 외 \(items.count - 5)개"
             case .zhTW: body = "\(names) 等\(items.count - 5)項"
+            case .es: body = "\(names) y \(items.count - 5) más"
             case .en: body = "\(names) and \(items.count - 5) more"
             }
         } else {
@@ -320,6 +322,9 @@ public class GeofencePlugin: CAPPlugin, CLLocationManagerDelegate, UNUserNotific
         case .zhTW:
             content.title = "在\(placeName)附近"
             content.body = "購物清單：\(body)"
+        case .es:
+            content.title = "Cerca de \(placeName)"
+            content.body = "Lista de compras: \(body)"
         case .en:
             content.title = "Near \(placeName)"
             content.body = "Shopping list: \(body)"
@@ -361,6 +366,7 @@ public class GeofencePlugin: CAPPlugin, CLLocationManagerDelegate, UNUserNotific
         case .ja: taskName = "あとでやるタスク"
         case .ko: taskName = "나중에 할 일"
         case .zhTW: taskName = "稍後辦任務"
+        case .es: taskName = "Tarea de Más tarde"
         case .en: taskName = "Later task"
         }
         if let namesJson = defaults.string(forKey: "taskLocationNames"),
@@ -376,6 +382,7 @@ public class GeofencePlugin: CAPPlugin, CLLocationManagerDelegate, UNUserNotific
         case .ja: content.body = "この場所に着きました。"
         case .ko: content.body = "이 장소에 도착했어요."
         case .zhTW: content.body = "您已抵達此地點。"
+        case .es: content.body = "Llegaste a este lugar."
         case .en: content.body = "You've arrived at this location."
         }
         content.sound = .default
@@ -446,6 +453,9 @@ public class GeofencePlugin: CAPPlugin, CLLocationManagerDelegate, UNUserNotific
             case .zhTW:
                 content.title = "已抵達\(entry.name)"
                 content.body = entry.items.isEmpty ? "有什麼需要確認的嗎？" : "請確認\(entry.items.joined(separator: "、"))。"
+            case .es:
+                content.title = "Llegaste a \(entry.name)"
+                content.body = entry.items.isEmpty ? "¿Algo que revisar?" : "Revisa: \(entry.items.joined(separator: ", "))."
             case .en:
                 content.title = "Arrived at \(entry.name)"
                 content.body = entry.items.isEmpty ? "Anything to check?" : "Check: \(entry.items.joined(separator: ", "))."
@@ -461,6 +471,9 @@ public class GeofencePlugin: CAPPlugin, CLLocationManagerDelegate, UNUserNotific
             case .zhTW:
                 content.title = "已離開\(entry.name)"
                 content.body = entry.items.isEmpty ? "有沒有忘記帶東西？" : "你帶了\(entry.items.joined(separator: "、"))嗎？"
+            case .es:
+                content.title = "Saliste de \(entry.name)"
+                content.body = entry.items.isEmpty ? "¿Olvidaste algo?" : "¿Llevas contigo: \(entry.items.joined(separator: ", "))?"
             case .en:
                 content.title = "Left \(entry.name)"
                 content.body = entry.items.isEmpty ? "Forgot anything?" : "Do you have: \(entry.items.joined(separator: ", "))?"
@@ -475,12 +488,13 @@ public class GeofencePlugin: CAPPlugin, CLLocationManagerDelegate, UNUserNotific
     // Geofenceの発火はバックグラウンド/未起動でも起こるためJSのtr()を呼べず、
     // ここで直接appLanguageの生の値を判定して通知文を組み立てる。
     // 3言語以上になったので単純なBool（isEnglish）ではなくenumで分岐する
-    private enum AppLang { case ja, en, ko, zhTW }
+    private enum AppLang { case ja, en, ko, zhTW, es }
     private func appLang() -> AppLang {
         switch UserDefaults(suiteName: GeofencePlugin.appGroupId)?.string(forKey: "appLanguage") {
         case "ja": return .ja
         case "ko": return .ko
         case "zh-TW": return .zhTW
+        case "es": return .es
         default: return .en
         }
     }

@@ -1,426 +1,516 @@
 {
-  "sourceLanguage" : "ja",
-  "strings" : {
-    "4分割（予定・買い物・あとでやる・追加）" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "4-Panel (Tasks, Shopping, Later, Add)"
+  "sourceLanguage": "ja",
+  "strings": {
+    "4分割（予定・買い物・あとでやる・追加）": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "4-Panel (Tasks, Shopping, Later, Add)"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "4分割（予定・買い物・あとでやる・追加）"
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "4分割（予定・買い物・あとでやる・追加）"
           }
         },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "4분할(예정·쇼핑·나중에·추가)"
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "4분할(예정·쇼핑·나중에·추가)"
           }
         },
-        "zh-Hant-TW" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "四宮格（行程、購物、稍後辦、新增）"
+        "zh-Hant-TW": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "四宮格（行程、購物、稍後辦、新增）"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "4 paneles (tareas, compras, más tarde, agregar)"
           }
         }
       }
     },
-    "あとでやる" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Later"
+    "あとでやる": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Later"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "あとでやる"
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "あとでやる"
           }
         },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "나중에"
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "나중에"
           }
         },
-        "zh-Hant-TW" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "稍後辦"
+        "zh-Hant-TW": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "稍後辦"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Más tarde"
           }
         }
       }
     },
-    "あとでやるタスクを追加" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Add a Later task"
+    "あとでやるタスクを追加": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add a Later task"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "あとでやるタスクを追加"
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "あとでやるタスクを追加"
           }
         },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "나중에 할 일 추가"
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "나중에 할 일 추가"
           }
         },
-        "zh-Hant-TW" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "新增稍後辦任務"
+        "zh-Hant-TW": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新增稍後辦任務"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agregar tarea para más tarde"
           }
         }
       }
     },
-    "あとでやるを追加" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Add a Later Task"
+    "あとでやるを追加": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add a Later Task"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "あとでやるを追加"
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "あとでやるを追加"
           }
         },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "나중에 할 일 추가"
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "나중에 할 일 추가"
           }
         },
-        "zh-Hant-TW" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "新增稍後辦任務"
+        "zh-Hant-TW": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新增稍後辦任務"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agregar tarea para más tarde"
           }
         }
       }
     },
-    "ありません" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nothing here"
+    "ありません": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nothing here"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ありません"
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ありません"
           }
         },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "없어요"
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "없어요"
           }
         },
-        "zh-Hant-TW" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "沒有"
+        "zh-Hant-TW": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "沒有"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nada aquí"
           }
         }
       }
     },
-    "買い物を完了" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mark as Purchased"
+    "買い物を完了": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mark as Purchased"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "買い物を完了"
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "買い物を完了"
           }
         },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "구매 완료"
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "구매 완료"
           }
         },
-        "zh-Hant-TW" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "標記已購買"
+        "zh-Hant-TW": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "標記已購買"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Marcar como comprado"
           }
         }
       }
     },
-    "買い物リスト" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Shopping List"
+    "買い物リスト": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shopping List"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "買い物リスト"
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "買い物リスト"
           }
         },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "쇼핑 목록"
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "쇼핑 목록"
           }
         },
-        "zh-Hant-TW" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "購物清單"
+        "zh-Hant-TW": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "購物清單"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lista de compras"
           }
         }
       }
     },
-    "買うものはありません" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No items to buy"
+    "買うものはありません": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No items to buy"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "買うものはありません"
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "買うものはありません"
           }
         },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "살 것이 없어요"
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "살 것이 없어요"
           }
         },
-        "zh-Hant-TW" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "沒有要買的東西"
+        "zh-Hant-TW": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "沒有要買的東西"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay artículos por comprar"
           }
         }
       }
     },
-    "次の予定" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Next Up"
+    "次の予定": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Next Up"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "次の予定"
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "次の予定"
           }
         },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "다음 일정"
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다음 일정"
           }
         },
-        "zh-Hant-TW" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "下一項行程"
+        "zh-Hant-TW": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下一項行程"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Próximo"
           }
         }
       }
     },
-    "次の予定 & 買い物リスト" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Upcoming & Shopping List"
+    "次の予定 & 買い物リスト": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Upcoming & Shopping List"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "次の予定 & 買い物リスト"
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "次の予定 & 買い物リスト"
           }
         },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "다음 일정 & 쇼핑 목록"
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다음 일정 & 쇼핑 목록"
           }
         },
-        "zh-Hant-TW" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "下一項行程與購物清單"
+        "zh-Hant-TW": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下一項行程與購物清單"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Próximos eventos y lista de compras"
           }
         }
       }
     },
-    "次の予定・買い物リスト・あとでやるタスクを4分割で表示し、＋タップで新規タスクを追加できます。" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Shows upcoming tasks, your shopping list, and Later tasks in four panels. Tap + to add a new task."
+    "次の予定・買い物リスト・あとでやるタスクを4分割で表示し、＋タップで新規タスクを追加できます。": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shows upcoming tasks, your shopping list, and Later tasks in four panels. Tap + to add a new task."
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "次の予定・買い物リスト・あとでやるタスクを4分割で表示し、＋タップで新規タスクを追加できます。"
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "次の予定・買い物リスト・あとでやるタスクを4分割で表示し、＋タップで新規タスクを追加できます。"
           }
         },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "다음 일정·쇼핑 목록·나중에 할 일을 4분할로 표시하고, + 탭으로 새 태스크를 추가할 수 있어요."
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다음 일정·쇼핑 목록·나중에 할 일을 4분할로 표시하고, + 탭으로 새 태스크를 추가할 수 있어요."
           }
         },
-        "zh-Hant-TW" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "以四宮格顯示下一項行程、購物清單與稍後辦任務，點選＋即可新增任務。"
+        "zh-Hant-TW": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "以四宮格顯示下一項行程、購物清單與稍後辦任務，點選＋即可新增任務。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Muestra los próximos eventos, tu lista de compras y las tareas de Más tarde en cuatro paneles. Toca + para agregar una nueva tarea."
           }
         }
       }
     },
-    "タスクを完了" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Complete Task"
+    "タスクを完了": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Complete Task"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "タスクを完了"
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "タスクを完了"
           }
         },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "태스크 완료"
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "태스크 완료"
           }
         },
-        "zh-Hant-TW" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "完成任務"
+        "zh-Hant-TW": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "完成任務"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Completar tarea"
           }
         }
       }
     },
-    "タップするだけで「あとでやる」タスクの追加画面を開けます。" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tap to open the Add Later Task screen."
+    "タップするだけで「あとでやる」タスクの追加画面を開けます。": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tap to open the Add Later Task screen."
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "タップするだけで「あとでやる」タスクの追加画面を開けます。"
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "タップするだけで「あとでやる」タスクの追加画面を開けます。"
           }
         },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "탭 한 번으로 '나중에 할 일' 추가 화면을 열 수 있어요."
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "탭 한 번으로 '나중에 할 일' 추가 화면을 열 수 있어요."
           }
         },
-        "zh-Hant-TW" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "點一下即可開啟「稍後辦」任務的新增畫面。"
+        "zh-Hant-TW": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "點一下即可開啟「稍後辦」任務的新增畫面。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Toca para abrir la pantalla de agregar tarea para Más tarde."
           }
         }
       }
     },
-    "予定はありません" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No tasks"
+    "予定はありません": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No tasks"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "予定はありません"
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "予定はありません"
           }
         },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "일정이 없어요"
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "일정이 없어요"
           }
         },
-        "zh-Hant-TW" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "沒有行程"
+        "zh-Hant-TW": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "沒有行程"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay eventos"
           }
         }
       }
     },
-    "今日の予定と買い物リストをまとめて表示します。タップで完了にできます。" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Shows today's schedule and shopping list together. Tap to mark items as done."
+    "今日の予定と買い物リストをまとめて表示します。タップで完了にできます。": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shows today's schedule and shopping list together. Tap to mark items as done."
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "今日の予定と買い物リストをまとめて表示します。タップで完了にできます。"
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今日の予定と買い物リストをまとめて表示します。タップで完了にできます。"
           }
         },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "오늘의 일정과 쇼핑 목록을 한눈에 보여줘요. 탭하면 완료 처리할 수 있어요."
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "오늘의 일정과 쇼핑 목록을 한눈에 보여줘요. 탭하면 완료 처리할 수 있어요."
           }
         },
-        "zh-Hant-TW" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "一次顯示今天的行程與購物清單，點選即可標記完成。"
+        "zh-Hant-TW": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一次顯示今天的行程與購物清單，點選即可標記完成。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Muestra juntos el horario de hoy y la lista de compras. Puedes marcarlos como completados con un toque."
           }
         }
       }
     }
   },
-  "version" : "1.0"
+  "version": "1.0"
 }
