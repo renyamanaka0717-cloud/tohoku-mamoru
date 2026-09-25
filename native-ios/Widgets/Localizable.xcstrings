@@ -50,6 +50,12 @@
             "state": "translated",
             "value": "4 ช่อง (งาน, ช้อปปิ้ง, ไว้ทีหลัง, เพิ่ม)"
           }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "4 Panel (Tugas, Belanja, Nanti, Tambah)"
+          }
         }
       }
     },
@@ -101,6 +107,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "ไว้ทีหลัง"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nanti"
           }
         }
       }
@@ -154,6 +166,12 @@
             "state": "translated",
             "value": "เพิ่มงานไว้ทีหลัง"
           }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tambah tugas Nanti"
+          }
         }
       }
     },
@@ -205,6 +223,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "เพิ่มงานไว้ทีหลัง"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tambah Tugas Nanti"
           }
         }
       }
@@ -258,6 +282,12 @@
             "state": "translated",
             "value": "ไม่มีอะไรที่นี่"
           }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tidak ada apa-apa"
+          }
         }
       }
     },
@@ -309,6 +339,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "ทำเครื่องหมายว่าซื้อแล้ว"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tandai Sudah Dibeli"
           }
         }
       }
@@ -362,6 +398,12 @@
             "state": "translated",
             "value": "รายการซื้อของ"
           }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Daftar Belanja"
+          }
         }
       }
     },
@@ -413,6 +455,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "ไม่มีของที่ต้องซื้อ"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tidak ada barang untuk dibeli"
           }
         }
       }
@@ -466,6 +514,12 @@
             "state": "translated",
             "value": "กำหนดการถัดไป"
           }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Berikutnya"
+          }
         }
       }
     },
@@ -517,6 +571,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "กำหนดการถัดไปและรายการซื้อของ"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jadwal & Daftar Belanja"
           }
         }
       }
@@ -570,6 +630,12 @@
             "state": "translated",
             "value": "แสดงกำหนดการถัดไป รายการซื้อของ และงานไว้ทีหลังแบบ 4 ช่อง แตะ ＋ เพื่อเพิ่มงานใหม่"
           }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Menampilkan jadwal berikutnya, daftar belanja, dan tugas Nanti dalam 4 panel. Ketuk ＋ untuk menambahkan tugas baru."
+          }
         }
       }
     },
@@ -621,6 +687,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "ทำงานเสร็จ"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Selesaikan Tugas"
           }
         }
       }
@@ -674,6 +746,12 @@
             "state": "translated",
             "value": "แตะเพื่อเปิดหน้าจอเพิ่มงานไว้ทีหลัง"
           }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ketuk untuk membuka layar tambah tugas Nanti."
+          }
         }
       }
     },
@@ -726,6 +804,12 @@
             "state": "translated",
             "value": "ไม่มีกำหนดการ"
           }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tidak ada jadwal"
+          }
         }
       }
     },
@@ -777,6 +861,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "แสดงกำหนดการวันนี้และรายการซื้อของรวมกัน แตะเพื่อทำเครื่องหมายว่าเสร็จ"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Menampilkan jadwal hari ini dan daftar belanja sekaligus. Ketuk untuk menandai selesai."
           }
         }
       }
