@@ -8,6 +8,7 @@ import { updateWidgetData, getPendingWidgetActions } from './components/WidgetDa
 import { setShopGeofences, setTaskLocationGeofences, setForgetAlertGeofences, checkGeofencePermissions, ensureGeofencePermission, getPendingGeofenceAction, getFiredTaskLocationIds, getNativeCurrentLocation, openAppSettings } from './components/Geofence';
 import { scheduleInactivityReminder, cancelInactivityReminder } from './components/Inactivity';
 import { notify, requestNotifyPermission, syncTaskAlerts, syncFreeSlotAlerts, syncShopNotifs, syncLaterStaleAlerts, syncWakeCheckins, syncDeadlineAlerts, isNative } from './components/LocalNotify';
+import { voiceInputSupported, ensureVoiceInputPermission, startVoiceInput, stopVoiceInput } from './components/VoiceInput';
 import { getAppVersion } from './components/AppVersion';
 import { logAnalyticsEvent } from './components/Analytics';
 import { isDevModeUnlocked, DEV_MODE_UNLOCKED_KEY, getDevPremiumOverride, setDevPremiumOverride, isDevDenied, DEV_LOCATION_DENIED_KEY, DEV_NOTIF_DENIED_KEY } from './components/DevMode';
@@ -1660,6 +1661,32 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
   const [locLocating,setLocLocating] = useState(false);
   const [locError,setLocError] = useState<string|null>(null);
   const [modalProPrompt,setModalProPrompt] = useState<string|null>(null);
+  const [voiceState,setVoiceState] = useState<'idle'|'recording'|'processing'>('idle');
+  const [voiceError,setVoiceError] = useState<string|null>(null);
+  const toggleVoiceInput = async () => {
+    if(!isPremium){ setModalProPrompt(tr('proFeatureVoiceInput')); return; }
+    if(voiceState==='recording'){
+      setVoiceState('processing');
+      const text = await stopVoiceInput();
+      if(text.trim()){
+        setName(n=>{const v=n.trim()?`${n} ${text}`:text; if(autoIcon)setIcon(defaultIconKey(v)); return v;});
+      }
+      setVoiceState('idle');
+      return;
+    }
+    setVoiceError(null);
+    const granted = await ensureVoiceInputPermission();
+    if(!granted){ setVoiceError(tr('voiceInputPermissionDenied')); return; }
+    try {
+      await startVoiceInput(language);
+      setVoiceState('recording');
+    } catch {
+      setVoiceError(tr('voiceInputPermissionDenied'));
+    }
+  };
+  const voiceStateRef = useRef(voiceState);
+  voiceStateRef.current = voiceState;
+  useEffect(()=>()=>{ if(voiceStateRef.current==='recording') stopVoiceInput(); },[]);
   const modalSwX=useRef(0), modalSwY=useRef(0);
   const modeOrder:TaskMode[]=['later','scheduled','recurring','allday'];
   const onModalSwipe=(e:React.TouchEvent)=>{
@@ -1992,9 +2019,18 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
               {mode==='allday'&&(
                 <p className="text-xs text-white/60 mb-0.5">{tr('taskModalAllDay')}</p>
               )}
-              <input ref={nameInputRef} type="text" value={name} onChange={e=>{const v=e.target.value;setName(v);if(autoIcon)setIcon(defaultIconKey(v));}}
-                placeholder={tr('taskModalNamePlaceholder')}
-                className="w-full bg-transparent text-white text-lg font-medium placeholder-white/40 outline-none border-b border-white/30 pb-1"/>
+              <div className="flex items-center gap-2 border-b border-white/30 pb-1">
+                <input ref={nameInputRef} type="text" value={name} onChange={e=>{const v=e.target.value;setName(v);if(autoIcon)setIcon(defaultIconKey(v));}}
+                  placeholder={voiceState==='recording'?tr('voiceInputRecordingLabel'):tr('taskModalNamePlaceholder')}
+                  className="flex-1 min-w-0 bg-transparent text-white text-lg font-medium placeholder-white/40 outline-none"/>
+                {voiceInputSupported()&&(
+                  <button type="button" onClick={toggleVoiceInput} disabled={voiceState==='processing'}
+                    className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-colors ${voiceState==='recording'?'bg-white text-[var(--c-primary)] animate-pulse':'bg-white/20 text-white active:bg-white/30'}`}>
+                    <AppIcons.mic size={15}/>
+                  </button>
+                )}
+              </div>
+              {voiceError&&<p className="text-xs text-red-100 mt-1">{voiceError}</p>}
             </div>
           </div>
 
@@ -6545,6 +6581,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             {label:tr('proFeatureDeadline'),        free:'×',                     pro:tr('proValSupported')},
             {label:tr('proFeatureLaterLocationNotify'), free:'×',                 pro:tr('proValSupported')},
             {label:tr('rowForgetAlertTitle'),       free:'×',                     pro:tr('proValSupported')},
+            {label:tr('proFeatureVoiceInput'),      free:'×',                     pro:tr('proValSupported')},
           ].map(({label,free,pro},i,arr)=>(
             <div key={i} className={`grid items-center px-4 py-3${i<arr.length-1?' border-b border-gray-100':''}`} style={{gridTemplateColumns:'1fr 80px 80px'}}>
               <p className="text-sm text-gray-800">{label}</p>

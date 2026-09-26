@@ -1,0 +1,10 @@
+<!--
+ios/App/App/Info.plist の <dict> 直下に追加するスニペット（タスク名の音声入力機能用）。
+
+マイク・音声認識のどちらも使用理由の説明文が無いと審査でリジェクトされる。
+UIBackgroundModes等の追加設定は不要（フォアグラウンドでの一時的な録音のみのため）。
+-->
+<key>NSMicrophoneUsageDescription</key>
+<string>タスク名を音声で入力するために使用します</string>
+<key>NSSpeechRecognitionUsageDescription</key>
+<string>話した内容をタスク名に変換するために使用します</string>

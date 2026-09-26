@@ -97,6 +97,7 @@ import {
   DotsSixVertical,
   ClockClockwise,
   ClockCounterClockwise,
+  Microphone,
 } from '@phosphor-icons/react';
 
 type PhosphorComp = React.ComponentType<{
@@ -214,4 +215,5 @@ export const AppIcons = {
   dragHandle:  make(DotsSixVertical, 20),
   sortAsc:     make(ClockCounterClockwise, 16),
   sortDesc:    make(ClockClockwise, 16),
+  mic:         make(Microphone, 18),
 };
