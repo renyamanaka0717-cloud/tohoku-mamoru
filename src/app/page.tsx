@@ -8,7 +8,7 @@ import { updateWidgetData, getPendingWidgetActions } from './components/WidgetDa
 import { setShopGeofences, setTaskLocationGeofences, setForgetAlertGeofences, checkGeofencePermissions, ensureGeofencePermission, getPendingGeofenceAction, getFiredTaskLocationIds, getNativeCurrentLocation, openAppSettings } from './components/Geofence';
 import { scheduleInactivityReminder, cancelInactivityReminder } from './components/Inactivity';
 import { notify, requestNotifyPermission, syncTaskAlerts, syncFreeSlotAlerts, syncShopNotifs, syncLaterStaleAlerts, syncWakeCheckins, syncDeadlineAlerts, isNative } from './components/LocalNotify';
-import { voiceInputSupported, ensureVoiceInputPermission, startVoiceInput, stopVoiceInput } from './components/VoiceInput';
+import { voiceInputSupported, ensureVoiceInputPermission, startVoiceInput, stopVoiceInput, onVoiceInputFinished } from './components/VoiceInput';
 import { getAppVersion } from './components/AppVersion';
 import { logAnalyticsEvent } from './components/Analytics';
 import { isDevModeUnlocked, DEV_MODE_UNLOCKED_KEY, getDevPremiumOverride, setDevPremiumOverride, isDevDenied, DEV_LOCATION_DENIED_KEY, DEV_NOTIF_DENIED_KEY } from './components/DevMode';
@@ -1666,12 +1666,9 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
   const toggleVoiceInput = async () => {
     if(!isPremium){ setModalProPrompt(tr('proFeatureVoiceInput')); return; }
     if(voiceState==='recording'){
+      // 無音を待たずに早めに切り上げる手動停止。実際のテキストはonVoiceInputFinished経由で届く
       setVoiceState('processing');
-      const text = await stopVoiceInput();
-      if(text.trim()){
-        setName(n=>{const v=n.trim()?`${n} ${text}`:text; if(autoIcon)setIcon(defaultIconKey(v)); return v;});
-      }
-      setVoiceState('idle');
+      stopVoiceInput();
       return;
     }
     setVoiceError(null);
@@ -1684,9 +1681,21 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
       setVoiceError(tr('voiceInputPermissionDenied'));
     }
   };
+  const autoIconRef = useRef(autoIcon);
+  autoIconRef.current = autoIcon;
   const voiceStateRef = useRef(voiceState);
   voiceStateRef.current = voiceState;
-  useEffect(()=>()=>{ if(voiceStateRef.current==='recording') stopVoiceInput(); },[]);
+  useEffect(()=>{
+    // 無音検知の自動終了・手動停止どちらでも一度だけ呼ばれる（recognitionFinished）
+    const unsub = onVoiceInputFinished(text=>{
+      if(text.trim()){
+        setName(n=>{const v=n.trim()?`${n} ${text}`:text; if(autoIconRef.current)setIcon(defaultIconKey(v)); return v;});
+      }
+      setVoiceState('idle');
+    });
+    return ()=>{ unsub(); if(voiceStateRef.current!=='idle') stopVoiceInput(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[]);
   const modalSwX=useRef(0), modalSwY=useRef(0);
   const modeOrder:TaskMode[]=['later','scheduled','recurring','allday'];
   const onModalSwipe=(e:React.TouchEvent)=>{

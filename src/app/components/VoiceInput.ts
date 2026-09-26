@@ -3,11 +3,14 @@ import { registerPlugin } from '@capacitor/core';
 
 export interface VoiceInputPermissionStatus { microphone: string; speechRecognition: string; }
 
+interface VoiceInputListenerHandle { remove: () => Promise<void>; }
+
 interface VoiceInputPluginType {
   requestPermissions(): Promise<VoiceInputPermissionStatus>;
   checkPermissions(): Promise<VoiceInputPermissionStatus>;
   start(options: { locale: string }): Promise<void>;
-  stop(): Promise<{ text: string }>;
+  stop(): Promise<void>;
+  addListener(eventName: 'recognitionFinished', listenerFunc: (data: { text: string }) => void): Promise<VoiceInputListenerHandle>;
 }
 
 const VoiceInputPlugin = registerPlugin<VoiceInputPluginType>('VoiceInputPlugin');
@@ -33,8 +36,11 @@ type WebSpeechRecognition = {
   start: () => void; stop: () => void;
   onresult: ((e: {results: {transcript: string}[][]}) => void) | null;
   onerror: (() => void) | null;
+  onend: (() => void) | null;
 };
 let webRecognition: WebSpeechRecognition | null = null;
+let webLastText = '';
+let webFinishCallback: ((text: string) => void) | null = null;
 
 export function voiceInputSupported(): boolean {
   if (isNative()) return true;
@@ -60,6 +66,22 @@ export async function ensureVoiceInputPermission(): Promise<boolean> {
   }
 }
 
+// 無音を検知した自動終了・手動停止のどちらでも、認識が終わった瞬間に一度だけ呼ばれる。
+// ネイティブ側はCapacitorのイベントリスナー、Web/開発環境はWeb Speech APIのonresult/onendに橋渡しする。
+// 呼び出し元はコンポーネントのマウント中ずっと登録しておき、返り値の関数でアンマウント時に解除する
+export function onVoiceInputFinished(callback: (text: string) => void): () => void {
+  if (isNative()) {
+    let handle: VoiceInputListenerHandle | null = null;
+    let cancelled = false;
+    VoiceInputPlugin.addListener('recognitionFinished', data => callback(data.text ?? '')).then(h => {
+      if (cancelled) { h.remove(); } else { handle = h; }
+    });
+    return () => { cancelled = true; handle?.remove(); };
+  }
+  webFinishCallback = callback;
+  return () => { webFinishCallback = null; };
+}
+
 export async function startVoiceInput(language: string): Promise<void> {
   const locale = voiceLocaleFor(language);
   if (isNative()) {
@@ -69,30 +91,27 @@ export async function startVoiceInput(language: string): Promise<void> {
   const w = window as unknown as {webkitSpeechRecognition?: new () => WebSpeechRecognition; SpeechRecognition?: new () => WebSpeechRecognition};
   const Ctor = w.SpeechRecognition ?? w.webkitSpeechRecognition;
   if (!Ctor) throw new Error('voice input unsupported');
+  webLastText = '';
   webRecognition = new Ctor();
   webRecognition.lang = locale;
   webRecognition.interimResults = false;
-  webRecognition.continuous = true;
+  webRecognition.continuous = false; // ブラウザ標準の無音自動終了に任せる
+  webRecognition.onresult = e => { webLastText = e.results[0]?.[0]?.transcript ?? ''; };
+  webRecognition.onerror = () => webFinishCallback?.(webLastText);
+  webRecognition.onend = () => webFinishCallback?.(webLastText);
   webRecognition.start();
 }
 
-// 録音を止めて確定した認識結果をまとめて返す（ライブ部分認識の逐次反映は行わないシンプルな設計）
-export async function stopVoiceInput(): Promise<string> {
+// 無音になる前にユーザーが早めに切り上げたい場合の手動停止。テキスト自体はonVoiceInputFinishedの
+// コールバック経由で届く（自動終了と同じ1つの経路に統一し、二重にテキストを受け取らないようにする）
+export async function stopVoiceInput(): Promise<void> {
   if (isNative()) {
     try {
-      const res = await VoiceInputPlugin.stop();
-      return res.text ?? '';
+      await VoiceInputPlugin.stop();
     } catch {
-      return '';
+      // 既に終了済みなら何もしない
     }
+    return;
   }
-  const rec = webRecognition;
-  if (!rec) return '';
-  return new Promise(resolve => {
-    let done = false;
-    rec.onresult = e => { done = true; resolve(e.results[0]?.[0]?.transcript ?? ''); };
-    rec.onerror = () => { done = true; resolve(''); };
-    rec.stop();
-    setTimeout(() => { if (!done) resolve(''); }, 1500);
-  });
+  webRecognition?.stop();
 }

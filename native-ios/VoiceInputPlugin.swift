@@ -3,18 +3,18 @@ import Capacitor
 import Speech
 import AVFoundation
 
-// タスク名入力欄の音声入力（PRO機能）。ライブの部分認識結果は逐次返さず、
-// start()で録音開始→stop()で録音停止と同時に確定テキストをまとめて返す
-// シンプルな設計にしている（notifyListenersでのストリーミングは行わない）。
+// タスク名入力欄の音声入力（PRO機能）。無音を検知したら自動的に認識を終了し、
+// notifyListeners("recognitionFinished")でテキストを1回だけ通知するシンプルな設計。
+// ライブの部分認識結果はJS側には逐次配信しない（ネイティブ内部でのみ蓄積する）
 @objc(VoiceInputPlugin)
 public class VoiceInputPlugin: CAPPlugin {
     private let audioEngine = AVAudioEngine()
     private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
     private var recognitionTask: SFSpeechRecognitionTask?
     private var finalText: String = ""
-    // stop()呼び出し時点ではまだ認識結果が確定していないことが多いため、
-    // isFinalな結果が届くまでこのcallを保持しておき、届いた時点でresolveする
-    private var pendingStopCall: CAPPluginCall?
+    private var silenceTimer: Timer?
+    // 無音がこの秒数続いたら自動的に認識を終了する
+    private static let silenceTimeout: TimeInterval = 1.3
 
     @objc public override func requestPermissions(_ call: CAPPluginCall) {
         SFSpeechRecognizer.requestAuthorization { speechStatus in
@@ -64,12 +64,13 @@ public class VoiceInputPlugin: CAPPlugin {
             guard let self = self else { return }
             if let result = result {
                 self.finalText = result.bestTranscription.formattedString
+                self.resetSilenceTimer()
                 if result.isFinal {
-                    self.finishStop()
+                    self.finishRecognition()
                 }
             }
             if error != nil {
-                self.finishStop()
+                self.finishRecognition()
             }
         }
 
@@ -89,38 +90,42 @@ public class VoiceInputPlugin: CAPPlugin {
         }
     }
 
-    // 録音停止直後はまだ認識結果が確定していないことが多いため、すぐには resolve せず、
-    // endAudio() 後に届く isFinal な結果（finishStop() 経由）を待ってから resolve する。
-    // 万一 isFinal が届かない場合に呼び出し元が固まらないよう、短いタイムアウトで強制終了する
+    // ユーザーが無音を待たず早めに切り上げたい場合の手動停止。実際のテキストは自動終了と
+    // 同じfinishRecognition()経由でnotifyListenersイベントとして届く（stop自体は即resolve）
     @objc func stop(_ call: CAPPluginCall) {
-        guard recognitionTask != nil else {
-            call.resolve(["text": finalText])
-            return
+        finishRecognition()
+        call.resolve()
+    }
+
+    private func resetSilenceTimer() {
+        silenceTimer?.invalidate()
+        silenceTimer = Timer.scheduledTimer(withTimeInterval: Self.silenceTimeout, repeats: false) { [weak self] _ in
+            self?.finishRecognition()
         }
-        pendingStopCall = call
+    }
+
+    // 無音検知・isFinal結果・手動停止のいずれかから呼ばれる、認識終了の唯一の経路
+    private func finishRecognition() {
+        guard recognitionTask != nil else { return }
+        silenceTimer?.invalidate()
+        silenceTimer = nil
         if audioEngine.isRunning {
             audioEngine.stop()
             audioEngine.inputNode.removeTap(onBus: 0)
         }
         recognitionRequest?.endAudio()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) { [weak self] in
-            self?.finishStop()
-        }
-    }
-
-    private func finishStop() {
         recognitionTask?.cancel()
-        recognitionTask = nil
         recognitionRequest = nil
+        recognitionTask = nil
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
-        if let call = pendingStopCall {
-            pendingStopCall = nil
-            call.resolve(["text": finalText])
-        }
+        notifyListeners("recognitionFinished", data: ["text": finalText])
     }
 
-    // start() を録音中に再度呼ばれた場合など、確定結果を待たずに即座に破棄する
+    // start()が録音中に再度呼ばれた場合の後始末。こちらはfinishRecognition()と違い
+    // 前回ぶんのイベントを二重送信しないよう notifyListeners を呼ばない
     private func cancelActive() {
+        silenceTimer?.invalidate()
+        silenceTimer = nil
         if audioEngine.isRunning {
             audioEngine.stop()
             audioEngine.inputNode.removeTap(onBus: 0)
@@ -129,7 +134,6 @@ public class VoiceInputPlugin: CAPPlugin {
         recognitionTask?.cancel()
         recognitionRequest = nil
         recognitionTask = nil
-        pendingStopCall = nil
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
 }

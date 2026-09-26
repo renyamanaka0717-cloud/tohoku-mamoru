@@ -724,21 +724,24 @@ interface ForgetAlert {
 
 ## タスク名の音声入力（TaskModal、PRO機能）
 
-タスク名入力欄の右にマイクボタンを置き、タップで録音開始→再タップで録音停止し、認識結果をタスク名に反映する。**アプリ内（TaskModal）限定の機能で、ウィジェットからの起動は対象外**（実装規模を抑えるため、まずこの範囲だけ先に作った）。
+タスク名入力欄の右にマイクボタンを置き、タップで録音開始→**無音を検知したら自動的に録音終了**し、認識結果をタスク名に反映する。もう一度マイクをタップすれば無音を待たず早めに切り上げることもできる。**アプリ内（TaskModal）限定の機能で、ウィジェットからの起動は対象外**（実装規模を抑えるため、まずこの範囲だけ先に作った）。
 
-### 設計方針（ライブ部分認識は行わない）
+### 設計方針（無音自動終了・単一イベントでの結果通知）
 
-ネイティブの`VoiceInputPlugin`は`notifyListeners`によるストリーミング配信を行わず、`start()`で録音・音声認識を開始し`stop()`で停止すると同時に確定テキストをまとめて返す、シンプルな promise ベースの設計にした（このリポジトリの他のCapacitorプラグインは全て call-and-response 方式で、イベントリスナーを使った前例が無かったため、まずリスクの低い方式を選んだ）。そのため録音中に文字が逐次表示されることはなく、停止した瞬間に一括で反映される。
+**過去の失敗: 初回実装は`stop()`を手動タップ時のみ呼ぶ設計で、話し終わったら自動で確定してほしいという要望に合っていなかった。** さらにその後、`stop()`内で`recognitionRequest.endAudio()`の直後に`recognitionTask.cancel()`していたため、特に短い発話だと最終的な認識結果が届く前にタスクを打ち切ってしまい、テキストが空のまま返る不具合もあった。
+
+現在の実装は、ネイティブ側で**無音が`silenceTimeout`（1.3秒）続いたら自動的に認識を終了する**設計にした。`SFSpeechAudioBufferRecognitionRequest`からの部分認識結果（`shouldReportPartialResults=true`）が届くたびにタイマーをリセットし、タイマーが発火した時点・`isFinal`な結果が届いた時点・手動停止のいずれかで`finishRecognition()`という単一の経路にまとめ、そこから`notifyListeners("recognitionFinished", {text})`を**1回だけ**発火してJS側にテキストを渡す。**このリポジトリで初めて`notifyListeners`によるイベント配信を使った箇所**だが、これはライブの部分認識結果を逐次流すものではなく、「認識が終わった」という一度きりの通知に限定している点に注意（`start`/`stop`自体は録音の開始・早期終了をリクエストするだけの単純なpromiseのまま）。
 
 ### 実装
 
-- `native-ios/VoiceInputPlugin.swift`/`.m` — `Speech`（`SFSpeechRecognizer`）と`AVFoundation`（`AVAudioEngine`）を使用。`requestPermissions()`でマイク＋音声認識の許可を求め、`start(locale)`で`AVAudioEngine`のタップから`SFSpeechAudioBufferRecognitionRequest`に音声バッファを流し込み、`stop()`で録音停止＋その時点の`bestTranscription.formattedString`を返す
-- `src/app/components/VoiceInput.ts` — JSラッパー。`ensureVoiceInputPermission()`/`startVoiceInput(language)`/`stopVoiceInput()`。ネイティブでは`VoiceInputPlugin`を呼び、Web/開発環境はブラウザのWeb Speech API（`webkitSpeechRecognition`、Chromiumのみ対応）にフォールバックする（動作確認用。Safariでは`voiceInputSupported()`がfalseを返しボタン自体を表示しない）
+- `native-ios/VoiceInputPlugin.swift`/`.m` — `Speech`（`SFSpeechRecognizer`）と`AVFoundation`（`AVAudioEngine`）を使用。`requestPermissions()`でマイク＋音声認識の許可を求め、`start(locale)`で`AVAudioEngine`のタップから`SFSpeechAudioBufferRecognitionRequest`に音声バッファを流し込む。部分認識結果のたびに`resetSilenceTimer()`で1.3秒のタイマーを張り直し、無音が続く・`isFinal`が届く・`stop()`が呼ばれる、のいずれかで`finishRecognition()`が呼ばれてマイクを解放し`notifyListeners("recognitionFinished", {text})`を発火する
+- `src/app/components/VoiceInput.ts` — JSラッパー。`ensureVoiceInputPermission()`/`startVoiceInput(language)`/`stopVoiceInput()`（早期終了リクエスト、テキストは返さない）/`onVoiceInputFinished(callback)`（認識終了時に1回だけ呼ばれるリスナーを登録し、解除用の関数を返す）。ネイティブでは`VoiceInputPlugin`のイベントリスナーを、Web/開発環境はブラウザのWeb Speech API（`webkitSpeechRecognition`、Chromiumのみ対応）の`onresult`/`onend`を橋渡しする（`continuous:false`にしているためブラウザ標準の無音自動終了がそのまま使える。動作確認用。Safariでは`voiceInputSupported()`がfalseを返しボタン自体を表示しない）
 - `language`（アプリ内`Language`型）は`voiceLocaleFor()`でSFSpeechRecognizer/Web Speech APIのロケールID（`ja-JP`/`en-US`/`ko-KR`/`zh-TW`/`es-ES`/`pt-BR`/`vi-VN`/`th-TH`/`id-ID`）に変換してから渡す
 - `TaskModal`のタスク名入力行（`name-input-row`）に`AppIcons.mic`ボタンを追加。非PROは`setModalProPrompt(tr('proFeatureVoiceInput'))`で`ProGateSheet`を表示してブロックする（他のPRO機能と同じパターン）
-- 録音中はタスク名入力欄のplaceholderが`tr('voiceInputRecordingLabel')`（「聞き取り中…」）に切り替わり、ボタンの見た目も反転（白背景＋アクセントカラーのマイクアイコン、`animate-pulse`）して録音中であることを示す。認識結果は既存のタスク名が空なら置き換え、入力済みなら末尾にスペース区切りで追記する（`autoIcon`が有効なら`defaultIconKey()`でアイコンも追従）
+- `TaskModal`は`useEffect`（マウント時に1回）で`onVoiceInputFinished()`を登録し、届いたテキストを名前欄に反映する（既存のタスク名が空なら置き換え、入力済みなら末尾にスペース区切りで追記。`autoIcon`が有効なら`defaultIconKey()`でアイコンも追従）。**`autoIcon`は普通のstateではなく`autoIconRef`という参照経由で読む**——このuseEffectは空配列depsで1度しか登録されないクロージャのため、`autoIcon` stateを直接参照すると登録時点の値のまま固定されてしまう（stale closure）。値が変わるたびに追従させるため、毎レンダーで最新値を書き込む`autoIconRef`を経由している
+- 録音中はタスク名入力欄のplaceholderが`tr('voiceInputRecordingLabel')`（「聞き取り中…」）に切り替わり、ボタンの見た目も反転（白背景＋アクセントカラーのマイクアイコン、`animate-pulse`）して録音中であることを示す
 - マイク・音声認識どちらかの許可が拒否されている場合は`tr('voiceInputPermissionDenied')`を入力欄の下に赤字で表示する（`ShopLocationPanel`のような専用バナー・設定アプリへの遷移ボタンは持たない、最小限のインライン表示に留めている）
-- `TaskModal`がアンマウントされた瞬間に録音中だった場合、`useEffect`のクリーンアップで`stopVoiceInput()`を呼びマイクを解放する（`voiceStateRef`で最新状態をrefに追従させ、unmount時の1回だけ発火するクリーンアップから参照する）
+- `TaskModal`がアンマウントされた瞬間に録音中/処理中だった場合、`useEffect`のクリーンアップで`onVoiceInputFinished`の解除に加えて`stopVoiceInput()`を呼びマイクを解放する（`voiceStateRef`で最新状態をrefに追従させ、unmount時の1回だけ発火するクリーンアップから参照する）
 
 ### Xcodeでの手動セットアップ（`ios/`はgitignore対象なので毎回必要）
 
@@ -746,10 +749,13 @@ interface ForgetAlert {
 2. `native-ios/BridgeViewController.swift`の`capacitorDidLoad()`に`bridge?.registerPluginInstance(VoiceInputPlugin())`があることを確認（無ければ追記。既存の`ios/App/App/BridgeViewController.swift`は`git pull`で自動反映されないので**Xcode上で直接編集**）
 3. `native-ios/VoiceInputInfo.plist.snippet.xml`の内容を`ios/App/App/Info.plist`の`<dict>`直下に追加する（`NSMicrophoneUsageDescription`・`NSSpeechRecognitionUsageDescription`。これが無いと審査でリジェクトされる）
 4. App Group・Background Modes等の追加設定は不要（フォアグラウンドでの一時的な録音のみのため）
+5. **`checkPermissions`/`requestPermissions`という関数名を使う時は要注意:** `CAPPlugin`基底クラスにすでに同名の`open`メソッドが定義されているため、`override`を付けず・可視性を`public`にしないままだと「Overriding declaration requires an 'override'」「Overriding instance method must be as accessible as its enclosing type」でビルドエラーになる（実際に発生した不具合）。`@objc public override func requestPermissions(_ call: CAPPluginCall)`のように書くこと
 
 ### 避けるパターン
 
-- `VoiceInputPlugin`に`notifyListeners`でのライブ部分認識ストリーミングを追加しない（意図的にシンプルな call-and-response 方式にしている。ライブ更新が必要になった場合は既存の`start`/`stop`とは別に検討すること）
+- `stop()`内で`endAudio()`の直後に`recognitionTask.cancel()`しない（`isFinal`な結果や無音タイマーによる`finishRecognition()`を待たずに打ち切ると、特に短い発話でテキストが空になる不具合の実績あり）
+- 無音自動終了のタイマーをリセットするタイミングを部分認識結果のコールバック以外に置かない（音声バッファのコールバック等、実際に音声が認識されたことを示さないタイミングでリセットすると、しゃべっている最中に誤って自動終了してしまう）
+- `TaskModal`側で`autoIcon`のような可変stateを、空配列depsの`useEffect`内クロージャから直接参照しない（stale closureになる。`autoIconRef`のような参照経由で最新値を読むこと）
 - ウィジェットからの音声入力起動をこの機能の延長で作らない（別途「ウィジェット→アプリを開く→自動録音開始」の連携が必要になり、規模が大きくなるため意図的にスコープ外にしてある。次にやる場合は別機能として計画すること）
 - PROゲートを`isPremium`チェック無しで素通りさせない（`setModalProPrompt(tr('proFeatureVoiceInput'))`で必ずガードする。PRO比較表（`sub==='pro'`）にも`proFeatureVoiceInput`の行を追加済み）
 
