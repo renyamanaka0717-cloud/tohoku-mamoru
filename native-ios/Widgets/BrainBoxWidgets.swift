@@ -413,9 +413,9 @@ struct AddLaterVoiceWidget: Widget {
 @main
 struct BrainBoxWidgetBundle: WidgetBundle {
     var body: some Widget {
+        AddLaterVoiceWidget()
         CombinedWidget()
         QuadWidget()
         AddLaterWidget()
-        AddLaterVoiceWidget()
     }
 }
