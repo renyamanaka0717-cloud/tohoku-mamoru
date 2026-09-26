@@ -730,29 +730,41 @@ interface ForgetAlert {
 
 **過去の失敗: 初回実装は`stop()`を手動タップ時のみ呼ぶ設計で、話し終わったら自動で確定してほしいという要望に合っていなかった。** さらにその後、`stop()`内で`recognitionRequest.endAudio()`の直後に`recognitionTask.cancel()`していたため、特に短い発話だと最終的な認識結果が届く前にタスクを打ち切ってしまい、テキストが空のまま返る不具合もあった。
 
-現在の実装は、ネイティブ側で**無音が`silenceTimeout`（1.3秒）続いたら自動的に認識を終了する**設計にした。`SFSpeechAudioBufferRecognitionRequest`からの部分認識結果（`shouldReportPartialResults=true`）が届くたびにタイマーをリセットし、タイマーが発火した時点・`isFinal`な結果が届いた時点・手動停止のいずれかで`finishRecognition()`という単一の経路にまとめ、そこから`notifyListeners("recognitionFinished", {text})`を**1回だけ**発火してJS側にテキストを渡す。**このリポジトリで初めて`notifyListeners`によるイベント配信を使った箇所**だが、これはライブの部分認識結果を逐次流すものではなく、「認識が終わった」という一度きりの通知に限定している点に注意（`start`/`stop`自体は録音の開始・早期終了をリクエストするだけの単純なpromiseのまま）。
+現在の実装は、ネイティブ側で**無音が`silenceTimeout`（1.3秒）続いたら自動的に認識を終了する**設計にした。`SFSpeechAudioBufferRecognitionRequest`からの部分認識結果（`shouldReportPartialResults=true`）が届くたびにタイマーをリセットし、タイマーが発火した時点・`isFinal`な結果が届いた時点・手動停止のいずれかで`finishRecognition()`という単一の経路にまとめ、そこから`notifyListeners("recognitionFinished", {text})`を**1回だけ**発火してJS側にテキストを渡す。**このリポジトリで初めて`notifyListeners`によるイベント配信を使った箇所**だが、これはライブの部分認識結果（テキスト）を逐次流すものではなく、「認識が終わった」という一度きりの通知に限定している（`start`/`stop`自体は録音の開始・早期終了をリクエストするだけの単純なpromiseのまま）。**ただし後述の波形表示のため、テキストとは別に音量レベルだけは継続的にストリーミング配信している**——「テキストのライブ配信はしない」という制約と「音量レベルのライブ配信はする」という実装は矛盾しない別の話なので混同しないこと。
 
-### 実装
+### 録音中のリアルタイム波形（`VoiceWaveform`、`audioLevel`イベント）
+
+マイクボタン/ポップアップのどちらでも、録音中はただの静的なマイクアイコンではなく、実際の音量に反応する簡易的な棒グラフ波形を表示する。
+
+- `native-ios/VoiceInputPlugin.swift`の`installTap`コールバック（`AVAudioPCMBuffer`が届くたび、オーディオスレッドで呼ばれる）内で`notifyAudioLevel(from:)`を呼ぶ。バッファのRMS（二乗平均平方根）を計算し`min(1.0, rms*6)`で0〜1に正規化した上で、`levelNotifyInterval`（0.08秒）に一度だけメインスレッドで`notifyListeners("audioLevel", {level})`を発火する（オーディオコールバックは非常に高頻度で呼ばれるため、間引かずに毎回送るとブリッジに負荷がかかる）。`finishRecognition()`の最後で明示的に`level:0`を1回送り、UIの波形をリセットする
+- `src/app/components/VoiceInput.ts`の`onVoiceLevelUpdate(callback)` — `onVoiceInputFinished`と同じ「登録して解除用関数を返す」パターン。ネイティブは`audioLevel`イベントをそのまま橋渡しし、Web/開発環境は**Web Speech APIに音量取得手段が無いため、見た目確認用に`setInterval`でランダムな疑似値を生成するだけ**（実際の音量は反映されない。実機でのみ本物の値が届く）
+- `VoiceWaveform`（`src/app/page.tsx`）— `level`（0〜1）を受け取り5本の棒の高さをCSS transitionで滑らかに変化させるだけの純粋な表示コンポーネント。色は`currentColor`任せなので、呼び出し側の`text-*`クラスがそのまま反映される。`size='small'`（マイクボタン内、`TaskModal`）と`size='large'`（`VoiceCapturePopup`）の2サイズを用意
+- `TaskModal`内では、録音中だけマイクボタンの中身を`AppIcons.mic`から`VoiceWaveform`に差し替え、ボタン自体の幅も`w-8`→`w-12`に広げて波形が収まるようにする（`voiceLevel` stateを`onVoiceLevelUpdate`で更新する専用の`useEffect`を追加済み）
+
+### 実装（マイクボタン本体、`TaskModal`）
 
 - `native-ios/VoiceInputPlugin.swift`/`.m` — `Speech`（`SFSpeechRecognizer`）と`AVFoundation`（`AVAudioEngine`）を使用。`requestPermissions()`でマイク＋音声認識の許可を求め、`start(locale)`で`AVAudioEngine`のタップから`SFSpeechAudioBufferRecognitionRequest`に音声バッファを流し込む。部分認識結果のたびに`resetSilenceTimer()`で1.3秒のタイマーを張り直し、無音が続く・`isFinal`が届く・`stop()`が呼ばれる、のいずれかで`finishRecognition()`が呼ばれてマイクを解放し`notifyListeners("recognitionFinished", {text})`を発火する
-- `src/app/components/VoiceInput.ts` — JSラッパー。`ensureVoiceInputPermission()`/`startVoiceInput(language)`/`stopVoiceInput()`（早期終了リクエスト、テキストは返さない）/`onVoiceInputFinished(callback)`（認識終了時に1回だけ呼ばれるリスナーを登録し、解除用の関数を返す）。ネイティブでは`VoiceInputPlugin`のイベントリスナーを、Web/開発環境はブラウザのWeb Speech API（`webkitSpeechRecognition`、Chromiumのみ対応）の`onresult`/`onend`を橋渡しする（`continuous:false`にしているためブラウザ標準の無音自動終了がそのまま使える。動作確認用。Safariでは`voiceInputSupported()`がfalseを返しボタン自体を表示しない）
+- `src/app/components/VoiceInput.ts` — JSラッパー。`ensureVoiceInputPermission()`/`startVoiceInput(language)`/`stopVoiceInput()`（早期終了リクエスト、テキストは返さない）/`onVoiceInputFinished(callback)`（認識終了時に1回だけ呼ばれるリスナーを登録し、解除用の関数を返す）/`onVoiceLevelUpdate(callback)`（前述）。ネイティブでは`VoiceInputPlugin`のイベントリスナーを、Web/開発環境はブラウザのWeb Speech API（`webkitSpeechRecognition`、Chromiumのみ対応）の`onresult`/`onend`を橋渡しする（`continuous:false`にしているためブラウザ標準の無音自動終了がそのまま使える。動作確認用。Safariでは`voiceInputSupported()`がfalseを返しボタン自体を表示しない）
 - `language`（アプリ内`Language`型）は`voiceLocaleFor()`でSFSpeechRecognizer/Web Speech APIのロケールID（`ja-JP`/`en-US`/`ko-KR`/`zh-TW`/`es-ES`/`pt-BR`/`vi-VN`/`th-TH`/`id-ID`）に変換してから渡す
 - `TaskModal`のタスク名入力行（`name-input-row`）に`AppIcons.mic`ボタンを追加。非PROは`setModalProPrompt(tr('proFeatureVoiceInput'))`で`ProGateSheet`を表示してブロックする（他のPRO機能と同じパターン）
 - `TaskModal`は`useEffect`（マウント時に1回）で`onVoiceInputFinished()`を登録し、届いたテキストを名前欄に反映する（既存のタスク名が空なら置き換え、入力済みなら末尾にスペース区切りで追記。`autoIcon`が有効なら`defaultIconKey()`でアイコンも追従）。**`autoIcon`は普通のstateではなく`autoIconRef`という参照経由で読む**——このuseEffectは空配列depsで1度しか登録されないクロージャのため、`autoIcon` stateを直接参照すると登録時点の値のまま固定されてしまう（stale closure）。値が変わるたびに追従させるため、毎レンダーで最新値を書き込む`autoIconRef`を経由している
-- 録音中はタスク名入力欄のplaceholderが`tr('voiceInputRecordingLabel')`（「聞き取り中…」）に切り替わり、ボタンの見た目も反転（白背景＋アクセントカラーのマイクアイコン、`animate-pulse`）して録音中であることを示す
+- 録音中はタスク名入力欄のplaceholderが`tr('voiceInputRecordingLabel')`（「聞き取り中…」）に切り替わる
 - マイク・音声認識どちらかの許可が拒否されている場合は`tr('voiceInputPermissionDenied')`を入力欄の下に赤字で表示する（`ShopLocationPanel`のような専用バナー・設定アプリへの遷移ボタンは持たない、最小限のインライン表示に留めている）
 - `TaskModal`がアンマウントされた瞬間に録音中/処理中だった場合、`useEffect`のクリーンアップで`onVoiceInputFinished`の解除に加えて`stopVoiceInput()`を呼びマイクを解放する（`voiceStateRef`で最新状態をrefに追従させ、unmount時の1回だけ発火するクリーンアップから参照する）
 
-### ウィジェット連携（「音声でタスク追加」ウィジェット、systemSmall）
+### ウィジェット連携（「音声でタスク追加」ウィジェット、systemSmall、`VoiceCapturePopup`）
 
-**当初はスコープ外にしていたが、後日追加した。** `native-ios/Widgets/BrainBoxWidgets.swift`の`AddLaterWidget`（既存の「あとでやるを追加」ウィジェット、`brainbox://addLater`というURLスキームへの`Link`をタップするだけでアプリ側の`appUrlOpen`イベントが拾って`openAdd()`を呼ぶ仕組み）が既にあったため、**新しいCapacitorプラグインやAppIntent／App Group経由のpendingフラグを増やさず、同じURLスキーム方式を使い回すだけで実現できた**（AppIntent経由でApp Group経由のpendingフラグをポーリングする、というもっと大掛かりな設計を最初は検討していたが、既存のURLスキームの仕組みで十分だと分かり、そちらに乗せる形にした）。
+**当初はスコープ外にしていたが、後日追加した。** `native-ios/Widgets/BrainBoxWidgets.swift`の`AddLaterWidget`（既存の「あとでやるを追加」ウィジェット、`brainbox://addLater`というURLスキームへの`Link`をタップするだけでアプリ側の`appUrlOpen`イベントが拾って`openAdd()`を呼ぶ仕組み）が既にあったため、**新しいCapacitorプラグインやAppIntent／App Group経由のpendingフラグを増やさず、同じURLスキーム方式を使い回すだけで実現できた**。
+
+**「ウィジェットから開いた時はTaskModalを開かず、専用のポップアップだけで完結させたい」という要望を受けて、初回実装（TaskModalを開いて自動的に録音を開始する方式）から設計変更した。** TaskModal全体（アイコン・モードタブ・時間指定・タグ等）を開くのは録音してから編集したい場合には便利だが、ウィジェットからの「話しかけるだけで一瞬で登録したい」という用途には過剰だったため。
 
 - `AddLaterVoiceWidget`/`AddLaterVoiceWidgetView`（`AddLaterWidget`と同じsystemSmall、マイクアイコン）が`brainbox://addLaterVoice`という別のURLスキームへリンクする
-- `src/app/page.tsx`の`appUrlOpen`リスナーが`addLaterVoice`を`addLater`より先にチェックする（`'addLaterVoice'.includes('addLater')`がtrueなので、判定順を間違えると`addLaterVoice`が常に通常の`addLater`分岐に吸われてしまう）。`addLaterVoice`の場合は`openAdd()`に続けて`openViaVoiceWidget`をtrueにする
-- `App`の`openAdd()`自体は呼ばれるたびに`openViaVoiceWidget`をfalseにリセットする（`setModal(...)`の直後に`setOpenViaVoiceWidget(false)`）。ウィジェット経由の場合はその直後に呼び出し元が改めてtrueにセットするため、同一イベントハンドラ内の後勝ちで最終的にtrueが残る
-- `TaskModal`は新しいprop`autoStartVoice`を受け取り、**マウント時に1回だけ発火する`useEffect(()=>{...},[])`**で`autoStartVoice`がtrueなら`toggleVoiceInput()`を呼ぶ。`{modal.open&&<TaskModal .../>}`という条件レンダリングにより`TaskModal`はモーダルを開くたびに必ず新規マウントされる設計のため（既存の`focusNameSignal`のような「変化検知」ref基準パターンは不要）、単純に「マウント時にtrueなら実行」で足りる
-- PROゲートはウィジェット側では一切判定しない。`toggleVoiceInput()`内の既存の`!isPremium`チェックがそのまま働き、非PROユーザーがウィジェットから開いた場合は`ProGateSheet`が表示されるだけ（新しい分岐を追加する必要がなかった）
-- 英語含む9言語ぶんの文言（ウィジェットのタイトル「音声でタスク追加」・説明文）は`native-ios/Widgets/Localizable.xcstrings`に追加済み
+- `src/app/page.tsx`の`appUrlOpen`リスナーが`addLaterVoice`を`addLater`より先にチェックする（`'addLaterVoice'.includes('addLater')`がtrueなので、判定順を間違えると`addLaterVoice`が常に通常の`addLater`分岐に吸われてしまう）。`addLaterVoice`の場合は`openAdd()`を呼ばず`setShowVoicePopup(true)`だけを呼ぶ
+- `VoiceCapturePopup`（`src/app/page.tsx`）— `App`直下に`{showVoicePopup&&<VoiceCapturePopup .../>}`として描画する独立したフルスクリーンポップアップ。マウント時の`useEffect`内で権限確認→`startVoiceInput()`→`onVoiceInputFinished`/`onVoiceLevelUpdate`の購読、まで一通り自前で行う（`TaskModal`の`toggleVoiceInput`とはコードが独立しており、あえて共通化していない——`TaskModal`側は「タップで開始・タップで停止」のトグル、こちらは「マウントで自動開始・結果が届いたら自動的に閉じる」という起動条件が異なるため、無理に共通関数へ抽出せずそれぞれの文脈に合わせて素直に書いた）
+- 状態は`'starting'`（権限確認中）→`'recording'`（波形表示）→`'done'`（認識結果をプレビュー表示してから自動で閉じる）/`'error'`（権限拒否等）の4つ。`'done'`到達後は`text.trim()?700:900`msの短い待機を挟んでから`onDone(text)`を呼ぶ（結果が見える間を持たせるため）
+- 非PROの場合は録音を一切開始せず、即座に`onProPrompt()`（設定→PRO画面）を呼んでポップアップを閉じる（`toggleVoiceInput`と同じ判断だが、`VoiceCapturePopup`はTaskModalの外で完結する独立コンポーネントのため`ProGateSheet`ではなく設定画面への遷移にしている）
+- 認識結果は`App`の`addVoiceLaterTask(text)`が受け取り、`TaskModal`を一切介さず直接「あとでやる」タスクとして`saveTasks()`に渡す（`icon`は`defaultIconKey(text)`で自動判定、`startTime:null`・`duration:0`など「あとでやる」タスクの最小構成）。`saveTasks`は`modal.task`を見て新規/編集を分岐する関数だが、このフローでは`modal`自体を一度も開かないため`modal.task`は常に`null`のままであり、新規作成分岐がそのまま安全に使える
+- 英語含む9言語ぶんの文言（ウィジェットのタイトル「音声でタスク追加」・説明文、ポップアップの「準備中…」「聞き取れませんでした」等）は`native-ios/Widgets/Localizable.xcstrings`・`I18n.tsx`に追加済み
 
 ### Xcodeでの手動セットアップ（`ios/`はgitignore対象なので毎回必要）
 
@@ -770,7 +782,9 @@ interface ForgetAlert {
 - `TaskModal`側で`autoIcon`のような可変stateを、空配列depsの`useEffect`内クロージャから直接参照しない（stale closureになる。`autoIconRef`のような参照経由で最新値を読むこと）
 - ウィジェットからの音声入力起動を、新しいCapacitorプラグインやApp Group経由のpendingフラグ・AppIntentを新設して作らない（実際には既存の`AddLaterWidget`と同じ`brainbox://`URLスキーム＋`appUrlOpen`リスナーの仕組みだけで十分に実現できた。新しい仕組みを増やす前に、まずこの既存パターンで足りないか確認すること）
 - `appUrlOpen`リスナーで`addLaterVoice`より先に`addLater`を判定しない（`'addLaterVoice'.includes('addLater')`が真になるため、判定順を逆にすると`addLaterVoice`が常に通常の`addLater`分岐に吸われてしまう）
-- PROゲートを`isPremium`チェック無しで素通りさせない（`setModalProPrompt(tr('proFeatureVoiceInput'))`で必ずガードする。PRO比較表（`sub==='pro'`）にも`proFeatureVoiceInput`の行を追加済み。ウィジェット経由でも`toggleVoiceInput()`内の同じチェックがそのまま働くため、ウィジェット側で別途PRO判定を作る必要はない）
+- PROゲートを`isPremium`チェック無しで素通りさせない（PRO比較表（`sub==='pro'`）にも`proFeatureVoiceInput`の行を追加済み）。**`TaskModal`のマイクボタン（`toggleVoiceInput`内の`!isPremium`チェック→`ProGateSheet`）と`VoiceCapturePopup`（独自の`!isPremium`チェック→`onProPrompt`で設定画面へ）はゲートの実装が別々にある点に注意**——`VoiceCapturePopup`は`TaskModal`を介さない独立コンポーネントのため、`toggleVoiceInput`のチェックは効かない。音声入力の起動経路を新しく増やす時は、その経路自身で`isPremium`を確認すること
+- `VoiceCapturePopup`を`TaskModal`の`toggleVoiceInput`と無理に共通化しない（「タップで開始・タップで停止」のトグルと「マウントで自動開始・結果が届いたら自動的に閉じる」は起動条件が異なるため、意図的に別々のコードのまま書いてある）
+- `notifyListeners("audioLevel", ...)`の継続配信を「ライブストリーミングは禁止」というルール（`recognitionFinished`の節を参照）と混同して削除しない。**禁止されているのはテキスト（部分認識結果）の逐次配信であり、音量レベルの逐次配信は波形表示のために意図的に導入した別の仕組み**（`levelNotifyInterval=0.08秒`で間引き済み）
 
 ---
 

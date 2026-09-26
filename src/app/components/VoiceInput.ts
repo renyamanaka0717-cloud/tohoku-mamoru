@@ -11,6 +11,7 @@ interface VoiceInputPluginType {
   start(options: { locale: string }): Promise<void>;
   stop(): Promise<void>;
   addListener(eventName: 'recognitionFinished', listenerFunc: (data: { text: string }) => void): Promise<VoiceInputListenerHandle>;
+  addListener(eventName: 'audioLevel', listenerFunc: (data: { level: number }) => void): Promise<VoiceInputListenerHandle>;
 }
 
 const VoiceInputPlugin = registerPlugin<VoiceInputPluginType>('VoiceInputPlugin');
@@ -41,6 +42,8 @@ type WebSpeechRecognition = {
 let webRecognition: WebSpeechRecognition | null = null;
 let webLastText = '';
 let webFinishCallback: ((text: string) => void) | null = null;
+let webLevelCallback: ((level: number) => void) | null = null;
+let webLevelInterval: ReturnType<typeof setInterval> | null = null;
 
 export function voiceInputSupported(): boolean {
   if (isNative()) return true;
@@ -82,6 +85,22 @@ export function onVoiceInputFinished(callback: (text: string) => void): () => vo
   return () => { webFinishCallback = null; };
 }
 
+// 録音中の波形表示用に、0〜1に正規化した音量レベルを継続的に受け取る（録音していない間は呼ばれない）。
+// Web Speech APIには音量を取得する手段が無いため、Web/開発環境ではUIの見た目確認用に
+// 疑似的な値をランダム生成するだけで、実際の音量は反映されない（実機でのみ本物の値が届く）
+export function onVoiceLevelUpdate(callback: (level: number) => void): () => void {
+  if (isNative()) {
+    let handle: VoiceInputListenerHandle | null = null;
+    let cancelled = false;
+    VoiceInputPlugin.addListener('audioLevel', data => callback(data.level ?? 0)).then(h => {
+      if (cancelled) { h.remove(); } else { handle = h; }
+    });
+    return () => { cancelled = true; handle?.remove(); };
+  }
+  webLevelCallback = callback;
+  return () => { webLevelCallback = null; };
+}
+
 export async function startVoiceInput(language: string): Promise<void> {
   const locale = voiceLocaleFor(language);
   if (isNative()) {
@@ -97,9 +116,19 @@ export async function startVoiceInput(language: string): Promise<void> {
   webRecognition.interimResults = false;
   webRecognition.continuous = false; // ブラウザ標準の無音自動終了に任せる
   webRecognition.onresult = e => { webLastText = e.results[0]?.[0]?.transcript ?? ''; };
-  webRecognition.onerror = () => webFinishCallback?.(webLastText);
-  webRecognition.onend = () => webFinishCallback?.(webLastText);
+  webRecognition.onerror = () => { stopWebLevelLoop(); webFinishCallback?.(webLastText); };
+  webRecognition.onend = () => { stopWebLevelLoop(); webFinishCallback?.(webLastText); };
   webRecognition.start();
+  startWebLevelLoop();
+}
+
+function startWebLevelLoop(): void {
+  stopWebLevelLoop();
+  webLevelInterval = setInterval(() => { webLevelCallback?.(Math.random() * 0.7 + 0.15); }, 100);
+}
+function stopWebLevelLoop(): void {
+  if (webLevelInterval !== null) { clearInterval(webLevelInterval); webLevelInterval = null; }
+  webLevelCallback?.(0);
 }
 
 // 無音になる前にユーザーが早めに切り上げたい場合の手動停止。テキスト自体はonVoiceInputFinishedの

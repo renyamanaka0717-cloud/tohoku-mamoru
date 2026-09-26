@@ -8,7 +8,7 @@ import { updateWidgetData, getPendingWidgetActions } from './components/WidgetDa
 import { setShopGeofences, setTaskLocationGeofences, setForgetAlertGeofences, checkGeofencePermissions, ensureGeofencePermission, getPendingGeofenceAction, getFiredTaskLocationIds, getNativeCurrentLocation, openAppSettings } from './components/Geofence';
 import { scheduleInactivityReminder, cancelInactivityReminder } from './components/Inactivity';
 import { notify, requestNotifyPermission, syncTaskAlerts, syncFreeSlotAlerts, syncShopNotifs, syncLaterStaleAlerts, syncWakeCheckins, syncDeadlineAlerts, isNative } from './components/LocalNotify';
-import { voiceInputSupported, ensureVoiceInputPermission, startVoiceInput, stopVoiceInput, onVoiceInputFinished } from './components/VoiceInput';
+import { voiceInputSupported, ensureVoiceInputPermission, startVoiceInput, stopVoiceInput, onVoiceInputFinished, onVoiceLevelUpdate } from './components/VoiceInput';
 import { getAppVersion } from './components/AppVersion';
 import { logAnalyticsEvent } from './components/Analytics';
 import { isDevModeUnlocked, DEV_MODE_UNLOCKED_KEY, getDevPremiumOverride, setDevPremiumOverride, isDevDenied, DEV_LOCATION_DENIED_KEY, DEV_NOTIF_DENIED_KEY } from './components/DevMode';
@@ -1530,9 +1530,82 @@ function PickerCol({items,value,onChange}:{items:string[];value:string;onChange:
   );
 }
 
+// ── VoiceWaveform ─────────────────────────────────────────────────────────────
+// 録音中の音量レベル（0〜1）をリアルタイムの棒グラフ状の波形として表示する。
+// 色はcurrentColorに任せるため、呼び出し側のtext-*クラスがそのまま反映される
+function VoiceWaveform({level,size='large'}:{level:number;size?:'small'|'large'}) {
+  const isLarge=size==='large';
+  const barWidth=isLarge?5:3, gap=isLarge?4:2, maxH=isLarge?36:16, minH=isLarge?6:4;
+  // 中央のバーほど大きく振れるようにして、実際の波形らしい見た目にする
+  const weights=[0.35,0.7,1,0.7,0.35];
+  return (
+    <div className="flex items-center justify-center" style={{gap:`${gap}px`,height:`${maxH}px`}}>
+      {weights.map((w,i)=>{
+        const h=Math.max(minH,Math.min(maxH,minH+level*w*(maxH-minH)));
+        return <div key={i} style={{width:`${barWidth}px`,height:`${h}px`,borderRadius:`${barWidth/2}px`,background:'currentColor',transition:'height 0.08s ease-out'}}/>;
+      })}
+    </div>
+  );
+}
+
+// ── VoiceCapturePopup ─────────────────────────────────────────────────────────
+// ウィジェットの「音声でタスク追加」から開かれた時専用のポップアップ。TaskModal全体を開かず、
+// 録音→認識完了→「あとでやる」タスクとして直接保存、までをこのシンプルな画面だけで完結させる
+function VoiceCapturePopup({isPremium,language,onProPrompt,onDone}:{isPremium:boolean;language:string;onProPrompt:()=>void;onDone:(text:string)=>void}) {
+  const {tr} = useI18n();
+  const [status,setStatus] = useState<'starting'|'recording'|'done'|'error'>('starting');
+  const [level,setLevel] = useState(0);
+  const [resultText,setResultText] = useState('');
+  const doneRef = useRef(onDone);
+  doneRef.current = onDone;
+
+  useEffect(()=>{
+    let cancelled=false;
+    const unsubFinish=onVoiceInputFinished(text=>{
+      setResultText(text);
+      setStatus('done');
+      setTimeout(()=>doneRef.current(text),text.trim()?700:900);
+    });
+    const unsubLevel=onVoiceLevelUpdate(setLevel);
+    (async()=>{
+      if(!isPremium){ onProPrompt(); doneRef.current(''); return; }
+      const granted=await ensureVoiceInputPermission();
+      if(cancelled) return;
+      if(!granted){ setStatus('error'); setTimeout(()=>doneRef.current(''),1200); return; }
+      try{
+        await startVoiceInput(language);
+        if(!cancelled) setStatus('recording');
+      }catch{
+        if(!cancelled){ setStatus('error'); setTimeout(()=>doneRef.current(''),1200); }
+      }
+    })();
+    return ()=>{ cancelled=true; unsubFinish(); unsubLevel(); stopVoiceInput(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[]);
+
+  return (
+    <div className="fixed inset-0 z-[250] bg-black/60 flex items-center justify-center px-8" onClick={()=>onDone('')}>
+      <div className="bg-white rounded-3xl px-6 py-8 w-full max-w-xs flex flex-col items-center gap-4" onClick={e=>e.stopPropagation()}>
+        <div className={`w-20 h-20 rounded-full flex items-center justify-center transition-colors ${status==='recording'?'bg-[var(--c-primary)]/10 text-[var(--c-primary)]':status==='error'?'bg-red-50 text-[#D97A7A]':'bg-gray-100 text-gray-400'}`}>
+          {status==='recording'?<VoiceWaveform level={level} size="large"/>:<AppIcons.mic size={32}/>}
+        </div>
+        <p className="text-sm font-semibold text-gray-800 text-center leading-relaxed">
+          {status==='starting'?tr('voiceInputStarting'):
+           status==='recording'?tr('voiceInputRecordingLabel'):
+           status==='error'?tr('voiceInputPermissionDenied'):
+           resultText.trim()||tr('voiceInputNoSpeech')}
+        </p>
+        {status!=='error'&&status!=='done'&&(
+          <button onClick={()=>onDone('')} className="text-xs text-gray-400 mt-1">{tr('cancelButton')}</button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── TaskModal ─────────────────────────────────────────────────────────────────
 
-function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:initIconSheet,onSave,onUpdate,onDelete,onClose,onBulkInput,globalTags,customTabs,notificationsEnabled,onEnableNotifications,isPremium=true,onOpenTagSettings,onOpenPro,atLocationLimit=false,suppressAutoFocus=false,focusNameSignal,fillTestNameSignal,autoStartVoice=false}:{
+function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:initIconSheet,onSave,onUpdate,onDelete,onClose,onBulkInput,globalTags,customTabs,notificationsEnabled,onEnableNotifications,isPremium=true,onOpenTagSettings,onOpenPro,atLocationLimit=false,suppressAutoFocus=false,focusNameSignal,fillTestNameSignal}:{
   task:Task|null; currentDate:string; prefillTime?:string; prefillCategory?:string; openIconSheet?:boolean;
   onSave:(tasks:Omit<Task,'id'>[])=>void; onUpdate?:(data:Omit<Task,'id'>)=>void; onDelete?:(scope:'one'|'all')=>void; onClose:()=>void; onBulkInput?:()=>void;
   isPremium?:boolean;
@@ -1549,8 +1622,6 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
   // プロダクトツアーでタスク名を入力せず「次へ」を押した場合、この値が変化した時点で
   // 名前が空ならプレースホルダー名を入れる（保存ボタンがdisabledのままにならないようにする）
   fillTestNameSignal?:number;
-  // ウィジェットの「音声でタスク追加」から開かれた場合、マウント直後に音声入力を自動開始する
-  autoStartVoice?:boolean;
 }) {
   const { tr, language } = useI18n();
   const initMode=():TaskMode=>{
@@ -1665,6 +1736,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
   const [modalProPrompt,setModalProPrompt] = useState<string|null>(null);
   const [voiceState,setVoiceState] = useState<'idle'|'recording'|'processing'>('idle');
   const [voiceError,setVoiceError] = useState<string|null>(null);
+  const [voiceLevel,setVoiceLevel] = useState(0);
   const toggleVoiceInput = async () => {
     if(!isPremium){ setModalProPrompt(tr('proFeatureVoiceInput')); return; }
     if(voiceState==='recording'){
@@ -1699,9 +1771,9 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
     // eslint-disable-next-line react-hooks/exhaustive-deps
   },[]);
   useEffect(()=>{
-    // ウィジェットの「音声でタスク追加」から開かれた時だけ、マウント直後に自動で録音を開始する。
-    // toggleVoiceInput自体が!isPremiumならProGateSheetを表示するので、PROゲートはここでは別途行わない
-    if(autoStartVoice) toggleVoiceInput();
+    // 録音中の波形表示用（0〜1）。録音していない間は呼ばれず、finishRecognition側で0にリセットされる
+    const unsub = onVoiceLevelUpdate(setVoiceLevel);
+    return unsub;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   },[]);
   const modalSwX=useRef(0), modalSwY=useRef(0);
@@ -2042,8 +2114,8 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                   className="flex-1 min-w-0 bg-transparent text-white text-lg font-medium placeholder-white/40 outline-none"/>
                 {voiceInputSupported()&&(
                   <button type="button" onClick={toggleVoiceInput} disabled={voiceState==='processing'}
-                    className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-colors ${voiceState==='recording'?'bg-white text-[var(--c-primary)] animate-pulse':'bg-white/20 text-white active:bg-white/30'}`}>
-                    <AppIcons.mic size={15}/>
+                    className={`shrink-0 h-8 rounded-full flex items-center justify-center transition-colors ${voiceState==='recording'?'w-12 bg-white text-[var(--c-primary)]':'w-8 bg-white/20 text-white active:bg-white/30'}`}>
+                    {voiceState==='recording'?<VoiceWaveform level={voiceLevel} size="small"/>:<AppIcons.mic size={15}/>}
                   </button>
                 )}
               </div>
@@ -7014,9 +7086,9 @@ export default function App() {
   const [date,setDate]           = useState(todayStr());
   const [weekAnchor,setWeekAnchor] = useState(todayStr());
   const [modal,setModal]         = useState<{open:boolean;task:Task|null;prefillTime?:string;prefillCategory?:string;iconSheet?:boolean}>({open:false,task:null});
-  // ウィジェットの「音声でタスク追加」ボタン（brainbox://addLaterVoice）経由でモーダルを開いた時だけtrue。
-  // TaskModal側はマウント時にこれを見て自動で音声入力を開始する（openAdd()自体が毎回falseにリセットする）
-  const [openViaVoiceWidget,setOpenViaVoiceWidget] = useState(false);
+  // ウィジェットの「音声でタスク追加」ボタン（brainbox://addLaterVoice）経由で開いた時だけtrue。
+  // TaskModalは開かず、専用のVoiceCapturePopupを表示する
+  const [showVoicePopup,setShowVoicePopup] = useState(false);
   const [activeCategory,setActiveCat] = useState<string|null>(null);
   const [tabFilter,setTabFilter]       = useState<string[]>([]);
   const [showTabFilter,setShowTabFilter] = useState(false);
@@ -7215,11 +7287,11 @@ export default function App() {
   useEffect(()=>{
     if(!loaded||!isNative()) return;
     // ウィジェットの「あとでやるを追加」/「音声でタスク追加」ボタン（brainbox://addLater・
-    // brainbox://addLaterVoice というLink）からアプリが開かれた時に、あとでやるタブ＋新規作成
-    // モーダルを自動で開く。addLaterVoiceの方はopenAdd()の後にopenViaVoiceWidgetをtrueにし、
-    // TaskModalのマウント時に音声入力を自動開始させる（PROゲートは既存のtoggleVoiceInput内で処理される）
+    // brainbox://addLaterVoice というLink）からアプリが開かれた時の導線。addLaterの方は
+    // 通常通りあとでやるタブ＋新規作成モーダルを開く。addLaterVoiceの方はTaskModal自体は開かず
+    // VoiceCapturePopupを表示する（録音→保存までポップアップだけで完結させる設計）
     const handle=CapApp.addListener('appUrlOpen',data=>{
-      if(data.url.includes('addLaterVoice')){ setActiveTab('later'); openAdd(); setOpenViaVoiceWidget(true); }
+      if(data.url.includes('addLaterVoice')){ setActiveTab('later'); setShowVoicePopup(true); }
       else if(data.url.includes('addLater')){ setActiveTab('later'); openAdd(); }
     });
     return ()=>{ handle.then(h=>h.remove()); };
@@ -7889,7 +7961,7 @@ export default function App() {
     setTasks(prev=>prev.map(t=>t.id===id?{...t,...data,id}:t));
   };
 
-  const openAdd  = (prefillTime?:string) => { setModal({open:true,task:null,prefillTime,prefillCategory:activeCategory??undefined}); setOpenViaVoiceWidget(false); };
+  const openAdd  = (prefillTime?:string) => setModal({open:true,task:null,prefillTime,prefillCategory:activeCategory??undefined});
   const openEdit = (task:Task) => {
     if(task.recurrence) { setRecConfirm(task); } else { setModal({open:true,task}); }
   };
@@ -7956,6 +8028,13 @@ export default function App() {
     setEditScope('one');
     closeModal();
   };
+  // VoiceCapturePopup（ウィジェットの「音声でタスク追加」）専用。TaskModalを介さず、
+  // 認識結果をそのまま「あとでやる」タスクとして保存する（modal.taskはこの時常にnullなので
+  // saveTasksの新規作成分岐がそのまま安全に使える）
+  const addVoiceLaterTask = (text:string) => saveTasks([{
+    name:text, startTime:null, duration:0, memo:'', icon:defaultIconKey(text),
+    completed:false, date, isLater:true,
+  }]);
   const subtaskToggle = (taskId:string, subtaskId:string) =>
     setTasks(prev=>prev.map(t=>t.id===taskId
       ?{...t,subtasks:t.subtasks?.map(s=>s.id===subtaskId?{...s,completed:!s.completed}:s)}
@@ -8361,8 +8440,15 @@ export default function App() {
           isPremium={isPremium} atLocationLimit={activeLocationRegionCount>=MAX_MONITORED_REGIONS}
           suppressAutoFocus={showTour&&!modal.task}
           focusNameSignal={showTour&&!modal.task?tourFocusNameSignal:undefined}
-          fillTestNameSignal={showTour&&!modal.task?tourFillTestNameSignal:undefined}
-          autoStartVoice={openViaVoiceWidget}/>
+          fillTestNameSignal={showTour&&!modal.task?tourFillTestNameSignal:undefined}/>
+      )}
+      {showVoicePopup&&(
+        <VoiceCapturePopup isPremium={isPremium} language={language}
+          onProPrompt={()=>{setSettingsInitSub('premium');setSOp(true);}}
+          onDone={(text)=>{
+            setShowVoicePopup(false);
+            if(text.trim()) addVoiceLaterTask(text.trim());
+          }}/>
       )}
 
       {/* ── Settings Screen ── */}
