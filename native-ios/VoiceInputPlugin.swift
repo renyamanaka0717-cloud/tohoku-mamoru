@@ -13,7 +13,7 @@ public class VoiceInputPlugin: CAPPlugin {
     private var recognitionTask: SFSpeechRecognitionTask?
     private var finalText: String = ""
 
-    @objc func requestPermissions(_ call: CAPPluginCall) {
+    @objc public override func requestPermissions(_ call: CAPPluginCall) {
         SFSpeechRecognizer.requestAuthorization { speechStatus in
             AVAudioSession.sharedInstance().requestRecordPermission { micGranted in
                 DispatchQueue.main.async {
@@ -26,7 +26,7 @@ public class VoiceInputPlugin: CAPPlugin {
         }
     }
 
-    @objc func checkPermissions(_ call: CAPPluginCall) {
+    @objc public override func checkPermissions(_ call: CAPPluginCall) {
         let speechStatus = SFSpeechRecognizer.authorizationStatus()
         let micStatus = AVAudioSession.sharedInstance().recordPermission
         call.resolve([
