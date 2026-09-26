@@ -2187,14 +2187,19 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                   <AppIcons.repeat size={18} className="text-gray-600"/>
                   <span className="text-sm font-semibold text-gray-800">{tr('modeRecurring')}</span>
                 </div>
-                <div className="flex gap-2 overflow-x-auto pb-0.5" style={{scrollbarWidth:'none',WebkitOverflowScrolling:'touch'} as React.CSSProperties}>
-                  {(['daily','weekly','monthly','yearly','custom'] as const).map((r,i)=>(
-                    <button key={r} onClick={()=>{if(r==='custom'&&!isPremium){setModalProPrompt(tr('proFeatureCustomRepeat'));return;}setRecur(r);}}
-                      className={`shrink-0 px-4 py-2 rounded-full text-sm font-semibold inline-flex items-center gap-1.5 ${recur===r?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
-                      {[tr('recPresetDaily'),tr('recPresetWeekly'),tr('recPresetMonthly'),tr('recPresetYearly'),tr('recPresetCustom')][i]}
-                      {r==='custom'&&<span className={`inline-flex items-center border rounded px-1 py-0.5 text-[9px] font-bold leading-none tracking-wide ${recur===r?'border-white/60 text-white/80':'border-gray-300 text-gray-400'}`}>PRO</span>}
-                    </button>
-                  ))}
+                <div className="relative">
+                  <div className="flex gap-2 overflow-x-auto pb-0.5" style={{scrollbarWidth:'none',WebkitOverflowScrolling:'touch'} as React.CSSProperties}>
+                    {(['daily','weekly','monthly','yearly','custom'] as const).map((r,i)=>(
+                      <button key={r} onClick={()=>{if(r==='custom'&&!isPremium){setModalProPrompt(tr('proFeatureCustomRepeat'));return;}setRecur(r);}}
+                        className={`shrink-0 px-4 py-2 rounded-full text-sm font-semibold inline-flex items-center gap-1.5 ${recur===r?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
+                        {[tr('recPresetDaily'),tr('recPresetWeekly'),tr('recPresetMonthly'),tr('recPresetYearly'),tr('recPresetCustom')][i]}
+                        {r==='custom'&&<span className={`inline-flex items-center border rounded px-1 py-0.5 text-[9px] font-bold leading-none tracking-wide ${recur===r?'border-white/60 text-white/80':'border-gray-300 text-gray-400'}`}>PRO</span>}
+                      </button>
+                    ))}
+                  </div>
+                  {/* 単語の長い言語だと横スクロールが必要になり最後の選択肢が隠れるため、
+                      まだ続きがあることが分かるよう右端にフェードを重ねる */}
+                  <div className="pointer-events-none absolute right-0 top-0 bottom-0.5 w-8" style={{background:'linear-gradient(to right, transparent, white)'}}/>
                 </div>
               </div>
 
