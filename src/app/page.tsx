@@ -196,6 +196,8 @@ const MONTH_NAMES_EN = ['January','February','March','April','May','June','July'
 const MONTH_NAMES_ES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
 const MONTH_NAMES_PT = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
 const MONTH_NAMES_TH = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+// タイ語の慣用的な月の省略表記（ヘッダーのように横幅が狭い場所でのみ使用。フルスペルはMONTH_NAMES_THのまま）
+const MONTH_NAMES_TH_SHORT = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 const MONTH_NAMES_ID = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 // 韓国語・繁体字中国語は英語と違い月名を専用の単語で持たない（日本語と同じく「{n}月」の数字表記）ため、
 // MONTH_NAMES_KO/MONTH_NAMES_ZH_TWのような配列は用意せず、呼び出し側で`${i+1}월`/`${i+1}月`のように組み立てる
@@ -8138,8 +8140,8 @@ export default function App() {
       <header className="z-30 bg-gray-50 flex-shrink-0" style={{paddingTop:'env(safe-area-inset-top)'}}>
         <div className="px-4 pt-1 pb-0">
           {/* Date + nav */}
-          <div className="flex items-center justify-between mb-1 gap-3">
-            <span className="text-2xl font-bold text-gray-900 truncate min-w-0">{language==='ja'?`${year}年${month}月`:language==='ko'?`${year}년 ${month}월`:language==='zh-TW'?`${year}年${month}月`:language==='es'?`${MONTH_NAMES_ES[month-1].slice(0,3).replace(/^./,c=>c.toUpperCase())} ${year}`:language==='pt'?`${MONTH_NAMES_PT[month-1].slice(0,3).replace(/^./,c=>c.toUpperCase())} ${year}`:language==='vi'?`T${month} ${year}`:language==='th'?`${MONTH_NAMES_TH[month-1]} ${year}`:language==='id'?`${MONTH_NAMES_ID[month-1]} ${year}`:`${MONTH_NAMES_EN[month-1].slice(0,3)} ${year}`}</span>
+          <div className="flex items-center justify-between mb-1 gap-2">
+            <span className="text-2xl font-bold text-gray-900 truncate min-w-0">{language==='ja'?`${year}年${month}月`:language==='ko'?`${year}년 ${month}월`:language==='zh-TW'?`${year}年${month}月`:language==='es'?`${MONTH_NAMES_ES[month-1].slice(0,3).replace(/^./,c=>c.toUpperCase())} ${year}`:language==='pt'?`${MONTH_NAMES_PT[month-1].slice(0,3).replace(/^./,c=>c.toUpperCase())} ${year}`:language==='vi'?`T${month} ${year}`:language==='th'?`${MONTH_NAMES_TH_SHORT[month-1]} ${year}`:language==='id'?`${MONTH_NAMES_ID[month-1].slice(0,3)} ${year}`:`${MONTH_NAMES_EN[month-1].slice(0,3)} ${year}`}</span>
             <div className="flex items-center gap-1 shrink-0">
               <button onClick={()=>setSettings(s=>({...s,showFreeCard:!(s.showFreeCard??true)}))}
                 className={`relative h-7 rounded-full font-medium whitespace-nowrap transition-colors duration-200 mr-1 ${(settings.showFreeCard??true)?'bg-[var(--c-primary)] text-white':'bg-gray-200 text-gray-500'}`}
