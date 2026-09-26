@@ -20,6 +20,12 @@ public class VoiceInputPlugin: CAPPlugin {
     private var lastLevelNotifyTime: Date = .distantPast
     // 波形の描画はこの間隔で十分滑らかに見える一方、ブリッジへの負荷も抑えられる
     private static let levelNotifyInterval: TimeInterval = 0.08
+    // 直近の最大音量（緩やかに減衰）。固定のdB閾値だと機種や周辺環境によって
+    // 実際のRMSが想定より小さく、波形がほとんど動かないことがあったため、
+    // 「直近で一番大きかった音」を基準にした相対値で正規化する
+    private var peakLevel: Float = 0.01
+    private static let peakDecay: Float = 0.985
+    private static let peakFloor: Float = 0.006
 
     @objc public override func requestPermissions(_ call: CAPPluginCall) {
         SFSpeechRecognizer.requestAuthorization { speechStatus in
@@ -47,6 +53,7 @@ public class VoiceInputPlugin: CAPPlugin {
         cancelActive()
         finalText = ""
         lastLevelNotifyTime = .distantPast
+        peakLevel = 0.01
         let localeId = call.getString("locale") ?? "ja-JP"
         guard let recognizer = SFSpeechRecognizer(locale: Locale(identifier: localeId)), recognizer.isAvailable else {
             call.reject("recognizer_unavailable")
@@ -114,13 +121,13 @@ public class VoiceInputPlugin: CAPPlugin {
         var sum: Float = 0
         for i in 0..<frameLength { sum += samples[i] * samples[i] }
         let rms = sqrt(sum / Float(frameLength))
-        // .measurementモード（AGC無効）では通常の発話でもRMSが0.005〜0.05程度と非常に小さく、
-        // 単純な倍率（旧: rms*6）だと大声でないと波形がほとんど動かなかった。dBFSベースで
-        // -50dB(無音)〜0dB(最大)を0〜1に正規化することで、小さめの声でも波形が反応するようにする
-        let db = 20 * log10(max(rms, 0.00001))
-        let minDb: Float = -50
-        let normalized = max(0, min(1, (db - minDb) / -minDb))
-        let level = Double(normalized)
+        // 固定のdB閾値（旧実装）だと、実機・周辺環境によってはRMSの絶対値がその閾値に
+        // 届かず波形がほとんど動かないことがあった。「直近で一番大きかった音」を基準
+        // （peakLevel、緩やかに減衰）にした相対値で正規化することで、マイクの感度や
+        // 環境ノイズの違いに関わらず、話している間は常に波形が反応するようにする
+        peakLevel = max(rms, peakLevel * Self.peakDecay)
+        let effectivePeak = max(peakLevel, Self.peakFloor)
+        let level = Double(min(1.0, rms / effectivePeak))
 
         let now = Date()
         guard now.timeIntervalSince(lastLevelNotifyTime) >= Self.levelNotifyInterval else { return }
