@@ -114,8 +114,13 @@ public class VoiceInputPlugin: CAPPlugin {
         var sum: Float = 0
         for i in 0..<frameLength { sum += samples[i] * samples[i] }
         let rms = sqrt(sum / Float(frameLength))
-        // 通常の会話音量のRMSはおおよそ0〜0.2程度に収まるため、波形が見た目よく振れるよう6倍する
-        let level = min(1.0, Double(rms) * 6)
+        // .measurementモード（AGC無効）では通常の発話でもRMSが0.005〜0.05程度と非常に小さく、
+        // 単純な倍率（旧: rms*6）だと大声でないと波形がほとんど動かなかった。dBFSベースで
+        // -50dB(無音)〜0dB(最大)を0〜1に正規化することで、小さめの声でも波形が反応するようにする
+        let db = 20 * log10(max(rms, 0.00001))
+        let minDb: Float = -50
+        let normalized = max(0, min(1, (db - minDb) / -minDb))
+        let level = Double(normalized)
 
         let now = Date()
         guard now.timeIntervalSince(lastLevelNotifyTime) >= Self.levelNotifyInterval else { return }
