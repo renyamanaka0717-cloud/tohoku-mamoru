@@ -8029,12 +8029,17 @@ export default function App() {
     closeModal();
   };
   // VoiceCapturePopup（ウィジェットの「音声でタスク追加」）専用。TaskModalを介さず、
-  // 認識結果をそのまま「あとでやる」タスクとして保存する（modal.taskはこの時常にnullなので
-  // saveTasksの新規作成分岐がそのまま安全に使える）
-  const addVoiceLaterTask = (text:string) => saveTasks([{
-    name:text, startTime:null, duration:0, memo:'', icon:defaultIconKey(text),
-    completed:false, date, isLater:true,
-  }]);
+  // 認識結果をそのまま「あとでやる」タスクとして保存する。saveTasks（末尾に追加）ではなく
+  // 配列の先頭に追加し、「あとでやる」一覧を開いた時に一番上へ来るようにする
+  const addVoiceLaterTask = (text:string) => {
+    const newTask:Task = {
+      id:uid(), name:text, startTime:null, duration:0, memo:'', icon:defaultIconKey(text),
+      completed:false, date, isLater:true,
+    };
+    setTasks(prev=>[newTask,...prev]);
+    logAnalyticsEvent('task_created',{mode:'later'});
+    logAnalyticsEvent('later_task_created');
+  };
   const subtaskToggle = (taskId:string, subtaskId:string) =>
     setTasks(prev=>prev.map(t=>t.id===taskId
       ?{...t,subtasks:t.subtasks?.map(s=>s.id===subtaskId?{...s,completed:!s.completed}:s)}
