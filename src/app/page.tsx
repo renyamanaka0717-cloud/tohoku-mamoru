@@ -8134,7 +8134,7 @@ export default function App() {
         <div className="px-4 pt-1 pb-0">
           {/* Date + nav */}
           <div className="flex items-center justify-between mb-1">
-            <span className="text-2xl font-bold text-gray-900 whitespace-nowrap">{language==='ja'?`${year}年${month}月`:language==='ko'?`${year}년 ${month}월`:language==='zh-TW'?`${year}年${month}月`:language==='es'?`${MONTH_NAMES_ES[month-1]} de ${year}`:language==='pt'?`${MONTH_NAMES_PT[month-1]} de ${year}`:language==='vi'?`Tháng ${month}, ${year}`:language==='th'?`${MONTH_NAMES_TH[month-1]} ${year}`:language==='id'?`${MONTH_NAMES_ID[month-1]} ${year}`:`${MONTH_NAMES_EN[month-1].slice(0,3)} ${year}`}</span>
+            <span className="text-2xl font-bold text-gray-900 whitespace-nowrap">{language==='ja'?`${year}年${month}月`:language==='ko'?`${year}년 ${month}월`:language==='zh-TW'?`${year}年${month}月`:language==='es'?`${MONTH_NAMES_ES[month-1].slice(0,3).replace(/^./,c=>c.toUpperCase())} ${year}`:language==='pt'?`${MONTH_NAMES_PT[month-1].slice(0,3).replace(/^./,c=>c.toUpperCase())} ${year}`:language==='vi'?`Tháng ${month}, ${year}`:language==='th'?`${MONTH_NAMES_TH[month-1]} ${year}`:language==='id'?`${MONTH_NAMES_ID[month-1]} ${year}`:`${MONTH_NAMES_EN[month-1].slice(0,3)} ${year}`}</span>
             <div className="flex items-center gap-1">
               <button onClick={()=>setSettings(s=>({...s,showFreeCard:!(s.showFreeCard??true)}))}
                 className={`relative h-7 rounded-full font-medium transition-colors duration-200 mr-1 overflow-hidden ${(settings.showFreeCard??true)?'bg-[var(--c-primary)] text-white':'bg-gray-200 text-gray-500'}`}
