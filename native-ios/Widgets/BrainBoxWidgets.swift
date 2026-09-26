@@ -393,7 +393,7 @@ struct AddLaterVoiceWidgetView: View {
                 Circle().fill(entry.themeColor.opacity(0.18)).frame(width: 52, height: 52)
                 Image(systemName: "mic.fill").font(.system(size: 20, weight: .bold)).foregroundStyle(entry.themeColor)
             }
-            Text("音声でタスク追加").font(.footnote).bold().foregroundStyle(.primary)
+            Text("あとでやる").font(.footnote).bold().foregroundStyle(.primary)
         }
     }
 }
