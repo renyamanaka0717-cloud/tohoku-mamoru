@@ -8143,7 +8143,7 @@ export default function App() {
             <div className="flex items-center gap-1 shrink-0">
               <button onClick={()=>setSettings(s=>({...s,showFreeCard:!(s.showFreeCard??true)}))}
                 className={`relative h-7 rounded-full font-medium whitespace-nowrap transition-colors duration-200 mr-1 ${(settings.showFreeCard??true)?'bg-[var(--c-primary)] text-white':'bg-gray-200 text-gray-500'}`}
-                style={{fontSize:'12px',paddingLeft:(settings.showFreeCard??true)?'10px':'22px',paddingRight:(settings.showFreeCard??true)?'22px':'10px',transition:'padding 0.2s, background-color 0.2s'}}>
+                style={{fontSize:'12px',paddingLeft:(settings.showFreeCard??true)?'10px':'26px',paddingRight:(settings.showFreeCard??true)?'26px':'10px',transition:'padding 0.2s, background-color 0.2s'}}>
                 {tr('headerFreeTimeToggle')}
                 <span className="absolute top-1.5 w-4 h-4 bg-white rounded-full" style={{boxShadow:'0 1px 3px rgba(0,0,0,0.2)',transition:'left 0.2s',left:(settings.showFreeCard??true)?'calc(100% - 22px)':'6px'}}/>
               </button>
