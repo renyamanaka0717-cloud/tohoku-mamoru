@@ -1606,7 +1606,7 @@ function VoiceCapturePopup({isPremium,language,onProPrompt,onDone}:{isPremium:bo
         <div className={`w-20 h-20 rounded-full flex items-center justify-center transition-colors ${status==='recording'?'bg-[var(--c-primary)]/10 text-[var(--c-primary)]':status==='error'?'bg-red-50 text-[#D97A7A]':'bg-gray-100 text-gray-400'}`}>
           {status==='recording'?<VoiceWaveform level={level} size="large"/>:<AppIcons.mic size={32}/>}
         </div>
-        <p className="text-sm font-semibold text-gray-800 text-center leading-relaxed">
+        <p className="text-base font-semibold text-gray-800 text-center leading-relaxed">
           {status==='starting'?tr('voiceInputStarting'):
            status==='recording'?tr('voiceInputRecordingLabel'):
            status==='error'?tr('voiceInputPermissionDenied'):
