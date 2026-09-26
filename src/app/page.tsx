@@ -3474,7 +3474,10 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
               {overlaps.map((o,oi)=>(
                 <div key={oi} className="absolute" style={{
                   top:`${o.rt}px`,height:`${o.rb-o.rt}px`,left:0,right:0,
-                  backgroundImage:'repeating-linear-gradient(to bottom,transparent 0px,transparent 8px,white 8px,white 13px)'
+                  // 区切り部分の背景はFreeTimeCard自体の背景色(bg-gray-50)に合わせる。
+                  // 白(#fff)固定にしていると、空き時間カードのgray-50背景の上で
+                  // 区切り部分だけ僅かに白浮きして見え、点線がガサついて見える原因になっていた
+                  backgroundImage:'repeating-linear-gradient(to bottom,transparent 0px,transparent 8px,#F9FAFB 8px,#F9FAFB 13px)'
                 }}/>
               ))}
             </div>
