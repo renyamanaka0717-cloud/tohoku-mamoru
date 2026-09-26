@@ -3458,7 +3458,12 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
         if(nodes.length===0) return null;
 
         const freeRanges=freeLayout.map(({slot,freeY,finalH})=>({
-          top:freeY, h:measuredH[gkFree(slot.start)]??finalH
+          // measuredHはFreeTimeCardの内側コンテンツ(padding抜き)の高さなので、
+          // dayItemsの積み上げ計算(3349行目)と同じくchrome(padding/border)を足し戻す。
+          // 足さないとカードの実際の高さより点線区間が短くなる不具合になる
+          top:freeY, h:measuredH[gkFree(slot.start)]!=null
+            ?measuredH[gkFree(slot.start)]+(freeChromeRef.current[gkFree(slot.start)]??FREE_CARD_CHROME_FALLBACK)
+            :finalH
         }));
 
         const renderSeg=(key:string|number,top:number,h:number,c1:string,c2:string)=>{
