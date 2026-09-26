@@ -1532,7 +1532,7 @@ function PickerCol({items,value,onChange}:{items:string[];value:string;onChange:
 
 // ── TaskModal ─────────────────────────────────────────────────────────────────
 
-function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:initIconSheet,onSave,onUpdate,onDelete,onClose,onBulkInput,globalTags,customTabs,notificationsEnabled,onEnableNotifications,isPremium=true,onOpenTagSettings,onOpenPro,atLocationLimit=false,suppressAutoFocus=false,focusNameSignal,fillTestNameSignal}:{
+function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:initIconSheet,onSave,onUpdate,onDelete,onClose,onBulkInput,globalTags,customTabs,notificationsEnabled,onEnableNotifications,isPremium=true,onOpenTagSettings,onOpenPro,atLocationLimit=false,suppressAutoFocus=false,focusNameSignal,fillTestNameSignal,autoStartVoice=false}:{
   task:Task|null; currentDate:string; prefillTime?:string; prefillCategory?:string; openIconSheet?:boolean;
   onSave:(tasks:Omit<Task,'id'>[])=>void; onUpdate?:(data:Omit<Task,'id'>)=>void; onDelete?:(scope:'one'|'all')=>void; onClose:()=>void; onBulkInput?:()=>void;
   isPremium?:boolean;
@@ -1549,6 +1549,8 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
   // プロダクトツアーでタスク名を入力せず「次へ」を押した場合、この値が変化した時点で
   // 名前が空ならプレースホルダー名を入れる（保存ボタンがdisabledのままにならないようにする）
   fillTestNameSignal?:number;
+  // ウィジェットの「音声でタスク追加」から開かれた場合、マウント直後に音声入力を自動開始する
+  autoStartVoice?:boolean;
 }) {
   const { tr, language } = useI18n();
   const initMode=():TaskMode=>{
@@ -1694,6 +1696,12 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
       setVoiceState('idle');
     });
     return ()=>{ unsub(); if(voiceStateRef.current!=='idle') stopVoiceInput(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[]);
+  useEffect(()=>{
+    // ウィジェットの「音声でタスク追加」から開かれた時だけ、マウント直後に自動で録音を開始する。
+    // toggleVoiceInput自体が!isPremiumならProGateSheetを表示するので、PROゲートはここでは別途行わない
+    if(autoStartVoice) toggleVoiceInput();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   },[]);
   const modalSwX=useRef(0), modalSwY=useRef(0);
@@ -7006,6 +7014,9 @@ export default function App() {
   const [date,setDate]           = useState(todayStr());
   const [weekAnchor,setWeekAnchor] = useState(todayStr());
   const [modal,setModal]         = useState<{open:boolean;task:Task|null;prefillTime?:string;prefillCategory?:string;iconSheet?:boolean}>({open:false,task:null});
+  // ウィジェットの「音声でタスク追加」ボタン（brainbox://addLaterVoice）経由でモーダルを開いた時だけtrue。
+  // TaskModal側はマウント時にこれを見て自動で音声入力を開始する（openAdd()自体が毎回falseにリセットする）
+  const [openViaVoiceWidget,setOpenViaVoiceWidget] = useState(false);
   const [activeCategory,setActiveCat] = useState<string|null>(null);
   const [tabFilter,setTabFilter]       = useState<string[]>([]);
   const [showTabFilter,setShowTabFilter] = useState(false);
@@ -7203,10 +7214,13 @@ export default function App() {
   },[loaded]);
   useEffect(()=>{
     if(!loaded||!isNative()) return;
-    // ウィジェットの「あとでやるを追加」ボタン（brainbox://addLater というLink）から
-    // アプリが開かれた時に、あとでやるタブ＋新規作成モーダルを自動で開く
+    // ウィジェットの「あとでやるを追加」/「音声でタスク追加」ボタン（brainbox://addLater・
+    // brainbox://addLaterVoice というLink）からアプリが開かれた時に、あとでやるタブ＋新規作成
+    // モーダルを自動で開く。addLaterVoiceの方はopenAdd()の後にopenViaVoiceWidgetをtrueにし、
+    // TaskModalのマウント時に音声入力を自動開始させる（PROゲートは既存のtoggleVoiceInput内で処理される）
     const handle=CapApp.addListener('appUrlOpen',data=>{
-      if(data.url.includes('addLater')){ setActiveTab('later'); openAdd(); }
+      if(data.url.includes('addLaterVoice')){ setActiveTab('later'); openAdd(); setOpenViaVoiceWidget(true); }
+      else if(data.url.includes('addLater')){ setActiveTab('later'); openAdd(); }
     });
     return ()=>{ handle.then(h=>h.remove()); };
   },[loaded]);
@@ -7875,7 +7889,7 @@ export default function App() {
     setTasks(prev=>prev.map(t=>t.id===id?{...t,...data,id}:t));
   };
 
-  const openAdd  = (prefillTime?:string) => setModal({open:true,task:null,prefillTime,prefillCategory:activeCategory??undefined});
+  const openAdd  = (prefillTime?:string) => { setModal({open:true,task:null,prefillTime,prefillCategory:activeCategory??undefined}); setOpenViaVoiceWidget(false); };
   const openEdit = (task:Task) => {
     if(task.recurrence) { setRecConfirm(task); } else { setModal({open:true,task}); }
   };
@@ -8347,7 +8361,8 @@ export default function App() {
           isPremium={isPremium} atLocationLimit={activeLocationRegionCount>=MAX_MONITORED_REGIONS}
           suppressAutoFocus={showTour&&!modal.task}
           focusNameSignal={showTour&&!modal.task?tourFocusNameSignal:undefined}
-          fillTestNameSignal={showTour&&!modal.task?tourFillTestNameSignal:undefined}/>
+          fillTestNameSignal={showTour&&!modal.task?tourFillTestNameSignal:undefined}
+          autoStartVoice={openViaVoiceWidget}/>
       )}
 
       {/* ── Settings Screen ── */}

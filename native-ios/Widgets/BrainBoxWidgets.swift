@@ -373,11 +373,49 @@ struct AddLaterWidget: Widget {
     }
 }
 
+// MARK: - 音声でタスク追加ウィジェット（AddLaterWidgetと同じsystemSmall、URLだけ別）
+
+// AddLaterWidgetViewと同じ構成だが、開いた瞬間にPRO限定の音声入力を自動開始させたいため
+// 別のURLスキーム（addLaterVoice）を使う。JS側のappUrlOpenリスナーがこの文字列を見て
+// タスク追加モーダルを開いた直後に録音を自動開始する（PROゲートもJS側の既存ロジックに任せる）
+struct AddLaterVoiceWidgetView: View {
+    var entry: CombinedEntry
+
+    var body: some View {
+        Link(destination: URL(string: "brainbox://addLaterVoice")!) { content }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .containerBackground(adaptiveWidgetBackground, for: .widget)
+    }
+
+    private var content: some View {
+        VStack(spacing: 8) {
+            ZStack {
+                Circle().fill(entry.themeColor.opacity(0.18)).frame(width: 52, height: 52)
+                Image(systemName: "mic.fill").font(.system(size: 20, weight: .bold)).foregroundStyle(entry.themeColor)
+            }
+            Text("音声でタスク追加").font(.footnote).bold().foregroundStyle(.primary)
+        }
+    }
+}
+
+struct AddLaterVoiceWidget: Widget {
+    let kind: String = "BrainBoxAddLaterVoiceWidget"
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: kind, provider: CombinedProvider()) { entry in
+            AddLaterVoiceWidgetView(entry: entry)
+        }
+        .configurationDisplayName("音声でタスク追加")
+        .description("話しかけるだけで「あとでやる」タスクを追加できます。")
+        .supportedFamilies([.systemSmall])
+    }
+}
+
 @main
 struct BrainBoxWidgetBundle: WidgetBundle {
     var body: some Widget {
         CombinedWidget()
         QuadWidget()
         AddLaterWidget()
+        AddLaterVoiceWidget()
     }
 }

@@ -724,7 +724,7 @@ interface ForgetAlert {
 
 ## タスク名の音声入力（TaskModal、PRO機能）
 
-タスク名入力欄の右にマイクボタンを置き、タップで録音開始→**無音を検知したら自動的に録音終了**し、認識結果をタスク名に反映する。もう一度マイクをタップすれば無音を待たず早めに切り上げることもできる。**アプリ内（TaskModal）限定の機能で、ウィジェットからの起動は対象外**（実装規模を抑えるため、まずこの範囲だけ先に作った）。
+タスク名入力欄の右にマイクボタンを置き、タップで録音開始→**無音を検知したら自動的に録音終了**し、認識結果をタスク名に反映する。もう一度マイクをタップすれば無音を待たず早めに切り上げることもできる。ホーム画面ウィジェット「音声でタスク追加」からも同じ機能を起動できる（後述）。
 
 ### 設計方針（無音自動終了・単一イベントでの結果通知）
 
@@ -743,6 +743,17 @@ interface ForgetAlert {
 - マイク・音声認識どちらかの許可が拒否されている場合は`tr('voiceInputPermissionDenied')`を入力欄の下に赤字で表示する（`ShopLocationPanel`のような専用バナー・設定アプリへの遷移ボタンは持たない、最小限のインライン表示に留めている）
 - `TaskModal`がアンマウントされた瞬間に録音中/処理中だった場合、`useEffect`のクリーンアップで`onVoiceInputFinished`の解除に加えて`stopVoiceInput()`を呼びマイクを解放する（`voiceStateRef`で最新状態をrefに追従させ、unmount時の1回だけ発火するクリーンアップから参照する）
 
+### ウィジェット連携（「音声でタスク追加」ウィジェット、systemSmall）
+
+**当初はスコープ外にしていたが、後日追加した。** `native-ios/Widgets/BrainBoxWidgets.swift`の`AddLaterWidget`（既存の「あとでやるを追加」ウィジェット、`brainbox://addLater`というURLスキームへの`Link`をタップするだけでアプリ側の`appUrlOpen`イベントが拾って`openAdd()`を呼ぶ仕組み）が既にあったため、**新しいCapacitorプラグインやAppIntent／App Group経由のpendingフラグを増やさず、同じURLスキーム方式を使い回すだけで実現できた**（AppIntent経由でApp Group経由のpendingフラグをポーリングする、というもっと大掛かりな設計を最初は検討していたが、既存のURLスキームの仕組みで十分だと分かり、そちらに乗せる形にした）。
+
+- `AddLaterVoiceWidget`/`AddLaterVoiceWidgetView`（`AddLaterWidget`と同じsystemSmall、マイクアイコン）が`brainbox://addLaterVoice`という別のURLスキームへリンクする
+- `src/app/page.tsx`の`appUrlOpen`リスナーが`addLaterVoice`を`addLater`より先にチェックする（`'addLaterVoice'.includes('addLater')`がtrueなので、判定順を間違えると`addLaterVoice`が常に通常の`addLater`分岐に吸われてしまう）。`addLaterVoice`の場合は`openAdd()`に続けて`openViaVoiceWidget`をtrueにする
+- `App`の`openAdd()`自体は呼ばれるたびに`openViaVoiceWidget`をfalseにリセットする（`setModal(...)`の直後に`setOpenViaVoiceWidget(false)`）。ウィジェット経由の場合はその直後に呼び出し元が改めてtrueにセットするため、同一イベントハンドラ内の後勝ちで最終的にtrueが残る
+- `TaskModal`は新しいprop`autoStartVoice`を受け取り、**マウント時に1回だけ発火する`useEffect(()=>{...},[])`**で`autoStartVoice`がtrueなら`toggleVoiceInput()`を呼ぶ。`{modal.open&&<TaskModal .../>}`という条件レンダリングにより`TaskModal`はモーダルを開くたびに必ず新規マウントされる設計のため（既存の`focusNameSignal`のような「変化検知」ref基準パターンは不要）、単純に「マウント時にtrueなら実行」で足りる
+- PROゲートはウィジェット側では一切判定しない。`toggleVoiceInput()`内の既存の`!isPremium`チェックがそのまま働き、非PROユーザーがウィジェットから開いた場合は`ProGateSheet`が表示されるだけ（新しい分岐を追加する必要がなかった）
+- 英語含む9言語ぶんの文言（ウィジェットのタイトル「音声でタスク追加」・説明文）は`native-ios/Widgets/Localizable.xcstrings`に追加済み
+
 ### Xcodeでの手動セットアップ（`ios/`はgitignore対象なので毎回必要）
 
 1. `native-ios/VoiceInputPlugin.swift`/`.m`を`ios/App/App/`に追加（Target Membership: App）
@@ -750,14 +761,16 @@ interface ForgetAlert {
 3. `native-ios/VoiceInputInfo.plist.snippet.xml`の内容を`ios/App/App/Info.plist`の`<dict>`直下に追加する（`NSMicrophoneUsageDescription`・`NSSpeechRecognitionUsageDescription`。これが無いと審査でリジェクトされる）
 4. App Group・Background Modes等の追加設定は不要（フォアグラウンドでの一時的な録音のみのため）
 5. **`checkPermissions`/`requestPermissions`という関数名を使う時は要注意:** `CAPPlugin`基底クラスにすでに同名の`open`メソッドが定義されているため、`override`を付けず・可視性を`public`にしないままだと「Overriding declaration requires an 'override'」「Overriding instance method must be as accessible as its enclosing type」でビルドエラーになる（実際に発生した不具合）。`@objc public override func requestPermissions(_ call: CAPPluginCall)`のように書くこと
+6. ウィジェット連携ぶんの追加セットアップ: `native-ios/Widgets/BrainBoxWidgets.swift`・`Localizable.xcstrings`は新規ファイルではなく**既存ファイルの更新**なので、Widget Extensionターゲット内の同名ファイルの中身をこの変更後の内容に差し替える（ホーム画面ウィジェットの節にある既存の手順と同じ、Widget Extensionターゲット側のみでよくメインAppターゲットの変更は不要）
 
 ### 避けるパターン
 
 - `stop()`内で`endAudio()`の直後に`recognitionTask.cancel()`しない（`isFinal`な結果や無音タイマーによる`finishRecognition()`を待たずに打ち切ると、特に短い発話でテキストが空になる不具合の実績あり）
 - 無音自動終了のタイマーをリセットするタイミングを部分認識結果のコールバック以外に置かない（音声バッファのコールバック等、実際に音声が認識されたことを示さないタイミングでリセットすると、しゃべっている最中に誤って自動終了してしまう）
 - `TaskModal`側で`autoIcon`のような可変stateを、空配列depsの`useEffect`内クロージャから直接参照しない（stale closureになる。`autoIconRef`のような参照経由で最新値を読むこと）
-- ウィジェットからの音声入力起動をこの機能の延長で作らない（別途「ウィジェット→アプリを開く→自動録音開始」の連携が必要になり、規模が大きくなるため意図的にスコープ外にしてある。次にやる場合は別機能として計画すること）
-- PROゲートを`isPremium`チェック無しで素通りさせない（`setModalProPrompt(tr('proFeatureVoiceInput'))`で必ずガードする。PRO比較表（`sub==='pro'`）にも`proFeatureVoiceInput`の行を追加済み）
+- ウィジェットからの音声入力起動を、新しいCapacitorプラグインやApp Group経由のpendingフラグ・AppIntentを新設して作らない（実際には既存の`AddLaterWidget`と同じ`brainbox://`URLスキーム＋`appUrlOpen`リスナーの仕組みだけで十分に実現できた。新しい仕組みを増やす前に、まずこの既存パターンで足りないか確認すること）
+- `appUrlOpen`リスナーで`addLaterVoice`より先に`addLater`を判定しない（`'addLaterVoice'.includes('addLater')`が真になるため、判定順を逆にすると`addLaterVoice`が常に通常の`addLater`分岐に吸われてしまう）
+- PROゲートを`isPremium`チェック無しで素通りさせない（`setModalProPrompt(tr('proFeatureVoiceInput'))`で必ずガードする。PRO比較表（`sub==='pro'`）にも`proFeatureVoiceInput`の行を追加済み。ウィジェット経由でも`toggleVoiceInput()`内の同じチェックがそのまま働くため、ウィジェット側で別途PRO判定を作る必要はない）
 
 ---
 

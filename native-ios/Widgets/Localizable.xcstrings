@@ -870,6 +870,122 @@
           }
         }
       }
+    },
+    "音声でタスク追加": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add Task by Voice"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "音声でタスク追加"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "음성으로 작업 추가"
+          }
+        },
+        "zh-Hant-TW": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "用語音新增任務"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agregar tarea por voz"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Adicionar tarefa por voz"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thêm công việc bằng giọng nói"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เพิ่มงานด้วยเสียง"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tambah tugas dengan suara"
+          }
+        }
+      }
+    },
+    "話しかけるだけで「あとでやる」タスクを追加できます。": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Just speak to add a Later task."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "話しかけるだけで「あとでやる」タスクを追加できます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "말하기만 해도 나중에 할 일을 추가할 수 있습니다."
+          }
+        },
+        "zh-Hant-TW": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "只要開口說話，就能新增稍後辦任務。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Simplemente habla para agregar una tarea para más tarde."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Basta falar para adicionar uma tarefa para mais tarde."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chỉ cần nói là có thể thêm công việc để sau."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "แค่พูดก็เพิ่มงานไว้ทีหลังได้"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cukup bicara untuk menambahkan tugas Nanti."
+          }
+        }
+      }
     }
   },
   "version": "1.0"
