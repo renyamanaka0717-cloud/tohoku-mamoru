@@ -2319,7 +2319,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                   )}
 
                   {/* ③ 終了条件 */}
-                  <div className="bg-white mx-3 mt-3 rounded-2xl p-4">
+                  <div className="bg-white mx-3 mt-3 rounded-2xl p-4 overflow-hidden">
                     <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-4">{tr('customRecEndLabel')}</p>
                     <div className="flex gap-2 mb-4">
                       {([['never','customRecEndNever'],['date','customRecEndDate'],['count','customRecEndCount']] as const).map(([t,lk])=>(
