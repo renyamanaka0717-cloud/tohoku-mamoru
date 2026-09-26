@@ -12,6 +12,9 @@ public class VoiceInputPlugin: CAPPlugin {
     private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
     private var recognitionTask: SFSpeechRecognitionTask?
     private var finalText: String = ""
+    // stop()呼び出し時点ではまだ認識結果が確定していないことが多いため、
+    // isFinalな結果が届くまでこのcallを保持しておき、届いた時点でresolveする
+    private var pendingStopCall: CAPPluginCall?
 
     @objc public override func requestPermissions(_ call: CAPPluginCall) {
         SFSpeechRecognizer.requestAuthorization { speechStatus in
@@ -36,7 +39,7 @@ public class VoiceInputPlugin: CAPPlugin {
     }
 
     @objc func start(_ call: CAPPluginCall) {
-        stopEngine()
+        cancelActive()
         finalText = ""
         let localeId = call.getString("locale") ?? "ja-JP"
         guard let recognizer = SFSpeechRecognizer(locale: Locale(identifier: localeId)), recognizer.isAvailable else {
@@ -61,9 +64,12 @@ public class VoiceInputPlugin: CAPPlugin {
             guard let self = self else { return }
             if let result = result {
                 self.finalText = result.bestTranscription.formattedString
+                if result.isFinal {
+                    self.finishStop()
+                }
             }
             if error != nil {
-                self.stopEngine()
+                self.finishStop()
             }
         }
 
@@ -83,12 +89,38 @@ public class VoiceInputPlugin: CAPPlugin {
         }
     }
 
+    // 録音停止直後はまだ認識結果が確定していないことが多いため、すぐには resolve せず、
+    // endAudio() 後に届く isFinal な結果（finishStop() 経由）を待ってから resolve する。
+    // 万一 isFinal が届かない場合に呼び出し元が固まらないよう、短いタイムアウトで強制終了する
     @objc func stop(_ call: CAPPluginCall) {
-        stopEngine()
-        call.resolve(["text": finalText])
+        guard recognitionTask != nil else {
+            call.resolve(["text": finalText])
+            return
+        }
+        pendingStopCall = call
+        if audioEngine.isRunning {
+            audioEngine.stop()
+            audioEngine.inputNode.removeTap(onBus: 0)
+        }
+        recognitionRequest?.endAudio()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) { [weak self] in
+            self?.finishStop()
+        }
     }
 
-    private func stopEngine() {
+    private func finishStop() {
+        recognitionTask?.cancel()
+        recognitionTask = nil
+        recognitionRequest = nil
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        if let call = pendingStopCall {
+            pendingStopCall = nil
+            call.resolve(["text": finalText])
+        }
+    }
+
+    // start() を録音中に再度呼ばれた場合など、確定結果を待たずに即座に破棄する
+    private func cancelActive() {
         if audioEngine.isRunning {
             audioEngine.stop()
             audioEngine.inputNode.removeTap(onBus: 0)
@@ -97,6 +129,7 @@ public class VoiceInputPlugin: CAPPlugin {
         recognitionTask?.cancel()
         recognitionRequest = nil
         recognitionTask = nil
+        pendingStopCall = nil
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
 }
