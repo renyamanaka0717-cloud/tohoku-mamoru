@@ -1558,13 +1558,15 @@ function VoiceCapturePopup({isPremium,language,onProPrompt,onDone}:{isPremium:bo
   const [resultText,setResultText] = useState('');
   const doneRef = useRef(onDone);
   doneRef.current = onDone;
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout>|null>(null);
 
   useEffect(()=>{
     let cancelled=false;
     const unsubFinish=onVoiceInputFinished(text=>{
       setResultText(text);
       setStatus('done');
-      setTimeout(()=>doneRef.current(text),text.trim()?700:900);
+      if(saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      saveTimerRef.current=setTimeout(()=>doneRef.current(text),2000);
     });
     const unsubLevel=onVoiceLevelUpdate(setLevel);
     (async()=>{
@@ -1579,9 +1581,24 @@ function VoiceCapturePopup({isPremium,language,onProPrompt,onDone}:{isPremium:bo
         if(!cancelled){ setStatus('error'); setTimeout(()=>doneRef.current(''),1200); }
       }
     })();
-    return ()=>{ cancelled=true; unsubFinish(); unsubLevel(); stopVoiceInput(); };
+    return ()=>{
+      cancelled=true; unsubFinish(); unsubLevel(); stopVoiceInput();
+      if(saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   },[]);
+
+  // 認識結果が気に入らない時、閉じずにその場で再録音を始める（2秒の自動保存はキャンセルする）
+  const retry = async () => {
+    if(saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    setResultText(''); setLevel(0); setStatus('starting');
+    try{
+      await startVoiceInput(language);
+      setStatus('recording');
+    }catch{
+      setStatus('error'); setTimeout(()=>doneRef.current(''),1200);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-[250] bg-black/60 flex items-center justify-center px-8" onClick={()=>onDone('')}>
@@ -1595,7 +1612,9 @@ function VoiceCapturePopup({isPremium,language,onProPrompt,onDone}:{isPremium:bo
            status==='error'?tr('voiceInputPermissionDenied'):
            resultText.trim()||tr('voiceInputNoSpeech')}
         </p>
-        {status!=='error'&&status!=='done'&&(
+        {status==='done'?(
+          <button onClick={retry} className="text-xs text-gray-400 mt-1">{tr('voiceInputRetry')}</button>
+        ):status!=='error'&&(
           <button onClick={()=>onDone('')} className="text-xs text-gray-400 mt-1">{tr('cancelButton')}</button>
         )}
       </div>
