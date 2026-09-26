@@ -388,12 +388,12 @@ struct AddLaterVoiceWidgetView: View {
     }
 
     private var content: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 8) {
             ZStack {
-                Circle().fill(entry.themeColor.opacity(0.18)).frame(width: 96, height: 96)
-                Image(systemName: "mic.fill").font(.system(size: 36, weight: .bold)).foregroundStyle(entry.themeColor)
+                Circle().fill(entry.themeColor.opacity(0.18)).frame(width: 52, height: 52)
+                Image(systemName: "mic.fill").font(.system(size: 20, weight: .bold)).foregroundStyle(entry.themeColor)
             }
-            Text("あとでやる").font(.title3).bold().foregroundStyle(.primary)
+            Text("あとでやる").font(.footnote).bold().foregroundStyle(.primary)
         }
     }
 }
@@ -406,7 +406,7 @@ struct AddLaterVoiceWidget: Widget {
         }
         .configurationDisplayName("音声でタスク追加")
         .description("話しかけるだけで「あとでやる」タスクを追加できます。")
-        .supportedFamilies([.systemLarge])
+        .supportedFamilies([.systemSmall])
     }
 }
 
