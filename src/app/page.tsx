@@ -2921,8 +2921,10 @@ function TaskCard({task,onToggle,onEdit,globalTags,onSubtaskToggle,tabName,iconD
           )}
         </div>
         <button onClick={e=>{e.stopPropagation();onToggle();}}
-          className={`w-6 h-6 rounded-full border-2 shrink-0 flex items-center justify-center transition-colors ${task.completed?'border-[var(--c-primary)] bg-[var(--c-primary)]':'border-gray-300'}`}>
-          {task.completed&&<span className="text-white text-[10px] font-bold leading-none">✓</span>}
+          className="w-9 h-9 -m-1.5 shrink-0 flex items-center justify-center">
+          <span className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${task.completed?'border-[var(--c-primary)] bg-[var(--c-primary)]':'border-gray-300'}`}>
+            {task.completed&&<span className="text-white text-[10px] font-bold leading-none">✓</span>}
+          </span>
         </button>
       </div>
       {openPanel==='subtask'&&subtasks.length>0&&(
