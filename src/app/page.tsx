@@ -1613,7 +1613,9 @@ function VoiceCapturePopup({isPremium,language,onProPrompt,onDone}:{isPremium:bo
            resultText.trim()||tr('voiceInputNoSpeech')}
         </p>
         {status==='done'?(
-          <button onClick={retry} className="text-xs text-gray-400 mt-1">{tr('voiceInputRetry')}</button>
+          <button onClick={retry} className="flex items-center gap-1.5 text-xs font-semibold text-[var(--c-primary)] bg-[var(--c-primary)]/10 rounded-full px-4 py-2 mt-1 active:bg-[var(--c-primary)]/20">
+            <AppIcons.repeat size={14}/>{tr('voiceInputRetry')}
+          </button>
         ):status!=='error'&&(
           <button onClick={()=>onDone('')} className="text-xs text-gray-400 mt-1">{tr('cancelButton')}</button>
         )}
