@@ -8142,9 +8142,9 @@ export default function App() {
             <span className="text-2xl font-bold text-gray-900 truncate min-w-0">{language==='ja'?`${year}年${month}月`:language==='ko'?`${year}년 ${month}월`:language==='zh-TW'?`${year}年${month}月`:language==='es'?`${MONTH_NAMES_ES[month-1].slice(0,3).replace(/^./,c=>c.toUpperCase())} ${year}`:language==='pt'?`${MONTH_NAMES_PT[month-1].slice(0,3).replace(/^./,c=>c.toUpperCase())} ${year}`:language==='vi'?`T${month} ${year}`:language==='th'?`${MONTH_NAMES_TH[month-1]} ${year}`:language==='id'?`${MONTH_NAMES_ID[month-1]} ${year}`:`${MONTH_NAMES_EN[month-1].slice(0,3)} ${year}`}</span>
             <div className="flex items-center gap-1 shrink-0">
               <button onClick={()=>setSettings(s=>({...s,showFreeCard:!(s.showFreeCard??true)}))}
-                className={`relative h-7 rounded-full font-medium transition-colors duration-200 mr-1 overflow-hidden ${(settings.showFreeCard??true)?'bg-[var(--c-primary)] text-white':'bg-gray-200 text-gray-500'}`}
-                style={{width:language==='ja'?'84px':language==='ko'?'92px':language==='zh-TW'?'84px':language==='es'?'118px':language==='pt'?'118px':language==='vi'?'140px':language==='th'?'110px':language==='id'?'118px':'104px',fontSize:'12px'}}>
-                <span className="absolute inset-0 flex items-center justify-center whitespace-nowrap" style={{paddingLeft:(settings.showFreeCard??true)?'0':'12px',paddingRight:(settings.showFreeCard??true)?'12px':'0',transition:'padding 0.2s'}}>{tr('headerFreeTimeToggle')}</span>
+                className={`relative h-7 rounded-full font-medium whitespace-nowrap transition-colors duration-200 mr-1 ${(settings.showFreeCard??true)?'bg-[var(--c-primary)] text-white':'bg-gray-200 text-gray-500'}`}
+                style={{fontSize:'12px',paddingLeft:(settings.showFreeCard??true)?'10px':'22px',paddingRight:(settings.showFreeCard??true)?'22px':'10px',transition:'padding 0.2s, background-color 0.2s'}}>
+                {tr('headerFreeTimeToggle')}
                 <span className="absolute top-1.5 w-4 h-4 bg-white rounded-full" style={{boxShadow:'0 1px 3px rgba(0,0,0,0.2)',transition:'left 0.2s',left:(settings.showFreeCard??true)?'calc(100% - 22px)':'6px'}}/>
               </button>
               <button onClick={()=>setCalOp(true)} className="w-8 h-8 flex items-center justify-center text-gray-400"><AppIcons.calendar size={24}/></button>
