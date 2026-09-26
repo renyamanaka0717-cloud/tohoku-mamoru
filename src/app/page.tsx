@@ -6151,7 +6151,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             onClick={()=>setSub('fontSize')}/>
           <div className="h-px bg-gray-100 mx-4"/>
           <SettingsRow icon={<AppIcons.book size={18}/>} iconBg="bg-gray-100"
-            title="言語 / Language / 언어 / 語言 / Idioma / Idioma / Ngôn ngữ / ภาษา / Bahasa"
+            title={tr('settingsLanguageRowTitle')}
             desc={language==='ja'?'日本語':language==='ko'?'한국어':language==='zh-TW'?'繁體中文':language==='es'?'Español':language==='pt'?'Português':language==='vi'?'Tiếng Việt':language==='th'?'ไทย':language==='id'?'Bahasa Indonesia':'English'}
             onClick={()=>setSub('language')} isLast/>
         </div>
@@ -6161,7 +6161,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
 
   if(sub==='language') return (
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
-      {subHeader('言語 / Language / 언어 / 語言 / Idioma / Idioma / Ngôn ngữ / ภาษา / Bahasa')}
+      {subHeader(tr('settingsLanguageRowTitle'))}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm mt-6">
           {(['auto','ja','en','ko','zh-TW','es','pt','vi','th','id'] as LanguagePref[]).map((code,i)=>(

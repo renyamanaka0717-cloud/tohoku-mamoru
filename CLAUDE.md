@@ -1591,7 +1591,9 @@ native-ios/BridgeViewController.swift … capacitorDidLoad() 内で FirebaseApp.
 
 ### 設定画面への組み込み
 
-設定 → 表示設定 → 「言語 / Language / 언어 / 語言 / Idioma / Idioma / Ngôn ngữ / ภาษา / Bahasa」行（`sub==='display'`画面の最後の行）から`sub==='language'`のピッカー画面に遷移し、「日本語」「English」「한국어」「繁體中文」「Español」「Português」「Tiếng Việt」「ไทย」「Bahasa Indonesia」の9択から選ぶ（選択中の項目に`AppIcons.checkSquare`のチェックマーク）。**この行・ピッカー画面のヘッダーは常に固定文言`"言語 / Language / 언어 / 語言 / Idioma / Idioma / Ngôn ngữ / ภาษา / Bahasa"`**（`tr()`を通さない）——どの言語で使っていても迷わずこの項目を見つけられるようにするための意図的な多言語併記であり、`tr('settingsLanguage')`のように動的に翻訳すると英語モード時に`"Language / Language"`のような重複表示になる不具合が実際にあったため、静的文字列に固定した。新しい言語を追加するたびに、この固定文字列にもその言語の表記を追記すること（スペイン語「Idioma」とポルトガル語「Idioma」はたまたま同じ綴りになるが、誤字ではなく両言語で本当に同じ単語なので削らないこと）。
+設定 → 表示設定 → 「言語」行（`sub==='display'`画面の最後の行、`tr('settingsLanguageRowTitle')`）から`sub==='language'`のピッカー画面に遷移し、「日本語」「English」「한국어」「繁體中文」「Español」「Português」「Tiếng Việt」「ไทย」「Bahasa Indonesia」の9択から選ぶ（選択中の項目に`AppIcons.checkSquare`のチェックマーク）。この行・ピッカー画面のヘッダーは`tr('settingsLanguageRowTitle')`（現在の表示言語で「言語」/「Language」/「언어」等に切り替わる）を使う。
+
+**過去に多言語併記の固定文言`"言語 / Language / 언어 / 語言 / ..."`にしていた時期があったが、ユーザーからのフィードバックで「システムに合わせた言語で『言語』の文字だけでよい」と明確に指定され、現在の`tr()`による動的表示に変更済み。** 以前この行を動的翻訳にした際に「Language / Language」のような重複表示になった不具合があったとされていたが、原因はこの行専用のキーを使わず既存の別キーを誤用したことなどによるものと考えられ、`settingsLanguageRowTitle`という専用キーを新設し1箇所でのみ使うようにしたことで再発していない。新しい言語を追加する時は`STRINGS`の`settingsLanguageRowTitle`にもその言語の「言語」を意味する単語を追記すること。
 
 ### 新しい言語を追加する時の手順（3言語目以降を追加する時のプレイブック）
 
