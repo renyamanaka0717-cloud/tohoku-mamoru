@@ -3119,7 +3119,7 @@ function FreeTimeCard({slot,fits,moreCount=0,height,onDragStart,onMoreClick,meas
                 onTouchEnd={cancelLP}
                 onTouchMove={moveLP}
                 data-tour="tour-draggable"
-                className={`inline-flex items-center gap-1 bg-gray-100 rounded-full px-2.5 py-1 text-xs font-medium text-gray-500 select-none transition-transform${pressingId===t.id?' scale-95':''}`}>
+                className={`inline-flex items-center justify-center gap-1 min-w-12 bg-gray-100 rounded-full px-2.5 py-1 text-xs font-medium text-gray-500 select-none transition-transform${pressingId===t.id?' scale-95':''}`}>
                 {t.deadlineAt&&<AppIcons.deadline size={10+iconDelta} className={deadlineLabelColor(t.deadlineAt)}/>}
                 <span>{t.name}</span>
               </button>
@@ -3304,7 +3304,9 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
     };
     let rows=1,rowW=0;
     for(const t of tasks){
-      const w=20+textW(t.name);
+      // min-w-12(48px)をJSX側に付けた分、幅の見積りもチップの最小幅に合わせる
+      // （タイ語のように文字が短い言語でチップが小さすぎてドラッグしにくいというフィードバックを受けて追加）
+      const w=Math.max(48,20+textW(t.name));
       if(rowW>0&&rowW+GAP_X+w>innerW){rows++;rowW=w;}
       else{rowW+=(rowW>0?GAP_X:0)+w;}
     }
