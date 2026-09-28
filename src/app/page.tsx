@@ -1551,14 +1551,15 @@ function VoiceWaveform({level,size='large'}:{level:number;size?:'small'|'large'}
 }
 
 // ウィジェット起動のVoiceCapturePopup専用。輪っかの形がぐねぐね変形し続ける
-// アニメーション（globals.cssのvoiceRingMorph）に、音量(level)でスケール・
-// 変形の速さを乗せてリアクティブにする（TaskModalの棒グラフ波形とは別デザイン）
+// アニメーション（globals.cssのvoiceRingMorph）は一定速度のまま滑らかに回し続け、
+// 音量(level)はスケール（transform、transitionで補間される）だけに反映する。
+// animation-durationをlevel(0.08秒おきに更新)に直接連動させるとCSSアニメーションの
+// タイムラインがその都度リセットされ、カクカクして見える不具合があったため分離した
 function VoiceRingWaveform({level}:{level:number}) {
-  const duration=(2.6-level*1.6).toFixed(2);
   const scale=(1+level*0.25).toFixed(3);
   return (
     <div style={{width:'56px',height:'56px',transform:`scale(${scale})`,transition:'transform 0.08s ease-out'}}>
-      <div className="voiceRingBlob" style={{width:'100%',height:'100%',border:'4px solid currentColor',animationDuration:`${duration}s`}}/>
+      <div className="voiceRingBlob" style={{width:'100%',height:'100%',border:'4px solid currentColor'}}/>
     </div>
   );
 }

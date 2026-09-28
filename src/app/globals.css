@@ -122,11 +122,14 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 }
 
 /* ウィジェット起動の音声入力ポップアップ(VoiceCapturePopup)専用。輪っかの形が
-   ぐねぐね変形し続けるアニメーション。animation-durationはJS側でlevel(音量)に
-   応じて上書きし、喋っている間ほど速く変形するようにする */
+   一定速度でぐねぐね変形し続けるアニメーション。音量(level)による反応はJS側で
+   transform:scale()に持たせる（transitionで滑らかに補間されるため）。
+   duration自体をlevelで動的に変えるとアニメーションのタイムラインがその都度
+   リセットされカクカクして見える不具合があったため、durationは固定にしてある */
 .voiceRingBlob {
   border-radius: 42% 58% 65% 35% / 45% 45% 55% 55%;
   animation-name: voiceRingMorph;
+  animation-duration: 2.2s;
   animation-timing-function: ease-in-out;
   animation-iteration-count: infinite;
 }
