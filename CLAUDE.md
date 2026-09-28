@@ -1696,13 +1696,13 @@ grep -n "[ぁ-んァ-ヶ一-龯]" src/app/page.tsx | grep -v "tr(" | grep -v "la
 
 アプリ本体（JS側UI）の英語対応は完了済みだが、**App Store Connect側の「英語（アメリカ）」ロケール（説明文・スクリーンショット等）は作業が難航し、一旦保留にした。** 次にこの続きをやる時のための記録。
 
-### 静的ページ（利用規約・プライバシーポリシー・サポート）は日英とも用意済み
+### 静的ページ（利用規約・プライバシーポリシー・サポート）はja/en/ko/zh-TWとも用意済み
 
-| 内容 | 日本語 | 英語 |
-|---|---|---|
-| 利用規約 | `public/terms.html` | `public/terms-en.html` |
-| プライバシーポリシー | `public/privacy.html` | `public/privacy-en.html` |
-| サポート | `public/support.html` | `public/support-en.html` |
+| 内容 | 日本語 | 英語 | 韓国語 | 繁体字中国語 |
+|---|---|---|---|---|
+| 利用規約 | `public/terms.html` | `public/terms-en.html` | `public/terms-ko.html` | `public/terms-zh-tw.html` |
+| プライバシーポリシー | `public/privacy.html` | `public/privacy-en.html` | `public/privacy-ko.html` | `public/privacy-zh-tw.html` |
+| サポート | `public/support.html` | `public/support-en.html` | `public/support-ko.html` | `public/support-zh-tw.html` |
 
 App Store Connectの各ロケール設定でURLを入力する時、**英語ロケールなら必ず `-en.html` の方を使うこと。** `terms.html`のような無印のファイル名は日本語版なので、英語ロケールにそのまま使うと英語ユーザーに日本語ページが表示されてしまう（実際に説明文のURLで`terms.html`のまま貼ろうとしていて気づいた）。
 
