@@ -26,14 +26,17 @@ object BrainBoxNotifications {
         }
     }
 
-    // タップ時はアプリを開くだけ（買い物リストを直接開く等のディープリンクはGeofencePlugin
-    // 移植時にまとめて対応予定。iOS版もUNUserNotificationCenterDelegateをGeofencePlugin側に
-    // 集約しているため、Android側も同じ設計に揃える）
-    fun show(context: Context, notifId: Int, title: String, body: String, openShop: Boolean) {
+    // タップ時のディープリンク（買い物リスト/あとでやるを開く）はGeofencePlugin/MainActivityに集約する
+    // （iOS版もUNUserNotificationCenterDelegateをGeofencePlugin側に集約しているため、同じ設計に揃える）。
+    // fromNotification は openShop/openLater が無い通常の通知でも、タップされたこと自体を
+    // MainActivityが検知してpendingNotificationOpenedフラグを立てるために常に付ける
+    fun show(context: Context, notifId: Int, title: String, body: String, openShop: Boolean, openLater: Boolean = false) {
         ensureChannel(context)
         val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
         launchIntent?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+        launchIntent?.putExtra("fromNotification", true)
         if (openShop) launchIntent?.putExtra("openShop", true)
+        if (openLater) launchIntent?.putExtra("openLater", true)
         val contentIntent = PendingIntent.getActivity(
             context, notifId, launchIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE

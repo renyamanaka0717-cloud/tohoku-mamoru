@@ -7395,8 +7395,9 @@ export default function App() {
     const enabledForgetCount=forgetAlerts.filter(a=>a.enabled).length;
     const budget=Math.max(0,MAX_MONITORED_REGIONS-activeTaskLocCount-enabledForgetCount);
     const shopLocs=shopLocations.filter(l=>l.enabled).slice(0,budget);
-    setShopGeofences(shopLocs.map(l=>({id:l.id,name:l.name,lat:l.lat,lng:l.lng,radius:l.radius})));
-  },[shopLocations,tasks,forgetAlerts,loaded]);
+    const unpurchased=shopItems.filter(i=>!i.checked).map(i=>i.name);
+    setShopGeofences(shopLocs.map(l=>({id:l.id,name:l.name,lat:l.lat,lng:l.lng,radius:l.radius})),unpurchased);
+  },[shopLocations,tasks,forgetAlerts,shopItems,loaded]);
   // 「あとでやる」タスクの場所通知。タイムラインにドロップされて時間指定タスクになっても
   // （isLaterがfalseになっても）locationNotifyは維持され続けるので isLater では絞り込まない。
   // 完了・削除したタスクは tasks から外れる（または completed になる）ことで自動的に解除される

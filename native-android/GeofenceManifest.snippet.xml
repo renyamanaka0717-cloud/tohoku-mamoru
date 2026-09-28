@@ -1,0 +1,9 @@
+<!-- android/app/src/main/AndroidManifest.xml に追加する内容 -->
+
+<!-- <manifest>直下、既存の<uses-permission>群の隣に追加 -->
+<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+<uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+
+<!-- <application>タグの内側（</application>の直前）に追加 -->
+<receiver android:name=".GeofenceReceiver" android:exported="false" />

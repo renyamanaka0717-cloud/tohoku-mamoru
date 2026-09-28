@@ -9,7 +9,7 @@ export interface GeofencePermissionStatus { location: string; notifications: str
 export interface ForgetAlertGeofence { id: string; name: string; lat: number; lng: number; radius: number; trigger: 'enter'|'exit'; weekdays: number[]; timeStart: string; timeEnd: string; items: string[]; }
 
 interface GeofencePluginType {
-  setGeofences(options: { locationsJson: string }): Promise<void>;
+  setGeofences(options: { locationsJson: string; shopItemsJson?: string }): Promise<void>;
   setTaskLocationGeofences(options: { locationsJson: string }): Promise<void>;
   setForgetAlerts(options: { alertsJson: string }): Promise<void>;
   requestPermissions(): Promise<GeofencePermissionStatus>;
@@ -27,10 +27,14 @@ function isNative(): boolean {
   return !!(window as {Capacitor?: {isNativePlatform?: () => boolean}}).Capacitor?.isNativePlatform?.();
 }
 
-export async function setShopGeofences(locations: GeofenceLocation[]): Promise<void> {
+// shopItemNames: 現在の未購入アイテム名（Android専用）。iOSはWidgetDataPlugin経由でApp Group共有の
+// widgetShopJsonを発火時点に直接読むため、この引数は無視する（Swift側は未知パラメータとして黙って無視）。
+// AndroidはWidgetDataPluginが未移植のため、ジオフェンス登録時点の未購入リストをそのままここで渡して
+// GeofencePlugin.kt側のSharedPreferencesに保存しておき、発火時にそこから読む設計にしている
+export async function setShopGeofences(locations: GeofenceLocation[], shopItemNames: string[] = []): Promise<void> {
   if (!isNative()) return;
   try {
-    await GeofencePlugin.setGeofences({ locationsJson: JSON.stringify(locations) });
+    await GeofencePlugin.setGeofences({ locationsJson: JSON.stringify(locations), shopItemsJson: JSON.stringify(shopItemNames) });
   } catch {
     // ネイティブ側プラグイン未導入時はジオフェンス登録のみスキップ
   }

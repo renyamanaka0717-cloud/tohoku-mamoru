@@ -622,12 +622,44 @@ const SHOP_LOC_KEY = 'tl-shop-loc-v1';
 2. 設定 → 通知 → 買い物リストから場所を登録し、位置情報「常に」と通知を許可
 3. 実機を対象エリア外に持ち出してから接近させ、バックグラウンド/アプリ終了状態でも通知が来ることを確認（シミュレータではリージョン進入をXcodeのDebug → Simulate Locationで模擬できるが、実機推奨）
 
+### Android実装（`native-android/`、GeofencingClient + SharedPreferencesでの自前ブックキーピング）
+
+`LocalNotifyPlugin`と同じくCapacitorプラグイン名を`GeofencePlugin`で揃えているため、`src/app/components/Geofence.ts`は原則無改修で動く（例外は後述の`shopItemsJson`）。
+
+- `native-android/GeofencePlugin.kt` — Capacitorプラグイン本体。`setGeofences`/`setTaskLocationGeofences`/`setForgetAlerts`/`requestPermissions`/`checkPermissions`/`getPendingGeofenceAction`/`getFiredTaskLocationIds`/`getCurrentLocation`/`openAppSettings`をiOS版と同じメソッド名・引数で実装
+- `native-android/GeofenceReceiver.kt` — `GeofencingClient.addGeofences()`で登録したジオフェンスの境界通過を受け取る`BroadcastReceiver`。`didEnterRegion`/`didExitRegion`+3つのhandle関数に相当する処理をすべてここに集約している
+- Google Play services location（`GeofencingClient`/`FusedLocationProviderClient`）を使うため、`android/app/build.gradle`の`dependencies`に`implementation "com.google.android.gms:play-services-location:21.3.0"`の追加が必要（Kotlinプラグインと同様、`npx cap add android`の既定テンプレートには含まれていない）
+
+**iOSの`CLLocationManager.monitoredRegions`（現在監視中の一覧を取得するAPI）に相当するものがAndroidの`GeofencingClient`には無い。** そのため`LocalNotifyPlugin`のAlarmManagerと同じ設計で、SharedPreferences（`GeofencePlugin.PREFS_NAME`）にprefixごとの登録済みリクエストID一覧を自前で保存し、`setGeofences`等が呼ばれるたびにその一覧で`removeGeofences(idsList)`してから新しい一覧を`addGeofences()`する（全解除→再登録方式はiOSと同じ）。
+
+**Androidのジオフェンス用`PendingIntent`は`FLAG_MUTABLE`で作る必要がある（重要）。** Android 12+では`FLAG_IMMUTABLE`のPendingIntentを`GeofencingClient.addGeofences()`に渡すと`IllegalArgumentException`になる。他のプラグイン（`LocalNotifyPlugin`のアラーム用PendingIntent等）は逆に`FLAG_IMMUTABLE`を使っているため、混同しないこと——ジオフェンス用だけがこの例外。
+
+**買い物リストの通知本文はiOS版と取得元が異なる（既知の意図的な差分）。** iOS版はWidgetDataPluginが書き込むApp Group共有の`widgetShopJson`を発火時点に読むが、**WidgetDataPluginはAndroid未移植**のため、`Geofence.ts`の`setShopGeofences(locations, shopItemNames)`に第2引数を追加し、ジオフェンス登録時点の未購入アイテム名をそのまま`GeofencePlugin.kt`のSharedPreferences（`shopItemNames`キー）に保存しておき、発火時にそこから読む設計にした。呼び出し元は`App`コンポーネントの該当`useEffect`（`shopItems`を依存配列に追加済み）。WidgetDataPluginを将来Androidに移植した後もこの仕組みは変更不要（そのまま両立できる）。
+
+**通知文の言語判定もiOS版と方法が異なる（既知の意図的な差分）。** iOS版はJS側がApp Group共有の`appLanguage`キー（アプリ内で手動選択した言語）を書き込むが、これも書き込み元のWidgetDataPluginがAndroid未移植のため、`GeofenceReceiver.kt`は端末のシステムロケール（`Locale.getDefault()`）で言語を判定する。アプリ内で言語を手動切り替えていても、この通知の文言は端末のシステム言語に従う。WidgetDataPluginをAndroidに移植したら、iOS版と同じ`appLanguage`キー読み取りに揃えること。
+
+**通知タップ時のディープリンクはこの移植で新規に完成させた。** `BrainBoxNotifications.show()`に`openLater`引数を追加し、タップ時に開く画面を`openShop`/`openLater`で指定できるようにした。`MainActivity`の`onCreate`/`onNewIntent`（`launchMode="singleTask"`のため両方をハンドルする必要がある）で、通知タップで起動された場合のIntent extra（`fromNotification`/`openShop`/`openLater`）を読み、`GeofencePlugin.getPendingGeofenceAction()`が読み取るのと同じSharedPreferencesにフラグを書き込む。iOS版で`GeofencePlugin.swift`の`UNUserNotificationCenterDelegate.didReceive`が全通知カテゴリ共通で担っている役割を、Android側ではこの`MainActivity`に集約している（`LocalNotifyPlugin`のアラート通知タップでも同じ経路が効く）。
+
+**Androidの位置情報許可はiOSより手順が多い。** iOSの`requestAlwaysAuthorization()`は1回で完結するが、Android 10+では前景位置情報（`ACCESS_FINE_LOCATION`）→バックグラウンド位置情報（`ACCESS_BACKGROUND_LOCATION`）を別々のダイアログで順にリクエストする必要がある（同時にリクエストするとシステムに拒否される）。`GeofencePlugin.kt`の`requestPermissions()`は`location`→`backgroundLocation`→`notifications`の順に`@PermissionCallback`を連鎖させて実装している。
+
+### Android Studioでの手動セットアップ（`android/`はgitignore対象なので毎回必要）
+
+1. `native-android/GeofencePlugin.kt` / `GeofenceReceiver.kt` を `android/app/src/main/java/jp/brainbox/app/` にコピー
+2. `native-android/MainActivity.java` の内容で既存の `MainActivity.java` を上書きする（`registerPlugin(GeofencePlugin.class)` の行と、通知タップ処理の`handleNotificationIntent()`が追加されている）
+3. `native-android/GeofenceManifest.snippet.xml` の内容を `android/app/src/main/AndroidManifest.xml` に追加（`<uses-permission>` 3行は `<manifest>` 直下、`<receiver>` は `<application>` タグの内側）
+4. `android/app/build.gradle` の `dependencies` に `implementation "com.google.android.gms:play-services-location:21.3.0"` を追加する
+5. `native-android/BrainBoxNotifications.kt` の内容を最新化する（`openLater`引数が追加されている。既存ファイルを上書き）
+6. Android Studioで「Sync Now」→ビルドが通ることを確認する
+7. これらのファイルを編集した場合、`android/` 内の既存ファイルは `git pull` しても自動更新されない（`native-android/` の最新内容を都度コピーし直すこと。`LocalNotifyPlugin`の節と同じ注意事項）
+
 ### 避けるパターン
 
-- ジオフェンス発火時の通知処理をJS側（`new Notification(...)`）で行おうとしない（バックグラウンド/未起動では動かない。必ず `GeofencePlugin.swift` 内の `UNUserNotificationCenter` 直接呼び出しで完結させる）
-- 位置情報を通知判定以外の用途で保存・送信しない（サーバー送信や履歴保存はしない。`UserDefaults` に保存するのはクールダウン用タイムスタンプと場所名の辞書のみ）
+- ジオフェンス発火時の通知処理をJS側（`new Notification(...)`）で行おうとしない（バックグラウンド/未起動では動かない。必ず `GeofencePlugin.swift` 内の `UNUserNotificationCenter` 直接呼び出しで完結させる。Android版は`GeofenceReceiver.kt`内で完結させる）
+- 位置情報を通知判定以外の用途で保存・送信しない（サーバー送信や履歴保存はしない。`UserDefaults`/`SharedPreferences` に保存するのはクールダウン用タイムスタンプと場所名の辞書のみ）
 - `AppDelegate.swift` を編集して `UNUserNotificationCenterDelegate` を設定しようとしない（`GeofencePlugin.load()` 内で完結させる設計にしてあるため不要）
 - 現在地の一度きりの取得に `navigator.geolocation` を直接使わない（実機でコールバックが一切呼ばれず固まる不具合の実績あり。`GeofencePlugin.getCurrentLocation()` を使う `getCurrentCoords()` 経由にすること）
+- Androidのジオフェンス用`PendingIntent`を`FLAG_IMMUTABLE`で作らない（Android 12+で`IllegalArgumentException`になる。`FLAG_MUTABLE`が必須）
+- Android側で前景位置情報とバックグラウンド位置情報を同時にリクエストしない（システムに拒否される。`location`→`backgroundLocation`の順で別々にリクエストすること）
 
 ---
 
@@ -681,6 +713,8 @@ const SHOP_LOC_KEY = 'tl-shop-loc-v1';
 ### Xcodeでの手動セットアップ
 
 `GeofencePlugin.swift`/`.m`は新規ファイルではなく**既存ファイルの更新**なので、Xcode上の同名ファイルの中身をこの変更後の内容に差し替える（買い物リストの場所通知で使っていたファイルと同じ物理ファイル）。App Group・Info.plist・Background Modesは買い物リストの場所通知ですでに設定済みならそのまま流用でき、追加設定は不要。
+
+Android版も同様に`GeofencePlugin.kt`/`GeofenceReceiver.kt`は買い物リストの場所通知と同じ物理ファイル（`"task-loc-"` prefixのロジックも同じファイルに含まれている）。追加のセットアップ手順は無い（買い物リストの場所通知の節にある「Android Studioでの手動セットアップ」がそのままこの機能もカバーする）。
 
 ### 避けるパターン
 
@@ -741,6 +775,8 @@ interface ForgetAlert {
 ### Xcodeでの手動セットアップ
 
 `GeofencePlugin.swift`/`.m`は新規ファイルではなく**既存ファイルの更新**なので、Xcode上の同名ファイルの中身をこの変更後の内容に差し替える。App Group・Info.plist・Background Modesは買い物リストの場所通知ですでに設定済みならそのまま流用でき、追加設定は不要。
+
+Android版も同様に`GeofencePlugin.kt`/`GeofenceReceiver.kt`は同じ物理ファイル（`"forget-"` prefixのロジックも含まれている）。追加のセットアップ手順は無い（買い物リストの場所通知の節の「Android Studioでの手動セットアップ」を参照）。
 
 ### 避けるパターン
 
