@@ -412,10 +412,33 @@ notify('おはようございます', body);
 3. App Group・Info.plist・Background Modesの追加設定は不要（通知権限のリクエストはコード内で完結し、Info.plistの usage description キーも通知には不要）
 4. **`LocalNotifyPlugin.swift`/`.m` を編集した場合、`ios/App/App/` 内の既存ファイルは `git pull` しても自動更新されない**（`ios/` はgitignore対象で、Xcodeに追加した時点でプロジェクト内に物理コピーが作られているため）。`native-ios/` の最新内容を都度 Xcode上のファイルにコピーし直す（既存ファイルを削除して `native-ios/` から追加し直すのが確実）
 
+### Android実装（`native-android/`、Capacitorプラグイン名を揃えて無改修で共用）
+
+`src/app/components/LocalNotify.ts` は `registerPlugin<LocalNotifyPluginType>('LocalNotifyPlugin')` で名前だけを頼りにプラグインを呼んでおり、Android側も同じ `name = "LocalNotifyPlugin"` で実装したため、**JS側は一切変更不要**（iOS/Android/Web の3プラットフォームとも同じ`LocalNotify.ts`がそのまま動く）。
+
+- `native-android/BrainBoxNotifications.kt` — 通知チャンネル作成・実際の通知表示ロジック（`LocalNotifyPlugin`と`LocalNotifyReceiver`の両方から呼ばれる共通処理）
+- `native-android/LocalNotifyPlugin.kt` — Capacitorプラグイン本体。`notify`/`requestPermission`/`syncTaskAlerts`等、iOS版と同じメソッド名・引数（`alertsJson`）を実装
+- `native-android/LocalNotifyReceiver.kt` — `AlarmManager`で予約したアラームが発火した時にOSから呼ばれる`BroadcastReceiver`
+- `native-android/BootReceiver.kt` — **iOS版には無い、Android特有の対応。** `AlarmManager`の予約は端末の再起動で全て消えるため、再起動時に`SharedPreferences`（`LocalNotifyPlugin.PREFS_NAME`）へ保存しておいた各カテゴリのアラート一覧から、まだ未来の時刻のものだけを再予約する
+
+**iOSの`getPendingNotificationRequests`に相当するAPIがAndroidの`AlarmManager`には無い。** そのため「同じprefixの予約を全解除してから再登録する」という`syncTaskAlerts`等の全解除→再登録方式を実現するために、`SharedPreferences`に**prefixごとの全アラートJSONをそのまま保存**して自前管理している（`cancelStored()`が保存済みJSONから`id`を復元し、同じ`id.hashCode()`を`requestCode`にした`PendingIntent`を`cancel()`する）。新しく同種のプラグインをAndroidに移植する時、iOSのAPIが「登録済み一覧を取得できる」設計に依存している場合は、同じようにSharedPreferences等での自前ブックキーピングが必要にならないか確認すること。
+
+**通知タップ時のディープリンク（買い物リストを開く等）は今回未対応。** iOS版は`GeofencePlugin`が`UNUserNotificationCenterDelegate`を1つだけ持ち、全通知カテゴリのタップ処理をそこに集約している。Android版もGeofencePlugin移植時に同じ設計（タップ時にSharedPreferencesへ`pendingOpenShopList`的なフラグを立て、JS側がアプリ再開時に読む）で揃える予定。現時点では通知をタップするとアプリが開くだけ。
+
+### Android Studioでの手動セットアップ（`android/`はgitignore対象なので毎回必要）
+
+1. `native-android/BrainBoxNotifications.kt` / `LocalNotifyPlugin.kt` / `LocalNotifyReceiver.kt` / `BootReceiver.kt` を `android/app/src/main/java/jp/brainbox/app/` にコピー（Finderからドラッグ＆ドロップでOK。Xcodeの「Target Membership」チェックに相当する作業はAndroidには無い）
+2. `native-android/MainActivity.java` の内容で `android/app/src/main/java/jp/brainbox/app/MainActivity.java` を上書きする（`registerPlugin(LocalNotifyPlugin.class)` の行が無いとプラグインが認識されない。iOSの `BridgeViewController.capacitorDidLoad()` でのプラグイン登録と同じ役割）
+3. `native-android/LocalNotifyManifest.snippet.xml` の内容を `android/app/src/main/AndroidManifest.xml` に追加（`<uses-permission>` 3行は `<manifest>` 直下、`<receiver>` 2つは `<application>` タグの内側）
+4. Android Studioで一度Gradle同期・ビルドが通ることを確認する
+5. **これらのファイルを編集した場合、`android/` 内の既存ファイルは `git pull` しても自動更新されない**（`android/` はgitignore対象で、`npx cap add android`実行時にプロジェクト内へ物理コピーが作られているため）。`native-android/` の最新内容を都度 `android/app/src/main/java/jp/brainbox/app/` にコピーし直すこと
+
 ### 避けるパターン
 
 - `new Notification(...)` を直接呼ばない（WKWebViewでは動かない。必ず `notify()` 経由にする）
 - 新しい通知処理を追加するときに、既存の `useEffect` 群（フォアグラウンドの `now` ポーリング）だけで済むと思い込まない。バックグラウンド/未起動でも発火が必要なら、必ずネイティブスケジューリング方式（Geofence/Inactivity/タスクアラートと同じ設計）を検討する
+- Android側で新しい通知系プラグインを追加する時、`AlarmManager`の予約が端末再起動で消えることを忘れて`BootReceiver`での再予約を省略しない（`LocalNotifyPlugin`と同じパターンで、SharedPreferencesに全アラートJSONを保存し起動時に読み直す設計に倣うこと）
+- Capacitorプラグイン名（`@CapacitorPlugin(name = "...")`）をiOS側の`@objc(...)`と違う名前にしない。同じ名前で揃えることでJS側（`registerPlugin`）が完全に無改修でプラットフォーム間共有できる
 - タスクアラートの発火判定を `now` ポーリング＋即時 `notify()` だけで実装しない（ネイティブでは `syncTaskAlerts` の事前予約が必須。`now` ポーリング版はWeb/開発環境専用のフォールバックとして `isNative()` で分岐させる）
 
 ---

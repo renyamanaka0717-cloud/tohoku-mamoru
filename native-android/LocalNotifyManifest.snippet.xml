@@ -1,0 +1,14 @@
+<!-- android/app/src/main/AndroidManifest.xml に追加する内容 -->
+
+<!-- <manifest>直下、既存の<uses-permission android:name="android.permission.INTERNET" />の隣に追加 -->
+<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+<uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+<uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+<!-- <application>タグの内側（</application>の直前）に追加 -->
+<receiver android:name=".LocalNotifyReceiver" android:exported="false" />
+<receiver android:name=".BootReceiver" android:exported="false">
+    <intent-filter>
+        <action android:name="android.intent.action.BOOT_COMPLETED" />
+    </intent-filter>
+</receiver>
