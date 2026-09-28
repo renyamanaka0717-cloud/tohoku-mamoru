@@ -120,3 +120,20 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   from { opacity: 0; transform: translateY(16px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+
+/* ウィジェット起動の音声入力ポップアップ(VoiceCapturePopup)専用。輪っかの形が
+   ぐねぐね変形し続けるアニメーション。animation-durationはJS側でlevel(音量)に
+   応じて上書きし、喋っている間ほど速く変形するようにする */
+.voiceRingBlob {
+  border-radius: 42% 58% 65% 35% / 45% 45% 55% 55%;
+  animation-name: voiceRingMorph;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+@keyframes voiceRingMorph {
+  0%, 100% { border-radius: 42% 58% 65% 35% / 45% 45% 55% 55%; }
+  25%      { border-radius: 58% 42% 35% 65% / 55% 65% 35% 45%; }
+  50%      { border-radius: 50% 50% 33% 67% / 55% 27% 73% 45%; }
+  75%      { border-radius: 33% 67% 58% 42% / 63% 68% 32% 37%; }
+}

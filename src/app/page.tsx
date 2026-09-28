@@ -1550,6 +1550,19 @@ function VoiceWaveform({level,size='large'}:{level:number;size?:'small'|'large'}
   );
 }
 
+// ウィジェット起動のVoiceCapturePopup専用。輪っかの形がぐねぐね変形し続ける
+// アニメーション（globals.cssのvoiceRingMorph）に、音量(level)でスケール・
+// 変形の速さを乗せてリアクティブにする（TaskModalの棒グラフ波形とは別デザイン）
+function VoiceRingWaveform({level}:{level:number}) {
+  const duration=(2.6-level*1.6).toFixed(2);
+  const scale=(1+level*0.25).toFixed(3);
+  return (
+    <div style={{width:'56px',height:'56px',transform:`scale(${scale})`,transition:'transform 0.08s ease-out'}}>
+      <div className="voiceRingBlob" style={{width:'100%',height:'100%',border:'4px solid currentColor',animationDuration:`${duration}s`}}/>
+    </div>
+  );
+}
+
 // ── VoiceCapturePopup ─────────────────────────────────────────────────────────
 // ウィジェットの「音声でタスク追加」から開かれた時専用のポップアップ。TaskModal全体を開かず、
 // 録音→認識完了→「あとでやる」タスクとして直接保存、までをこのシンプルな画面だけで完結させる
@@ -1606,7 +1619,7 @@ function VoiceCapturePopup({isPremium,language,onProPrompt,onDone}:{isPremium:bo
     <div className="fixed inset-0 z-[250] bg-black/60 flex items-center justify-center px-8" onClick={()=>onDone('')}>
       <div className="bg-white rounded-3xl px-6 py-8 w-full max-w-xs flex flex-col items-center gap-4" onClick={e=>e.stopPropagation()}>
         <div className={`w-20 h-20 rounded-full flex items-center justify-center transition-colors ${status==='recording'?'bg-[var(--c-primary)]/10 text-[var(--c-primary)]':status==='error'?'bg-red-50 text-[#D97A7A]':'bg-gray-100 text-gray-400'}`}>
-          {status==='recording'?<VoiceWaveform level={level} size="large"/>:<AppIcons.mic size={32}/>}
+          {status==='recording'?<VoiceRingWaveform level={level}/>:<AppIcons.mic size={32}/>}
         </div>
         <p className="text-base font-semibold text-gray-800 text-center leading-relaxed">
           {status==='starting'?tr('voiceInputStarting'):
