@@ -430,8 +430,13 @@ notify('おはようございます', body);
 1. `native-android/BrainBoxNotifications.kt` / `LocalNotifyPlugin.kt` / `LocalNotifyReceiver.kt` / `BootReceiver.kt` を `android/app/src/main/java/jp/brainbox/app/` にコピー（Finderからドラッグ＆ドロップでOK。Xcodeの「Target Membership」チェックに相当する作業はAndroidには無い）
 2. `native-android/MainActivity.java` の内容で `android/app/src/main/java/jp/brainbox/app/MainActivity.java` を上書きする（`registerPlugin(LocalNotifyPlugin.class)` の行が無いとプラグインが認識されない。iOSの `BridgeViewController.capacitorDidLoad()` でのプラグイン登録と同じ役割）
 3. `native-android/LocalNotifyManifest.snippet.xml` の内容を `android/app/src/main/AndroidManifest.xml` に追加（`<uses-permission>` 3行は `<manifest>` 直下、`<receiver>` 2つは `<application>` タグの内側）
-4. Android Studioで一度Gradle同期・ビルドが通ることを確認する
-5. **これらのファイルを編集した場合、`android/` 内の既存ファイルは `git pull` しても自動更新されない**（`android/` はgitignore対象で、`npx cap add android`実行時にプロジェクト内へ物理コピーが作られているため）。`native-android/` の最新内容を都度 `android/app/src/main/java/jp/brainbox/app/` にコピーし直すこと
+4. **`android/build.gradle`・`android/app/build.gradle`にKotlinプラグインを追加する（重要・初回は入っていない）。** `npx cap add android`が生成する既定のテンプレートはJavaのみを前提にしており、Kotlinプラグイン（`kotlin-android`）・Kotlin Gradleプラグインのclasspathが一切無い。この状態で`.kt`ファイル（`LocalNotifyPlugin.kt`等）を追加しても**Kotlinコンパイラ自体が呼ばれないため何のエラーも出ないままコンパイルされず**、`MainActivity.java`から`registerPlugin(LocalNotifyPlugin.class)`を呼ぶ行だけが「シンボルを見つけられません」でビルド失敗する（実際に発生した不具合）。
+   - `android/build.gradle`の`buildscript.dependencies`に`classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.24'`を追加
+   - `android/app/build.gradle`の`apply plugin: 'com.android.application'`の直後に`apply plugin: 'kotlin-android'`を追加
+   - `android/app/build.gradle`の`dependencies`に`implementation "org.jetbrains.kotlin:kotlin-stdlib:1.9.24"`を追加
+   - 追加後はAndroid Studioで「Sync Now」してから再ビルドする
+5. Android Studioで一度Gradle同期・ビルドが通ることを確認する
+6. **これらのファイルを編集した場合、`android/` 内の既存ファイルは `git pull` しても自動更新されない**（`android/` はgitignore対象で、`npx cap add android`実行時にプロジェクト内へ物理コピーが作られているため）。`native-android/` の最新内容を都度 `android/app/src/main/java/jp/brainbox/app/` にコピーし直すこと
 
 ### 避けるパターン
 
