@@ -23,6 +23,13 @@ export function isNative(): boolean {
   return !!(window as {Capacitor?: {isNativePlatform?: () => boolean}}).Capacitor?.isNativePlatform?.();
 }
 
+// バッテリー最適化除外の案内はAndroid特有の問題（メーカー独自の省電力機能が通知を止める）
+// なのでこの判定が必要。iOSにはこの種の除外設定自体が無い。
+export function isAndroid(): boolean {
+  if (typeof window === 'undefined') return false;
+  return (window as {Capacitor?: {getPlatform?: () => string}}).Capacitor?.getPlatform?.() === 'android';
+}
+
 // WKWebView は window.Notification（Web Notifications API）を実装していないため、
 // new Notification(...) は実機では何も起きない。ネイティブでは必ずこのプラグイン経由で
 // UNUserNotificationCenter に直接通知を出す。Web/開発環境では引き続き window.Notification を使う。

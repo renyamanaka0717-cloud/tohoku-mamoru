@@ -7,7 +7,7 @@ import { setNativeAppIcon } from './components/AppIcon';
 import { updateWidgetData, getPendingWidgetActions } from './components/WidgetData';
 import { setShopGeofences, setTaskLocationGeofences, setForgetAlertGeofences, checkGeofencePermissions, ensureGeofencePermission, getPendingGeofenceAction, getFiredTaskLocationIds, getNativeCurrentLocation, openAppSettings } from './components/Geofence';
 import { scheduleInactivityReminder, cancelInactivityReminder } from './components/Inactivity';
-import { notify, requestNotifyPermission, syncTaskAlerts, syncFreeSlotAlerts, syncShopNotifs, syncLaterStaleAlerts, syncWakeCheckins, syncDeadlineAlerts, isNative } from './components/LocalNotify';
+import { notify, requestNotifyPermission, syncTaskAlerts, syncFreeSlotAlerts, syncShopNotifs, syncLaterStaleAlerts, syncWakeCheckins, syncDeadlineAlerts, isNative, isAndroid } from './components/LocalNotify';
 import { voiceInputSupported, ensureVoiceInputPermission, startVoiceInput, stopVoiceInput, onVoiceInputFinished, onVoiceLevelUpdate } from './components/VoiceInput';
 import { getAppVersion } from './components/AppVersion';
 import { logAnalyticsEvent } from './components/Analytics';
@@ -6095,6 +6095,12 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           </div>
         </div>
         <p className="text-xs text-gray-400 px-1 mt-2 leading-relaxed">{tr('notificationsPermissionHint')}</p>
+        {isAndroid()&&(
+          <div className="bg-white rounded-2xl shadow-sm px-4 py-3.5 mt-4">
+            <p className="text-[15px] font-medium text-gray-900 mb-1">{tr('androidBatteryOptTitle')}</p>
+            <p className="text-xs text-gray-400 leading-relaxed">{tr('androidBatteryOptDesc')}</p>
+          </div>
+        )}
       </div>
     </div>
   );
