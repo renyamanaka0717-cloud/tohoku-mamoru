@@ -1556,7 +1556,9 @@ function VoiceWaveform({level,size='large'}:{level:number;size?:'small'|'large'}
 // animation-durationをlevel(0.08秒おきに更新)に直接連動させるとCSSアニメーションの
 // タイムラインがその都度リセットされ、カクカクして見える不具合があったため分離した
 function VoiceRingWaveform({level}:{level:number}) {
-  const scale=(1+level*0.25).toFixed(3);
+  // 0.25倍だと通常の発話音量ではほとんど拡大せず「反応している感じがしない」
+  // というフィードバックがあったため、はっきり分かる大きさまで拡大幅を増やした
+  const scale=(1+level*0.55).toFixed(3);
   return (
     <div style={{width:'56px',height:'56px',transform:`scale(${scale})`,transition:'transform 0.08s ease-out'}}>
       <div className="voiceRingBlob" style={{width:'100%',height:'100%',border:'4px solid currentColor'}}/>
