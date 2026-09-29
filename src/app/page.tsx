@@ -2987,6 +2987,17 @@ function TaskCard({task,onToggle,onEdit,globalTags,onSubtaskToggle,tabName,iconD
             </p>
           )}
           <p className={`text-[15px] font-semibold leading-snug ${task.completed?'line-through text-gray-400':'text-gray-900'}`}>{task.name}</p>
+          {(task.tags??[]).length>0&&(
+            <div className="flex flex-wrap gap-1 mt-1">
+              {(task.tags??[]).map(tag=>{
+                const td=globalTags.find(t=>t.name===tag);
+                return (
+                  <span key={tag} style={td?{backgroundColor:td.color,color:getTagTextColor(td.color)}:{}}
+                    className={`text-[10px] px-1.5 py-0.5 rounded-full ${td?'':'bg-gray-100 text-gray-500'}`}>{tag}</span>
+                );
+              })}
+            </div>
+          )}
           {task.deadlineAt&&!task.completed&&(
             <p className={`text-[11px] font-semibold mt-1 flex items-center gap-1 ${deadlineLabelColor(task.deadlineAt)}`}>
               <AppIcons.deadline size={10+iconDelta}/>{deadlineRemainLabel(task.deadlineAt,language)}
@@ -3001,17 +3012,6 @@ function TaskCard({task,onToggle,onEdit,globalTags,onSubtaskToggle,tabName,iconD
             <p className="text-[11px] text-gray-400 mt-1 flex items-center gap-1 truncate">
               <AppIcons.task size={10+iconDelta} className="shrink-0"/><span className="truncate">{task.memo}</span>
             </p>
-          )}
-          {(task.tags??[]).length>0&&(
-            <div className="flex flex-wrap gap-1 mt-1">
-              {(task.tags??[]).map(tag=>{
-                const td=globalTags.find(t=>t.name===tag);
-                return (
-                  <span key={tag} style={td?{backgroundColor:td.color,color:getTagTextColor(td.color)}:{}}
-                    className={`text-[10px] px-1.5 py-0.5 rounded-full ${td?'':'bg-gray-100 text-gray-500'}`}>{tag}</span>
-                );
-              })}
-            </div>
           )}
           {hasIcons&&(
             <div className="flex items-center gap-2 mt-2">
