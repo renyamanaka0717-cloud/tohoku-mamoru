@@ -1,0 +1,41 @@
+<!-- android/app/src/main/AndroidManifest.xml に追加する内容 -->
+
+<!-- ① <application>タグの内側に追加する3つの<receiver>（AppWidgetProvider）宣言。
+     android:name はKotlinファイル名と、meta-dataのresourceはres/xml/の対応ファイルと一致させること -->
+<receiver android:name=".BrainBoxWidgetProvider" android:exported="false">
+    <intent-filter>
+        <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+    </intent-filter>
+    <meta-data
+        android:name="android.appwidget.provider"
+        android:resource="@xml/widget_combined_info" />
+</receiver>
+
+<receiver android:name=".AddLaterWidgetProvider" android:exported="false">
+    <intent-filter>
+        <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+    </intent-filter>
+    <meta-data
+        android:name="android.appwidget.provider"
+        android:resource="@xml/widget_add_later_info" />
+</receiver>
+
+<receiver android:name=".AddLaterVoiceWidgetProvider" android:exported="false">
+    <intent-filter>
+        <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+    </intent-filter>
+    <meta-data
+        android:name="android.appwidget.provider"
+        android:resource="@xml/widget_add_later_voice_info" />
+</receiver>
+
+<!-- ② 既存の.MainActivity <activity>タグの中（既存のLAUNCHER intent-filterのすぐ後）に追加する。
+     brainbox:// スキームでの起動をCapacitorの標準ディープリンク処理（appUrlOpenイベント）に
+     渡すためのもの。「音声でタスク追加」ウィジェット（AddLaterVoiceWidgetProvider）・
+     「あとでやるを追加」ウィジェット（AddLaterWidgetProvider）がこれを使ってアプリを起動する -->
+<intent-filter>
+    <action android:name="android.intent.action.VIEW" />
+    <category android:name="android.intent.category.DEFAULT" />
+    <category android:name="android.intent.category.BROWSABLE" />
+    <data android:scheme="brainbox" />
+</intent-filter>

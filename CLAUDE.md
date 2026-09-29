@@ -552,6 +552,36 @@ iOS標準のホーム画面ウィジェット（WidgetKit）。1つの大きい�
 2. 実機のホーム画面で長押し →「ウィジェットを追加」→「BrainBox」を検索 →「次の予定 & 買い物リスト」（systemLarge）を追加
 3. 行をタップ →その場でウィジェットから消える→ アプリを開くと実際に完了/購入済みになっていることを確認
 
+### Android実装（`native-android/WidgetDataPlugin.kt`・`BrainBoxWidgetProvider.kt`等）
+
+**iOSのWidgetKitとは根本的に仕組みが異なる。** SwiftUI + TimelineProviderで宣言的に描画するiOSに対し、Androidは`AppWidgetProvider` + `RemoteViews`（あらかじめ用意した固定レイアウトの一部だけをリモートから書き換える方式）で実装する。タスク最大4件・買い物最大6件という表示件数の上限がすでに決まっているため、可変長リスト用の`RemoteViewsService`（実装コストが高い）は使わず、レイアウトXMLに固定で用意した`task_row_0..3`/`shop_row_0..5`の表示/非表示を切り替えるだけで足りる設計にした。
+
+**App Group相当の設定が丸ごと不要（iOSより単純な点）。** AndroidのAppWidgetProviderはデフォルトでメインアプリと同じプロセス内で動作するため、普通の`SharedPreferences`（`WidgetDataPlugin.PREFS_NAME="widget_prefs"`）をアプリ本体・ウィジェットの両方からそのまま読み書きできる。iOSのようなApp Group Capability・Widget Extensionターゲットの追加は一切不要。
+
+- `native-android/WidgetDataPlugin.kt` — Capacitorプラグイン本体。`updateWidgetData()`が`widget_prefs`にJSON文字列・テーマカラー・`appLanguage`を書き込み、`BrainBoxWidgetProvider.updateAll(context)`を呼んで配置済みの全ウィジェットを即時再描画する。`getPendingWidgetActions()`はpending配列を読み取って返し、読み取り後に削除する（iOS版と同じ引数・返り値の形）
+- `native-android/BrainBoxWidgetProvider.kt` — 「次の予定 & 買い物リスト」本体（`AppWidgetProvider`）。**タップ完了機能はiOS 17+のAppIntentに相当するAPIが無いため、行ごとに異なる`PendingIntent`（本Provider自身へのブロードキャスト、`requestCode`と`putExtra`でidを区別）を`setOnClickPendingIntent()`で割り当てる方式にした。** `onReceive()`でタップされたidを`pendingCompletedTaskIds`/`pendingPurchasedShopItemIds`に追記し`updateAll()`で即座に再描画する（＝ウィジェット上でだけ楽観的に消える、iOS版の`CompleteTaskIntent`/`PurchaseShopItemIntent`と同じ設計）
+- `native-android/AddLaterWidgetProvider.kt` / `AddLaterVoiceWidgetProvider.kt` — iOS版の`AddLaterWidget`/`AddLaterVoiceWidget`（systemSmall、ワンタップで追加画面を開くだけの小さいウィジェット）に相当。**新しいCapacitorプラグインやpendingフラグを増やさず、iOS版と同じ`brainbox://addLater`/`brainbox://addLaterVoice`というURLスキームでMainActivityを起動するだけ**（Capacitorの標準的なディープリンク処理にそのまま乗るため、JS側の`appUrlOpen`リスナーは無改修で動く）。この方式を使うにはAndroidManifestの`.MainActivity`に`brainbox://`スキームの`intent-filter`を追加する必要がある（`WidgetManifest.snippet.xml`参照）
+- `native-android/res/layout/*.xml`・`res/xml/*_info.xml`・`res/drawable/*.xml` — RemoteViewsのレイアウト・`AppWidgetProviderInfo`（最小サイズ・更新間隔等）・テーマカラーで着色するための単色ドット/背景の図形リソース。**ドットのアイコンは`ImageView.setColorFilter()`でテーマカラーに動的着色するため、XML側の色（白）はダミーでよい**
+- `updatePeriodMillis="900000"`（15分）はiOS版の`Timeline(entries:policy:.after(Date()+15分))`に相当する保険的な定期更新（実際のデータ反映は`WidgetDataPlugin.updateWidgetData()`呼び出し時・タップ時に即座に行われるため、この間隔はあくまでフォールバック）
+
+**多言語対応は現状デフォルト（日本語）＋英語のみ（既知のスコープ限定・iOSとの意図的な差分）。** iOS版はString Catalogで9言語すべてに自動追従するが、Android版はこの初回実装では`values/strings.xml`（デフォルト＝日本語）と`values-en/strings.xml`（英語）のみ用意した（`WidgetStrings.snippet.xml`参照）。韓国語・繁体字中国語・スペイン語・ポルトガル語・ベトナム語・タイ語・インドネシア語の`values-XX/`はまだ無く、それらの端末言語では日本語（デフォルト）にフォールバックする。**新しいセッションでAndroidウィジェットの多言語対応を追加する時は、この`WidgetStrings.snippet.xml`の内容を元に`values-ko/`・`values-zh-rTW/`・`values-es/`・`values-pt/`・`values-vi/`・`values-th/`・`values-in/`（Androidのインドネシア語リソース修飾子は歴史的経緯で`in`、`id`ではない点に注意）を追加すること。**
+
+**言語判定（`GeofenceReceiver.kt`の`appLang()`）はWidgetDataPluginの移植により、iOS版と同じ方式に揃えた。** `widget_prefs`の`appLanguage`キー（`WidgetDataPlugin.updateWidgetData()`が書き込む、アプリ内で手動選択した言語）を優先して読み、JSが一度も`updateWidgetData()`を呼んでいない場合のみ端末のシステムロケールにフォールバックする（買い物リストの場所通知セクションを参照）。
+
+### Android Studioでの手動セットアップ（`android/`はgitignore対象なので毎回必要）
+
+1. `native-android/WidgetDataPlugin.kt`・`BrainBoxWidgetProvider.kt`・`AddLaterWidgetProvider.kt`・`AddLaterVoiceWidgetProvider.kt`を`android/app/src/main/java/jp/brainbox/app/`にコピー
+2. `native-android/MainActivity.java`の内容で既存の`MainActivity.java`を上書きする（`registerPlugin(WidgetDataPlugin.class)`の行が追加されている）
+3. `native-android/res/layout/`の3ファイル（`widget_combined.xml`/`widget_add_later.xml`/`widget_add_later_voice.xml`）を`android/app/src/main/res/layout/`にコピー
+4. `native-android/res/xml/`の3ファイル（`widget_combined_info.xml`/`widget_add_later_info.xml`/`widget_add_later_voice_info.xml`）を`android/app/src/main/res/xml/`にコピー（`xml/`ディレクトリが無い場合は新規作成）
+5. `native-android/res/drawable/`の2ファイル（`widget_dot.xml`/`widget_background.xml`）を`android/app/src/main/res/drawable/`にコピー
+6. `native-android/WidgetStrings.snippet.xml`のデフォルト（日本語）分を`android/app/src/main/res/values/strings.xml`に、コメントアウトされている英語分を`values-en/strings.xml`に追加（`values-en/`ディレクトリが無い場合は新規作成）
+7. `native-android/WidgetManifest.snippet.xml`の内容を`android/app/src/main/AndroidManifest.xml`に追加（3つの`<receiver>`は`<application>`タグの内側、`brainbox://`の`intent-filter`は既存の`.MainActivity`の`<activity>`タグの中、既存のLAUNCHER `intent-filter`のすぐ後に追加）
+8. Android Studioで「Sync Now」→ビルドが通ることを確認する
+9. 実機/エミュレータのホーム画面で長押し →「ウィジェット」→「BrainBox」を検索 → 3種類のウィジェット（「次の予定 & 買い物リスト」「あとでやる」「音声で追加」）が追加できることを確認する
+10. 「次の予定 & 買い物リスト」ウィジェットの行をタップ →その場でウィジェットから消える→ アプリを開くと実際に完了/購入済みになっていることを確認する
+11. これらのファイルを編集した場合、`android/`内の既存ファイルは`git pull`しても自動更新されない（`native-android/`の最新内容を都度コピーし直すこと。他プラグインの節と同じ注意事項）
+
 ### 避けるパターン
 
 - `WidgetDataPlugin` を Widget Extension ターゲットに追加しない（メインAppターゲットのみ。データを書き込む側と読み取る側が逆）
@@ -561,6 +591,8 @@ iOS標準のホーム画面ウィジェット（WidgetKit）。1つの大きい�
 - `WidgetTaskItem` / `WidgetShopItem` の `id` を JS側の送信データから外す（タップ完了機能がどのアイテムか特定できなくなる）
 - ウィジェット内の見出し文言を`Text(someStringVariable)`のように一度`String`型を経由して渡さない（`Localizable.xcstrings`があっても翻訳が反映されない。`Text("リテラル")`か、`LocalizedStringKey`型のパラメータ経由で渡すこと）
 - `Localizable.xcstrings`をメインAppターゲットに追加しない（Widget Extensionターゲットのみ。ウィジェット内の文言専用のカタログ）
+- Android側で`AppWidgetProvider`用の`PendingIntent`の`requestCode`を全行・全ウィジェットインスタンスで固定値にしない（同じ`requestCode`だと後から作った`PendingIntent`のextraで前のものが上書きされ、どの行をタップしても最後のidだけが送られる不具合になる。`appWidgetId`と行indexを組み合わせて一意にすること）
+- Android側でRemoteViewsのタップ判定をタスク最大4件・買い物最大6件という前提を超えて拡張する時、固定行のレイアウトを増やさず`RemoteViewsService`（可変長リスト）へ安易に切り替えない（実装コストが大きく上がるため、まず表示件数の上限を増やすだけで足りないか検討すること）
 
 ---
 
@@ -662,7 +694,7 @@ const SHOP_LOC_KEY = 'tl-shop-loc-v1';
 
 **買い物リストの通知本文はiOS版と取得元が異なる（既知の意図的な差分）。** iOS版はWidgetDataPluginが書き込むApp Group共有の`widgetShopJson`を発火時点に読むが、**WidgetDataPluginはAndroid未移植**のため、`Geofence.ts`の`setShopGeofences(locations, shopItemNames)`に第2引数を追加し、ジオフェンス登録時点の未購入アイテム名をそのまま`GeofencePlugin.kt`のSharedPreferences（`shopItemNames`キー）に保存しておき、発火時にそこから読む設計にした。呼び出し元は`App`コンポーネントの該当`useEffect`（`shopItems`を依存配列に追加済み）。WidgetDataPluginを将来Androidに移植した後もこの仕組みは変更不要（そのまま両立できる）。
 
-**通知文の言語判定もiOS版と方法が異なる（既知の意図的な差分）。** iOS版はJS側がApp Group共有の`appLanguage`キー（アプリ内で手動選択した言語）を書き込むが、これも書き込み元のWidgetDataPluginがAndroid未移植のため、`GeofenceReceiver.kt`は端末のシステムロケール（`Locale.getDefault()`）で言語を判定する。アプリ内で言語を手動切り替えていても、この通知の文言は端末のシステム言語に従う。WidgetDataPluginをAndroidに移植したら、iOS版と同じ`appLanguage`キー読み取りに揃えること。
+**通知文の言語判定はWidgetDataPluginのAndroid移植により、iOS版と同じ方式に揃えている（解消済み）。** `WidgetDataPlugin.kt`（`widget_prefs`）が`tasks`/`shopItems`/`themeColor`変更のたびに書き込む`appLanguage`キー（アプリ内で手動選択した言語）を`GeofenceReceiver.kt`の`appLang(context)`が優先して読む。JSが一度も`updateWidgetData()`を呼んでいない場合（インストール直後等）のみ端末のシステムロケール（`Locale.getDefault()`）にフォールバックする。
 
 **通知タップ時のディープリンクはこの移植で新規に完成させた。** `BrainBoxNotifications.show()`に`openLater`引数を追加し、タップ時に開く画面を`openShop`/`openLater`で指定できるようにした。`MainActivity`の`onCreate`/`onNewIntent`（`launchMode="singleTask"`のため両方をハンドルする必要がある）で、通知タップで起動された場合のIntent extra（`fromNotification`/`openShop`/`openLater`）を読み、`GeofencePlugin.getPendingGeofenceAction()`が読み取るのと同じSharedPreferencesにフラグを書き込む。iOS版で`GeofencePlugin.swift`の`UNUserNotificationCenterDelegate.didReceive`が全通知カテゴリ共通で担っている役割を、Android側ではこの`MainActivity`に集約している（`LocalNotifyPlugin`のアラート通知タップでも同じ経路が効く）。
 

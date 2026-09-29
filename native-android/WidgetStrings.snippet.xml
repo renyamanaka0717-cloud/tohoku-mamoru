@@ -1,0 +1,25 @@
+<!-- android/app/src/main/res/values/strings.xml の <resources> 直下に追加する（日本語=デフォルト） -->
+<string name="widget_next_tasks_title">次の予定</string>
+<string name="widget_no_tasks">予定はありません</string>
+<string name="widget_shopping_title">買い物リスト</string>
+<string name="widget_no_shop_items">買うものはありません</string>
+<string name="widget_combined_description">今日の予定と買い物リストをまとめて表示します。タップで完了にできます。</string>
+<string name="widget_add_later_label">あとでやる</string>
+<string name="widget_add_later_description">「あとでやる」タスクをワンタップで追加します。</string>
+<string name="widget_add_later_voice_label">音声で追加</string>
+<string name="widget_add_later_voice_description">話しかけるだけで「あとでやる」タスクを追加します。</string>
+
+<!-- ============================================================ -->
+<!-- android/app/src/main/res/values-en/strings.xml の <resources> 直下に追加する（英語） -->
+<!-- values-en/ ディレクトリが無い場合はAndroid Studioで新規作成すること -->
+<!--
+<string name="widget_next_tasks_title">Next up</string>
+<string name="widget_no_tasks">No tasks</string>
+<string name="widget_shopping_title">Shopping list</string>
+<string name="widget_no_shop_items">Nothing to buy</string>
+<string name="widget_combined_description">Shows today's schedule and shopping list together. Tap to mark as done.</string>
+<string name="widget_add_later_label">Add later</string>
+<string name="widget_add_later_description">Add a "Later" task with one tap.</string>
+<string name="widget_add_later_voice_label">Add by voice</string>
+<string name="widget_add_later_voice_description">Add a "Later" task just by speaking.</string>
+-->

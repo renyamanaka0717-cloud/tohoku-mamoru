@@ -3,12 +3,11 @@
 // iOS版GeofencePlugin.swiftのdidEnterRegion/didExitRegion+handleShopEnter/handleTaskLocationEnter/
 // handleForgetAlertFireに相当する処理をすべてここに集約している。
 //
-// 【iOS版との既知の差分・appLangの判定方法】iOS版はJS側がWidgetDataPlugin経由でApp Group共有の
-// UserDefaultsに書き込む appLanguage キー（アプリ内で手動選択した言語）を読むが、WidgetDataPluginは
-// Android未移植のため、この受信機はJSを一切介せず端末のシステムロケール(Locale.getDefault())で
-// 言語を判定する。アプリ内で日本語⇔英語等を手動切り替えていても、バックグラウンドで発火するこの
-// 通知の文言は端末のシステム言語に従う（WidgetDataPluginをAndroidに移植したら、iOS版と同じ
-// SharedPreferencesのappLanguageキー読み取りに揃えること）
+// 【appLangの判定方法・WidgetDataPlugin移植により解消済み】WidgetDataPlugin.kt（widget_prefs）が
+// tasks/shopItems/themeColor変更のたびに書き込む appLanguage キー（アプリ内で手動選択した言語）を
+// 優先して読む。iOS版のApp Group共有UserDefaultsと同じ役割。JSが一度もupdateWidgetData()を
+// 呼んでいない場合（インストール直後等）のみ端末のシステムロケール(Locale.getDefault())に
+// フォールバックする
 package jp.brainbox.app
 
 import android.content.BroadcastReceiver
@@ -68,7 +67,7 @@ class GeofenceReceiver : BroadcastReceiver() {
 
         prefs.edit().putLong(cooldownKey, now).apply()
 
-        val lang = appLang()
+        val lang = appLang(context)
         var placeName = placeNamePlaceholder(lang)
         try {
             val names = JSONObject(prefs.getString("geofenceNames", "{}") ?: "{}")
@@ -99,7 +98,7 @@ class GeofenceReceiver : BroadcastReceiver() {
         firedIds.add(taskId)
         prefs.edit().putString("taskLocationFiredIds", JSONArray(firedIds).toString()).apply()
 
-        val lang = appLang()
+        val lang = appLang(context)
         var taskName = defaultTaskName(lang)
         try {
             val names = JSONObject(prefs.getString("taskLocationNames", "{}") ?: "{}")
@@ -156,7 +155,7 @@ class GeofenceReceiver : BroadcastReceiver() {
 
         prefs.edit().putLong(cooldownKey, now).apply()
 
-        val lang = appLang()
+        val lang = appLang(context)
         val name = entry.optString("name", "")
         val items = try {
             val arr = entry.getJSONArray("items")
@@ -176,9 +175,15 @@ class GeofenceReceiver : BroadcastReceiver() {
         return h * 60 + m
     }
 
-    // WidgetDataPluginがAndroidに未移植のため、appLanguageキーの代わりに端末のシステムロケールで
-    // 判定する。JSのdetectLanguage()と同じ優先順位（ja→ko→zh→es→pt→vi→th→idの次にen）に揃えてある
-    private fun appLang(): String {
+    // WidgetDataPluginのAndroid移植により、iOS版と同じappLanguageキー（widget_prefsに保存、
+    // WidgetDataPlugin.updateWidgetData()がtasks/shopItems/themeColor変更のたびに書き込む）を
+    // 優先して読む。JSが一度もupdateWidgetData()を呼んでいない場合（インストール直後等）のみ
+    // 端末のシステムロケールにフォールバックする（JSのdetectLanguage()と同じ優先順位：
+    // ja→ko→zh→es→pt→vi→th→idの次にen）
+    private fun appLang(context: Context): String {
+        val stored = context.getSharedPreferences(WidgetDataPlugin.PREFS_NAME, Context.MODE_PRIVATE)
+            .getString("appLanguage", null)
+        if (stored != null) return stored
         val locale = Locale.getDefault()
         val lang = locale.language
         val country = locale.country
