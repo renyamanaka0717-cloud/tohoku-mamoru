@@ -1765,14 +1765,6 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
   // モーダルを開くたびに現在の許可状態を確認する（ShopLocationPanelと同じパターン）
   const [taskLocPermStatus,setTaskLocPermStatus] = useState<{location:string;notifications:string}|null>(null);
   useEffect(()=>{ if(locationNotify) checkGeofencePermissions().then(setTaskLocPermStatus); },[locationNotify]);
-  const [locAdding,setLocAdding] = useState(false);
-  const [locMapMode,setLocMapMode] = useState(false);
-  const [locMapCenter,setLocMapCenter] = useState<{lat:number;lng:number}|null>(null);
-  const [locSearchQuery,setLocSearchQuery] = useState('');
-  const [locSearchResults,setLocSearchResults] = useState<{name:string;lat:number;lng:number}[]>([]);
-  const [locSearching,setLocSearching] = useState(false);
-  const [locPending,setLocPending] = useState<{name:string;lat:number;lng:number}|null>(null);
-  const [locLocating,setLocLocating] = useState(false);
   const [locError,setLocError] = useState<string|null>(null);
   const [address,setAddress] = useState(task?.address??'');
   const [addressOpen,setAddressOpen] = useState(false);
@@ -1971,48 +1963,6 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
   };
 
   const toggleTag=(name:string)=>setTags(prev=>prev.includes(name)?prev.filter(x=>x!==name):[...prev,name]);
-
-  // 場所で通知（PRO機能）── OFFにした時点で場所情報も削除する（初回実装のシンプルな仕様）
-  const locDoSearch=async()=>{
-    const q=locSearchQuery.trim();
-    if(!q) return;
-    setLocSearching(true);
-    try{
-      const res=await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&countrycodes=jp&limit=8&accept-language=ja`);
-      const data=await res.json() as {display_name:string;lat:string;lon:string}[];
-      setLocSearchResults(data.map(d=>({name:d.display_name,lat:parseFloat(d.lat),lng:parseFloat(d.lon)})));
-    }catch{
-      setLocSearchResults([]);
-    }
-    setLocSearching(false);
-  };
-  const locUseCurrentLocation=()=>{
-    setLocLocating(true);
-    getCurrentCoords(10000).then(loc=>{
-      setLocLocating(false);
-      if(!loc){ setLocError(tr('couldNotGetLocation')); return; }
-      setLocMapCenter(loc);
-      setLocMapMode(true);
-    });
-  };
-  const locOpenMapMode=()=>{ setLocMapCenter(null); setLocMapMode(true); };
-  const locConfirmPending=async()=>{
-    if(!locPending) return;
-    const ok=await ensureGeofencePermission('task_location');
-    if(!ok){ setLocError(tr('taskLocationPermError')); return; }
-    setTaskLocation({name:locPending.name,lat:locPending.lat,lng:locPending.lng});
-    setLocationNotify(true);
-    setLocAdding(false);
-    setLocMapMode(false);
-    setLocPending(null);
-    setLocSearchQuery('');
-    setLocSearchResults([]);
-    setLocError(null);
-  };
-  const locCancelAdd=()=>{
-    setLocAdding(false);setLocMapMode(false);setLocMapCenter(null);setLocPending(null);
-    setLocSearchQuery('');setLocSearchResults([]);setLocError(null);
-  };
 
   const savedOnceRef=useRef(false);
   const save=()=>{
@@ -2664,120 +2614,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
               </>
             )}
 
-            {/* 場所で通知（「あとでやる」限定・PRO機能） */}
-            {mode==='later'&&(
-              <>
-                <div className="h-px bg-gray-100 mx-4"/>
-                <button className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50"
-                  onClick={()=>{
-                    if(!isPremium){ setModalProPrompt(tr('proFeatureLocationNotify')); return; }
-                    if(!taskLocation&&atLocationLimit){ setLocError(tr('taskLocationLimitReached')); return; }
-                    setLocAdding(o=>!o);
-                  }}>
-                  <AppIcons.location size={18} className="text-gray-400 shrink-0"/>
-                  <span className="flex-1 text-left text-sm font-medium text-gray-800 flex items-center gap-1.5">
-                    {tr('fieldLocationNotify')}
-                    {!isPremium&&<AppIcons.lock size={11} className="text-gray-300"/>}
-                  </span>
-                  {taskLocation&&<span className="text-xs text-gray-400 truncate max-w-[140px]">{taskLocation.name}</span>}
-                  <AppIcons.caretRight size={14} className="text-gray-300"/>
-                </button>
-                {locError&&<p className="text-xs text-[#D97A7A] px-4 pb-3">{locError}</p>}
-                {locationNotify&&taskLocPermStatus&&
-                  (taskLocPermStatus.location==='denied'||taskLocPermStatus.location==='limited'||taskLocPermStatus.notifications==='denied')&&(
-                  <p className="text-xs text-[#D97A7A] px-4 pb-3 leading-relaxed">
-                    {tr('taskLocationPermRevokedNote')}
-                  </p>
-                )}
-                {locAdding&&(
-                  <div className="border-t border-gray-100 px-4 pt-3 pb-4">
-                    {locMapMode?(
-                      <ShopMapPicker
-                        initialCenter={locMapCenter??locSearchResults[0]??{lat:35.681236,lng:139.767125}}
-                        onConfirm={loc=>{setLocPending(prev=>prev?{...loc,name:prev.name}:loc);setLocMapMode(false);setLocMapCenter(null);}}
-                        onCancel={()=>{setLocMapMode(false);setLocMapCenter(null);}}/>
-                    ):taskLocation&&!locPending?(
-                      <>
-                        <div className="flex items-center gap-2 mb-3">
-                          <AppIcons.location size={14} className="text-gray-400 shrink-0"/>
-                          <p className="flex-1 text-sm text-gray-700 truncate">{taskLocation.name}</p>
-                        </div>
-                        <p className="text-xs text-gray-400 mb-3">{tr('taskLocationRadiusNote').replace('{r}',String(TASK_LOCATION_RADIUS_M))}</p>
-                        <div className="flex gap-2">
-                          <button onClick={()=>setLocPending(taskLocation)}
-                            className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200">
-                            {tr('changeLocationButton')}
-                          </button>
-                          <button onClick={()=>{setTaskLocation(null);setLocationNotify(false);setLocAdding(false);setLocError(null);}}
-                            className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-gray-50 text-[#D97A7A]">
-                            {tr('clearButton')}
-                          </button>
-                        </div>
-                      </>
-                    ):!locPending?(
-                      <>
-                        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">{tr('searchLocationSectionLabel')}</p>
-                        <div className="flex gap-2 mb-3">
-                          <input value={locSearchQuery} onChange={e=>setLocSearchQuery(e.target.value)}
-                            onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();locDoSearch();}}}
-                            placeholder={tr('addressPlaceholder')}
-                            className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50"/>
-                          <button onClick={locDoSearch} disabled={locSearching||!locSearchQuery.trim()}
-                            className="px-4 py-2 bg-gray-100 rounded-xl text-sm font-semibold text-gray-700 shrink-0 disabled:opacity-40">
-                            {locSearching?tr('searchingLabel'):tr('searchLabel')}
-                          </button>
-                        </div>
-                        {locSearchResults.length>0&&(
-                          <div className="space-y-1 mb-3 max-h-32 overflow-y-auto">
-                            {locSearchResults.map((r,i)=>(
-                              <button key={i} onClick={()=>setLocPending(r)}
-                                className="w-full text-left px-3 py-2 rounded-xl bg-gray-50 active:bg-gray-100 text-sm text-gray-700 truncate">
-                                {r.name}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                        <button onClick={locOpenMapMode} disabled={locLocating}
-                          className="w-full py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200 mb-2 disabled:opacity-40">
-                          {locLocating?tr('gettingLocationLabel'):tr('pickOnMapButton')}
-                        </button>
-                        <button onClick={locUseCurrentLocation} disabled={locLocating}
-                          className="w-full py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200 mb-3 disabled:opacity-40">
-                          {locLocating?tr('gettingLocationLabel'):tr('useCurrentLocationButton')}
-                        </button>
-                        <button onClick={locCancelAdd} className="w-full py-2.5 rounded-xl text-sm font-semibold bg-gray-50 text-gray-400">
-                          {tr('cancelButton')}
-                        </button>
-                      </>
-                    ):(
-                      <>
-                        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">{tr('nameSectionLabel')}</p>
-                        <input value={locPending.name} onChange={e=>setLocPending({...locPending,name:e.target.value})}
-                          placeholder={tr('placeNamePlaceholder')}
-                          className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50 mb-3"/>
-                        <p className="text-xs text-gray-400 mb-3">{tr('taskLocationRadiusNote').replace('{r}',String(TASK_LOCATION_RADIUS_M))}</p>
-                        <button onClick={()=>{setLocMapCenter({lat:locPending.lat,lng:locPending.lng});setLocMapMode(true);}}
-                          className="w-full py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200 mb-3">
-                          {tr('changeOnMapButton')}
-                        </button>
-                        <div className="flex gap-2">
-                          <button onClick={()=>setLocPending(null)}
-                            className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200">
-                            {tr('backButton')}
-                          </button>
-                          <button onClick={locConfirmPending}
-                            className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-[var(--c-primary)] text-white active:opacity-80">
-                            {tr('taskLocationConfirmButton')}
-                          </button>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                )}
-              </>
-            )}
-
-            {/* 住所（全タスクタイプ） */}
+            {/* 住所（全タスクタイプ。「あとでやる」は地図で選んだ場所に限り場所で通知するPROトグル付き） */}
             <div className="h-px bg-gray-100 mx-4"/>
             <button className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50"
               onClick={()=>setAddressOpen(o=>!o)}>
@@ -2791,7 +2628,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                 {addressMapMode?(
                   <ShopMapPicker
                     initialCenter={addressMapCenter??{lat:35.681236,lng:139.767125}}
-                    onConfirm={loc=>{setAddress(loc.name);setAddressMapMode(false);setAddressMapCenter(null);}}
+                    onConfirm={loc=>{setAddress(loc.name);setTaskLocation({name:loc.name,lat:loc.lat,lng:loc.lng});setAddressMapMode(false);setAddressMapCenter(null);}}
                     onCancel={()=>{setAddressMapMode(false);setAddressMapCenter(null);}}/>
                 ):(
                   <>
@@ -2816,6 +2653,40 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                         {addressLocating?tr('gettingLocationLabel'):tr('useCurrentLocationButton')}
                       </button>
                     </div>
+
+                    {/* 場所で通知（「あとでやる」限定・PRO機能。地図で選んだ場所にのみ設定できる） */}
+                    {mode==='later'&&(
+                      <>
+                        <div className="h-px bg-gray-100 -mx-4 my-3"/>
+                        <button className="w-full flex items-center gap-2"
+                          onClick={async()=>{
+                            if(!isPremium){ setModalProPrompt(tr('proFeatureLocationNotify')); return; }
+                            if(locationNotify){ setLocationNotify(false); return; }
+                            if(!taskLocation){ setLocError(tr('taskLocationNeedsMapNote')); return; }
+                            if(atLocationLimit){ setLocError(tr('taskLocationLimitReached')); return; }
+                            const ok=await ensureGeofencePermission('task_location');
+                            if(!ok){ setLocError(tr('taskLocationPermError')); return; }
+                            setLocationNotify(true);
+                            setLocError(null);
+                          }}>
+                          <AppIcons.bell size={16} className="text-gray-400 shrink-0"/>
+                          <span className="flex-1 text-left text-sm font-medium text-gray-800 flex items-center gap-1.5">
+                            {tr('fieldLocationNotify')}
+                            {!isPremium&&<AppIcons.lock size={11} className="text-gray-300"/>}
+                          </span>
+                          <span className={`relative w-10 h-6 rounded-full transition-colors shrink-0 ${locationNotify?'bg-[var(--c-primary)]':'bg-gray-200'}`}>
+                            <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${locationNotify?'left-[18px]':'left-0.5'}`}/>
+                          </span>
+                        </button>
+                        {locError&&<p className="text-xs text-[#D97A7A] mt-2">{locError}</p>}
+                        {locationNotify&&taskLocPermStatus&&
+                          (taskLocPermStatus.location==='denied'||taskLocPermStatus.location==='limited'||taskLocPermStatus.notifications==='denied')&&(
+                          <p className="text-xs text-[#D97A7A] mt-2 leading-relaxed">
+                            {tr('taskLocationPermRevokedNote')}
+                          </p>
+                        )}
+                      </>
+                    )}
                   </>
                 )}
               </div>
