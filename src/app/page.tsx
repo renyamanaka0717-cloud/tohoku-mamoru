@@ -2100,11 +2100,41 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
     return `rgb(${Math.round(r*0.82)},${Math.round(g*0.82)},${Math.round(b*0.82)})`;
   })():'var(--c-primary-dark)';
 
+  // 【Android実機の不具合】キーボード表示時にヘッダー（×・保存ボタン）が画面上端の外に
+  // 押し出されて見えなくなることがあった。白コンテンツの高さが固定の`vh`値（55vh）で、
+  // Androidの一部WebViewはキーボード表示で実際の表示高さが縮んでもvh単位の再計算が
+  // 追従しないことがあるため（プロダクトツアーのvisualViewport対応と同種の不具合）。
+  // ヘッダーの実測高さを差し引いた「今見えている高さ」を都度計算し、白コンテンツの
+  // 上限をそれに合わせて動的に縮めることで、ヘッダーが常に画面内に収まるようにする
+  const headerRef = useRef<HTMLDivElement>(null);
+  const [availH,setAvailH] = useState(()=>typeof window==='undefined'?800:(window.visualViewport?.height??window.innerHeight));
+  const [headerH,setHeaderH] = useState(0);
+  useEffect(()=>{
+    const update=()=>setAvailH(window.visualViewport?.height??window.innerHeight);
+    update();
+    window.visualViewport?.addEventListener('resize',update);
+    window.addEventListener('resize',update);
+    return ()=>{
+      window.visualViewport?.removeEventListener('resize',update);
+      window.removeEventListener('resize',update);
+    };
+  },[]);
+  useEffect(()=>{
+    if(!headerRef.current) return;
+    const ro=new ResizeObserver(entries=>{
+      const h=entries[0]?.contentRect.height;
+      if(h!==undefined) setHeaderH(h);
+    });
+    ro.observe(headerRef.current);
+    return ()=>ro.disconnect();
+  },[]);
+  const contentMaxH = Math.max(120, Math.min(availH*0.55, availH-headerH-8));
+
   return (
     <div className="fixed inset-0 z-50 bg-black/60" onClick={handleClose}>
       <div className="absolute bottom-0 left-0 right-0 max-w-md mx-auto" onClick={e=>e.stopPropagation()} data-tour={!task?'modal-card':undefined}>
         {/* ── Dark header ── */}
-        <div className="rounded-t-3xl px-4 pt-4" style={{background:headerBg}}>
+        <div ref={headerRef} className="rounded-t-3xl px-4 pt-4" style={{background:headerBg}}>
         <div>
           {/* Buttons row */}
           <div className="flex items-center justify-between mb-4">
@@ -2196,7 +2226,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
         </div>
 
         {/* ── White content ── */}
-        <div className="bg-gray-50 max-h-[55vh] overflow-y-auto">
+        <div className="bg-gray-50 overflow-y-auto" style={{maxHeight:contentMaxH}}>
           {/* Recurring settings */}
           {mode==='recurring'&&(
             <>
