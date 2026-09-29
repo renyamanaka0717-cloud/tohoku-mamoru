@@ -4747,7 +4747,10 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
 
   const laterTasks  = tasks.filter(t=>t.isLater);
   const laterPending= laterTasks.filter(t=>!t.completed);
-  const laterDone   = laterTasks.filter(t=>t.completed);
+  // 時間指定・繰り返しタスクも今日完了した分はここに含める（完了にしても
+  // どこにも表示されなくなる不具合の修正。「あとでやる」以外は日付で絞り込む）
+  const otherDoneToday = tasks.filter(t=>!t.isLater&&t.startTime&&t.completed&&t.date===todayStr());
+  const laterDone   = [...laterTasks.filter(t=>t.completed),...otherDoneToday];
 
   // Pinned tasks always appear first, then sorted by sortDir within the group
   const normalLater = (() => {
