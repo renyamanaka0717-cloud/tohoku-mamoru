@@ -2669,43 +2669,43 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                         {addressLocating?tr('gettingLocationLabel'):tr('useCurrentLocationButton')}
                       </button>
                     </div>
+
+                    {/* 場所で通知（「あとでやる」限定・PRO機能。地図で選んだ場所にのみ設定できる） */}
+                    {mode==='later'&&(
+                      <>
+                        <div className="h-px bg-gray-100 -mx-4 my-3"/>
+                        <button className="w-full flex items-center gap-2"
+                          onClick={async()=>{
+                            if(!isPremium){ setModalProPrompt(tr('proFeatureLocationNotify')); return; }
+                            if(locationNotify){ setLocationNotify(false); return; }
+                            if(!taskLocation){ setLocError(tr('taskLocationNeedsMapNote')); return; }
+                            if(atLocationLimit){ setLocError(tr('taskLocationLimitReached')); return; }
+                            const ok=await ensureGeofencePermission('task_location');
+                            if(!ok){ setLocError(tr('taskLocationPermError')); return; }
+                            setLocationNotify(true);
+                            setLocError(null);
+                          }}>
+                          <AppIcons.bell size={16} className="text-gray-400 shrink-0"/>
+                          <span className="flex-1 text-left text-sm font-medium text-gray-800 flex items-center gap-1.5">
+                            {tr('fieldLocationNotify')}
+                            {!isPremium&&<AppIcons.lock size={11} className="text-gray-300"/>}
+                          </span>
+                          <span className={`relative w-10 h-6 rounded-full transition-colors shrink-0 ${locationNotify?'bg-[var(--c-primary)]':'bg-gray-200'}`}>
+                            <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${locationNotify?'left-[18px]':'left-0.5'}`}/>
+                          </span>
+                        </button>
+                        {locError&&<p className="text-xs text-[#D97A7A] mt-2">{locError}</p>}
+                        {locationNotify&&taskLocPermStatus&&
+                          (taskLocPermStatus.location==='denied'||taskLocPermStatus.location==='limited'||taskLocPermStatus.notifications==='denied')&&(
+                          <p className="text-xs text-[#D97A7A] mt-2 leading-relaxed">
+                            {tr('taskLocationPermRevokedNote')}
+                          </p>
+                        )}
+                      </>
+                    )}
                   </>
                 )}
               </div>
-            )}
-
-            {/* 場所で通知（「あとでやる」限定・PRO機能。住所欄で地図/現在地から選んだ場所に通知する独立項目） */}
-            {mode==='later'&&(
-              <>
-                <div className="h-px bg-gray-100 mx-4"/>
-                <button className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50"
-                  onClick={async()=>{
-                    if(!isPremium){ setModalProPrompt(tr('proFeatureLocationNotify')); return; }
-                    if(locationNotify){ setLocationNotify(false); return; }
-                    if(!taskLocation){ setLocError(tr('taskLocationNeedsMapNote')); return; }
-                    if(atLocationLimit){ setLocError(tr('taskLocationLimitReached')); return; }
-                    const ok=await ensureGeofencePermission('task_location');
-                    if(!ok){ setLocError(tr('taskLocationPermError')); return; }
-                    setLocationNotify(true);
-                    setLocError(null);
-                  }}>
-                  <AppIcons.bell size={18} className="text-gray-400 shrink-0"/>
-                  <span className="flex-1 text-left text-sm font-medium text-gray-800 flex items-center gap-1.5">
-                    {tr('fieldLocationNotify')}
-                    {!isPremium&&<AppIcons.lock size={11} className="text-gray-300"/>}
-                  </span>
-                  <span className={`relative w-10 h-6 rounded-full transition-colors shrink-0 ${locationNotify?'bg-[var(--c-primary)]':'bg-gray-200'}`}>
-                    <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${locationNotify?'left-[18px]':'left-0.5'}`}/>
-                  </span>
-                </button>
-                {locError&&<p className="text-xs text-[#D97A7A] mx-4 -mt-2 mb-2 leading-relaxed">{locError}</p>}
-                {locationNotify&&taskLocPermStatus&&
-                  (taskLocPermStatus.location==='denied'||taskLocPermStatus.location==='limited'||taskLocPermStatus.notifications==='denied')&&(
-                  <p className="text-xs text-[#D97A7A] mx-4 -mt-2 mb-2 leading-relaxed">
-                    {tr('taskLocationPermRevokedNote')}
-                  </p>
-                )}
-              </>
             )}
 
             {/* タグ */}
