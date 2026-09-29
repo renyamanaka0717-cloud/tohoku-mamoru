@@ -2987,9 +2987,19 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
             {(()=>{
               const [hStr,mStr]=startTime.split(':');
               const normM=String(Math.min(55,Math.round((parseInt(mStr)||0)/5)*5)).padStart(2,'0');
+              const clamp=(v:string,max:number)=>Math.min(max,Math.max(0,parseInt(v.replace(/\D/g,''))||0));
               return(
                 <>
-                  <div className="flex items-center justify-center gap-2 px-5 pb-3 pt-2">
+                  <div className="flex items-center justify-center gap-1.5 px-5 pt-1 pb-2">
+                    <input type="number" inputMode="numeric" value={parseInt(hStr)}
+                      onChange={e=>setST(`${String(clamp(e.target.value,23)).padStart(2,'0')}:${mStr}`)}
+                      className="w-14 border border-gray-200 rounded-xl px-2 py-1.5 text-center text-sm font-semibold text-gray-800 bg-gray-50 outline-none"/>
+                    <span className="text-sm text-gray-400">:</span>
+                    <input type="number" inputMode="numeric" value={parseInt(mStr)}
+                      onChange={e=>setST(`${hStr}:${String(clamp(e.target.value,59)).padStart(2,'0')}`)}
+                      className="w-14 border border-gray-200 rounded-xl px-2 py-1.5 text-center text-sm font-semibold text-gray-800 bg-gray-50 outline-none"/>
+                  </div>
+                  <div className="flex items-center justify-center gap-2 px-5 pb-3 pt-1">
                     <PickerCol items={HOURS} value={hStr} onChange={v=>setST(`${v}:${normM}`)}/>
                     <span className="text-base font-medium text-gray-500 w-5 text-center">{tr('timeUnitHour')}</span>
                     <PickerCol items={MINS} value={normM} onChange={v=>setST(`${hStr}:${v}`)}/>
