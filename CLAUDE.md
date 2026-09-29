@@ -884,9 +884,19 @@ Android版も同様に`GeofencePlugin.kt`/`GeofenceReceiver.kt`は同じ物理�
 
 `native-ios/InactivityPlugin.swift` / `.m` を `ios/App/App/` に追加（Target Membership: App）。`native-ios/BridgeViewController.swift` の `capacitorDidLoad()` に `bridge?.registerPluginInstance(InactivityPlugin())` があることを確認（無ければ追記。既存の `ios/App/App/BridgeViewController.swift` は `git pull` で自動反映されないので **Xcode上で直接編集**）。App Group・Background Modes・Info.plistの追加設定は不要（ジオフェンスと違い常にフォアグラウンド起点でスケジュールするだけなので、バックグラウンド位置情報等は使わない）。
 
+### Android実装（`native-android/InactivityPlugin.kt`）
+
+プラグイン名を`InactivityPlugin`で揃えているため`Inactivity.ts`は無改修で動く。`AlarmManager`で`app-inactivity-reminder-${index}`を予約する設計はiOSと同じで、通知の発火自体は既存の`LocalNotifyReceiver.kt`をそのまま再利用する（新しいBroadcastReceiverは追加不要。extraのid/title/body/openShopを渡すだけで届く）。
+
+**この移植だけは`GeofencePlugin`のようなSharedPreferencesでの登録済みIDブックキーピングが不要。** `LocalNotifyPlugin`のアラートは`task-alert-${taskId}-...`のようにIDがタスク数に応じて可変だが、`InactivityPlugin`の識別子は`hoursList`配列のインデックスのみで、`hoursList`の長さは`STALE_MAX_REPEATS+1`件程度で常に小さく上限が決まっている。存在しない`PendingIntent`を`cancel()`しても何も起きないため、`scheduleReminder`/`cancelReminder`とも毎回`0〜MAX_REMINDERS(=20)`を無条件にcancelするだけで「全解除」を実現している。新しく似たような固定件数・インデックスベースの予約を追加する時はこの簡略パターンが使えないか検討すること（可変IDの場合は`GeofencePlugin`/`LocalNotifyPlugin`と同じSharedPreferencesブックキーピングが必要）。
+
+通知許可の確認は`NotificationManagerCompat.from(context).areNotificationsEnabled()`で行う（iOSの`getNotificationSettings`と同じく、許可をリクエストせず現在の状態を見るだけ。オンボーディングの通知プロンプトより前に勝手にOSダイアログを出さないための設計はiOS版と同じ理由）。
+
+**Android Studioでの手動セットアップ:** `native-android/InactivityPlugin.kt`を`android/app/src/main/java/jp/brainbox/app/`にコピーし、`native-android/MainActivity.java`の内容で上書きする（`registerPlugin(InactivityPlugin.class)`が追加されている）。Manifest・Gradle依存の追加は不要（`LocalNotifyReceiver`を再利用するため）。
+
 ### 避けるパターン
 
-- アプリ起動リマインダーの発火判定をJS側の `setTimeout`/`setInterval` で行おうとしない（アプリがバックグラウンド/未起動になるとタイマーは動かない。必ずネイティブの `UNTimeIntervalNotificationTrigger` で完結させる）
+- アプリ起動リマインダーの発火判定をJS側の `setTimeout`/`setInterval` で行おうとしない（アプリがバックグラウンド/未起動になるとタイマーは動かない。必ずネイティブの `UNTimeIntervalNotificationTrigger`（Android版は`AlarmManager`）で完結させる）
 - フォアグラウンドに戻った時に `cancelInactivityReminder()` を呼び忘れない（呼ばないと、アプリを頻繁に開いていても毎回のバックグラウンド移行で古いタイマーが残ったまま新しい予約と重複し得る。現状は同一IDで上書きされるため実害は少ないが、意図としては「開いたらリセット」が正しい）
 - 放置タスク通知（`laterReminderHours`）とアプリ起動リマインダー（`appInactivityHours`）を同じ設定値として扱わない（別々のフィールド・別々のUI・別々のPRO方針）
 
