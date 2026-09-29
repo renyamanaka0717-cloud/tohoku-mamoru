@@ -678,7 +678,7 @@ const SHOP_LOC_KEY = 'tl-shop-loc-v1';
 
 この`didReceive`ハンドラは`UNUserNotificationCenterDelegate`としてアプリ全体で1つしか存在しない（`GeofencePlugin.load()`で設定）ため、**他のプラグインが作った通知でも`userInfo["openShop"]==true`さえ立てておけば同じタップ処理が効く**。`LocalNotifyPlugin.swift`の`syncShopNotifs()`（買い物リストの時間指定通知）はこの仕組みを使って、JS側で`openShop:true`を付けたアラートだけ`content.userInfo=["openShop":true]`を設定している（`scheduleAlerts()`内、`ScheduledAlert.openShop`）。
 
-**通知文の英語対応:** 買い物リストの場所通知・「あとでやる」タスクの場所通知・忘れ物防止アラートはすべてバックグラウンド/未起動でも発火するため、`syncTaskAlerts`等のJS側通知（`tr()`で言語判定）と違い、`GeofencePlugin.swift`内で発火時点に直接ja/enを判定して文言を組み立てている。判定材料は`WidgetDataPlugin.updateWidgetData()`が（`tasks`/`shopItems`/`themeColor`変更のたびに呼ばれる既存の同期エフェクトに相乗りして）App Groupの`UserDefaults`に書き込む`appLanguage`キー（`"ja"`/`"en"`）。`GeofencePlugin.swift`の`isEnglish()`ヘルパーがこれを読んで判定する。新しくバックグラウンドで発火するネイティブ通知を追加する時は、JSの`tr()`は呼べないことを前提に、同じ`appLanguage`キー経由でja/enを判定するパターンに倣うこと。
+**通知文の英語対応:** 買い物リストの場所通知・忘れ物防止アラートはすべてバックグラウンド/未起動でも発火するため、`syncTaskAlerts`等のJS側通知（`tr()`で言語判定）と違い、`GeofencePlugin.swift`内で発火時点に直接ja/enを判定して文言を組み立てている。判定材料は`WidgetDataPlugin.updateWidgetData()`が（`tasks`/`shopItems`/`themeColor`変更のたびに呼ばれる既存の同期エフェクトに相乗りして）App Groupの`UserDefaults`に書き込む`appLanguage`キー（`"ja"`/`"en"`）。`GeofencePlugin.swift`の`isEnglish()`ヘルパーがこれを読んで判定する。新しくバックグラウンドで発火するネイティブ通知を追加する時は、JSの`tr()`は呼べないことを前提に、同じ`appLanguage`キー経由でja/enを判定するパターンに倣うこと。
 
 ### Xcodeでの手動セットアップ（`ios/`はgitignore対象なので毎回必要）
 
@@ -745,76 +745,20 @@ const SHOP_LOC_KEY = 'tl-shop-loc-v1';
 
 ---
 
-## タスクの住所・「あとでやる」の場所通知（PRO機能）
+## タスクの住所（TaskModal、無料機能）
 
-**「住所」欄と「場所で通知」は1つの入力フローに統合済み（過去に別々の場所選択UIが2つ並んでいて紛らわしいという指摘を受けて統合した）。** 買い物リストの場所通知（`ShopLocation`）とは別に、個別の「あとでやる」タスクにも場所を設定し、到着時に通知できる。買い物リストの場所通知と同じ `GeofencePlugin`/`CLLocationManager` を共有するが、`"task-loc-"` prefixで完全に別管理する（`"shop-"` prefixとは独立）。
+- `Task.address?:string` — 表示用の住所（自由入力、全タスクタイプ、無料）。通知・ジオフェンスとは無関係の単なる文字列
+- TaskModalの「住所」欄で直接入力／「地図で指定」（`ShopMapPicker`）／「現在地から」の3通りで入力できる。地図・現在地から選んだ場合も、確定時に反映するのは`address`（表示テキスト）のみ
 
-### 型・保存
+**過去に存在した「あとでやる」タスクの場所通知機能（到着時にジオフェンス通知）は撤去済み。** 「目玉機能のはずが実際には使われておらず、TaskModal内に埋もれていて分かりにくい」というフィードバックを受け、`Task.locationNotify`/`Task.location`フィールド・TaskModalの「場所で通知」トグル・`"task-loc-"` prefixのジオフェンス同期エフェクト（`setTaskLocationGeofences`）・`getFiredTaskLocationIds`によるリコンサイル・PRO比較表の行・`location_notification_created`/`location_reminder_triggered`アナリティクスのタスク側トリガーを丸ごと削除した。**買い物リストの場所通知（`ShopLocation`、`"shop-"` prefix）・忘れ物防止アラート（`ForgetAlert`、`"forget-"` prefix）は無関係の別機能として引き続き存在する**（`GeofencePlugin`は共有しているが、削除したのは`"task-loc-"` prefixのタスク単位の機能のみ）。ネイティブ側（`GeofencePlugin.swift`/`.kt`の`"task-loc-"`関連コード）は今回のスコープでは触っていないため残っているが、JS側から一切呼ばれなくなったため実質的に無効。
 
-- `Task.address?:string` — 表示用の住所（自由入力、全タスクタイプ、**無料機能**）。通知・ジオフェンスとは無関係の単なる文字列
-- `Task.locationNotify?:boolean` / `Task.location?:{name:string;lat:number;lng:number}` — 到着通知の対象座標。半径は初回実装では固定値 `TASK_LOCATION_RADIUS_M=200`（m）
-
-### タスク作成・編集画面（TaskModal）
-
-**「住所」欄1つに統合**（全タスクタイプ共通、無料）。直接入力／「地図で指定」（`ShopMapPicker`）／「現在地から」の3通りで入力できる。地図・現在地から場所を選んだ場合は、確定時に`address`（表示テキスト）と`location`（通知用の緯度経度）を**同時に**セットする（`onConfirm={loc=>{setAddress(loc.name);setTaskLocation({name:loc.name,lat:loc.lat,lng:loc.lng});...}}`）。手入力だけの住所には座標が無いため、場所通知の対象にはできない。
-
-**`mode==='later'`の時だけ**、住所欄を開いた中に「場所で通知」PROトグルが追加で表示される。ONにする条件: ①PRO、②`taskLocation`（座標）が設定済み＝地図/現在地で場所を選んだことがある、③`MAX_MONITORED_REGIONS`の上限に達していない、④`ensureGeofencePermission()`で位置情報・通知の許可が確認できる。いずれか欠けている場合は`locError`にメッセージを表示してブロックする（座標が無い場合は`taskLocationNeedsMapNote`＝「地図で場所を選択すると、通知を設定できます。」）。
-
-**トグルをOFFにしても`address`/`location`（座標）は消さない**（住所欄自体は独立した表示情報として残るべきなので、通知のON/OFFだけを切り替える）。**住所テキストを空にした時だけ`location`と`locationNotify`もまとめてクリアする**（住所入力の`onChange`で`v.trim()`が空になった瞬間に`setTaskLocation(null);setLocationNotify(false);`を呼ぶ。「住所が無い＝紐づく通知設定も無い」という一貫した仕様）。
-
-**登録上限（`MAX_MONITORED_REGIONS=19`）:** `CLLocationManager`が同時監視できるリージョンはアプリ全体で20件までで、買い物リストの場所通知と予算を共有する。`App`コンポーネントの`activeLocationRegionCount`（有効な買い物場所通知数＋他タスクの場所通知数）が上限に達している状態でONにしようとすると、`locError`に「場所通知の登録上限に達しています。他の場所通知をオフにしてから追加してください。」を表示してブロックする。
-
-### タイムラインとの連携・時間通知と場所通知の独立性
-
-タイムラインにドロップして時間指定タスクになっても（`isLater`がfalseになっても）`locationNotify`/`location`は維持される。これはApp側の場所通知同期エフェクトが `isLater` で絞り込まず `!t.completed && t.locationNotify && t.location` だけでフィルタしているため、特別な分岐は不要（既存の「`tasks`変更のたびに全解除→再登録」という設計そのもので自然に実現している）。
-
-ドロップ時に時間通知（`notifications:[0]`＝開始時刻ちょうど）が付くのは、ドラッグ&ドロップ・空き時間カードからの予定化で既存から入っている挙動（`scheduleInSlot`/ドラッグの`onEnd`が`notifications`が空なら`[0]`を補う）で、今回新たに実装したものではない。結果として「時間通知（開始時刻）」と「場所通知（到着時）」が両方セットされる状態になり得るが、**この2つは完全に独立して動作し、どちらか一方が発火してももう一方を解除しない**（後述）。
-
-**設計方針（重要）:** 当初は「先に発火した方を採用し、もう片方を解除する」というOR条件の設計だったが、BrainBoxはADHD傾向のユーザーを前提としているため撤回した。ADHDの特性上「通知に気づいても別の行動に移ってしまう」「お店の前を通っても素通りしてしまう」ことがあり得るため、片方の通知だけで確実に思い出せるとは限らない。**「通知を減らす」のではなく「思い出すきっかけを増やす」ことを優先し、時間通知と場所通知はそれぞれ独立して発火する（重複して両方届くことがあっても問題としない）。**
-
-### 通知の管理（1タスク1回のみ、ただし他方とは無関係）
-
-`GeofencePlugin.swift`の`didEnterRegion`→`handleTaskLocationEnter()`が発火時に:
-1. `taskLocationFired_<taskId>`フラグを立てる（同じリージョンでの多重発火防止。時間通知の状態には無関係）
-2. 通知を表示（title=タスク名、body="この場所に着きました。"、`userInfo:["openLater":true]`）
-3. そのリージョンの監視を`stopMonitoring`で止める（＝場所通知自体は1タスク1回のみ）
-
-`willPresent`デリゲート・`handleTaskLocationEnter()`のどちらからも、もう一方の通知（時間通知⇔場所通知）を解除する処理は**意図的に行わない**（旧実装にあった相互キャンセルは撤去済み）。
-
-`setTaskLocationGeofences()`は登録のたびに`taskLocationFired_<id>`が立っているエントリをスキップする（アプリがバックグラウンドの間に他の理由で`tasks`が変わり再同期が走っても、発火済みのリージョンを誤って再武装しないため。これは場所通知自身の1回のみルールであり、時間通知の発火有無とは無関係）。
-
-### アプリ再開時のリコンサイル（`getFiredTaskLocationIds`）
-
-バックグラウンド中に場所到着で発火したタスクIDは、アプリがフォアグラウンドに戻ったタイミング（`visibilitychange`）で`getPendingWidgetActions`/`getPendingGeofenceAction`と同じ`applyPending()`内から`getFiredTaskLocationIds()`を呼んで取得し、該当タスクの`locationNotify`を`false`にする（`location`も削除）。これにより次回の同期対象から確実に外れ、ネイティブ側の発火済みフラグも読み取り時にクリアされる。
-
-### タスク完了・削除時
-
-特別な解除コードは無い。場所通知の同期エフェクトが`tasks`の変更のたびに`!t.completed`かつ`locationNotify`のタスクだけを全解除→再登録するため、完了（`completed:true`）または削除（`tasks`配列から除去）すれば次の同期で自動的に対象から外れる。
-
-### 通知タップ時の画面遷移
-
-買い物リストの場所通知と同じ`UNUserNotificationCenterDelegate`（`GeofencePlugin.load()`で設定済み）を使う。`userInfo:["openLater":true]`を見て`pendingOpenLaterList`フラグを立て、JS側は`getPendingGeofenceAction()`の戻り値`shouldOpenLater`を見て`setActiveTab('later')`で「あとでやる」を開く（`shouldOpenShop`と同じ仕組み、返り値の形が`boolean`から`{shouldOpenShop,shouldOpenLater}`に変わった点に注意）。
-
-### Xcodeでの手動セットアップ
-
-`GeofencePlugin.swift`/`.m`は新規ファイルではなく**既存ファイルの更新**なので、Xcode上の同名ファイルの中身をこの変更後の内容に差し替える（買い物リストの場所通知で使っていたファイルと同じ物理ファイル）。App Group・Info.plist・Background Modesは買い物リストの場所通知ですでに設定済みならそのまま流用でき、追加設定は不要。
-
-Android版も同様に`GeofencePlugin.kt`/`GeofenceReceiver.kt`は買い物リストの場所通知と同じ物理ファイル（`"task-loc-"` prefixのロジックも同じファイルに含まれている）。追加のセットアップ手順は無い（買い物リストの場所通知の節にある「Android Studioでの手動セットアップ」がそのままこの機能もカバーする）。
-
-### 避けるパターン
-
-- 場所通知の発火判定・重複防止ロジックをJS側だけで完結させようとしない（バックグラウンド/未起動で動く必要があるため、`didEnterRegion`/`willPresent`内のネイティブコードが主役）
-- `setTaskLocationGeofences()`で発火済み（`taskLocationFired_<id>`）のエントリを無条件に再登録しない（バックグラウンド中の再同期で誤って再武装され、二重発火の原因になる）
-- 「あとでやる」以外のタスク（時間指定・繰り返し）に場所で通知トグルを表示しない（`mode==='later'`限定。住所欄自体は全タスクタイプ共通）
-- 場所で通知をOFFにした時に`address`/`location`を消さない（統合後は住所欄自体が独立した表示情報のため。`location`をクリアするのは住所テキストを空にした時だけ）
-- 場所検索専用の別UI（Nominatim検索ボックス・確認ステップ等）を「場所で通知」のために復活させない。地図で選んだ場所の座標を`location`にセットする経路は住所欄の「地図で指定」「現在地から」に一本化済み
-- 時間通知と場所通知の間に相互キャンセル（OR条件）を再導入しない（ADHD傾向のユーザーを前提に意図的に撤去した設計。両方届いても問題として扱わない）
+**新しいセッションでこの機能を復活させないこと。** 買い物リストの場所通知・忘れ物防止アラートの`MAX_MONITORED_REGIONS`予算計算は、タスク側の分を引かない2分割（買い物＋忘れ物防止）に戻っている。
 
 ---
 
 ## 忘れ物防止アラート（設定 → 忘れ物防止アラート、PRO機能）
 
-「あとでやる」とは完全に独立した機能。「何をするか」ではなく「何を持っていくか」を管理する（例: 自宅を出るときに財布・鍵・社員証を確認）。買い物リスト・タスクの場所通知と同じ`GeofencePlugin`/`CLLocationManager`を共有するが、`"forget-"` prefixで別管理する。**到着(Enter)・退出(Exit)のどちらをトリガーにするかをアラートごとに選べる**（初回実装ではExit固定だったが、後に`trigger`フィールドを追加してEnterも選択可能にした）。
+「あとでやる」とは完全に独立した機能。「何をするか」ではなく「何を持っていくか」を管理する（例: 自宅を出るときに財布・鍵・社員証を確認）。買い物リストの場所通知と同じ`GeofencePlugin`/`CLLocationManager`を共有するが、`"forget-"` prefixで別管理する。**到着(Enter)・退出(Exit)のどちらをトリガーにするかをアラートごとに選べる**（初回実装ではExit固定だったが、後に`trigger`フィールドを追加してEnterも選択可能にした）。
 
 ### 型・保存
 
@@ -847,7 +791,7 @@ interface ForgetAlert {
 
 ### 登録上限の共有
 
-買い物リストの場所通知・タスクの場所通知と同じ`CLLocationManager`の20リージョン上限を共有する。`App`コンポーネントの同期エフェクトが、それぞれ他の2つのカテゴリの現在の有効数を差し引いた予算内に収まるよう`slice()`する（`MAX_MONITORED_REGIONS=19`）。
+買い物リストの場所通知と同じ`CLLocationManager`の20リージョン上限を共有する。`App`コンポーネントの同期エフェクトが、互いの現在の有効数を差し引いた予算内に収まるよう`slice()`する（`MAX_MONITORED_REGIONS=19`）。
 
 ### ネイティブ実装（`GeofencePlugin.swift`）
 
@@ -867,8 +811,8 @@ Android版も同様に`GeofencePlugin.kt`/`GeofenceReceiver.kt`は同じ物理�
 ### 避けるパターン
 
 - 忘れ物防止アラートの発火判定（曜日・時間帯チェック）をJS側で事前計算しようとしない（退出タイミングが予測できないため、`didExitRegion`内で発火時点の現在時刻を見て判定する必要がある）
-- 忘れ物防止アラートに「1タスク1回のみ」の発火済みフラグ（タスクの場所通知と同じ仕組み）を導入しない（習慣リマインダーなので毎回の退出で繰り返し通知するのが正しい仕様。短いクールダウンでのGPSジッター対策のみ行う）
-- 「あとでやる」のUI・データ構造（`Task.locationNotify`）を流用しない（`ForgetAlert`という独立した型・保存キー・ネイティブprefixを持つ別機能として実装済み）
+- 忘れ物防止アラートに「1タスク1回のみ」の発火済みフラグを導入しない（習慣リマインダーなので毎回の退出で繰り返し通知するのが正しい仕様。短いクールダウンでのGPSジッター対策のみ行う）
+- `Task`に`locationNotify`のような場所通知フラグを新設して流用しない（`ForgetAlert`という独立した型・保存キー・ネイティブprefixを持つ別機能として実装済み。過去に存在したタスク単位の場所通知機能は撤去済みで復活させない）
 
 ---
 
@@ -1097,7 +1041,7 @@ Wear OSはApple WatchのWatchConnectivityとは全く異なる仕組み（Google
 
 | 型 | 説明 |
 |---|---|
-| `Task` | id, name, startTime, duration, memo, icon, completed, date, isLater, recurrence, customRec, pinned, tags, notifications, incompleteReminder, category, postponedCount, color, subtasks, **deadlineAt?:string, deadlineNotify?:'week'\|'3days'\|'dayBefore'\|'sameDay'\|'auto'（PRO）**, **address?:string（表示用住所・全タスクタイプ・無料）**, **locationNotify?:boolean, location?:{name,lat,lng}（場所で通知の対象座標・あとでやる限定・PRO）** |
+| `Task` | id, name, startTime, duration, memo, icon, completed, date, isLater, recurrence, customRec, pinned, tags, notifications, incompleteReminder, category, postponedCount, color, subtasks, **deadlineAt?:string, deadlineNotify?:'week'\|'3days'\|'dayBefore'\|'sameDay'\|'auto'（PRO）**, **address?:string（表示用住所・全タスクタイプ・無料）** |
 | `Settings` | wakeTime, sleepTime, **keepIncomplete?:boolean**, **weekStartsOn?:0\|1（0=日曜始まり・デフォルト、1=月曜始まり）**, **fontSize?:'small'\|'standard'\|'large'\|'xlarge'（デフォルト'standard'）** |
 | `FreeSlot` | タイムライン上の空き時間スロット |
 | `ShopItem` | 買い物リストのアイテム（7日後に自動削除） |
@@ -1749,18 +1693,17 @@ native-ios/BridgeViewController.swift … capacitorDidLoad() 内で FirebaseApp.
 | `timeline_task_added` | `App.saveTasks()`（新規タスクが時間指定で`startTime`あり） | |
 | `timeline_task_moved` | ドラッグ&ドロップの`onEnd`（元々時間指定済みタスクの時刻を変更） | |
 | `time_notification_created` | `App.saveTasks()`（`notifications`配列が空→非空に変わった時のみ） | 新規タスク作成・既存タスク編集どちらも対象 |
-| `location_notification_created` | `App.saveTasks()`（`Task.locationNotify`がfalse→trueに変わった時）、`ShopLocationPanel.confirmAdd()`（新規登録時）、`ForgetAlertsPanel.saveEditing()`（新規登録時） | `params.radius`（場所通知系のみ）以外は送らない |
+| `location_notification_created` | `ShopLocationPanel.confirmAdd()`（新規登録時）、`ForgetAlertsPanel.saveEditing()`（新規登録時） | `params.radius`（場所通知系のみ）以外は送らない |
 | `notification_opened` | `App`の`applyPending()`（`GeofencePlugin`の共有`UNUserNotificationCenterDelegate`が`pendingNotificationOpened`フラグを立て、次回起動/フォアグラウンド復帰時に読み取ってクリアする） | 全通知カテゴリ共通の1つのdelegateを経由するため種類を問わず計測できるが、種類（どの通知か）までは区別していない |
 | `product_tour_started` | `App`のツアー表示分岐（`maybeShowProductTour()`、および初回ロード時の既存ユーザー向けフォールバック分岐）で`setShowTour(true)`と同時に発火 | |
 | `product_tour_completed` | `ProductTour`の`onFinish(false)`（完了画面の「はじめる」ボタン） | |
 | `product_tour_skipped` | `ProductTour`の`onFinish(true)`（「スキップ」ボタン、`handleSkip`） | |
 | `paywall_viewed` | `ProGateSheet`のマウント時、`SettingsScreen`で`sub==='premium'`になった時 | |
 | `subscription_started` | `Premium.tsx`の`purchase()`（購入成功で`ENTITLEMENT_ID`がアクティブになった時のみ） | |
-| `location_reminder_triggered` | `App`の`applyPending()`（`getFiredTaskLocationIds()`で「あとでやる」タスクの場所通知が発火済みと分かった時） | `params.type:'task'`固定。`didEnterRegion`（到着）時点でネイティブ側にfiredフラグが立つ設計のため、通知をタップしたかどうかに関わらず実際に発火したタイミングを計測できる。**買い物リストの場所通知・忘れ物防止アラートは対象外**（ネイティブ側が「タップされたか」しか記録しておらず、「発火したか」自体を読み取るAPIが無いため。追加するにはGeofencePlugin.swiftへのネイティブ変更が必要） |
-| `notification_permission_granted` | `Geofence.ts`の`ensureGeofencePermission(source)`・`LocalNotify.ts`の`requestNotifyPermission(source)`が許可結果を確認した時 | `params.source`: `'onboarding'\|'settings'\|'shop_location'\|'task_location'\|'forget_alert'`。`logPermissionGrantedOnce()`によりインストールごとに1回だけ計測（同じ許可を何度もリクエストするたびに加算されると許可率の指標として意味を持たないため） |
-| `location_permission_granted` | `Geofence.ts`の`ensureGeofencePermission(source)`が位置情報「常に」許可を確認した時 | `params.source`: `'onboarding'\|'shop_location'\|'task_location'\|'forget_alert'`。`notification_permission_granted`と同じく`logPermissionGrantedOnce()`でインストールごとに1回のみ |
+| `notification_permission_granted` | `Geofence.ts`の`ensureGeofencePermission(source)`・`LocalNotify.ts`の`requestNotifyPermission(source)`が許可結果を確認した時 | `params.source`: `'onboarding'\|'settings'\|'shop_location'\|'forget_alert'`。`logPermissionGrantedOnce()`によりインストールごとに1回だけ計測（同じ許可を何度もリクエストするたびに加算されると許可率の指標として意味を持たないため） |
+| `location_permission_granted` | `Geofence.ts`の`ensureGeofencePermission(source)`が位置情報「常に」許可を確認した時 | `params.source`: `'onboarding'\|'shop_location'\|'forget_alert'`。`notification_permission_granted`と同じく`logPermissionGrantedOnce()`でインストールごとに1回のみ |
 
-**意図的に計測していないもの（スコープ外）:** 繰り返しタスクの一括編集（`editScope==='all'`）保存、「あとでやる」の朝の一括完了（`handleMorningAction`）、繰り返しタスクのドラッグ確認ポップアップ経由の移動。これらは単一操作の裏で複数タスクが変化するバルク処理で、単純な1イベント=1操作の対応にならないため初回実装では対象外にした。買い物リストの場所通知・忘れ物防止アラートの`location_reminder_triggered`も同様の理由（ネイティブ側の記録が「タップされたか」止まり）で未対応。
+**意図的に計測していないもの（スコープ外）:** 繰り返しタスクの一括編集（`editScope==='all'`）保存、「あとでやる」の朝の一括完了（`handleMorningAction`）、繰り返しタスクのドラッグ確認ポップアップ経由の移動。これらは単一操作の裏で複数タスクが変化するバルク処理で、単純な1イベント=1操作の対応にならないため初回実装では対象外にした。**`location_reminder_triggered`イベントは、タスク単位の場所通知機能の撤去に伴いトリガー箇所が無くなった（現在は発火しない）。**
 
 ### ユーザープロパティ（`app_language`）
 
@@ -1785,7 +1728,7 @@ native-ios/BridgeViewController.swift … capacitorDidLoad() 内で FirebaseApp.
 
 - `ensureGeofencePermission(source)`: `GeofencePlugin.requestPermissions()`の結果（`res.notifications`/`res.location`）を見て、許可されていればそれぞれ`logPermissionGrantedOnce('notification',{source})`/`logPermissionGrantedOnce('location',{source})`を呼ぶ
 - `requestNotifyPermission(source)`: ネイティブの`LocalNotifyPlugin.requestPermission()`はOSダイアログの選択完了後にresolveする（`native-ios/LocalNotifyPlugin.swift`の`call.resolve()`が`requestAuthorization`のcompletion handler内にあるため）。resolve後に`checkGeofencePermissions()`（`Geofence.ts`、位置情報と共通の権限確認API）を呼んで実際の許可状態を確認してから計測する
-- 呼び出し元（TaskModal・ShopLocationPanel・ForgetAlertsPanel・オンボーディングプロンプト・設定画面の通知トグル）は`source`ラベル（`'task_location'`/`'shop_location'`/`'forget_alert'`/`'onboarding'`/`'settings'`）を渡すだけで、計測ロジック自体には触れない
+- 呼び出し元（ShopLocationPanel・ForgetAlertsPanel・オンボーディングプロンプト・設定画面の通知トグル）は`source`ラベル（`'shop_location'`/`'forget_alert'`/`'onboarding'`/`'settings'`）を渡すだけで、計測ロジック自体には触れない
 
 ### Firebase側のセットアップ手順（ユーザー側の作業）
 
