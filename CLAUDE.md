@@ -736,19 +736,22 @@ const SHOP_LOC_KEY = 'tl-shop-loc-v1';
 
 ---
 
-## 「あとでやる」の場所通知（PRO機能）
+## タスクの住所・「あとでやる」の場所通知（PRO機能）
 
-買い物リストの場所通知（`ShopLocation`）とは別に、個別の「あとでやる」タスクにも場所を設定し、到着時に通知できる。買い物リストの場所通知と同じ `GeofencePlugin`/`CLLocationManager` を共有するが、`"task-loc-"` prefixで完全に別管理する（`"shop-"` prefixとは独立）。
+**「住所」欄と「場所で通知」は1つの入力フローに統合済み（過去に別々の場所選択UIが2つ並んでいて紛らわしいという指摘を受けて統合した）。** 買い物リストの場所通知（`ShopLocation`）とは別に、個別の「あとでやる」タスクにも場所を設定し、到着時に通知できる。買い物リストの場所通知と同じ `GeofencePlugin`/`CLLocationManager` を共有するが、`"task-loc-"` prefixで完全に別管理する（`"shop-"` prefixとは独立）。
 
 ### 型・保存
 
-`Task.locationNotify?:boolean` / `Task.location?:{name:string;lat:number;lng:number}`。半径は初回実装では固定値 `TASK_LOCATION_RADIUS_M=200`（m）。
+- `Task.address?:string` — 表示用の住所（自由入力、全タスクタイプ、**無料機能**）。通知・ジオフェンスとは無関係の単なる文字列
+- `Task.locationNotify?:boolean` / `Task.location?:{name:string;lat:number;lng:number}` — 到着通知の対象座標。半径は初回実装では固定値 `TASK_LOCATION_RADIUS_M=200`（m）
 
-### タスク作成・編集画面（TaskModal、`mode==='later'`限定）
+### タスク作成・編集画面（TaskModal）
 
-「場所で通知」ON/OFFトグル → ONにすると場所検索（Nominatim）・地図で指定（`ShopMapPicker`を再利用）・現在地から登録、のいずれかで場所を選び、確認ステップで名前を編集して「設定する」。確定時に `ensureGeofencePermission()` で位置情報・通知の許可を確認し、拒否された場合は場所通知を有効にしない（`locError`にメッセージ表示）。**場所通知はPRO限定**（非PROで ON にしようとすると `ProGateSheet` を表示）。
+**「住所」欄1つに統合**（全タスクタイプ共通、無料）。直接入力／「地図で指定」（`ShopMapPicker`）／「現在地から」の3通りで入力できる。地図・現在地から場所を選んだ場合は、確定時に`address`（表示テキスト）と`location`（通知用の緯度経度）を**同時に**セットする（`onConfirm={loc=>{setAddress(loc.name);setTaskLocation({name:loc.name,lat:loc.lat,lng:loc.lng});...}}`）。手入力だけの住所には座標が無いため、場所通知の対象にはできない。
 
-**OFFにした時点で場所情報も削除する**（初回実装のシンプルな仕様。`toggleLocationNotify()`が`locationNotify`と`location`を同時にクリアする）。
+**`mode==='later'`の時だけ**、住所欄を開いた中に「場所で通知」PROトグルが追加で表示される。ONにする条件: ①PRO、②`taskLocation`（座標）が設定済み＝地図/現在地で場所を選んだことがある、③`MAX_MONITORED_REGIONS`の上限に達していない、④`ensureGeofencePermission()`で位置情報・通知の許可が確認できる。いずれか欠けている場合は`locError`にメッセージを表示してブロックする（座標が無い場合は`taskLocationNeedsMapNote`＝「地図で場所を選択すると、通知を設定できます。」）。
+
+**トグルをOFFにしても`address`/`location`（座標）は消さない**（住所欄自体は独立した表示情報として残るべきなので、通知のON/OFFだけを切り替える）。**住所テキストを空にした時だけ`location`と`locationNotify`もまとめてクリアする**（住所入力の`onChange`で`v.trim()`が空になった瞬間に`setTaskLocation(null);setLocationNotify(false);`を呼ぶ。「住所が無い＝紐づく通知設定も無い」という一貫した仕様）。
 
 **登録上限（`MAX_MONITORED_REGIONS=19`）:** `CLLocationManager`が同時監視できるリージョンはアプリ全体で20件までで、買い物リストの場所通知と予算を共有する。`App`コンポーネントの`activeLocationRegionCount`（有効な買い物場所通知数＋他タスクの場所通知数）が上限に達している状態でONにしようとすると、`locError`に「場所通知の登録上限に達しています。他の場所通知をオフにしてから追加してください。」を表示してブロックする。
 
@@ -793,8 +796,9 @@ Android版も同様に`GeofencePlugin.kt`/`GeofenceReceiver.kt`は買い物リ�
 
 - 場所通知の発火判定・重複防止ロジックをJS側だけで完結させようとしない（バックグラウンド/未起動で動く必要があるため、`didEnterRegion`/`willPresent`内のネイティブコードが主役）
 - `setTaskLocationGeofences()`で発火済み（`taskLocationFired_<id>`）のエントリを無条件に再登録しない（バックグラウンド中の再同期で誤って再武装され、二重発火の原因になる）
-- 「あとでやる」以外のタスク（時間指定・繰り返し）に場所通知UIを表示しない（`mode==='later'`限定。初回実装の対象外）
-- 場所通知をOFFにした時に`location`を残さない（初回実装は「OFFで場所情報も削除」という単純な仕様を採用済み）
+- 「あとでやる」以外のタスク（時間指定・繰り返し）に場所で通知トグルを表示しない（`mode==='later'`限定。住所欄自体は全タスクタイプ共通）
+- 場所で通知をOFFにした時に`address`/`location`を消さない（統合後は住所欄自体が独立した表示情報のため。`location`をクリアするのは住所テキストを空にした時だけ）
+- 場所検索専用の別UI（Nominatim検索ボックス・確認ステップ等）を「場所で通知」のために復活させない。地図で選んだ場所の座標を`location`にセットする経路は住所欄の「地図で指定」「現在地から」に一本化済み
 - 時間通知と場所通知の間に相互キャンセル（OR条件）を再導入しない（ADHD傾向のユーザーを前提に意図的に撤去した設計。両方届いても問題として扱わない）
 
 ---
@@ -1084,7 +1088,7 @@ Wear OSはApple WatchのWatchConnectivityとは全く異なる仕組み（Google
 
 | 型 | 説明 |
 |---|---|
-| `Task` | id, name, startTime, duration, memo, icon, completed, date, isLater, recurrence, customRec, pinned, tags, notifications, incompleteReminder, category, postponedCount, color, subtasks, **deadlineAt?:string, deadlineNotify?:'week'\|'3days'\|'dayBefore'\|'sameDay'\|'auto'（PRO）**, **locationNotify?:boolean, location?:{name,lat,lng}（あとでやる限定・PRO）** |
+| `Task` | id, name, startTime, duration, memo, icon, completed, date, isLater, recurrence, customRec, pinned, tags, notifications, incompleteReminder, category, postponedCount, color, subtasks, **deadlineAt?:string, deadlineNotify?:'week'\|'3days'\|'dayBefore'\|'sameDay'\|'auto'（PRO）**, **address?:string（表示用住所・全タスクタイプ・無料）**, **locationNotify?:boolean, location?:{name,lat,lng}（場所で通知の対象座標・あとでやる限定・PRO）** |
 | `Settings` | wakeTime, sleepTime, **keepIncomplete?:boolean**, **weekStartsOn?:0\|1（0=日曜始まり・デフォルト、1=月曜始まり）**, **fontSize?:'small'\|'standard'\|'large'\|'xlarge'（デフォルト'standard'）** |
 | `FreeSlot` | タイムライン上の空き時間スロット |
 | `ShopItem` | 買い物リストのアイテム（7日後に自動削除） |

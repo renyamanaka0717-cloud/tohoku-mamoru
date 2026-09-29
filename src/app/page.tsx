@@ -2632,7 +2632,11 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                     onCancel={()=>{setAddressMapMode(false);setAddressMapCenter(null);}}/>
                 ):(
                   <>
-                    <input value={address} onChange={e=>setAddress(e.target.value)}
+                    <input value={address} onChange={e=>{
+                        const v=e.target.value;
+                        setAddress(v);
+                        if(!v.trim()){ setTaskLocation(null); setLocationNotify(false); }
+                      }}
                       placeholder={tr('addressPlaceholder')}
                       className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50 mb-3"/>
                     <div className="flex gap-2">
