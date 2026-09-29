@@ -64,6 +64,7 @@ interface Task {
   locationNotify?: boolean;               // 「あとでやる」の場所通知 ON/OFF。PRO機能
   location?: { name:string; lat:number; lng:number };  // 選択した場所
   completedAt?: string;  // 完了した日時（ISO文字列）。「あとでやる」完了済みの7日後自動削除の起点
+  address?: string;  // タスクの住所（表示用の自由入力文字列。通知・ジオフェンスとは無関係）。PRO機能
 }
 
 type FontSize = 'small'|'standard'|'large'|'xlarge';
@@ -1773,6 +1774,11 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
   const [locPending,setLocPending] = useState<{name:string;lat:number;lng:number}|null>(null);
   const [locLocating,setLocLocating] = useState(false);
   const [locError,setLocError] = useState<string|null>(null);
+  const [address,setAddress] = useState(task?.address??'');
+  const [addressOpen,setAddressOpen] = useState(false);
+  const [addressMapMode,setAddressMapMode] = useState(false);
+  const [addressMapCenter,setAddressMapCenter] = useState<{lat:number;lng:number}|null>(null);
+  const [addressLocating,setAddressLocating] = useState(false);
   const [modalProPrompt,setModalProPrompt] = useState<string|null>(null);
   const [voiceState,setVoiceState] = useState<'idle'|'recording'|'processing'>('idle');
   const [voiceError,setVoiceError] = useState<string|null>(null);
@@ -1876,6 +1882,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
     deadlineNotify:(mode!=='recurring'&&deadlineDate)?deadlineNotify:undefined,
     locationNotify:locationNotify&&!!taskLocation,
     location:taskLocation??undefined,
+    address:address.trim()||undefined,
   });
 
   const doSave = (data: Omit<Task,'id'>) => {
@@ -1905,7 +1912,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
     },400);
     return ()=>{if(autoSaveTimer.current) clearTimeout(autoSaveTimer.current);};
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[name,taskDate,startTime,duration,mode,recur,customRec,tags,subtasks,memo,category,notifications,incompleteRem,icon,color,deadlineDate,deadlineTime,deadlineNotify,locationNotify,taskLocation]);
+  },[name,taskDate,startTime,duration,mode,recur,customRec,tags,subtasks,memo,category,notifications,incompleteRem,icon,color,deadlineDate,deadlineTime,deadlineNotify,locationNotify,taskLocation,address]);
 
   const flushAndClose = () => {
     if(autoSaveTimer.current){
@@ -2036,6 +2043,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
       deadlineNotify:(mode!=='recurring'&&deadlineDate)?deadlineNotify:undefined,
       locationNotify:locationNotify&&!!taskLocation,
       location:taskLocation??undefined,
+      address:address.trim()||undefined,
     };
     if(mode==='recurring'&&!task){
       const instances:Omit<Task,'id'>[]=[];
@@ -2759,6 +2767,56 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
               </>
             )}
 
+            {/* 住所（全タスクタイプ・PRO機能） */}
+            <div className="h-px bg-gray-100 mx-4"/>
+            <button className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50"
+              onClick={()=>{
+                if(!isPremium){ setModalProPrompt(tr('proFeatureAddress')); return; }
+                setAddressOpen(o=>!o);
+              }}>
+              <AppIcons.location size={18} className="text-gray-400 shrink-0"/>
+              <span className="flex-1 text-left text-sm font-medium text-gray-800 flex items-center gap-1.5">
+                {tr('fieldAddress')}
+                {!isPremium&&<AppIcons.lock size={11} className="text-gray-300"/>}
+              </span>
+              {address&&<span className="text-xs text-gray-400 truncate max-w-[140px]">{address}</span>}
+              <AppIcons.caretRight size={14} className="text-gray-300"/>
+            </button>
+            {addressOpen&&(
+              <div className="border-t border-gray-100 px-4 pt-3 pb-4">
+                {addressMapMode?(
+                  <ShopMapPicker
+                    initialCenter={addressMapCenter??{lat:35.681236,lng:139.767125}}
+                    onConfirm={loc=>{setAddress(loc.name);setAddressMapMode(false);setAddressMapCenter(null);}}
+                    onCancel={()=>{setAddressMapMode(false);setAddressMapCenter(null);}}/>
+                ):(
+                  <>
+                    <input value={address} onChange={e=>setAddress(e.target.value)}
+                      placeholder={tr('addressPlaceholder')}
+                      className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50 mb-3"/>
+                    <div className="flex gap-2">
+                      <button onClick={()=>{setAddressMapCenter(null);setAddressMapMode(true);}}
+                        className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200">
+                        {tr('pickOnMapButton')}
+                      </button>
+                      <button onClick={()=>{
+                          setAddressLocating(true);
+                          getCurrentCoords(10000).then(loc=>{
+                            setAddressLocating(false);
+                            if(!loc) return;
+                            setAddressMapCenter(loc);
+                            setAddressMapMode(true);
+                          });
+                        }} disabled={addressLocating}
+                        className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200 disabled:opacity-40">
+                        {addressLocating?tr('gettingLocationLabel'):tr('useCurrentLocationButton')}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
             {/* タグ */}
             <div className="h-px bg-gray-100 mx-4"/>
             <button className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50" onClick={()=>setTagOpen(o=>!o)}>
@@ -3041,6 +3099,11 @@ function TaskCard({task,onToggle,onEdit,globalTags,onSubtaskToggle,tabName,iconD
           {task.deadlineAt&&!task.completed&&(
             <p className={`text-[11px] font-semibold mt-1 flex items-center gap-1 ${deadlineLabelColor(task.deadlineAt)}`}>
               <AppIcons.deadline size={10+iconDelta}/>{deadlineRemainLabel(task.deadlineAt,language)}
+            </p>
+          )}
+          {task.address&&(
+            <p className="text-[11px] text-gray-400 mt-1 flex items-center gap-1 truncate">
+              <AppIcons.location size={10+iconDelta} className="shrink-0"/><span className="truncate">{task.address}</span>
             </p>
           )}
           {(task.tags??[]).length>0&&(
@@ -6759,6 +6822,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             {label:tr('proFeatureAppIconChange'),   free:'×',                     pro:tr('proValSupported')},
             {label:tr('proFeatureWakeSleepIconColor'), free:'×',                  pro:tr('proValSupported')},
             {label:tr('fieldLocationNotify'),       free:'×',                     pro:tr('proValSupported')},
+            {label:tr('proFeatureAddress'),         free:'×',                     pro:tr('proValSupported')},
             {label:tr('rowLaterAlertTitle'),        free:tr('proValDefaultOnly'),  pro:tr('proValFull')},
             {label:tr('proFeatureDeadline'),        free:'×',                     pro:tr('proValSupported')},
             {label:tr('proFeatureLaterLocationNotify'), free:'×',                 pro:tr('proValSupported')},
