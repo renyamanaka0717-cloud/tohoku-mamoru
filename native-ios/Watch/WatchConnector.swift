@@ -8,6 +8,7 @@
 // BrainBoxは「思いついた瞬間に頭の外に出す」ことを最優先にしているため、配信の遅延を
 // ユーザーに気にさせない（買い物リストの場所通知等、他の「まず記録してから後で伝わればよい」
 // 機能と同じ思想）
+import Combine
 import Foundation
 import WatchConnectivity
 
