@@ -2455,26 +2455,6 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                   </button>
                 </div>
               </div>
-              {custDurOpen&&(
-                <div className="flex items-center gap-1.5 px-4 pb-3 flex-wrap">
-                  <input type="number" inputMode="numeric" value={Math.floor(custDurMin/60)} min={0}
-                    onChange={e=>{
-                      const h=Math.max(0,parseInt(e.target.value.replace(/\D/g,''))||0);
-                      setCDurMin(Math.max(1,h*60+(custDurMin%60)));
-                    }}
-                    className="w-14 border border-gray-200 rounded-xl px-2 py-1.5 text-center text-sm font-semibold text-gray-800 bg-gray-50 outline-none"/>
-                  <span className="text-sm text-gray-600">{tr('timeUnitHour')}</span>
-                  <input type="number" inputMode="numeric" value={custDurMin%60} min={0} max={59}
-                    onChange={e=>{
-                      const m=Math.min(59,Math.max(0,parseInt(e.target.value.replace(/\D/g,''))||0));
-                      setCDurMin(Math.max(1,Math.floor(custDurMin/60)*60+m));
-                    }}
-                    className="w-14 border border-gray-200 rounded-xl px-2 py-1.5 text-center text-sm font-semibold text-gray-800 bg-gray-50 outline-none"/>
-                  <span className="text-sm text-gray-600">{tr('timeUnitMin')}</span>
-                  <button onClick={()=>{setDur(custDurMin);setCDurOpen(false);}}
-                    className="px-4 py-2 bg-[var(--c-primary)] text-white rounded-xl text-sm font-semibold">{tr('setButton')}</button>
-                </div>
-              )}
             </>)}
 
             {/* アラート — scheduled/recurring only */}
@@ -2497,15 +2477,6 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                     </button>
                   </div>
                 </div>
-                {custNotifOpen&&(
-                  <div className="flex items-center gap-2 px-4 pb-3">
-                    <input type="number" value={custNotifMin} min={1}
-                      onChange={e=>setCNMin(Math.max(1,Number(e.target.value)))}
-                      className="w-20 border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none text-center"/>
-                    <span className="text-sm text-gray-600">{language==='ja'?'分前':language==='ko'?'분 전':language==='zh-TW'?'分鐘前':language==='es'?'min antes':language==='pt'?'min antes':language==='vi'?'phút trước':language==='th'?'นาทีก่อน':language==='id'?'mnt sebelum':'min before'}</span>
-                    <button onClick={addCustNotif} className="px-3 py-2 bg-[var(--c-primary)] text-white rounded-xl text-sm font-semibold">{tr('addButton')}</button>
-                  </div>
-                )}
                 {notifications.filter(v=>!NOTIF_OPTS.find(o=>o.v===v)).length>0&&(
                   <div className="flex flex-wrap gap-2 px-4 pb-3">
                     {notifications.filter(v=>!NOTIF_OPTS.find(o=>o.v===v)).map(v=>(
@@ -2895,6 +2866,82 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                   <div className="flex justify-center gap-3 pb-6">
                     {['00','15','30','45'].map(m=>(
                       <button key={m} onClick={()=>setST(`${hStr}:${m}`)}
+                        className={`w-14 py-1.5 rounded-full text-sm font-bold transition-colors ${normM===m?'text-white':'text-[var(--c-primary)] bg-gray-50'}`}
+                        style={normM===m?{background:'var(--c-primary)'}:{}}>
+                        {m}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+        </div>
+      )}
+      {custDurOpen&&(
+        <div className="absolute inset-0 z-[105] flex items-center justify-center bg-black/50 rounded-t-3xl"
+          onClick={()=>setCDurOpen(false)}>
+          <div className="bg-white rounded-3xl mx-6 w-full max-w-xs shadow-2xl" onClick={e=>e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 pt-5 pb-3">
+              <span className="text-base font-bold text-gray-800">{tr('fieldDuration')}</span>
+              <button onClick={()=>{setDur(custDurMin);setCDurOpen(false);}}
+                className="px-4 py-1.5 bg-[var(--c-primary)] text-white text-sm font-bold rounded-full">{tr('setButton')}</button>
+            </div>
+            {(()=>{
+              const hStr=String(Math.floor(custDurMin/60)).padStart(2,'0');
+              const mStr=String(custDurMin%60).padStart(2,'0');
+              const normM=String(Math.min(55,Math.round((custDurMin%60)/5)*5)).padStart(2,'0');
+              return(
+                <>
+                  <div className="flex items-center justify-center gap-2 px-5 pb-3 pt-2">
+                    <PickerCol items={HOURS} value={hStr} displayValue={hStr} keyboardMax={23}
+                      onChange={v=>setCDurMin(Math.max(1,parseInt(v)*60+(custDurMin%60)))}/>
+                    <span className="text-base font-medium text-gray-500 w-5 text-center">{tr('timeUnitHour')}</span>
+                    <PickerCol items={MINS} value={normM} displayValue={mStr} keyboardMax={59}
+                      onChange={v=>setCDurMin(Math.max(1,Math.floor(custDurMin/60)*60+parseInt(v)))}/>
+                    <span className="text-base font-medium text-gray-500 w-5 text-center">{tr('timeUnitMin')}</span>
+                  </div>
+                  <div className="flex justify-center gap-3 pb-6">
+                    {['00','15','30','45'].map(m=>(
+                      <button key={m} onClick={()=>setCDurMin(Math.max(1,Math.floor(custDurMin/60)*60+parseInt(m)))}
+                        className={`w-14 py-1.5 rounded-full text-sm font-bold transition-colors ${normM===m?'text-white':'text-[var(--c-primary)] bg-gray-50'}`}
+                        style={normM===m?{background:'var(--c-primary)'}:{}}>
+                        {m}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+        </div>
+      )}
+      {custNotifOpen&&(
+        <div className="absolute inset-0 z-[105] flex items-center justify-center bg-black/50 rounded-t-3xl"
+          onClick={()=>setCNOpen(false)}>
+          <div className="bg-white rounded-3xl mx-6 w-full max-w-xs shadow-2xl" onClick={e=>e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 pt-5 pb-3">
+              <span className="text-base font-bold text-gray-800">{tr('fieldAlert')}</span>
+              <button onClick={addCustNotif}
+                className="px-4 py-1.5 bg-[var(--c-primary)] text-white text-sm font-bold rounded-full">{tr('addButton')}</button>
+            </div>
+            {(()=>{
+              const hStr=String(Math.floor(custNotifMin/60)).padStart(2,'0');
+              const mStr=String(custNotifMin%60).padStart(2,'0');
+              const normM=String(Math.min(55,Math.round((custNotifMin%60)/5)*5)).padStart(2,'0');
+              return(
+                <>
+                  <div className="flex items-center justify-center gap-2 px-5 pb-3 pt-2">
+                    <PickerCol items={HOURS} value={hStr} displayValue={hStr} keyboardMax={23}
+                      onChange={v=>setCNMin(Math.max(1,parseInt(v)*60+(custNotifMin%60)))}/>
+                    <span className="text-base font-medium text-gray-500 w-5 text-center">{tr('timeUnitHour')}</span>
+                    <PickerCol items={MINS} value={normM} displayValue={mStr} keyboardMax={59}
+                      onChange={v=>setCNMin(Math.max(1,Math.floor(custNotifMin/60)*60+parseInt(v)))}/>
+                    <span className="text-base font-medium text-gray-500 w-5 text-center">{tr('timeUnitMin')}</span>
+                  </div>
+                  <div className="flex justify-center gap-3 pb-6">
+                    {['00','15','30','45'].map(m=>(
+                      <button key={m} onClick={()=>setCNMin(Math.max(1,Math.floor(custNotifMin/60)*60+parseInt(m)))}
                         className={`w-14 py-1.5 rounded-full text-sm font-bold transition-colors ${normM===m?'text-white':'text-[var(--c-primary)] bg-gray-50'}`}
                         style={normM===m?{background:'var(--c-primary)'}:{}}>
                         {m}
