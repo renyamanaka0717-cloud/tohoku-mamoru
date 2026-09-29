@@ -3250,7 +3250,9 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
     let h=MIN_CARD_H;
     if(t.deadlineAt&&!t.completed) h+=18;
     if((t.tags??[]).length>0) h+=20;
-    if((t.subtasks??[]).length>0||t.memo) h+=40;
+    if(t.address) h+=16;
+    if(t.memo) h+=16;
+    if((t.subtasks??[]).length>0) h+=40;
     return h;
   };
 
@@ -3672,7 +3674,13 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
         { let acc=0; for(let i=0;i<n;i++){cardTops.push(acc);acc+=cardHeights[i]+GAP;} }
         const stackH=cardTops[n-1]+cardHeights[n-1];
         const centers=g.tasks.map((_,i)=>cardTops[i]+cardHeights[i]/2);
-        const boundaries=centers.slice(0,-1).map((c,i)=>(c+centers[i+1])/2);
+        // 境界はカード中心同士の中点ではなく、実際のカード間の隙間の中点にする（重要）。
+        // 中心同士の中点だと2件のタスクが重複している場合、常にちょうど半々の分割に
+        // 数学的に確定してしまい、カードの高さが大きく異なっていてもカプセルの分割位置が
+        // それに追従しない不具合があった（例: 短いカードの隣に住所・メモ・タグ等で
+        // 大幅に長くなったカードがあっても、アイコンカプセルは常に約50/50で分割される）。
+        // 実際のカード間の隙間を境界にすることで、カプセルの伸縮がカードの実高さに追従する。
+        const boundaries=cardTops.slice(1).map(t=>t-GAP/2);
         const capTops=centers.map((c,i)=>i===0?c-CAPSULE_H/2:boundaries[i-1]);
         const capBottoms=centers.map((c,i)=>i===n-1?c+CAPSULE_H/2:boundaries[i]);
         return [

@@ -193,7 +193,7 @@ const h = tasks.length === 1
 
 - `DUP_LABEL_H=24` — 同一時刻グループ先頭の「●タスクが重複しています」ラベル用スペース
 - `MIN_CARD_H=60`, `WAKE_CARD_H=52`, `SLEEP_CARD_H=52`
-- `estimateTaskH(t)` — 未測定タスクの高さ見積り。`MIN_CARD_H`をベースに、締切ラベル(+18)・タグ行(+20)・サブタスク or メモのアイコン行(+40)の有無に応じて底上げする
+- `estimateTaskH(t)` — 未測定タスクの高さ見積り。`MIN_CARD_H`をベースに、締切ラベル(+18)・タグ行(+20)・住所行(+16)・メモ行(+16)・サブタスクのアイコン行(+40)の有無に応じて底上げする。**住所（`address`）を追加した時にこの関数へ加算を追記し忘れていたため、住所付きタスクの見積りが実際より低くなっていた不具合を修正済み。** 新しくTaskCardに常時表示の行（タグ・締切・住所・メモのような）を追加する時は、`estimateTaskH`にも対応する加算を必ず追記すること（忘れても実測後は自動補正されるが、その一瞬・未測定時の重なりや後述のカプセル分割比のズレの原因になる）
 
 **同じ調査で見つかった別の不具合（起床前・就寝後タスクの積み上げが常に`MIN_CARD_H`固定だった）:** `dayItems`の起床〜就寝の本体ループ（Phase 1）は同一時刻の重複タスクグループでも`item.h=g.h`（`taskGroupList`が計算する、アイコンスタック＋`DUP_LABEL_H`込みの正しい合計高さ）を使うが、起床前タスク（Phase 0）・就寝後タスク（Phase 2）の積み上げループだけは`prevBottom=top+(g.tasks.length>1?MIN_CARD_H:g.h)`のように、重複タスクグループの時だけ`g.h`を無視して`MIN_CARD_H=60`に決め打ちしていた。単一タスクなら`g.h`にフォールバックする一方、重複タスクグループ（アイコン連結スタック表示、実際には2タスクで130px超）は常にこの固定60pxで積み上げ計算されるため、後続カードとの重なりは`measuredH`の実測を待っても直らない**恒久的な**不具合だった（この節の他の不具合が「実測されるまでの一瞬」だけ起きるのに対し、これは`measuredH`を一切参照しないコードパスだったため常に発生する）。修正: Phase 0・Phase 2とも`prevBottom=top+g.h`に統一し、Phase 1と同じ値を使うようにした。**タイムラインの積み上げループ（Phase 0/1/2）に手を入れる時は、3つとも同じ`g.h`を参照しているか必ず確認すること。** 一部のフェーズだけ独自の即席計算をすると、この種の「一部の条件でだけ再発する」不具合になりやすい。
 
@@ -219,15 +219,18 @@ groupLayout の top（グループ先頭Y）
 **カプセル高さの計算（伸縮ロジック）:**
 ```typescript
 const CAPSULE_H=56, GAP=16, n=g.tasks.length;
-const cardHeights = g.tasks.map(t => Math.max(measuredH[t.id] ?? MIN_CARD_H, CAPSULE_H));
+const cardHeights = g.tasks.map(t => Math.max(measuredH[t.id] ?? estimateTaskH(t), CAPSULE_H));
 const cardTops: number[] = []; // 各カードのtop（累積）
 const centers = g.tasks.map((_, i) => cardTops[i] + cardHeights[i] / 2);
-const boundaries = centers.slice(0, -1).map((c, i) => (c + centers[i+1]) / 2);
+// 境界は「カード間の実際の隙間の中点」（cardTops[i+1]-GAP/2）を使う
+const boundaries = cardTops.slice(1).map(t => t - GAP/2);
 
 // カプセルi は境界間を埋めるよう伸縮（外端のみ borderRadius:28、内側は0）
 const capTops    = centers.map((c, i) => i===0 ? c-CAPSULE_H/2 : boundaries[i-1]);
 const capBottoms = centers.map((c, i) => i===n-1 ? c+CAPSULE_H/2 : boundaries[i]);
 ```
+
+**過去の不具合: 2件重複時、カプセルの分割が常にちょうど半々になり、カードの実際の高さ差に追従しなかった。** 境界を「カード中心同士の中点」（`(centers[i]+centers[i+1])/2`）で計算していたが、これは2件ちょうどの場合に数学的に必ず「各カプセルの高さ = (centers[i+1]-centers[i])/2 + CAPSULE_H/2」という同一の式に帰着し、実際のカード高さの比に関係なく常に50/50の分割になってしまう（住所・メモ・タグ等が増えて一方のカードだけ大幅に長くなっても、カプセルはその差を反映しない）。修正: 境界を「カード中心同士の中点」ではなく「カード間の実際の隙間の中点」（`cardTops[i+1]-GAP/2`、位置ベース）に変更し、カプセルの伸縮が実際のカード高さに追従するようにした。**新しくこのカプセル分割ロジックに手を入れる時は、n=2の場合で実際に高さの異なる2枚のカードを使い、分割比が意図通り変わるか必ず確認すること**（中心同士の中点ベースの式は一見自然に見えるが、n=2では常に50/50に帰着するという非自明な罠がある）。
 
 **ヘルパー関数（Timeline 内で定義）:**
 ```typescript
