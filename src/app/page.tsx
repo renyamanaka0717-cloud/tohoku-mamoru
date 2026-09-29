@@ -64,7 +64,7 @@ interface Task {
   locationNotify?: boolean;               // 「あとでやる」の場所通知 ON/OFF。PRO機能
   location?: { name:string; lat:number; lng:number };  // 選択した場所
   completedAt?: string;  // 完了した日時（ISO文字列）。「あとでやる」完了済みの7日後自動削除の起点
-  address?: string;  // タスクの住所（表示用の自由入力文字列。通知・ジオフェンスとは無関係）。PRO機能
+  address?: string;  // タスクの住所（表示用の自由入力文字列。通知・ジオフェンスとは無関係）
 }
 
 type FontSize = 'small'|'standard'|'large'|'xlarge';
@@ -2767,18 +2767,12 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
               </>
             )}
 
-            {/* 住所（全タスクタイプ・PRO機能） */}
+            {/* 住所（全タスクタイプ） */}
             <div className="h-px bg-gray-100 mx-4"/>
             <button className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50"
-              onClick={()=>{
-                if(!isPremium){ setModalProPrompt(tr('proFeatureAddress')); return; }
-                setAddressOpen(o=>!o);
-              }}>
+              onClick={()=>setAddressOpen(o=>!o)}>
               <AppIcons.location size={18} className="text-gray-400 shrink-0"/>
-              <span className="flex-1 text-left text-sm font-medium text-gray-800 flex items-center gap-1.5">
-                {tr('fieldAddress')}
-                {!isPremium&&<AppIcons.lock size={11} className="text-gray-300"/>}
-              </span>
+              <span className="flex-1 text-left text-sm font-medium text-gray-800">{tr('fieldAddress')}</span>
               {address&&<span className="text-xs text-gray-400 truncate max-w-[140px]">{address}</span>}
               <AppIcons.caretRight size={14} className="text-gray-300"/>
             </button>
@@ -6822,7 +6816,6 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             {label:tr('proFeatureAppIconChange'),   free:'×',                     pro:tr('proValSupported')},
             {label:tr('proFeatureWakeSleepIconColor'), free:'×',                  pro:tr('proValSupported')},
             {label:tr('fieldLocationNotify'),       free:'×',                     pro:tr('proValSupported')},
-            {label:tr('proFeatureAddress'),         free:'×',                     pro:tr('proValSupported')},
             {label:tr('rowLaterAlertTitle'),        free:tr('proValDefaultOnly'),  pro:tr('proValFull')},
             {label:tr('proFeatureDeadline'),        free:'×',                     pro:tr('proValSupported')},
             {label:tr('proFeatureLaterLocationNotify'), free:'×',                 pro:tr('proValSupported')},
