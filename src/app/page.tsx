@@ -2967,12 +2967,12 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
 // ── TaskCard ──────────────────────────────────────────────────────────────────
 
 function TaskCard({task,onToggle,onEdit,globalTags,onSubtaskToggle,tabName,iconDelta=0}:{task:Task;onToggle:()=>void;onEdit:()=>void;globalTags:TagDef[];onSubtaskToggle?:(subtaskId:string)=>void;tabName?:string;iconDelta?:number;}) {
-  const [openPanel,setOpenPanel] = useState<'subtask'|'memo'|null>(null);
+  const [openPanel,setOpenPanel] = useState<'subtask'|null>(null);
   const {language} = useI18n();
   const endTime = (task.startTime&&(task.duration??0)>0) ? fromMin(toMin(task.startTime)+(task.duration??0)) : null;
   const subtasks = task.subtasks??[];
   const doneCount = subtasks.filter(s=>s.completed).length;
-  const hasIcons = subtasks.length>0||!!task.memo;
+  const hasIcons = subtasks.length>0;
   const firstTagColor = (task.tags??[]).map(n=>globalTags.find(t=>t.name===n)?.color).find(Boolean);
   return (
     <div className={`relative bg-white rounded-2xl border border-gray-100 px-3 py-2.5 overflow-hidden ${task.completed?'opacity-50':''}`} style={{boxShadow:'0 4px 12px rgba(0,0,0,0.06)'}}
@@ -2998,7 +2998,9 @@ function TaskCard({task,onToggle,onEdit,globalTags,onSubtaskToggle,tabName,iconD
             </p>
           )}
           {task.memo&&(
-            <p className="text-[11px] text-gray-400 mt-1 truncate">{task.memo}</p>
+            <p className="text-[11px] text-gray-400 mt-1 flex items-center gap-1 truncate">
+              <AppIcons.task size={10+iconDelta} className="shrink-0"/><span className="truncate">{task.memo}</span>
+            </p>
           )}
           {(task.tags??[]).length>0&&(
             <div className="flex flex-wrap gap-1 mt-1">
@@ -3022,13 +3024,6 @@ function TaskCard({task,onToggle,onEdit,globalTags,onSubtaskToggle,tabName,iconD
                   <span style={openPanel==='subtask'?{transform:'rotate(90deg)',transition:'transform 0.15s',display:'inline-flex'}:{transition:'transform 0.15s',display:'inline-flex'}}><AppIcons.caretRight size={12} className="text-gray-400"/></span>
                 </button>
               )}
-              {task.memo&&(
-                <button onClick={e=>{e.stopPropagation();setOpenPanel(p=>p==='memo'?null:'memo');}}
-                  className={`inline-flex items-center justify-center bg-gray-100 rounded-xl active:bg-gray-200 ${openPanel==='memo'?'ring-1 ring-gray-300':''}`}
-                  style={{width:'32px',height:'32px'}}>
-                  <AppIcons.task size={14} className="text-gray-500"/>
-                </button>
-              )}
             </div>
           )}
         </div>
@@ -3050,11 +3045,6 @@ function TaskCard({task,onToggle,onEdit,globalTags,onSubtaskToggle,tabName,iconD
               <span className={`text-xs ${st.completed?'line-through text-gray-400':'text-gray-700'}`}>{st.name}</span>
             </div>
           ))}
-        </div>
-      )}
-      {openPanel==='memo'&&task.memo&&(
-        <div className="mt-2 pb-0.5 text-xs text-gray-600 leading-relaxed whitespace-pre-wrap" onClick={e=>e.stopPropagation()}>
-          {task.memo}
         </div>
       )}
     </div>
