@@ -5,6 +5,7 @@ import { AppIcons } from './components/Icons';
 import { usePremium } from './components/Premium';
 import { setNativeAppIcon } from './components/AppIcon';
 import { updateWidgetData, getPendingWidgetActions } from './components/WidgetData';
+import { getPendingWatchTasks } from './components/WatchBridge';
 import { setShopGeofences, setTaskLocationGeofences, setForgetAlertGeofences, checkGeofencePermissions, ensureGeofencePermission, getPendingGeofenceAction, getFiredTaskLocationIds, getNativeCurrentLocation, openAppSettings } from './components/Geofence';
 import { scheduleInactivityReminder, cancelInactivityReminder } from './components/Inactivity';
 import { notify, requestNotifyPermission, syncTaskAlerts, syncFreeSlotAlerts, syncShopNotifs, syncLaterStaleAlerts, syncWakeCheckins, syncDeadlineAlerts, isNative, isAndroid } from './components/LocalNotify';
@@ -7337,6 +7338,20 @@ export default function App() {
         // 「あとでやる」タスクの場所通知は到着時（didEnterRegion）にfiredフラグが立つため、
         // タップの有無に関わらず実際に発火したタイミングを正確に計測できる
         firedIds.forEach(()=>logAnalyticsEvent('location_reminder_triggered',{type:'task'}));
+      }
+      // Apple Watch版から音声で追加された「あとでやる」タスク。addVoiceLaterTask相当だが、
+      // このuseEffectはdeps=[loaded]のため`date`を直接参照するとstale closureになる
+      // （TaskModalのautoIconRefと同じ罠）。ここでは`date`に依存せずtodayStr()を使うことで回避する
+      const watchTexts=await getPendingWatchTasks();
+      if(watchTexts.length>0){
+        setTasks(prev=>[
+          ...watchTexts.map(text=>({
+            id:uid(),name:text,startTime:null,duration:0,memo:'',icon:defaultIconKey(text),
+            completed:false,date:todayStr(),isLater:true,
+          } as Task)),
+          ...prev,
+        ]);
+        watchTexts.forEach(()=>{ logAnalyticsEvent('task_created',{mode:'later'}); logAnalyticsEvent('later_task_created'); });
       }
     };
     applyPending();

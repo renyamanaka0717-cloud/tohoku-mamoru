@@ -933,6 +933,88 @@ Android版も同様に`GeofencePlugin.kt`/`GeofenceReceiver.kt`は同じ物理�
 
 ---
 
+## Apple Watch版（音声で「あとでやる」に追加、v1スコープ限定）
+
+BrainBoxのApple Watch対応。**v1は「マイクボタンを押す→話す→文字起こし→そのまま『あとでやる』に追加」の1機能のみに絞る。** 日時設定・所要時間設定・タイムライン表示・買い物リスト等は一切持たない。「思いついた瞬間に、とりあえず頭の外に出す」ことに特化させる方針。
+
+### アーキテクチャ（Watch AppはCapacitor/WKWebViewとは別物のネイティブSwiftUIアプリ）
+
+BrainBox本体（iOS/Android）はCapacitorでWebコンテンツをラップしたアプリだが、**watchOSはWKWebViewに相当するもの自体が無く、Web技術でWatch Appを作ることはできない。** そのため、Watch Appは`native-ios/Watch/`配下にSwiftUIで書いた完全に独立したネイティブアプリとして実装し、iPhone本体アプリとは`WatchConnectivity`（`WCSession`）でテキストだけをやり取りする。
+
+```
+Apple Watch（BrainBox Watch App、native-ios/Watch/）
+  ContentView.swift  … マイクボタン＋状態表示のみのUI
+  WatchConnector.swift … WCSession経由でiPhoneにテキストを送るだけの薄いラッパー
+  BrainBoxWatchApp.swift … @main エントリーポイント
+        ↓ WCSession（sendMessage / transferUserInfo）
+iPhone（メインAppターゲット、native-ios/）
+  WatchBridgePlugin.swift/.m … WCSessionDelegate。受け取ったテキストをUserDefaultsの
+        キューに貯めるだけ（他の「保留アクション」系と同じ設計、後述）
+        ↓ ポーリング
+src/app/components/WatchBridge.ts … getPendingWatchTasks()
+src/app/page.tsx（Appコンポーネント） … applyPending()内で読み出し、「あとでやる」タスクとして追加
+```
+
+**バックエンド（Vercel）は一切関与しない。** BrainBoxはもともとサーバーDBを持たずlocalStorage完結のアプリなので、Watch→iPhoneの経路もWatchConnectivityのみで完結させ、新しいAPIエンドポイントやVercelプロジェクトの追加は行わない（ユーザーの想定通り）。
+
+### タップ完了機能等と同じ「保留アクション」設計を踏襲（重要）
+
+**WCSessionのメッセージ受信はiPhoneアプリがバックグラウンド/未起動でもOSがアプリプロセスを起こして呼ばれることがあるが、その時点でCapacitorのWebView（JS実行環境）がまだ読み込まれていない可能性があるため、その場で`notifyListeners`を呼んでJSに直接イベント配信する設計は選ばなかった。** 代わりに、`WidgetDataPlugin.getPendingWidgetActions()`・`GeofencePlugin.getPendingGeofenceAction()`と全く同じ「ネイティブは受け取って`UserDefaults`のキューに貯めるだけ、実際の反映はJSがフォアグラウンド復帰時にポーリングして読みに来る」という設計に統一した。
+
+- `native-ios/WatchBridgePlugin.swift`/`.m` — `load()`で`WCSession.default`に自身をdelegateとして設定し`activate()`する（`GeofencePlugin`等と同じく`AppDelegate.swift`は編集しない）。`session(_:didReceiveMessage:)`（Watch側がreachableな時の即時経路）・`session(_:didReceiveUserInfo:)`（reachableでない時のキュー配信経路）の両方から届いたテキストを`UserDefaults`の`pendingWatchTaskTexts`（文字列配列）に追記する。`getPendingWatchTasks()`がこの配列を読み取って返し、読み取り後は削除する
+- `src/app/components/WatchBridge.ts` — `getPendingWatchTasks(): Promise<string[]>`（Web/開発環境は常に空配列）
+- `src/app/page.tsx`の`App`コンポーネント、既存の`applyPending()`（`getPendingWidgetActions`/`getPendingGeofenceAction`/`getFiredTaskLocationIds`と同じ、起動時＋`visibilitychange`で呼ばれる関数）の中に追記する形で`getPendingWatchTasks()`を呼び、返ってきた各テキストを「あとでやる」タスクとして`setTasks`に追加する
+- **`addVoiceLaterTask(text)`（ウィジェット版音声入力が使う既存関数）をそのまま呼ばない。** `addVoiceLaterTask`は`date`（現在タイムラインで表示中の日付）state を参照するが、`applyPending()`のuseEffectは`deps=[loaded]`（実質マウント時に1回だけ効果本体が作られる）ため、その中で`date`を直接参照すると値が固定されたまま古くなる**stale closure**になる（`TaskModal`の`autoIcon`を`autoIconRef`経由で読む既存の罠と全く同じパターン）。回避策として、`addVoiceLaterTask`を経由せず、`date`に依存しない`todayStr()`を使ってタスクオブジェクトをその場で組み立てて`setTasks`する（Watchでの追加はタイムラインの表示状態と無関係に「今日」として記録するのが意味的にも正しい）
+
+### iPhone側の受け口（WatchConnectivity）
+
+- `session(_:didReceiveMessage:)`と`session(_:didReceiveUserInfo:)`の使い分け: Watch側の`WatchConnector.send()`が`session.isReachable`なら`sendMessage`（即時配信、`replyHandler`は待たない=fire-and-forget）、そうでなければ`transferUserInfo`（キュー配信、いつかiPhoneが近くに来た時に届く）を使う。BrainBoxは「あとでやる」タスクを1件ずつ独立して送るだけなので、往復確認（reply）は不要と判断した
+- `sessionDidBecomeInactive`/`sessionDidDeactivate`はiOS側のみ実装が必須（watchOS側の`WCSessionDelegate`には存在しない、複数Watchペアリング対応のためのiOS固有要件）。`sessionDidDeactivate`では`WCSession.default.activate()`を再度呼ぶ（Appleの定型実装）
+
+### Watch側のUI・音声入力（`presentTextInputController` + `.forceDictation`）
+
+**watchOS版はiOS版VoiceInputPlugin（`SFSpeechRecognizer`＋`AVAudioEngine`の自前実装、マイク権限リクエストあり）を移植しない。** 代わりにWatchKitの`WKInterfaceController.presentTextInputController(withSuggestions:allowedInputMode:completion:)`を`allowedInputMode: .forceDictation`で呼ぶと、候補チップ/Scribble選択の中間画面を経由せず即座にシステム標準の「聞き取り中」ダイクテーション画面が開き、話し終えると自動でテキスト化されて返ってくる。**音声キャプチャ・認識はシステムのプロセスが行うため、アプリ側で`NSMicrophoneUsageDescription`/`NSSpeechRecognitionUsageDescription`をWatch App側のInfo.plistに追加する必要が無い**（iOS版のVoiceInputPluginが自前でマイクを掴む方式との大きな違い）。
+
+- **SwiftUI Onlyの`App`ライフサイクル（`WKApplicationDelegateAdaptor`を使わない、このファイル一式のような`@main struct ... : App`構成）でも、`WKExtension.shared().visibleInterfaceController`は解決できる**（WatchKitがSwiftUIビューを`WKHostingController`＝`WKInterfaceController`のサブクラスでホストしているため）。多くのwatchOS SwiftUIアプリで使われている標準的なテクニックだが、**このセッションではwatchOSシミュレータ/実機を操作できないため未検証。実機で必ず動作確認すること。** 万一`visibleInterfaceController`が`nil`を返す場合に備え、`ContentView.swift`にプレーンな`TextField`（タップすると同じダイクテーション選択肢が出る）をフォールバックとして用意してある
+- フロー: `idle`（マイクボタン）→`dictating`（システムのダイクテーション画面、アプリ側では何も描画しない）→`preview`（認識結果を0.8秒だけプレビュー表示、iOS版`VoiceCapturePopup`と同じ「結果が見える間を持たせる」設計を踏襲）→`sending`→`done`（「追加しました」）/`error`（「送信できませんでした」）→1.6秒後に自動的に`idle`へ戻る
+- **送信の成否判定は「配信されたか」ではなく「送信呼び出し自体が成功したか」で行う。** `transferUserInfo`はローカルでのキューイングにほぼ確実に成功し、実際の配信（iPhoneに実際に届くタイミング）は非同期・不確定だが、BrainBoxは「まず記録できたら安心させる」思想のアプリ（買い物リストの場所通知等と同じ「通知を減らすより思い出すきっかけ・記録の安心感を優先する」方針）のため、配信の遅延をユーザーに気にさせない楽観的なUIにしている
+
+### Xcodeでの手動セットアップ（`ios/`はgitignore対象・新規Watch Appターゲットなので毎回必要）
+
+**① Watch Appターゲットを新規作成**
+
+1. Xcodeメニュー File → New → Target → 「Watch App」を選択（Companion App: 既存の`App`ターゲットを選ぶ。単体のwatchOSアプリ用テンプレートではなく、必ずiOSアプリに紐づく「Watch App」を選ぶこと）
+2. Product Name: `BrainBox Watch App`（任意）。"Include Notification Scene"はオフでよい
+3. 作成すると自動生成される雛形の`ContentView.swift`/`BrainBoxWatchAppApp.swift`（サンプルコード）は削除する
+4. `native-ios/Watch/BrainBoxWatchApp.swift`・`ContentView.swift`・`WatchConnector.swift`をこの**Watch Appターゲット**に追加（Target Membership: BrainBox Watch App。メインAppターゲットには入れない）
+5. WatchConnectivityは特別なCapability追加不要（`import WatchConnectivity`だけで使える。App GroupやBackground Modesの追加設定は不要）
+
+**② WatchBridgePlugin を追加（メインAppターゲット、他のCapacitorプラグインと同じ手順）**
+
+1. `native-ios/WatchBridgePlugin.swift`/`.m`を`ios/App/App/`に追加（Target Membership: App）
+2. `native-ios/BridgeViewController.swift`の`capacitorDidLoad()`に`bridge?.registerPluginInstance(WatchBridgePlugin())`があることを確認（無ければ追記。既存の`ios/App/App/BridgeViewController.swift`は`git pull`で自動反映されないので**Xcode上で直接編集**）
+
+**③ ビルド・実機確認**
+
+1. `BrainBox Watch App`スキームを選び、ペアリング済みのApple Watch実機（またはWatchシミュレータ）にビルド・実行
+2. マイクボタンをタップ→ダイクテーション画面が開くことを確認→適当に話す→「追加しました」が表示されることを確認
+3. iPhone側でBrainBoxアプリを開き（またはフォアグラウンドに戻し）、「あとでやる」一覧に音声で話した内容がタスクとして追加されていることを確認（Watch側がreachableだった場合は数秒以内、そうでない場合はiPhoneが近くに来てから）
+
+### Android版（Wear OS）は現時点で未対応
+
+Wear OSはApple WatchのWatchConnectivityとは全く異なる仕組み（Google Play services の Wearable Data Layer API等）が必要で、今回のスコープには含めていない。将来Wear OS対応を検討する場合、`native-android/`配下に別途新しいモジュール構成が必要になる点に注意すること（iOS版の`native-ios/Watch/`をそのまま流用できない）。
+
+### 避けるパターン
+
+- Watch Appターゲットに`native-ios/`直下のiPhone用ファイル（`WatchBridgePlugin.swift`等）を追加しない（Target Membershipを間違えるとビルドできない、または意図しない重複シンボルになる）
+- watchOS側で`SFSpeechRecognizer`/`AVAudioEngine`を自前実装しようとしない（`presentTextInputController(allowedInputMode: .forceDictation)`で十分——マイク権限のInfo.plist設定も不要になる。iOS版VoiceInputPluginの設計をそのまま移植しようとしないこと）
+- `WatchBridgePlugin`の受信処理から`notifyListeners`でJSにライブ配信しようとしない（バックグラウンド/未起動時にWebViewが読み込まれていない可能性があるため。他の「保留アクション」系と同じポーリング方式に統一すること）
+- `applyPending()`内でWatch由来のタスクを追加する時に`addVoiceLaterTask(text)`をそのまま呼ばない（`date`を参照するため、`deps=[loaded]`のuseEffect内ではstale closureになる。`todayStr()`を使ってタスクオブジェクトをその場で組み立てること）
+- Watch→iPhoneの送信に`sendMessage`の`replyHandler`での往復確認を必須にしない（「あとでやる」への追加は片道の記録で十分。往復待ちを入れるとreachableでない時に機能全体が動かなくなる）
+- 新しいバックエンドAPI・Vercelプロジェクトを追加しない（WatchConnectivityのみで完結させる設計。サーバーDBを持たないBrainBoxの既存方針と一貫させる）
+
+---
+
 ## 放置タスク通知・アプリ起動リマインダー（設定 → 通知 → 放置タスク）
 
 `sub==='notifications-later'` 画面（`SettingsScreen`）に2つの独立したリマインダー設定がある。
