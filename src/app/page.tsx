@@ -5023,8 +5023,9 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
                 <h3 className="text-sm font-bold text-gray-900">{tr('shopTabLabel')}</h3>
                 <div className="flex items-center gap-2">
                   <button onClick={()=>setShowShopNotif(v=>!v)}
-                    className={`relative w-8 h-8 rounded-xl flex items-center justify-center transition-colors ${showShopNotif?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-500'}`}>
-                    <AppIcons.bell size={15}/>
+                    className={`relative h-8 px-3 rounded-xl flex items-center gap-1.5 text-xs font-semibold transition-colors ${showShopNotif?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-500'}`}>
+                    <AppIcons.bell size={14}/>
+                    <span>{tr('sectionNotifications')}</span>
                     {shopNotifSettings.filter(s=>s.enabled).length>0&&!showShopNotif&&(
                       <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-[var(--c-primary)] rounded-full border-2 border-white"/>
                     )}
