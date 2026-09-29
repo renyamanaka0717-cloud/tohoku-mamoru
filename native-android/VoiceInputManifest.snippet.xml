@@ -1,0 +1,13 @@
+<!-- android/app/src/main/AndroidManifest.xml に追加する内容 -->
+
+<!-- <manifest>直下、既存の<uses-permission>群の隣に追加 -->
+<uses-permission android:name="android.permission.RECORD_AUDIO" />
+
+<!-- <manifest>直下（<application>と同じ階層）に追加。Android 11+のパッケージ可視性制限により、
+     これが無いとSpeechRecognizer.isRecognitionAvailable()が端末に音声認識サービス(Googleアプリ等)が
+     入っていても正しく検出できないことがある -->
+<queries>
+    <intent>
+        <action android:name="android.speech.RecognitionService" />
+    </intent>
+</queries>

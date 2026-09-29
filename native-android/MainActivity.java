@@ -1,7 +1,7 @@
 // android/app/src/main/java/jp/brainbox/app/MainActivity.java をこの内容に差し替える
 // (registerPlugin()の行を追加しないとLocalNotifyPlugin/GeofencePlugin/InactivityPlugin/AnalyticsPlugin/
-// AppIconPluginがAndroidに認識されない。iOS版のBridgeViewController.capacitorDidLoad()での
-// プラグイン登録と同じ役割)
+// AppIconPlugin/VoiceInputPluginがAndroidに認識されない。iOS版のBridgeViewController.capacitorDidLoad()
+// でのプラグイン登録と同じ役割)
 package jp.brainbox.app;
 
 import android.content.Context;
@@ -18,6 +18,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(InactivityPlugin.class);
         registerPlugin(AnalyticsPlugin.class);
         registerPlugin(AppIconPlugin.class);
+        registerPlugin(VoiceInputPlugin.class);
         super.onCreate(savedInstanceState);
         handleNotificationIntent(getIntent());
     }

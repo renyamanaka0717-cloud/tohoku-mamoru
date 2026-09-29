@@ -865,6 +865,27 @@ Android版も同様に`GeofencePlugin.kt`/`GeofenceReceiver.kt`は同じ物理�
 5. **`checkPermissions`/`requestPermissions`という関数名を使う時は要注意:** `CAPPlugin`基底クラスにすでに同名の`open`メソッドが定義されているため、`override`を付けず・可視性を`public`にしないままだと「Overriding declaration requires an 'override'」「Overriding instance method must be as accessible as its enclosing type」でビルドエラーになる（実際に発生した不具合）。`@objc public override func requestPermissions(_ call: CAPPluginCall)`のように書くこと
 6. ウィジェット連携ぶんの追加セットアップ: `native-ios/Widgets/BrainBoxWidgets.swift`・`Localizable.xcstrings`は新規ファイルではなく**既存ファイルの更新**なので、Widget Extensionターゲット内の同名ファイルの中身をこの変更後の内容に差し替える（ホーム画面ウィジェットの節にある既存の手順と同じ、Widget Extensionターゲット側のみでよくメインAppターゲットの変更は不要）
 
+### Android実装（`native-android/VoiceInputPlugin.kt`）
+
+プラグイン名を`VoiceInputPlugin`で揃えているため`VoiceInput.ts`は無改修で動く。**ウィジェット連携（「音声でタスク追加」ウィジェット）はAndroidにWidget機能自体が未移植のため対象外**——`TaskModal`のマイクボタン・`VoiceCapturePopup`から呼ばれるプラグイン本体のみ移植した。
+
+- `android.speech.SpeechRecognizer`（`RecognitionListener`実装）を使用。iOS版が`AVAudioEngine`のタップから生の音声バッファを自前処理して部分認識結果・RMS音量・無音判定まで全て手動実装しているのに対し、AndroidのSpeechRecognizerは`onPartialResults`（部分認識結果）・`onRmsChanged`（音量）・`onError`をOS側が既に提供するため、iOS版より薄い実装で済む
+- **無音自動終了の判定はOS標準の`EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS`等のヒントに任せず、iOS版と同じく独自タイマーで実装している。** これらのextraは端末・認識サービス（メーカーによってGoogle以外の音声認識サービスが既定の場合がある）によって挙動が揺れるヒントに過ぎないため、`onPartialResults`が届くたびに`Handler.postDelayed(1300ms)`のタイマーを張り直す方式に統一し、無音判定のタイミングをiOS版と揃えている
+- `onRmsChanged(rmsdB)`は`levelNotifyInterval=80ms`で間引きつつ、iOS版と同じ「直近の最大音量（緩やかに減衰するpeakLevel）を基準にした相対値」で0〜1に正規化する（Androidの`rmsdB`は絶対的なdB SPL値ではなく認識サービス依存の相対値のため、固定閾値ではなくiOS版と同じ相対正規化方式を踏襲した）
+- **Androidには「音声認識」専用の許可ダイアログが無い**（マイク権限のみで、認識自体はGoogleアプリ等の認識サービスをintent経由で呼び出す仕組みのため）。iOS版の`speechRecognition`許可状態に相当する値は、代わりに`SpeechRecognizer.isRecognitionAvailable(context)`（端末に認識サービスが入っているか）で判定し、JS側の`VoiceInputPermissionStatus`の形（`{microphone,speechRecognition}`）はそのまま維持している
+- `stop()`（手動での早期終了）は`speechRecognizer.stopListening()`を呼ぶだけ。これはここまでの音声で認識を確定させ、OS側が`onResults`を呼び戻す仕組みのため、**iOS版が気をつけていた「`cancel()`で打ち切ると短い発話でテキストが空になる」不具合の心配がそもそも無い**（`stopListening()`と`cancel()`は別物で、`cancel()`の方はiOS版の`recognitionTask.cancel()`相当の即時破棄）
+- `SpeechRecognizer`はメインスレッド（Looperを持つスレッド）で生成・操作する必要があるため、`start`/`stop`の`@PluginMethod`本体は`Handler(Looper.getMainLooper()).post{}`でラップしている（Capacitorのプラグインメソッドはデフォルトでバックグラウンドスレッドプールから呼ばれるため）
+- `AndroidManifest.xml`に`RECORD_AUDIO`権限に加え、Android 11+のパッケージ可視性制限に対応する`<queries><intent><action android:name="android.speech.RecognitionService"/></intent></queries>`が必要（無いと端末に認識サービスが入っていても`isRecognitionAvailable()`が誤って`false`を返すことがある）
+
+### Android Studioでの手動セットアップ（`android/`はgitignore対象なので毎回必要）
+
+1. `native-android/VoiceInputPlugin.kt`を`android/app/src/main/java/jp/brainbox/app/`にコピー
+2. `native-android/MainActivity.java`の内容で既存の`MainActivity.java`を上書きする（`registerPlugin(VoiceInputPlugin.class)`の行が追加されている）
+3. `native-android/VoiceInputManifest.snippet.xml`の内容を`android/app/src/main/AndroidManifest.xml`に追加（`<uses-permission>`は`<manifest>`直下の既存の並びに、`<queries>`は`<manifest>`直下・`<application>`と同じ階層に追加）
+4. Android Studioで「Sync Now」→ビルドが通ることを確認する
+5. 実機/エミュレータでタスク作成画面のマイクボタンをタップし、マイク許可ダイアログ→発話→認識結果がタスク名欄に反映されることを確認する（エミュレータは仮想マイクのため実際の音声認識までは確認できないことがある。実機推奨）
+6. これらのファイルを編集した場合、`android/`内の既存ファイルは`git pull`しても自動更新されない（`native-android/`の最新内容を都度コピーし直すこと。他プラグインの節と同じ注意事項）
+
 ### 避けるパターン
 
 - `stop()`内で`endAudio()`の直後に`recognitionTask.cancel()`しない（`isFinal`な結果や無音タイマーによる`finishRecognition()`を待たずに打ち切ると、特に短い発話でテキストが空になる不具合の実績あり）
@@ -875,6 +896,8 @@ Android版も同様に`GeofencePlugin.kt`/`GeofenceReceiver.kt`は同じ物理�
 - PROゲートを`isPremium`チェック無しで素通りさせない（PRO比較表（`sub==='pro'`）にも`proFeatureVoiceInput`の行を追加済み）。**`TaskModal`のマイクボタン（`toggleVoiceInput`内の`!isPremium`チェック→`ProGateSheet`）と`VoiceCapturePopup`（独自の`!isPremium`チェック→`onProPrompt`で設定画面へ）はゲートの実装が別々にある点に注意**——`VoiceCapturePopup`は`TaskModal`を介さない独立コンポーネントのため、`toggleVoiceInput`のチェックは効かない。音声入力の起動経路を新しく増やす時は、その経路自身で`isPremium`を確認すること
 - `VoiceCapturePopup`を`TaskModal`の`toggleVoiceInput`と無理に共通化しない（「タップで開始・タップで停止」のトグルと「マウントで自動開始・結果が届いたら自動的に閉じる」は起動条件が異なるため、意図的に別々のコードのまま書いてある）
 - `notifyListeners("audioLevel", ...)`の継続配信を「ライブストリーミングは禁止」というルール（`recognitionFinished`の節を参照）と混同して削除しない。**禁止されているのはテキスト（部分認識結果）の逐次配信であり、音量レベルの逐次配信は波形表示のために意図的に導入した別の仕組み**（`levelNotifyInterval=0.08秒`で間引き済み）
+- Android側で無音自動終了を`EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS`等のOS標準ヒントだけに任せない（端末・認識サービスによって挙動が揺れるため、iOS版と同じ`onPartialResults`起点の独自タイマー方式を維持すること）
+- Android側の`SpeechRecognizer`を`Handler.postDelayed`でメインスレッド以外から生成・操作しない（Looperを持つスレッドでの実行が必須。プラグインメソッドはデフォルトでバックグラウンドスレッドから呼ばれるため`mainHandler.post{}`でラップする）
 
 ---
 
