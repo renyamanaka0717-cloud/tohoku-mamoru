@@ -3120,6 +3120,9 @@ function TaskCard({task,onToggle,onEdit,globalTags,onSubtaskToggle,tabName,iconD
               <AppIcons.location size={10+iconDelta} className="shrink-0"/><span className="truncate">{task.address}</span>
             </p>
           )}
+          {task.memo&&(
+            <p className="text-[11px] text-gray-400 mt-1 truncate">{task.memo}</p>
+          )}
           {(task.tags??[]).length>0&&(
             <div className="flex flex-wrap gap-1 mt-1">
               {(task.tags??[]).map(tag=>{
