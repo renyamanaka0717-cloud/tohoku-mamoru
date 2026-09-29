@@ -756,9 +756,9 @@ const SHOP_LOC_KEY = 'tl-shop-loc-v1';
 
 ### タスク作成・編集画面（TaskModal）
 
-**「住所」欄1つに統合**（全タスクタイプ共通、無料）。直接入力／「地図で指定」（`ShopMapPicker`）／「現在地から」の3通りで入力できる。地図・現在地から場所を選んだ場合は、確定時に`address`（表示テキスト）と`location`（通知用の緯度経度）を**同時に**セットする（`onConfirm={loc=>{setAddress(loc.name);setTaskLocation({name:loc.name,lat:loc.lat,lng:loc.lng});...}}`）。手入力だけの住所には座標が無いため、場所通知の対象にはできない。
+**「住所」欄**（全タスクタイプ共通、無料）。直接入力／「地図で指定」（`ShopMapPicker`）／「現在地から」の3通りで入力できる。地図・現在地から場所を選んだ場合は、確定時に`address`（表示テキスト）と`location`（通知用の緯度経度）を**同時に**セットする（`onConfirm={loc=>{setAddress(loc.name);setTaskLocation({name:loc.name,lat:loc.lat,lng:loc.lng});...}}`）。手入力だけの住所には座標が無いため、場所通知の対象にはできない。
 
-**`mode==='later'`の時だけ**、住所欄を開いた中に「場所で通知」PROトグルが追加で表示される。ONにする条件: ①PRO、②`taskLocation`（座標）が設定済み＝地図/現在地で場所を選んだことがある、③`MAX_MONITORED_REGIONS`の上限に達していない、④`ensureGeofencePermission()`で位置情報・通知の許可が確認できる。いずれか欠けている場合は`locError`にメッセージを表示してブロックする（座標が無い場合は`taskLocationNeedsMapNote`＝「地図で場所を選択すると、通知を設定できます。」）。
+**「場所で通知」は`住所`の折りたたみ内ではなく、TaskModal内の独立した1行（`mode==='later'`の時だけ表示）。** 座標データ（`taskLocation`）は住所欄の地図/現在地選択と共有するが、UI上は別項目として常時見える位置に置く。**過去に「住所」欄を開いた中のトグルとして埋め込んでいたが、「あとでやるの場所通知は目玉機能なのに一覧に名前が無いのは痛い」というフィードバックを受け、独立行に戻した**（住所欄と場所通知UIを1つのフローに統合した経緯自体は維持しつつ、「場所で通知」という機能名がTaskModal上で埋もれないようにする狙い）。ONにする条件: ①PRO、②`taskLocation`（座標）が設定済み＝地図/現在地で場所を選んだことがある、③`MAX_MONITORED_REGIONS`の上限に達していない、④`ensureGeofencePermission()`で位置情報・通知の許可が確認できる。いずれか欠けている場合は`locError`にメッセージを表示してブロックする（座標が無い場合は`taskLocationNeedsMapNote`＝「地図で場所を選択すると、通知を設定できます。」）。
 
 **トグルをOFFにしても`address`/`location`（座標）は消さない**（住所欄自体は独立した表示情報として残るべきなので、通知のON/OFFだけを切り替える）。**住所テキストを空にした時だけ`location`と`locationNotify`もまとめてクリアする**（住所入力の`onChange`で`v.trim()`が空になった瞬間に`setTaskLocation(null);setLocationNotify(false);`を呼ぶ。「住所が無い＝紐づく通知設定も無い」という一貫した仕様）。
 
