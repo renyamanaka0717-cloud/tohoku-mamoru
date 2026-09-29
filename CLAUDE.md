@@ -639,7 +639,9 @@ const SHOP_LOC_KEY = 'tl-shop-loc-v1';
 
 位置情報または通知が拒否されている場合、パネル上部に設定アプリへの案内文を表示する（`checkGeofencePermissions()` で状態確認）。
 
-**地図ピッカー（`ShopMapPicker`）:** 追加npmライブラリ無しでCARTO Voyagerのラスタタイル（`https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png`、APIキー不要・Googleマップに近い見やすい配色）を直接fetchして3x3グリッドで描画する自前の軽量地図。標準のOpenStreetMapタイル（`tile.openstreetmap.org`）は見づらいとのフィードバックがあり切り替え済み。ピンは画面中央に固定表示、ドラッグで地図側を動かして位置を決める（Google/Appleマップと同じUX）。2本指ピンチで拡大縮小もできる（`pinchScale`でタイル層のみを視覚的にscale()し、指を離した時点で最も近い整数ズームに丸めてタイルを再取得。タッチイベントは`e.stopPropagation()`でボトムシートのタブ切り替えスワイプに伝播しないようにしている）。座標⇔ピクセル変換は標準的なWeb Mercatorタイル計算（`lonLatToPx`/`pxToLonLat`、CARTO Voyagerも256pxのOSM互換タイルなので変換ロジックは共通）。確定時は国土地理院の逆ジオコーディングAPIで地名を試みに取得し、失敗時は「地図で指定した場所」にフォールバックする。CARTOの利用規約上、地図上に「© CARTO © OpenStreetMap」表記を常時表示している。
+**地図ピッカー（`ShopMapPicker`）:** 追加npmライブラリ無しで標準OpenStreetMapのラスタタイル（`https://tile.openstreetmap.org/{z}/{x}/{y}.png`、APIキー不要）を直接fetchして3x3グリッドで描画する自前の軽量地図。ピンは画面中央に固定表示、ドラッグで地図側を動かして位置を決める（Google/Appleマップと同じUX）。2本指ピンチで拡大縮小もできる（`pinchScale`でタイル層のみを視覚的にscale()し、指を離した時点で最も近い整数ズームに丸めてタイルを再取得。タッチイベントは`e.stopPropagation()`でボトムシートのタブ切り替えスワイプに伝播しないようにしている）。座標⇔ピクセル変換は標準的なWeb Mercatorタイル計算（`lonLatToPx`/`pxToLonLat`）。確定時は国土地理院の逆ジオコーディングAPIで地名を試みに取得し、失敗時は「地図で指定した場所」にフォールバックする。地図上に「© OpenStreetMap」表記を常時表示している。
+
+**タイル配信元の変遷（重要・再発した実績あり）:** 当初は標準OpenStreetMapタイルを使っていたが「見づらい」フィードバックを受けCARTO Voyagerのラスタタイル（`basemaps.cartocdn.com`、Googleマップに近い見やすい配色）に切り替えた。**その後CARTOが匿名無料アクセスにAPIキーを必須化し、`basemaps.cartocdn.com`が403 "API KEY REQUIRED"を返すようになったため、地図が全く表示されない（タイル画像の代わりにCARTOのエラーページ画像が表示される）不具合が発生した。** 実機のスクリーンショットで「API KEY REQUIRED carto.com/basemaps/apikey」という文字が地図上に敷き詰められているように見えたら、この不具合を疑うこと。標準OpenStreetMapタイルに戻して復旧済み。**サードパーティの無料タイル配信元（CARTO・Stadia/Stamen等）はいつAPIキー必須化・仕様変更されてもおかしくないため、見た目重視で別サービスへ切り替える提案が来た場合は、必ず`curl -I`等で実際にタイルURLが200を返すことを確認してから切り替えること。再発防止のため定期的な死活監視の仕組みは無いので、ユーザーから「地図が表示されない」報告があったら、まずこの配信元切り替わりを疑って`curl`で確認するのが最短の切り分け手順。**
 
 - **地図内検索:** 地図の上部に検索バーがあり、Nominatimでの検索結果をタップすると地図がその位置に再センタリングされる（ドラッグ不要で直接ジャンプできる）
 - **現在地表示:** 地図左下の照準アイコン（`AppIcons.crosshair`）をタップすると `getCurrentCoords()` で現在地を取得し、地図を現在地に再センタリング＋青い現在地ドット（`myLocation` state）を表示する。中央固定ピンとは別レイヤーで、ドラッグしても現在地ドットの実座標は変わらず、画面内の相対位置だけが再計算される
@@ -647,7 +649,7 @@ const SHOP_LOC_KEY = 'tl-shop-loc-v1';
 
 **登録済み場所の名称変更:** `ShopLocationPanel` の一覧で場所名をタップするとインライン編集になる（`editingId`/`editingName` state、Enterまたはフォーカス外れで確定）。`CustomTab` のインライン名前編集と同じUXパターン。
 
-本物のGoogleマップ/Apple MapKitへの変更も可能だが、それぞれAPIキー発行・課金設定（Google）またはMapKit JS用の秘密鍵発行・JWT設定（Apple）というユーザー側の作業が必要なため、現状は無料でAPIキー不要なCARTO Voyagerを採用している。
+本物のGoogleマップ/Apple MapKitへの変更も可能だが、それぞれAPIキー発行・課金設定（Google）またはMapKit JS用の秘密鍵発行・JWT設定（Apple）というユーザー側の作業が必要なため、現状は無料でAPIキー不要な標準OpenStreetMapタイルを採用している。
 
 **PRO機能:** 「場所で通知」は課金機能。`isPremium` が false の場合、ヘッダーに ★ PRO バッジを表示し、「追加」ボタンや既存の場所を再度ONにする操作は `ProGateSheet` を表示してブロックする（OFFにする操作は常に許可）。`ShopLocationPanel` は `isPremium`/`onProPrompt` を props として受け取り、呼び出し元（`BottomTabs`・`SettingsScreen`）がそれぞれ自前の `ProGateSheet` 表示状態を持つ。ブラウザ・開発環境は `usePremium()` が常に `isPremium=true` を返すため、このゲートは実機の未購入状態でのみ確認できる。
 

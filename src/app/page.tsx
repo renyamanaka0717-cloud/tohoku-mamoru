@@ -3883,7 +3883,11 @@ function ShopNotifPanel({settings,onChange,notificationsEnabled=true,onEnableNot
 
 // ── ShopLocationPanel ─────────────────────────────────────────────────────────
 
-// CARTO Voyagerタイル（無料・APIキー不要、Googleマップに近い見やすい配色）を使った軽量な地図ピッカー（ライブラリ追加なし）。
+// 標準OpenStreetMapタイル（無料・APIキー不要）を使った軽量な地図ピッカー（ライブラリ追加なし）。
+// CARTO Voyagerタイルへ一時切り替えていたが、CARTOの無料匿名アクセスがAPIキー必須に変わり
+// （basemaps.cartocdn.comが403 "API KEY REQUIRED"を返すようになった）、地図が表示されなくなる
+// 不具合が発生したためtile.openstreetmap.orgに戻した。APIキー不要な配信元へ再度切り替える時は
+// 実際にcurlでタイルが200で返ることを確認してから変更すること。
 // ピンは画面中央に固定し、地図側をドラッグして動かす（Google/Appleマップと同じUX）。
 function ShopMapPicker({initialCenter,onConfirm,onCancel}:{
   initialCenter:{lat:number;lng:number};
@@ -4069,7 +4073,7 @@ function ShopMapPicker({initialCenter,onConfirm,onCancel}:{
         <div className="absolute" style={{inset:0,transform:`scale(${pinchScale})`,transformOrigin:'center center'}}>
           <div className="absolute" style={{left:wrapLeft+drag.x,top:wrapTop+drag.y,width:TILE*3,height:TILE*3}}>
             {tiles.map((t,i)=>(
-              <img key={i} src={`https://basemaps.cartocdn.com/rastertiles/voyager/${zoom}/${t.tx}/${t.ty}.png`} draggable={false} alt=""
+              <img key={i} src={`https://tile.openstreetmap.org/${zoom}/${t.tx}/${t.ty}.png`} draggable={false} alt=""
                 style={{position:'absolute',left:t.left,top:t.top,width:TILE,height:TILE}}/>
             ))}
           </div>
@@ -4082,7 +4086,7 @@ function ShopMapPicker({initialCenter,onConfirm,onCancel}:{
         <div className="absolute pointer-events-none" style={{left:'50%',top:'50%',transform:'translate(-50%,-100%)'}}>
           <AppIcons.location size={32} className="text-[var(--c-primary)]"/>
         </div>
-        <div className="absolute bottom-1 right-1.5 bg-white/80 rounded px-1 text-[9px] text-gray-500">© CARTO © OpenStreetMap</div>
+        <div className="absolute bottom-1 right-1.5 bg-white/80 rounded px-1 text-[9px] text-gray-500">© OpenStreetMap</div>
         <div className="absolute top-2 right-2 flex flex-col gap-1.5">
           <button onClick={()=>setZoom(z=>Math.min(19,z+1))} className="w-7 h-7 bg-white rounded-lg shadow text-gray-600 font-bold">+</button>
           <button onClick={()=>setZoom(z=>Math.max(12,z-1))} className="w-7 h-7 bg-white rounded-lg shadow text-gray-600 font-bold">−</button>
