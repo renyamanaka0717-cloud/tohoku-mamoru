@@ -3681,8 +3681,11 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
         // 大幅に長くなったカードがあっても、アイコンカプセルは常に約50/50で分割される）。
         // 実際のカード間の隙間を境界にすることで、カプセルの伸縮がカードの実高さに追従する。
         const boundaries=cardTops.slice(1).map(t=>t-GAP/2);
-        const capTops=centers.map((c,i)=>i===0?c-CAPSULE_H/2:boundaries[i-1]);
-        const capBottoms=centers.map((c,i)=>i===n-1?c+CAPSULE_H/2:boundaries[i]);
+        // 両端のカプセルは中心±CAPSULE_H/2ではなく、カード自体の実際の上端・下端まで伸ばす
+        // （「タスクカードと同じ長さにしたい」という要望。固定56px幅だと、カードが56pxより
+        // 大きい場合に上下が余ってカプセルだけ短く見える不具合があった）。
+        const capTops=cardTops.map((ct,i)=>i===0?ct:boundaries[i-1]);
+        const capBottoms=cardTops.map((ct,i)=>i===n-1?ct+cardHeights[i]:boundaries[i]);
         return [
           <div key={`dup-${g.startTime}`} className="absolute z-10 flex items-center gap-1"
             style={{top:`${top}px`,left:`${CARD_LEFT}px`,right:'0px',height:`${DUP_LABEL_H}px`}}>
