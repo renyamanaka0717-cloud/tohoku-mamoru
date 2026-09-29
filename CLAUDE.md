@@ -1519,7 +1519,7 @@ useEffect(()=>{
 
 ## Firebase Analytics（利用状況計測）
 
-BrainBoxはFlutterではなくNext.js/Capacitorのアプリなので、FlutterFire CLI・`firebase_core`・`firebase_analytics`（Flutter用パッケージ）は使えない。代わりに **Web: Firebase JS SDK（`firebase/analytics`、GA4計測）／iOSネイティブ: Firebase iOS SDKをラップした自作Capacitorプラグイン（`AnalyticsPlugin`）** という、このリポジトリの他機能（Geofence・LocalNotify等）と同じ「JS薄いラッパー→ネイティブはCapacitorカスタムプラグイン」構成で実装している。Androidターゲットはこのプロジェクトに存在しないため対応していない。
+BrainBoxはFlutterではなくNext.js/Capacitorのアプリなので、FlutterFire CLI・`firebase_core`・`firebase_analytics`（Flutter用パッケージ）は使えない。代わりに **Web: Firebase JS SDK（`firebase/analytics`、GA4計測）／iOSネイティブ: Firebase iOS SDKをラップした自作Capacitorプラグイン（`AnalyticsPlugin`）／Androidネイティブ: Firebase Android SDKをラップした自作Capacitorプラグイン（`AnalyticsPlugin`）** という、このリポジトリの他機能（Geofence・LocalNotify等）と同じ「JS薄いラッパー→ネイティブはCapacitorカスタムプラグイン」構成で実装している。
 
 ### アーキテクチャ
 
@@ -1602,6 +1602,7 @@ native-ios/BridgeViewController.swift … capacitorDidLoad() 内で FirebaseApp.
 2. プロジェクトに **iOSアプリ** を追加。バンドルIDはXcodeプロジェクトのバンドルID（`jp.brainbox.app`）と一致させる
 3. ダウンロードした `GoogleService-Info.plist` は消さずに保管しておく（Xcodeでの手動セットアップで使う）
 4. 同じプロジェクトに **ウェブアプリ** も追加し、「SDKの設定と構成」に表示される`apiKey`/`authDomain`/`projectId`等の値を`.env.local`（`.env.local.example`参照）とVercelのプロジェクト環境変数の両方に設定する
+5. 同じプロジェクトに **Androidアプリ** も追加。パッケージ名は`android/app/build.gradle`の`applicationId`（`jp.brainbox.app`）と一致させる。ダウンロードした`google-services.json`は消さずに保管しておく（Android Studioでの手動セットアップで使う）
 
 ### Xcodeでの手動セットアップ（`ios/`はgitignore対象なので毎回必要）
 
@@ -1612,13 +1613,33 @@ native-ios/BridgeViewController.swift … capacitorDidLoad() 内で FirebaseApp.
 5. （任意・デバッグ用）Xcodeの Product → Scheme → Edit Scheme → Run → Arguments → "Arguments Passed On Launch" に `-FIRDebugEnabled` を追加すると、[Firebase console の DebugView](https://console.firebase.google.com)でイベントをリアルタイムに確認できる
 6. ビルド・実行し、タスク作成やドラッグ操作を行って DebugView にイベントが届くことを確認する
 
+### Android実装（`native-android/AnalyticsPlugin.kt`）
+
+プラグイン名を`AnalyticsPlugin`で揃えているため`Analytics.ts`は無改修で動く。iOS版と同じく薄いラッパーのみで、`logEvent(name, params?)`/`setUserProperty(name, value)`の2メソッドだけを実装している。
+
+- `params`（JSON文字列）は`org.json.JSONObject`でパースし、`android.os.Bundle`に詰め替えてから`FirebaseAnalytics.logEvent(name, bundle)`に渡す（値の型ごとにBoolean→文字列・Int/Long→Long・Double→Doubleで`Bundle`に格納。iOS版が`JSONSerialization`で`[String:Any]?`にパースするのと役割は同じ）
+- `logPermissionGrantedOnce()`（インストールごとに1回だけの重複防止）は`Analytics.ts`内で完結する`localStorage`ベースのJS側ロジックのため、ネイティブ側の対応は不要（iOS版でもネイティブ変更は無い）
+- Firebase Android SDKは`Firebase.analytics`（Kotlin Extensions、`com.google.firebase:firebase-analytics-ktx`）経由で取得する。初期化は`google-services.json`が`android/app/`に置かれていれば`com.google.gms.google-services`プラグインが自動的に行うため、iOS版の`FirebaseApp.configure()`のような明示的な初期化コードは不要（`MainActivity`には`registerPlugin(AnalyticsPlugin.class)`を追加するだけでよい）
+
+### Android Studioでの手動セットアップ（`android/`はgitignore対象なので毎回必要）
+
+1. Firebase側のセットアップ手順で取得した`google-services.json`を`android/app/`直下に配置する（ファイル名は変更しない。`ios/App/App/GoogleService-Info.plist`と同じ役割）
+2. `android/build.gradle`の`buildscript.dependencies`に`classpath 'com.google.gms:google-services:4.4.2'`を追加する
+3. `android/app/build.gradle`の末尾（他の`apply plugin`の並びの後）に`apply plugin: 'com.google.gms.google-services'`を追加する
+4. `android/app/build.gradle`の`dependencies`に`implementation platform('com.google.firebase:firebase-bom:33.5.1')`と`implementation 'com.google.firebase:firebase-analytics-ktx'`を追加する（BOMで依存バージョンを揃えるFirebase公式の推奨構成）
+5. `native-android/AnalyticsPlugin.kt`を`android/app/src/main/java/jp/brainbox/app/`にコピーする
+6. `native-android/MainActivity.java`の内容で既存の`MainActivity.java`を上書きする（`registerPlugin(AnalyticsPlugin.class)`の行が追加されている）
+7. Android Studioで「Sync Now」→ビルドが通ることを確認する
+8. （任意・デバッグ用）`adb shell setprop debug.firebase.analytics.app jp.brainbox.app`を実行すると、[Firebase console の DebugView](https://console.firebase.google.com)でイベントをリアルタイムに確認できる（iOS版の`-FIRDebugEnabled`起動引数に相当）
+9. これらのファイルを編集した場合、`android/`内の既存ファイルは`git pull`しても自動更新されない（`native-android/`の最新内容を都度コピーし直すこと。他プラグインの節と同じ注意事項）
+
 ### 避けるパターン
 
 - `firebase_core`/`firebase_analytics`（Flutter用パッケージ）や FlutterFire CLI を使おうとしない（このアプリはFlutterではない）
 - タスク名・メモ・買い物リストの中身・住所・緯度経度・メールアドレス・ユーザー名を`params`に含めない
 - 場所関連イベントに実際の場所の名前やカテゴリ推測ロジックを追加しない（自由入力でカテゴリ分類の仕組みが無いため、何も送らない方針を維持する）
 - `AnalyticsPlugin`をWidget Extensionターゲットなど他ターゲットに追加しない（メインAppターゲットのみ）
-- `AppDelegate.swift`を編集して`FirebaseApp.configure()`を呼ぼうとしない（`BridgeViewController.capacitorDidLoad()`で完結させる設計にしてあるため不要）
+- `AppDelegate.swift`を編集して`FirebaseApp.configure()`を呼ぼうとしない（`BridgeViewController.capacitorDidLoad()`で完結させる設計にしてあるため不要）。Android側も同様に、`google-services`プラグイン経由の自動初期化に任せ、`MainActivity`/`Application`で明示的な初期化コードを書かない
 - `notification_permission_granted`/`location_permission_granted`を呼び出し元（page.tsx側）で直接`logAnalyticsEvent()`しない（`ensureGeofencePermission()`/`requestNotifyPermission()`側で`logPermissionGrantedOnce()`により一元管理・重複防止している。呼び出し元は`source`ラベルを渡すだけでよい）
 
 ---
