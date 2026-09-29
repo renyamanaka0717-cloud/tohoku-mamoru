@@ -18,6 +18,21 @@
 
 ---
 
+## 保留中のタスク（次回セッションで続ける）
+
+**Android実機へのネイティブ機能セットアップ、途中で中断中。** ユーザーはXiaomi実機を入手し、`app-debug.apk`をビルド→LINE経由で送って手動インストールする方法で実機確認できる状態になった（Android Studio経由の`adb install`はMIUIの「USB経由でインストール」制限でSIMカードが無いと使えないため、この手動インストール方式を採用）。位置情報の許可ダイアログが出ない（`GeofencePlugin`未登録）ことが確認済みで、以下のAndroidネイティブプラグインの手動セットアップがまだ未着手（ユーザーは「通知機能もまとめて」やる方針を選択済み。ウィジェット・アプリアイコン切替・音声入力・Analyticsは今回のスコープ外）:
+
+1. **Kotlinサポート追加**（前提条件、無いと`.kt`ファイルが1つもコンパイルされない）: `android/build.gradle`にKotlin Gradleプラグイン、`android/app/build.gradle`に`apply plugin: 'kotlin-android'`とkotlin-stdlib依存を追加
+2. **ファイルコピー**（`native-android/` → `android/app/src/main/java/jp/brainbox/app/`）: `GeofencePlugin.kt`/`GeofenceReceiver.kt`/`LocalNotifyPlugin.kt`/`LocalNotifyReceiver.kt`/`BootReceiver.kt`/`BrainBoxNotifications.kt`/`InactivityPlugin.kt`
+3. **`MainActivity.java`差し替え** — `registerPlugin(LocalNotifyPlugin.class)`/`registerPlugin(GeofencePlugin.class)`/`registerPlugin(InactivityPlugin.class)`の3つのみ登録する版（`native-android/MainActivity.java`はAnalyticsPlugin等も含むフル版なので、今回のスコープに合わせて絞った版を渡すこと）
+4. **`AndroidManifest.xml`追加** — 位置情報3許可＋通知/アラーム/起動時許可3つ、`GeofenceReceiver`/`LocalNotifyReceiver`/`BootReceiver`の`<receiver>`3つ
+5. **`android/app/build.gradle`に`play-services-location:21.3.0`追加**
+6. Sync→ビルド確認→実機で位置情報許可ダイアログが出ること・買い物リストの場所通知登録ができることを確認
+
+ユーザーは非エンジニアなので、この作業はAndroid Studioのスクリーンショットを見ながら1ステップずつ一緒に進める（Xcodeの手動セットアップと同じ進め方）。
+
+---
+
 ## 開発コマンド
 
 ```bash
