@@ -2494,10 +2494,20 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                 </div>
               </div>
               {custDurOpen&&(
-                <div className="flex items-center gap-2 px-4 pb-3">
-                  <input type="number" value={custDurMin} min={1}
-                    onChange={e=>setCDurMin(Math.max(1,Number(e.target.value)))}
-                    className="w-20 border border-gray-200 rounded-xl px-3 py-2 text-sm text-center outline-none"/>
+                <div className="flex items-center gap-1.5 px-4 pb-3 flex-wrap">
+                  <input type="number" inputMode="numeric" value={Math.floor(custDurMin/60)} min={0}
+                    onChange={e=>{
+                      const h=Math.max(0,parseInt(e.target.value.replace(/\D/g,''))||0);
+                      setCDurMin(Math.max(1,h*60+(custDurMin%60)));
+                    }}
+                    className="w-14 border border-gray-200 rounded-xl px-2 py-1.5 text-center text-sm font-semibold text-gray-800 bg-gray-50 outline-none"/>
+                  <span className="text-sm text-gray-600">{tr('timeUnitHour')}</span>
+                  <input type="number" inputMode="numeric" value={custDurMin%60} min={0} max={59}
+                    onChange={e=>{
+                      const m=Math.min(59,Math.max(0,parseInt(e.target.value.replace(/\D/g,''))||0));
+                      setCDurMin(Math.max(1,Math.floor(custDurMin/60)*60+m));
+                    }}
+                    className="w-14 border border-gray-200 rounded-xl px-2 py-1.5 text-center text-sm font-semibold text-gray-800 bg-gray-50 outline-none"/>
                   <span className="text-sm text-gray-600">{tr('timeUnitMin')}</span>
                   <button onClick={()=>{setDur(custDurMin);setCDurOpen(false);}}
                     className="px-4 py-2 bg-[var(--c-primary)] text-white rounded-xl text-sm font-semibold">{tr('setButton')}</button>
