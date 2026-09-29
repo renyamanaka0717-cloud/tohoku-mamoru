@@ -1426,7 +1426,7 @@ function defaultIconKey(name:string):string {
 const HOURS = Array.from({length:24},(_,i)=>String(i).padStart(2,'0'));
 const MINS  = ['00','05','10','15','20','25','30','35','40','45','50','55'];
 
-function PickerCol({items,value,onChange}:{items:string[];value:string;onChange:(v:string)=>void}){
+function PickerCol({items,value,onChange,keyboardMax,displayValue}:{items:string[];value:string;onChange:(v:string)=>void;keyboardMax:number;displayValue?:string}){
   const H=44,SHOW=5,HALF=2;
   const N=items.length;
   // Triple the items for infinite circular scroll
@@ -1519,6 +1519,18 @@ function PickerCol({items,value,onChange}:{items:string[];value:string;onChange:
         background:'rgba(0,0,0,0.02)',borderRadius:8,pointerEvents:'none',zIndex:1}}/>
       <div style={{position:'absolute',inset:0,pointerEvents:'none',zIndex:2,
         background:`linear-gradient(to bottom,#fff 0%,transparent ${HALF*H}px,transparent ${(SHOW-HALF)*H}px,#fff 100%)`}}/>
+      {/* 中央のハイライト行に透明なinputを重ね、ホイールのスクロール選択と同じ場所で
+          直接タップ→キーボード入力もできるようにする（見た目はホイールの中央表示のまま）。
+          ホイールは`items`の刻み幅（分なら5分単位）でしか選べないが、キーボード入力は
+          `keyboardMax`まで1単位で自由に指定できる */}
+      <input type="tel" inputMode="numeric" value={displayValue??value} onTouchStart={e=>e.stopPropagation()}
+        onChange={e=>{
+          const n=Math.min(keyboardMax,Math.max(0,parseInt(e.target.value.replace(/\D/g,''))||0));
+          onChange(String(n).padStart(2,'0'));
+        }}
+        style={{position:'absolute',top:HALF*H,height:H,left:0,right:0,zIndex:3,
+          background:'transparent',border:'none',outline:'none',textAlign:'center',
+          fontSize:22,fontWeight:700,color:'#1F2937',fontVariantNumeric:'tabular-nums'}}/>
       <div ref={listRef} style={{willChange:'transform'}}>
         {loopItems.map((v,i)=>(
           <div key={i} style={{height:H,display:'flex',alignItems:'center',justifyContent:'center'}}>
@@ -2872,22 +2884,12 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
             {(()=>{
               const [hStr,mStr]=startTime.split(':');
               const normM=String(Math.min(55,Math.round((parseInt(mStr)||0)/5)*5)).padStart(2,'0');
-              const clamp=(v:string,max:number)=>Math.min(max,Math.max(0,parseInt(v.replace(/\D/g,''))||0));
               return(
                 <>
-                  <div className="flex items-center justify-center gap-1.5 px-5 pt-1 pb-2">
-                    <input type="number" inputMode="numeric" value={parseInt(hStr)}
-                      onChange={e=>setST(`${String(clamp(e.target.value,23)).padStart(2,'0')}:${mStr}`)}
-                      className="w-14 border border-gray-200 rounded-xl px-2 py-1.5 text-center text-sm font-semibold text-gray-800 bg-gray-50 outline-none"/>
-                    <span className="text-sm text-gray-400">:</span>
-                    <input type="number" inputMode="numeric" value={parseInt(mStr)}
-                      onChange={e=>setST(`${hStr}:${String(clamp(e.target.value,59)).padStart(2,'0')}`)}
-                      className="w-14 border border-gray-200 rounded-xl px-2 py-1.5 text-center text-sm font-semibold text-gray-800 bg-gray-50 outline-none"/>
-                  </div>
-                  <div className="flex items-center justify-center gap-2 px-5 pb-3 pt-1">
-                    <PickerCol items={HOURS} value={hStr} onChange={v=>setST(`${v}:${normM}`)}/>
+                  <div className="flex items-center justify-center gap-2 px-5 pb-3 pt-2">
+                    <PickerCol items={HOURS} value={hStr} displayValue={hStr} keyboardMax={23} onChange={v=>setST(`${v}:${mStr}`)}/>
                     <span className="text-base font-medium text-gray-500 w-5 text-center">{tr('timeUnitHour')}</span>
-                    <PickerCol items={MINS} value={normM} onChange={v=>setST(`${hStr}:${v}`)}/>
+                    <PickerCol items={MINS} value={normM} displayValue={mStr} keyboardMax={59} onChange={v=>setST(`${hStr}:${v}`)}/>
                     <span className="text-base font-medium text-gray-500 w-5 text-center">{tr('timeUnitMin')}</span>
                   </div>
                   <div className="flex justify-center gap-3 pb-6">
