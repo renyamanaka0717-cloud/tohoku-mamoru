@@ -463,6 +463,32 @@ PRO機能の1つ。設定 → PRO → アプリアイコン で選んだ色を�
 
 この2つを両方やらないと、`setNativeAppIcon` 呼び出し時に `"AppIconPlugin" plugin is not implemented on ios` (UNIMPLEMENTED) エラーになる（Target Membershipだけ・CAP_PLUGINマクロだけでは自動登録されない）。
 
+### Android実装（`native-android/AppIconPlugin.kt`、`<activity-alias>`方式）
+
+**iOSとは実現方法が根本的に異なる。** iOSは`UIApplication.setAlternateIconName()`という1つのAPI呼び出しだけで切り替えられるが、Androidには相当するAPIが無い。代わりに、色の数だけ`AndroidManifest.xml`に`<activity-alias>`（`MainActivity`を指す「別名」コンポーネント。それぞれ別の`android:icon`を持てる）を事前宣言しておき、`PackageManager.setComponentEnabledSetting()`でどのエイリアス（または`MainActivity`本体）を有効にするかを切り替える方式を取る。ホーム画面には、有効化されている・かつLAUNCHERの`intent-filter`を持つコンポーネントのアイコンが表示される。
+
+- `native-android/AppIconPlugin.kt` — `setAppIcon(name)`。`"mint"`（デフォルト）なら`MainActivity`本体を有効化・全エイリアスを無効化、それ以外の8色（`sage`/`lilac`/`rose`/`dusty`/`apricot`/`greige`/`charcoal`/`mocha`）なら対応するエイリアス1つだけを有効化し`MainActivity`本体と他のエイリアスを無効化する。**`PackageManager.DONT_KILL_APP`フラグを必ず指定すること**（指定しないとコンポーネント無効化のたびにアプリのプロセスが強制終了される）
+- `native-android/AppIconManifest.snippet.xml` — 8色ぶんの`<activity-alias>`宣言。`android:name`（`.MainActivityAliasSage`等）は`AppIconPlugin.kt`の`ALIAS_SUFFIXES`マップのキー・クラス名と完全に一致させること（ズレると`PackageManager`が例外を投げる）。全エイリアスは`android:enabled="false"`で開始する（デフォルトは`MainActivity`本体=mint）。Android 12+ではLAUNCHERの`intent-filter`を持つコンポーネントに`android:exported="true"`が必須
+
+**アイコン画像アセット自体は手動作業が必要（コード変更だけでは完結しない）。** `<activity-alias>`の`android:icon`/`android:roundIcon`が参照する`ic_launcher_sage`等のmipmapリソースは、Android Studioの Image Asset ウィザード（File → New → Image Asset）で色ごとに1回ずつ生成する。ソース画像は`public/app-icons/{sage,lilac,rose,dusty,apricot,greige,charcoal,mocha}.png`（アプリ内アイコン選択画面のプレビューにも使っている同じ1024px角の画像。`mint`はデフォルトの`ic_launcher`が既にあるため対象外）を使う。生成した`Icon name`を`ic_launcher_<色名>`にすること（マニフェストの参照名と一致させる必要がある）。
+
+### Android Studioでの手動セットアップ（`android/`はgitignore対象なので毎回必要）
+
+1. `native-android/AppIconPlugin.kt`を`android/app/src/main/java/jp/brainbox/app/`にコピー
+2. `native-android/MainActivity.java`の内容で既存の`MainActivity.java`を上書きする（`registerPlugin(AppIconPlugin.class)`の行が追加されている）
+3. `native-android/AppIconManifest.snippet.xml`の内容を`android/app/src/main/AndroidManifest.xml`の`<application>`タグ内、既存の`<activity android:name=".MainActivity">`の直後に追加する
+4. 上記の「アイコン画像アセット」節の手順で、8色ぶんの`ic_launcher_<色名>`/`ic_launcher_<色名>_round`mipmapリソースをImage Assetウィザードで生成する
+5. Android Studioで「Sync Now」→ビルドが通ることを確認する
+6. 実機/エミュレータで設定 → PRO → アプリアイコンから色を選び、ホーム画面のアイコンが切り替わることを確認する（エミュレータではランチャーによっては即座に反映されず、ホーム画面から一度アプリドロワーを開き直す必要がある場合がある）
+7. これらのファイルを編集した場合、`android/`内の既存ファイルは`git pull`しても自動更新されない（`native-android/`の最新内容を都度コピーし直すこと。他プラグインの節と同じ注意事項）
+
+### 避けるパターン（Android）
+
+- `<activity-alias>`の`android:name`と`AppIconPlugin.kt`の`ALIAS_SUFFIXES`のキー・クラス名をズラさない（`PackageManager.setComponentEnabledSetting()`が対象コンポーネントを解決できず例外になる）
+- `PackageManager.setComponentEnabledSetting()`に`PackageManager.DONT_KILL_APP`フラグを付け忘れない（付けないとコンポーネント切り替えのたびにアプリプロセスが強制終了される）
+- `MainActivity`本体と複数のエイリアスを同時に有効化しない（ホーム画面に同じアプリのアイコンが複数表示されてしまう。常に「有効なのは1つだけ」を保つこと）
+- Image Assetウィザードで生成する`Icon name`をマニフェストの参照名（`ic_launcher_<色名>`）とズラさない
+
 ---
 
 ## ホーム画面ウィジェット（次の予定 & 買い物リスト・2カラム統合）
