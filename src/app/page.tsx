@@ -2882,7 +2882,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
           <div className="bg-white rounded-3xl mx-6 w-full max-w-xs shadow-2xl" onClick={e=>e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 pt-5 pb-3">
               <span className="text-base font-bold text-gray-800">{tr('fieldDuration')}</span>
-              <button onClick={()=>{setDur(custDurMin);setCDurOpen(false);}}
+              <button onClick={()=>{setDur(Math.max(1,custDurMin));setCDurOpen(false);}}
                 className="px-4 py-1.5 bg-[var(--c-primary)] text-white text-sm font-bold rounded-full">{tr('setButton')}</button>
             </div>
             {(()=>{
@@ -2893,15 +2893,15 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                 <>
                   <div className="flex items-center justify-center gap-2 px-5 pb-3 pt-2">
                     <PickerCol items={HOURS} value={hStr} displayValue={hStr} keyboardMax={23}
-                      onChange={v=>setCDurMin(Math.max(1,parseInt(v)*60+(custDurMin%60)))}/>
+                      onChange={v=>setCDurMin(parseInt(v)*60+(custDurMin%60))}/>
                     <span className="text-base font-medium text-gray-500 w-5 text-center">{tr('timeUnitHour')}</span>
                     <PickerCol items={MINS} value={normM} displayValue={mStr} keyboardMax={59}
-                      onChange={v=>setCDurMin(Math.max(1,Math.floor(custDurMin/60)*60+parseInt(v)))}/>
+                      onChange={v=>setCDurMin(Math.floor(custDurMin/60)*60+parseInt(v))}/>
                     <span className="text-base font-medium text-gray-500 w-5 text-center">{tr('timeUnitMin')}</span>
                   </div>
                   <div className="flex justify-center gap-3 pb-6">
                     {['00','15','30','45'].map(m=>(
-                      <button key={m} onClick={()=>setCDurMin(Math.max(1,Math.floor(custDurMin/60)*60+parseInt(m)))}
+                      <button key={m} onClick={()=>setCDurMin(Math.floor(custDurMin/60)*60+parseInt(m))}
                         className={`w-14 py-1.5 rounded-full text-sm font-bold transition-colors ${normM===m?'text-white':'text-[var(--c-primary)] bg-gray-50'}`}
                         style={normM===m?{background:'var(--c-primary)'}:{}}>
                         {m}
@@ -2931,15 +2931,15 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                 <>
                   <div className="flex items-center justify-center gap-2 px-5 pb-3 pt-2">
                     <PickerCol items={HOURS} value={hStr} displayValue={hStr} keyboardMax={23}
-                      onChange={v=>setCNMin(Math.max(1,parseInt(v)*60+(custNotifMin%60)))}/>
+                      onChange={v=>setCNMin(parseInt(v)*60+(custNotifMin%60))}/>
                     <span className="text-base font-medium text-gray-500 w-5 text-center">{tr('timeUnitHour')}</span>
                     <PickerCol items={MINS} value={normM} displayValue={mStr} keyboardMax={59}
-                      onChange={v=>setCNMin(Math.max(1,Math.floor(custNotifMin/60)*60+parseInt(v)))}/>
+                      onChange={v=>setCNMin(Math.floor(custNotifMin/60)*60+parseInt(v))}/>
                     <span className="text-base font-medium text-gray-500 w-5 text-center">{tr('timeUnitMin')}</span>
                   </div>
                   <div className="flex justify-center gap-3 pb-6">
                     {['00','15','30','45'].map(m=>(
-                      <button key={m} onClick={()=>setCNMin(Math.max(1,Math.floor(custNotifMin/60)*60+parseInt(m)))}
+                      <button key={m} onClick={()=>setCNMin(Math.floor(custNotifMin/60)*60+parseInt(m))}
                         className={`w-14 py-1.5 rounded-full text-sm font-bold transition-colors ${normM===m?'text-white':'text-[var(--c-primary)] bg-gray-50'}`}
                         style={normM===m?{background:'var(--c-primary)'}:{}}>
                         {m}
