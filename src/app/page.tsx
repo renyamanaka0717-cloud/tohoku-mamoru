@@ -2386,10 +2386,12 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                 <button className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50" onClick={()=>setDateOpen(o=>!o)}>
                   <AppIcons.calendar size={18} className="text-gray-400 shrink-0"/>
                   <span className="flex-1 text-left text-sm font-medium text-gray-800">{taskDateLabel()}</span>
-                  <AppIcons.caretRight size={14} className="text-gray-300"/>
+                  <span style={{transform:dateOpen?'rotate(90deg)':'none',transition:'transform 0.15s',display:'inline-flex'}}>
+                    <AppIcons.caretRight size={14} className="text-gray-300"/>
+                  </span>
                 </button>
                 {dateOpen&&(
-                  <div className="border-t border-gray-100 px-3 pb-3">
+                  <div className="px-3 pb-3">
                     <div className="flex items-center justify-between py-2">
                       <span className="text-sm font-bold text-gray-800">{language==='ja'?`${calVm.year}年${calVm.month+1}月`:language==='ko'?`${calVm.year}년 ${calVm.month+1}월`:language==='zh-TW'?`${calVm.year}年${calVm.month+1}月`:language==='es'?`${MONTH_NAMES_ES[calVm.month]} de ${calVm.year}`:language==='pt'?`${MONTH_NAMES_PT[calVm.month]} de ${calVm.year}`:language==='vi'?`Tháng ${calVm.month+1}, ${calVm.year}`:language==='th'?`${MONTH_NAMES_TH[calVm.month]} ${calVm.year}`:language==='id'?`${MONTH_NAMES_ID[calVm.month]} ${calVm.year}`:`${MONTH_NAMES_EN[calVm.month]} ${calVm.year}`}</span>
                       <div className="flex gap-1">
@@ -2608,10 +2610,12 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
               <AppIcons.location size={18} className="text-gray-400 shrink-0"/>
               <span className="flex-1 text-left text-sm font-medium text-gray-800">{tr('fieldAddress')}</span>
               {address&&<span className="text-xs text-gray-400 truncate max-w-[140px]">{address}</span>}
-              <AppIcons.caretRight size={14} className="text-gray-300"/>
+              <span style={{transform:addressOpen?'rotate(90deg)':'none',transition:'transform 0.15s',display:'inline-flex'}}>
+                <AppIcons.caretRight size={14} className="text-gray-300"/>
+              </span>
             </button>
             {addressOpen&&(
-              <div className="border-t border-gray-100 px-4 pt-3 pb-4">
+              <div className="px-4 pt-3 pb-4">
                 {addressMapMode?(
                   <ShopMapPicker
                     initialCenter={addressMapCenter??{lat:35.681236,lng:139.767125}}
@@ -2698,10 +2702,12 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                   {tags.length>2&&<span className="text-xs text-gray-400">+{tags.length-2}</span>}
                 </div>
               )}
-              <AppIcons.caretRight size={14} className="text-gray-300"/>
+              <span style={{transform:tagOpen?'rotate(90deg)':'none',transition:'transform 0.15s',display:'inline-flex'}}>
+                <AppIcons.caretRight size={14} className="text-gray-300"/>
+              </span>
             </button>
             {tagOpen&&(
-              <div className="border-t border-gray-100 px-4 pt-3 pb-4">
+              <div className="px-4 pt-3 pb-4">
                 {globalTags.length>0&&(
                   <div className="flex flex-wrap gap-2 mb-3">
                     {globalTags.map(td=>{
