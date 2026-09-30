@@ -1554,6 +1554,11 @@ function PickerCol({items,value,onChange,keyboardMax,displayValue}:{items:string
           }
           const n=Math.min(keyboardMax,Math.max(0,digits===''?0:parseInt(digits)));
           onChange(String(n).padStart(2,'0'));
+          // 実機のWKWebViewはヘッドレスChromeと違い、プログラムでvalueを書き換えた後も
+          // カーソルが末尾に自動で移動しないことがあるため、毎回明示的に末尾へ固定する
+          // （固定しないと、次の1文字が末尾ではなく古いカーソル位置に挿入され、桁の組み立てが崩れる）
+          const el=e.target;
+          requestAnimationFrame(()=>el.setSelectionRange(el.value.length,el.value.length));
         }}
         style={{position:'absolute',top:HALF*H,height:H,left:0,right:0,zIndex:3,
           background:'transparent',border:'none',outline:'none',textAlign:'center',
