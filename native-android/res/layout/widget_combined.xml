@@ -64,7 +64,7 @@
         </LinearLayout>
     </LinearLayout>
 
-    <View
+    <ImageView
         android:layout_width="1dp"
         android:layout_height="match_parent"
         android:layout_marginStart="8dp"
