@@ -1440,6 +1440,11 @@ function PickerCol({items,value,onChange,keyboardMax,displayValue}:{items:string
   // 上書きする（"02"になる）。2桁未満ならこれまで通り結合する（フォーカス直後に"5"→"9"と
   // 打って"59"にする、のような連続入力は維持する）
   const composedRef=useRef(0);
+  // ホイールは5分刻みの値しか持てないが、キーボード入力は1分単位の任意の値を許すため、
+  // 透明な入力欄で「06分」のような5の倍数でない値を打つと、真下のホイールは最も近い
+  // 5分刻み（例:05分）を表示し続け、透明な入力欄を通して違う数字が透けて重なって見える
+  // 不具合があった。入力中（フォーカス中）はホイール側の中央行の文字を隠すことで回避する
+  const [focused,setFocused]=useState(false);
   const H=44,SHOW=5,HALF=2;
   const N=items.length;
   // Triple the items for infinite circular scroll
@@ -1539,9 +1544,11 @@ function PickerCol({items,value,onChange,keyboardMax,displayValue}:{items:string
       <input type="tel" inputMode="numeric" value={displayValue??value} onTouchStart={e=>e.stopPropagation()}
         onFocus={e=>{
           composedRef.current=0;
+          setFocused(true);
           const el=e.target;
           requestAnimationFrame(()=>el.select());
         }}
+        onBlur={()=>setFocused(false)}
         onChange={e=>{
           const raw=e.target.value.replace(/\D/g,'');
           let digits:string;
@@ -1568,7 +1575,8 @@ function PickerCol({items,value,onChange,keyboardMax,displayValue}:{items:string
           <div key={i} style={{height:H,display:'flex',alignItems:'center',justifyContent:'center'}}>
             <span style={{fontSize:v===value?22:16,fontWeight:v===value?700:400,
               color:v===value?'#1F2937':'#9CA3AF',fontVariantNumeric:'tabular-nums',
-              transition:'font-size 0.15s,color 0.15s'}}>
+              transition:'font-size 0.15s,color 0.15s',
+              opacity:(v===value&&focused)?0:1}}>
               {v}
             </span>
           </div>
