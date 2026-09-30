@@ -2617,7 +2617,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                   <>
                     {/* 場所で通知（「あとでやる」限定・PRO機能。地図で選んだ場所にのみ設定できる） */}
                     {mode==='later'&&(
-                      <>
+                      <div className="mb-3">
                         <button className="w-full flex items-center gap-2"
                           onClick={async()=>{
                             if(!isPremium){ setModalProPrompt(tr('proFeatureLocationNotify')); return; }
@@ -2645,8 +2645,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                             {tr('taskLocationPermRevokedNote')}
                           </p>
                         )}
-                        <div className="h-px bg-gray-100 -mx-4 my-3"/>
-                      </>
+                      </div>
                     )}
                     <input value={address} onChange={e=>{
                         const v=e.target.value;
