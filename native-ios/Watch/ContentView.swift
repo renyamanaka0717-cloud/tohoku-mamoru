@@ -2,6 +2,8 @@
 //
 // UIは「マイクボタン」＋状態表示のみ。日時設定・所要時間設定は意図的に持たない
 // （「思いついた瞬間に、とりあえず頭の外に出す」ことに特化させる方針）。
+// アプリを開いた瞬間（.onAppear）に、マイクボタンのタップを待たずに自動でダイクテーションを
+// 開始する。マイクボタン自体は、キャンセル・空発話等でidleに戻った時の手動リトライ用に残す。
 //
 // 【音声入力の実装方法】watchOSにはiOS版VoiceInputPlugin（SFSpeechRecognizer＋AVAudioEngine自前実装）
 // に相当する作り込みは不要。WatchKitのpresentTextInputController(withSuggestions:allowedInputMode:)を
@@ -88,6 +90,13 @@ struct ContentView: View {
             }
         }
         .padding()
+        // 「思いついた瞬間に、とりあえず頭の外に出す」ことに特化させる方針のため、アプリを
+        // 開いたらマイクボタンのタップを待たずに即座にダイクテーションへ入る。idle状態の時
+        // だけ発火させることで、preview/sending等の途中でこのビューが再描画されても
+        // 二重に開始しないようにしている
+        .onAppear {
+            if state == .idle { startDictation() }
+        }
     }
 
     private func startDictation() {
