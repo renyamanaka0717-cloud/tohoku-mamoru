@@ -9,6 +9,7 @@ import { registerPlugin } from '@capacitor/core';
 
 interface WatchBridgePluginType {
   getPendingWatchTasks(): Promise<{ texts: string[] }>;
+  updateThemeColor(options: { hex: string }): Promise<void>;
 }
 
 const WatchBridgePlugin = registerPlugin<WatchBridgePluginType>('WatchBridgePlugin');
@@ -25,5 +26,16 @@ export async function getPendingWatchTasks(): Promise<string[]> {
     return res.texts ?? [];
   } catch {
     return [];
+  }
+}
+
+// 設定 → 表示設定 → テーマカラーの現在の色をWatch版に伝える（Watch版のマイクアイコンの
+// 色を追従させるため）。「あとでやる」取得とは逆方向の通信
+export async function updateWatchThemeColor(hex: string): Promise<void> {
+  if (!isNative()) return;
+  try {
+    await WatchBridgePlugin.updateThemeColor({ hex });
+  } catch {
+    // ネイティブ側未導入時は静かにスキップ
   }
 }

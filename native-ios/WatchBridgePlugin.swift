@@ -11,6 +11,12 @@
 // がまだ読み込まれておらず notifyListeners を安全に呼べる保証がない。他の保留アクション系
 // プラグインと同じ「ネイティブは受け取って貯めるだけ、実際の反映はJSがフォアグラウンド復帰時に
 // 読みに来る」というポーリング方式に統一することで、この問題を回避している。
+//
+// 【逆方向（iPhone→Watch）: テーマカラー同期】updateThemeColor()だけは逆方向の通信で、
+// JS側（設定 → 表示設定 → テーマカラー変更時）から呼ばれ、WCSession.
+// updateApplicationContext()でWatch側（WatchConnector.swift）に現在のテーマカラーを push
+// する。こちらは「最新の状態を1つだけ保持する」用途のAPIなので、上記のポーリング方式とは
+// 別物（プッシュ型で問題ない——アプリがバックグラウンドでもOSが自動的に配信してくれる）。
 import Capacitor
 import WatchConnectivity
 
@@ -30,6 +36,18 @@ public class WatchBridgePlugin: CAPPlugin, WCSessionDelegate {
         let texts = defaults.stringArray(forKey: WatchBridgePlugin.pendingKey) ?? []
         defaults.removeObject(forKey: WatchBridgePlugin.pendingKey)
         call.resolve(["texts": texts])
+    }
+
+    // 設定 → 表示設定 → テーマカラーが変わるたびに呼ばれ、Watch版のマイクアイコンの色を
+    // 追従させる。updateApplicationContextは「最新の1件だけ保持される」設計のAPIのため、
+    // 頻繁に呼んでも問題なく、Watch側は常に最新の色だけを受け取る（「あとでやる」送信で
+    // 使うsendMessage/transferUserInfoとは逆方向・別の仕組み）
+    @objc func updateThemeColor(_ call: CAPPluginCall) {
+        guard let hex = call.getString("hex") else { call.resolve(); return }
+        let session = WCSession.default
+        guard session.activationState == .activated else { call.resolve(); return }
+        try? session.updateApplicationContext(["themeColor": hex])
+        call.resolve()
     }
 
     private func enqueue(_ text: String) {

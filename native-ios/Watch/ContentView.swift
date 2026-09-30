@@ -40,6 +40,13 @@ struct ContentView: View {
     @State private var fallbackText: String = ""
     @State private var showFallbackField = false
 
+    // iPhone側（設定 → 表示設定 → テーマカラー）が選んでいる色にマイクアイコンを追従させる。
+    // まだWatchConnectorが受信できていない場合（初回起動直後等）は、アプリ全体の既定色
+    // （#D9A3B2、ダスティピンク）にフォールバックする
+    private var accentColor: Color {
+        Color(hex: connector.themeColorHex ?? "#D9A3B2")
+    }
+
     var body: some View {
         VStack(spacing: 10) {
             switch state {
@@ -53,7 +60,7 @@ struct ContentView: View {
                     }
                 }
                 .buttonStyle(.plain)
-                .foregroundStyle(Color(red: 217/255, green: 163/255, blue: 178/255))
+                .foregroundStyle(accentColor)
                 // フォールバック用（visibleInterfaceControllerがnilだった場合のみ表示される）
                 if showFallbackField {
                     TextField("タスク名", text: $fallbackText, onCommit: {
@@ -133,5 +140,20 @@ struct ContentView: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) {
             state = .idle
         }
+    }
+}
+
+// native-ios/Widgets/BrainBoxWidgets.swiftにある同名のextensionと同じ実装（Widget
+// ExtensionとWatch Appは別ターゲットのためファイルを共有できず、こちらにも複製している）
+extension Color {
+    init(hex: String) {
+        var s = hex.trimmingCharacters(in: .whitespacesAndNewlines)
+        s.removeAll { $0 == "#" }
+        var rgb: UInt64 = 0
+        Scanner(string: s).scanHexInt64(&rgb)
+        let r = Double((rgb >> 16) & 0xFF) / 255
+        let g = Double((rgb >> 8) & 0xFF) / 255
+        let b = Double(rgb & 0xFF) / 255
+        self.init(red: r, green: g, blue: b)
     }
 }

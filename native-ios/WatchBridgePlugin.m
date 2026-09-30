@@ -3,4 +3,5 @@
 
 CAP_PLUGIN(WatchBridgePlugin, "WatchBridgePlugin",
   CAP_PLUGIN_METHOD(getPendingWatchTasks, CAPPluginReturnPromise);
+  CAP_PLUGIN_METHOD(updateThemeColor, CAPPluginReturnPromise);
 )

@@ -5,7 +5,7 @@ import { AppIcons } from './components/Icons';
 import { usePremium } from './components/Premium';
 import { setNativeAppIcon } from './components/AppIcon';
 import { updateWidgetData, getPendingWidgetActions } from './components/WidgetData';
-import { getPendingWatchTasks } from './components/WatchBridge';
+import { getPendingWatchTasks, updateWatchThemeColor } from './components/WatchBridge';
 import { setShopGeofences, setTaskLocationGeofences, setForgetAlertGeofences, checkGeofencePermissions, ensureGeofencePermission, getPendingGeofenceAction, getFiredTaskLocationIds, getNativeCurrentLocation, openAppSettings } from './components/Geofence';
 import { scheduleInactivityReminder, cancelInactivityReminder } from './components/Inactivity';
 import { notify, requestNotifyPermission, syncTaskAlerts, syncFreeSlotAlerts, syncShopNotifs, syncLaterStaleAlerts, syncWakeCheckins, syncDeadlineAlerts, isNative, isAndroid } from './components/LocalNotify';
@@ -7401,6 +7401,7 @@ export default function App() {
     const laterList=tasks.filter(t=>t.isLater&&!t.completed).slice(0,7).map(t=>({id:t.id,name:t.name,icon:t.icon||defaultIconKey(t.name)}));
     const themeColor=THEMES.find(th=>th.id===(settings.theme??'mint'))?.color??'#94CFC8';
     updateWidgetData(nextTasks,shopList,laterList,themeColor,language);
+    updateWatchThemeColor(themeColor);
   },[tasks,shopItems,now,loaded,settings.theme,language]);
   useEffect(()=>{
     if(!loaded) return;
