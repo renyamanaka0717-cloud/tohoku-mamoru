@@ -5,8 +5,10 @@
 //
 // 【音声入力の実装方法】watchOSにはiOS版VoiceInputPlugin（SFSpeechRecognizer＋AVAudioEngine自前実装）
 // に相当する作り込みは不要。WatchKitのpresentTextInputController(withSuggestions:allowedInputMode:)を
-// allowedInputMode: .forceDictation で呼ぶと、候補チップ/Scribble選択を経由せず即座にシステム標準の
-// 「聞き取り中」ダイクテーション画面が開き、話し終えると自動でテキストに変換されてcompletionに返る
+// allowedInputMode: .plain で呼ぶと、システム標準の入力選択画面（ダイクテーション/Scribble/
+// 定型リスト）が開き、ダイクテーションを選んで話し終えると自動でテキストに変換されてcompletionに返る
+// （.forceDictationというケースは実在しない。WKTextInputModeは.plain/.allowEmoji/
+// .allowAnimatedEmojiの3つのみで、候補チップ/Scribble選択を完全にスキップする手段は無い）
 // （音声キャプチャ・認識はシステムのプロセスが行うため、アプリ側でNSMicrophoneUsageDescription/
 // NSSpeechRecognitionUsageDescriptionをWatch App側Info.plistに追加する必要は無い——iOS版の
 // VoiceInputPluginが自前でマイクを掴む方式とはこの点が根本的に異なる）。
@@ -91,7 +93,7 @@ struct ContentView: View {
     private func startDictation() {
         state = .dictating
         if let controller = WKExtension.shared().visibleInterfaceController {
-            controller.presentTextInputController(withSuggestions: nil, allowedInputMode: .forceDictation) { results in
+            controller.presentTextInputController(withSuggestions: nil, allowedInputMode: .plain) { results in
                 DispatchQueue.main.async {
                     if let text = (results?.first as? String), !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                         showPreviewThenSend(text)
