@@ -2615,36 +2615,9 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                     onCancel={()=>{setAddressMapMode(false);setAddressMapCenter(null);}}/>
                 ):(
                   <>
-                    <input value={address} onChange={e=>{
-                        const v=e.target.value;
-                        setAddress(v);
-                        if(!v.trim()){ setTaskLocation(null); setLocationNotify(false); }
-                      }}
-                      placeholder={tr('addressPlaceholder')}
-                      className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50 mb-3"/>
-                    <div className="flex gap-2">
-                      <button onClick={()=>{setAddressMapCenter(null);setAddressMapMode(true);}}
-                        className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200">
-                        {tr('pickOnMapButton')}
-                      </button>
-                      <button onClick={()=>{
-                          setAddressLocating(true);
-                          getCurrentCoords(10000).then(loc=>{
-                            setAddressLocating(false);
-                            if(!loc) return;
-                            setAddressMapCenter(loc);
-                            setAddressMapMode(true);
-                          });
-                        }} disabled={addressLocating}
-                        className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200 disabled:opacity-40">
-                        {addressLocating?tr('gettingLocationLabel'):tr('useCurrentLocationButton')}
-                      </button>
-                    </div>
-
                     {/* 場所で通知（「あとでやる」限定・PRO機能。地図で選んだ場所にのみ設定できる） */}
                     {mode==='later'&&(
                       <>
-                        <div className="h-px bg-gray-100 -mx-4 my-3"/>
                         <button className="w-full flex items-center gap-2"
                           onClick={async()=>{
                             if(!isPremium){ setModalProPrompt(tr('proFeatureLocationNotify')); return; }
@@ -2672,8 +2645,34 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                             {tr('taskLocationPermRevokedNote')}
                           </p>
                         )}
+                        <div className="h-px bg-gray-100 -mx-4 my-3"/>
                       </>
                     )}
+                    <input value={address} onChange={e=>{
+                        const v=e.target.value;
+                        setAddress(v);
+                        if(!v.trim()){ setTaskLocation(null); setLocationNotify(false); }
+                      }}
+                      placeholder={tr('addressPlaceholder')}
+                      className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50 mb-3"/>
+                    <div className="flex gap-2">
+                      <button onClick={()=>{setAddressMapCenter(null);setAddressMapMode(true);}}
+                        className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200">
+                        {tr('pickOnMapButton')}
+                      </button>
+                      <button onClick={()=>{
+                          setAddressLocating(true);
+                          getCurrentCoords(10000).then(loc=>{
+                            setAddressLocating(false);
+                            if(!loc) return;
+                            setAddressMapCenter(loc);
+                            setAddressMapMode(true);
+                          });
+                        }} disabled={addressLocating}
+                        className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 active:bg-gray-200 disabled:opacity-40">
+                        {addressLocating?tr('gettingLocationLabel'):tr('useCurrentLocationButton')}
+                      </button>
+                    </div>
                   </>
                 )}
               </div>
