@@ -17,9 +17,115 @@
 <string name="widget_no_tasks">No tasks</string>
 <string name="widget_shopping_title">Shopping list</string>
 <string name="widget_no_shop_items">Nothing to buy</string>
-<string name="widget_combined_description">Shows today's schedule and shopping list together. Tap to mark as done.</string>
+<string name="widget_combined_description">Shows today\'s schedule and shopping list together. Tap to mark as done.</string>
 <string name="widget_add_later_label">Add later</string>
 <string name="widget_add_later_description">Add a "Later" task with one tap.</string>
 <string name="widget_add_later_voice_label">Add by voice</string>
 <string name="widget_add_later_voice_description">Add a "Later" task just by speaking.</string>
+-->
+
+<!-- ============================================================ -->
+<!-- android/app/src/main/res/values-ko/strings.xml の <resources> 直下に追加する（韓国語） -->
+<!-- values-ko/ ディレクトリが無い場合はAndroid Studioで新規作成すること -->
+<!--
+<string name="widget_next_tasks_title">다음 일정</string>
+<string name="widget_no_tasks">일정이 없어요</string>
+<string name="widget_shopping_title">쇼핑 목록</string>
+<string name="widget_no_shop_items">살 것이 없어요</string>
+<string name="widget_combined_description">오늘의 일정과 쇼핑 목록을 한눈에 보여줘요. 탭하면 완료 처리할 수 있어요.</string>
+<string name="widget_add_later_label">나중에</string>
+<string name="widget_add_later_description">탭 한 번으로 \'나중에 할 일\' 추가 화면을 열 수 있어요.</string>
+<string name="widget_add_later_voice_label">음성으로 추가</string>
+<string name="widget_add_later_voice_description">말하기만 해도 나중에 할 일을 추가할 수 있습니다.</string>
+-->
+
+<!-- ============================================================ -->
+<!-- android/app/src/main/res/values-zh-rTW/strings.xml の <resources> 直下に追加する（繁体字中国語・台湾） -->
+<!-- values-zh-rTW/ ディレクトリが無い場合はAndroid Studioで新規作成すること -->
+<!--
+<string name="widget_next_tasks_title">下一項行程</string>
+<string name="widget_no_tasks">沒有行程</string>
+<string name="widget_shopping_title">購物清單</string>
+<string name="widget_no_shop_items">沒有要買的東西</string>
+<string name="widget_combined_description">一次顯示今天的行程與購物清單，點選即可標記完成。</string>
+<string name="widget_add_later_label">稍後辦</string>
+<string name="widget_add_later_description">點一下即可開啟「稍後辦」任務的新增畫面。</string>
+<string name="widget_add_later_voice_label">語音新增</string>
+<string name="widget_add_later_voice_description">只要開口說話，就能新增稍後辦任務。</string>
+-->
+
+<!-- ============================================================ -->
+<!-- android/app/src/main/res/values-es/strings.xml の <resources> 直下に追加する（スペイン語） -->
+<!-- values-es/ ディレクトリが無い場合はAndroid Studioで新規作成すること -->
+<!--
+<string name="widget_next_tasks_title">Próximo</string>
+<string name="widget_no_tasks">No hay eventos</string>
+<string name="widget_shopping_title">Lista de compras</string>
+<string name="widget_no_shop_items">No hay artículos por comprar</string>
+<string name="widget_combined_description">Muestra juntos el horario de hoy y la lista de compras. Puedes marcarlos como completados con un toque.</string>
+<string name="widget_add_later_label">Más tarde</string>
+<string name="widget_add_later_description">Toca para abrir la pantalla de agregar tarea para Más tarde.</string>
+<string name="widget_add_later_voice_label">Agregar por voz</string>
+<string name="widget_add_later_voice_description">Simplemente habla para agregar una tarea para más tarde.</string>
+-->
+
+<!-- ============================================================ -->
+<!-- android/app/src/main/res/values-pt/strings.xml の <resources> 直下に追加する（ポルトガル語） -->
+<!-- values-pt/ ディレクトリが無い場合はAndroid Studioで新規作成すること -->
+<!--
+<string name="widget_next_tasks_title">Próximo</string>
+<string name="widget_no_tasks">Nenhum evento</string>
+<string name="widget_shopping_title">Lista de compras</string>
+<string name="widget_no_shop_items">Nenhum item para comprar</string>
+<string name="widget_combined_description">Mostra juntos a agenda de hoje e a lista de compras. Toque para marcar como concluído.</string>
+<string name="widget_add_later_label">Mais tarde</string>
+<string name="widget_add_later_description">Toque para abrir a tela de adicionar tarefa para Mais tarde.</string>
+<string name="widget_add_later_voice_label">Adicionar por voz</string>
+<string name="widget_add_later_voice_description">Basta falar para adicionar uma tarefa para mais tarde.</string>
+-->
+
+<!-- ============================================================ -->
+<!-- android/app/src/main/res/values-vi/strings.xml の <resources> 直下に追加する（ベトナム語） -->
+<!-- values-vi/ ディレクトリが無い場合はAndroid Studioで新規作成すること -->
+<!--
+<string name="widget_next_tasks_title">Sắp tới</string>
+<string name="widget_no_tasks">Không có sự kiện</string>
+<string name="widget_shopping_title">Danh sách mua sắm</string>
+<string name="widget_no_shop_items">Không có mục nào cần mua</string>
+<string name="widget_combined_description">Hiển thị cùng lúc lịch trình hôm nay và danh sách mua sắm. Chạm để đánh dấu hoàn thành.</string>
+<string name="widget_add_later_label">Để sau</string>
+<string name="widget_add_later_description">Chạm để mở màn hình thêm công việc Để sau.</string>
+<string name="widget_add_later_voice_label">Thêm bằng giọng nói</string>
+<string name="widget_add_later_voice_description">Chỉ cần nói là có thể thêm công việc để sau.</string>
+-->
+
+<!-- ============================================================ -->
+<!-- android/app/src/main/res/values-th/strings.xml の <resources> 直下に追加する（タイ語） -->
+<!-- values-th/ ディレクトリが無い場合はAndroid Studioで新規作成すること -->
+<!--
+<string name="widget_next_tasks_title">กำหนดการถัดไป</string>
+<string name="widget_no_tasks">ไม่มีกำหนดการ</string>
+<string name="widget_shopping_title">รายการซื้อของ</string>
+<string name="widget_no_shop_items">ไม่มีของที่ต้องซื้อ</string>
+<string name="widget_combined_description">แสดงกำหนดการวันนี้และรายการซื้อของรวมกัน แตะเพื่อทำเครื่องหมายว่าเสร็จ</string>
+<string name="widget_add_later_label">ไว้ทีหลัง</string>
+<string name="widget_add_later_description">แตะเพื่อเปิดหน้าจอเพิ่มงานไว้ทีหลัง</string>
+<string name="widget_add_later_voice_label">เพิ่มด้วยเสียง</string>
+<string name="widget_add_later_voice_description">แค่พูดก็เพิ่มงานไว้ทีหลังได้</string>
+-->
+
+<!-- ============================================================ -->
+<!-- android/app/src/main/res/values-in/strings.xml の <resources> 直下に追加する（インドネシア語。
+     Androidのインドネシア語リソース修飾子は歴史的経緯で in、id ではない点に注意） -->
+<!-- values-in/ ディレクトリが無い場合はAndroid Studioで新規作成すること -->
+<!--
+<string name="widget_next_tasks_title">Berikutnya</string>
+<string name="widget_no_tasks">Tidak ada jadwal</string>
+<string name="widget_shopping_title">Daftar Belanja</string>
+<string name="widget_no_shop_items">Tidak ada barang untuk dibeli</string>
+<string name="widget_combined_description">Menampilkan jadwal hari ini dan daftar belanja sekaligus. Ketuk untuk menandai selesai.</string>
+<string name="widget_add_later_label">Nanti</string>
+<string name="widget_add_later_description">Ketuk untuk membuka layar tambah tugas Nanti.</string>
+<string name="widget_add_later_voice_label">Tambah dengan suara</string>
+<string name="widget_add_later_voice_description">Cukup bicara untuk menambahkan tugas Nanti.</string>
 -->

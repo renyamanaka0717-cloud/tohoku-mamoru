@@ -583,7 +583,7 @@ iOS標準のホーム画面ウィジェット（WidgetKit）。1つの大きい�
 - `native-android/res/layout/*.xml`・`res/xml/*_info.xml`・`res/drawable/*.xml` — RemoteViewsのレイアウト・`AppWidgetProviderInfo`（最小サイズ・更新間隔等）・テーマカラーで着色するための単色ドット/背景の図形リソース。**ドットのアイコンは`ImageView.setColorFilter()`でテーマカラーに動的着色するため、XML側の色（白）はダミーでよい**
 - `updatePeriodMillis="900000"`（15分）はiOS版の`Timeline(entries:policy:.after(Date()+15分))`に相当する保険的な定期更新（実際のデータ反映は`WidgetDataPlugin.updateWidgetData()`呼び出し時・タップ時に即座に行われるため、この間隔はあくまでフォールバック）
 
-**多言語対応は現状デフォルト（日本語）＋英語のみ（既知のスコープ限定・iOSとの意図的な差分）。** iOS版はString Catalogで9言語すべてに自動追従するが、Android版はこの初回実装では`values/strings.xml`（デフォルト＝日本語）と`values-en/strings.xml`（英語）のみ用意した（`WidgetStrings.snippet.xml`参照）。韓国語・繁体字中国語・スペイン語・ポルトガル語・ベトナム語・タイ語・インドネシア語の`values-XX/`はまだ無く、それらの端末言語では日本語（デフォルト）にフォールバックする。**新しいセッションでAndroidウィジェットの多言語対応を追加する時は、この`WidgetStrings.snippet.xml`の内容を元に`values-ko/`・`values-zh-rTW/`・`values-es/`・`values-pt/`・`values-vi/`・`values-th/`・`values-in/`（Androidのインドネシア語リソース修飾子は歴史的経緯で`in`、`id`ではない点に注意）を追加すること。**
+**多言語対応はja/en/ko/zh-TW/es/pt/vi/th/idの9言語すべて対応済み（iOS版と同じ言語カバレッジ）。** `WidgetStrings.snippet.xml`に日本語（デフォルト）・英語に加えて残り7言語ぶんの文言（iOS版`native-ios/Widgets/Localizable.xcstrings`の翻訳を転用）もコメントブロックとして追記済み。**新しいセッションでAndroid Studioにセットアップする時は、この`WidgetStrings.snippet.xml`の日本語ブロックに加えて、残り8言語ぶんのコメントブロックもそれぞれ`values-en/`・`values-ko/`・`values-zh-rTW/`・`values-es/`・`values-pt/`・`values-vi/`・`values-th/`・`values-in/`（Androidのインドネシア語リソース修飾子は歴史的経緯で`in`、`id`ではない点に注意）にコピーすること。**
 
 **言語判定（`GeofenceReceiver.kt`の`appLang()`）はWidgetDataPluginの移植により、iOS版と同じ方式に揃えた。** `widget_prefs`の`appLanguage`キー（`WidgetDataPlugin.updateWidgetData()`が書き込む、アプリ内で手動選択した言語）を優先して読み、JSが一度も`updateWidgetData()`を呼んでいない場合のみ端末のシステムロケールにフォールバックする（買い物リストの場所通知セクションを参照）。
 
@@ -594,7 +594,7 @@ iOS標準のホーム画面ウィジェット（WidgetKit）。1つの大きい�
 3. `native-android/res/layout/`の3ファイル（`widget_combined.xml`/`widget_add_later.xml`/`widget_add_later_voice.xml`）を`android/app/src/main/res/layout/`にコピー
 4. `native-android/res/xml/`の3ファイル（`widget_combined_info.xml`/`widget_add_later_info.xml`/`widget_add_later_voice_info.xml`）を`android/app/src/main/res/xml/`にコピー（`xml/`ディレクトリが無い場合は新規作成）
 5. `native-android/res/drawable/`の2ファイル（`widget_dot.xml`/`widget_background.xml`）を`android/app/src/main/res/drawable/`にコピー
-6. `native-android/WidgetStrings.snippet.xml`のデフォルト（日本語）分を`android/app/src/main/res/values/strings.xml`に、コメントアウトされている英語分を`values-en/strings.xml`に追加（`values-en/`ディレクトリが無い場合は新規作成）
+6. `native-android/WidgetStrings.snippet.xml`のデフォルト（日本語）分を`android/app/src/main/res/values/strings.xml`に、コメントアウトされている残り8言語分（en/ko/zh-rTW/es/pt/vi/th/in）をそれぞれ対応する`values-XX/strings.xml`に追加（ディレクトリが無い場合は新規作成）
 7. `native-android/WidgetManifest.snippet.xml`の内容を`android/app/src/main/AndroidManifest.xml`に追加（3つの`<receiver>`は`<application>`タグの内側、`brainbox://`の`intent-filter`は既存の`.MainActivity`の`<activity>`タグの中、既存のLAUNCHER `intent-filter`のすぐ後に追加）
 8. Android Studioで「Sync Now」→ビルドが通ることを確認する
 9. 実機/エミュレータのホーム画面で長押し →「ウィジェット」→「BrainBox」を検索 → 3種類のウィジェット（「次の予定 & 買い物リスト」「あとでやる」「音声で追加」）が追加できることを確認する
@@ -612,6 +612,10 @@ iOS標準のホーム画面ウィジェット（WidgetKit）。1つの大きい�
 - `Localizable.xcstrings`をメインAppターゲットに追加しない（Widget Extensionターゲットのみ。ウィジェット内の文言専用のカタログ）
 - Android側で`AppWidgetProvider`用の`PendingIntent`の`requestCode`を全行・全ウィジェットインスタンスで固定値にしない（同じ`requestCode`だと後から作った`PendingIntent`のextraで前のものが上書きされ、どの行をタップしても最後のidだけが送られる不具合になる。`appWidgetId`と行indexを組み合わせて一意にすること）
 - Android側でRemoteViewsのタップ判定をタスク最大4件・買い物最大6件という前提を超えて拡張する時、固定行のレイアウトを増やさず`RemoteViewsService`（可変長リスト）へ安易に切り替えない（実装コストが大きく上がるため、まず表示件数の上限を増やすだけで足りないか検討すること）
+
+**過去の不具合: `widget_combined.xml`の区切り線に使っていたプレーンな`<View>`要素のせいで、「次の予定 & 買い物リスト」ウィジェットが常に「ウィジェットを読み込めません」になっていた。** RemoteViews（ホーム画面ウィジェットが使う、制限されたView階層でのみレイアウトを描画する仕組み）は、`FrameLayout`/`LinearLayout`/`RelativeLayout`/`GridLayout`と`TextView`/`ImageView`/`ImageButton`/`Button`/`ProgressBar`等、決められたクラスしかサポートしない。素の`android.view.View`はこの許可リストに入っておらず、`LayoutInflater.failNotAllowed()`が`InflateException: Class not allowed`を投げてinflateごと失敗する（Logcatで`brainbox`フィルタし、`Error inflating RemoteViews`→`Caused by: ... Class not allowed`という行が実際の手がかりだった）。修正: 縦の区切り線として使っていた`<View android:background="#E5E7EB".../>`を、同じ見た目のまま`<ImageView>`に置き換えた（`ImageView`はRemoteViewsで許可されているため、単色の背景を持つだけの区切り線としてそのまま使える）。**RemoteViewsを使うレイアウトXML（`widget_combined.xml`等）に新しい要素を追加する時は、素の`<View>`を使わず、区切り線的な用途でも`<ImageView>`や`<LinearLayout>`のような許可されたクラスで代用すること。**
+
+**同じ調査で踏んだ罠: クラウドセッション側でファイルを編集・commit・pushしても、ユーザーのMac上のローカルリポジトリには自動的には反映されない。** `cp native-android/... android/...`をローカルのターミナルで実行しても、コピー元の`native-android/...`自体がローカルではまだ古いバージョンのままだと、当然コピー先も古いままになる（`diff`で比較しても「差分なし」と出るため、一見コピーコマンドが機能しているように見えてしまい、原因究明が長引いた）。**ユーザーのローカル環境で作業してもらっている最中に、クラウド側（このセッション）でリポジトリのファイルを修正してpushした場合は、次にローカル側でそのファイルを使う操作（`cp`等）をお願いする前に、必ず`git fetch origin && git reset --hard origin/main`（または該当ブランチ）をローカルで実行してもらい、最新化されたことを確認すること。**
 
 ---
 
