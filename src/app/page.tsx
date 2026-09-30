@@ -469,7 +469,14 @@ const STALE_MAX_REPEATS = 5;
 // CLLocationManager.requestLocation() を直接使うGeofencePluginのgetCurrentLocationを使う。
 // Web/開発環境ではnavigator.geolocationにフォールバックする
 const getCurrentCoords = (timeoutMs=10000): Promise<{lat:number;lng:number}|null> => {
-  if(isNative()) return getNativeCurrentLocation();
+  // GeofencePlugin.getCurrentLocation()がCLLocationManagerのdelegateコールバックを
+  // 何らかの理由で一度も受け取れない場合、このPromiseは永久に解決されずボタンが
+  // 「取得中...」のまま固まる不具合があった。Web版フォールバックと同じくタイムアウトで
+  // 必ずnullへフォールバックさせる
+  if(isNative()) return Promise.race([
+    getNativeCurrentLocation(),
+    new Promise<null>(resolve=>setTimeout(()=>resolve(null),timeoutMs)),
+  ]);
   if(!navigator.geolocation) return Promise.resolve(null);
   return new Promise(resolve=>{
     let done=false;
