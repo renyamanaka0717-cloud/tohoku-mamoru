@@ -1526,7 +1526,7 @@ function PickerCol({items,value,onChange,keyboardMax,displayValue}:{items:string
       <input type="tel" inputMode="numeric" value={displayValue??value} onTouchStart={e=>e.stopPropagation()}
         onFocus={e=>{
           const el=e.target;
-          requestAnimationFrame(()=>el.setSelectionRange(el.value.length,el.value.length));
+          requestAnimationFrame(()=>el.select());
         }}
         onChange={e=>{
           const n=Math.min(keyboardMax,Math.max(0,parseInt(e.target.value.replace(/\D/g,''))||0));
