@@ -1524,6 +1524,10 @@ function PickerCol({items,value,onChange,keyboardMax,displayValue}:{items:string
           ホイールは`items`の刻み幅（分なら5分単位）でしか選べないが、キーボード入力は
           `keyboardMax`まで1単位で自由に指定できる */}
       <input type="tel" inputMode="numeric" value={displayValue??value} onTouchStart={e=>e.stopPropagation()}
+        onFocus={e=>{
+          const el=e.target;
+          requestAnimationFrame(()=>el.setSelectionRange(el.value.length,el.value.length));
+        }}
         onChange={e=>{
           const n=Math.min(keyboardMax,Math.max(0,parseInt(e.target.value.replace(/\D/g,''))||0));
           onChange(String(n).padStart(2,'0'));
