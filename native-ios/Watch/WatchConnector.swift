@@ -13,6 +13,13 @@ import Foundation
 import WatchConnectivity
 
 final class WatchConnector: NSObject, ObservableObject, WCSessionDelegate {
+    // activate()は起動時に呼ぶが完了は非同期のため、アプリを開いてすぐダイクテーションを
+    // 終えて送信しようとすると、activationDidCompleteWithがまだ来ていないことがある
+    // （実際に「送信できませんでした」になる不具合として発生した）。「まず記録できたら
+    // 安心させる」方針に反してこの一瞬のタイミング差だけで失敗扱いにしないよう、未活性化中は
+    // ここにキューイングしておき、activation完了時にまとめて送る
+    private var pendingTexts: [String] = []
+
     override init() {
         super.init()
         guard WCSession.isSupported() else { return }
@@ -27,14 +34,26 @@ final class WatchConnector: NSObject, ObservableObject, WCSessionDelegate {
     // 例外を投げなければ成功とみなす
     func send(_ text: String) -> Bool {
         let session = WCSession.default
-        guard session.activationState == .activated else { return false }
+        guard session.activationState == .activated else {
+            pendingTexts.append(text)
+            return true
+        }
+        deliver(text, session: session)
+        return true
+    }
+
+    private func deliver(_ text: String, session: WCSession) {
         if session.isReachable {
             session.sendMessage(["text": text], replyHandler: nil, errorHandler: nil)
         } else {
             session.transferUserInfo(["text": text])
         }
-        return true
     }
 
-    func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {}
+    func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {
+        guard activationState == .activated, !pendingTexts.isEmpty else { return }
+        let texts = pendingTexts
+        pendingTexts = []
+        texts.forEach { deliver($0, session: session) }
+    }
 }
