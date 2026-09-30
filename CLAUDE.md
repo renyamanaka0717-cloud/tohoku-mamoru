@@ -772,20 +772,26 @@ const SHOP_LOC_KEY = 'tl-shop-loc-v1';
 
 **設計方針（重要）:** 当初は「先に発火した方を採用し、もう片方を解除する」というOR条件の設計だったが、BrainBoxはADHD傾向のユーザーを前提としているため撤回した。ADHDの特性上「通知に気づいても別の行動に移ってしまう」「お店の前を通っても素通りしてしまう」ことがあり得るため、片方の通知だけで確実に思い出せるとは限らない。**「通知を減らす」のではなく「思い出すきっかけを増やす」ことを優先し、時間通知と場所通知はそれぞれ独立して発火する（重複して両方届くことがあっても問題としない）。**
 
-### 通知の管理（1タスク1回のみ、ただし他方とは無関係）
+### 通知の頻度（あとでやる中は毎日1回まで、時間指定になったらその日だけ）
 
-`GeofencePlugin.swift`の`didEnterRegion`→`handleTaskLocationEnter()`が発火時に:
-1. `taskLocationFired_<taskId>`フラグを立てる（同じリージョンでの多重発火防止。時間通知の状態には無関係）
-2. 通知を表示（title=タスク名、body="この場所に着きました。"、`userInfo:["openLater":true]`）
-3. そのリージョンの監視を`stopMonitoring`で止める（＝場所通知自体は1タスク1回のみ）
+ユーザーからのフィードバックを受け、「到着で1タスク1回のみ・以降完全に無効化」という初回実装から、以下のように変更済み:
+
+- **「あとでやる」の間（`isLater:true`）**: 同じ場所に着くたびに毎回通知すると煩わしいが、完全に1回きりだとADHD特性上「気づいても行動できなかった」場合に二度と思い出せなくなる。折衷案として**1日1回を上限に、あとでやる状態が続く限り毎日発火し続ける**
+- **タイムラインにドロップして時間指定タスクになった後（`isLater:false`）**: 「いつやるか」がすでに決まっているため、その`date`と一致する日だけ発火する（例: 9/30に時間指定したタスクなら、9/30に登録した場所へ近づいた時だけ通知。9/29や10/1に同じ場所へ寄っても通知しない）
+
+`Geofence.ts`の`TaskLocationGeofence`に`date?:string`を追加し、App側の同期エフェクトが`isLater`なら`date:undefined`、時間指定なら`date:t.date`を渡す（`setTaskLocationGeofences(locTasks.map(t=>({...,date:t.isLater?undefined:t.date})))`）。ネイティブ側（`GeofencePlugin.swift`/`.kt`）が`taskLocationDates`（id→date辞書、dateが無いキーは「あとでやる」扱い）に保存し、`didEnterRegion`→`handleTaskLocationEnter()`発火時に:
+1. `taskLocationDates`にこのタスクの`date`があり、かつ今日の日付と一致しなければ何もせず終了（時間指定タスクでまだその日ではない）
+2. `taskLocationLastNotified_<taskId>`（前回発火した日付文字列）が今日と同じならスキップ（1日1回の上限）
+3. 今日の日付を`taskLocationLastNotified_<taskId>`に記録してから通知を表示（title=タスク名、body="この場所に着きました。"、`userInfo:["openLater":true]`）
+4. **リージョンの監視は解除しない**（翌日以降・時間指定タスクのその日再訪でも判定を続ける必要があるため。旧実装にあった`stopMonitoring`は撤去済み）
 
 `willPresent`デリゲート・`handleTaskLocationEnter()`のどちらからも、もう一方の通知（時間通知⇔場所通知）を解除する処理は**意図的に行わない**（旧実装にあった相互キャンセルは撤去済み）。
 
-`setTaskLocationGeofences()`は登録のたびに`taskLocationFired_<id>`が立っているエントリをスキップする（アプリがバックグラウンドの間に他の理由で`tasks`が変わり再同期が走っても、発火済みのリージョンを誤って再武装しないため。これは場所通知自身の1回のみルールであり、時間通知の発火有無とは無関係）。
+`setTaskLocationGeofences()`は呼ばれるたびに全解除→再登録するが、発火済みかどうかによるスキップは**行わない**（1回発火しても翌日また発火する必要があるため、登録側では絞り込まず、絞り込みは`handleTaskLocationEnter()`内の日付クールダウンで行う）。
 
 ### アプリ再開時のリコンサイル（`getFiredTaskLocationIds`）
 
-バックグラウンド中に場所到着で発火したタスクIDは、アプリがフォアグラウンドに戻ったタイミング（`visibilitychange`）で`getPendingWidgetActions`/`getPendingGeofenceAction`と同じ`applyPending()`内から`getFiredTaskLocationIds()`を呼んで取得し、該当タスクの`locationNotify`を`false`にする（`location`も削除）。これにより次回の同期対象から確実に外れ、ネイティブ側の発火済みフラグも読み取り時にクリアされる。
+バックグラウンド中に場所到着で発火したタスクIDは、アプリがフォアグラウンドに戻ったタイミング（`visibilitychange`）で`getPendingWidgetActions`/`getPendingGeofenceAction`と同じ`applyPending()`内から`getFiredTaskLocationIds()`を呼んで取得する。**現在はアナリティクス計測（`location_reminder_triggered`）専用**で、`locationNotify`を無効化する処理はしない（発火後も毎日/その日再訪で発火し続ける仕様のため）。`taskLocationFiredIds`リスト自体は読み取り後にクリアされるが、日付クールダウンの記録（`taskLocationLastNotified_<id>`）は別物なのでここではクリアしない。
 
 ### タスク完了・削除時
 
@@ -804,7 +810,7 @@ Android版も同様に`GeofencePlugin.kt`/`GeofenceReceiver.kt`は買い物リ�
 ### 避けるパターン
 
 - 場所通知の発火判定・重複防止ロジックをJS側だけで完結させようとしない（バックグラウンド/未起動で動く必要があるため、`didEnterRegion`/`willPresent`内のネイティブコードが主役）
-- `setTaskLocationGeofences()`で発火済み（`taskLocationFired_<id>`）のエントリを無条件に再登録しない（バックグラウンド中の再同期で誤って再武装され、二重発火の原因になる）
+- 場所通知を「1タスク1回のみ発火したら停止する」設計に戻さない（`stopMonitoring`で二度と発火しない方式は撤去済み。あとでやるタスクは`taskLocationLastNotified_<id>`による1日1回のクールダウン、時間指定タスクは`taskLocationDates`との日付一致判定で、リージョン監視自体は解除せず発火頻度だけを制御する設計）
 - 「あとでやる」以外のタスク（時間指定・繰り返し）に場所で通知トグルを表示しない（`mode==='later'`限定。住所欄自体は全タスクタイプ共通）
 - 場所で通知をOFFにした時に`address`/`location`を消さない（統合後は住所欄自体が独立した表示情報のため。`location`をクリアするのは住所テキストを空にした時だけ）
 - 場所検索専用の別UI（Nominatim検索ボックス・確認ステップ等）を「場所で通知」のために復活させない。地図で選んだ場所の座標を`location`にセットする経路は住所欄の「地図で指定」「現在地から」に一本化済み

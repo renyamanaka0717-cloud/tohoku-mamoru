@@ -7380,12 +7380,11 @@ export default function App() {
       if(shouldOpenShop) setActiveTab('shop');
       if(shouldOpenLater) setActiveTab('later');
       if(notificationOpened) logAnalyticsEvent('notification_opened');
-      // バックグラウンド中に場所到着で発火済みになったタスクのlocationNotifyをオフにする
-      // （場所通知は1タスク1回のみのため。時間通知とは独立しており、時間通知が別途発火しても
-      // 互いに解除し合わない仕様）
+      // バックグラウンド中に場所到着で発火したタスクIDはアナリティクス計測のみに使う。
+      // あとでやるタスクは1日1回を上限に毎日発火し続け、時間指定タスクはその日だけ発火する
+      // 仕様のため、1回発火しただけでlocationNotifyを無効化することはしない
       const firedIds=await getFiredTaskLocationIds();
       if(firedIds.length>0){
-        setTasks(prev=>prev.map(t=>firedIds.includes(t.id)?{...t,locationNotify:false,location:undefined}:t));
         // 「あとでやる」タスクの場所通知は到着時（didEnterRegion）にfiredフラグが立つため、
         // タップの有無に関わらず実際に発火したタイミングを正確に計測できる
         firedIds.forEach(()=>logAnalyticsEvent('location_reminder_triggered',{type:'task'}));
@@ -7465,7 +7464,8 @@ export default function App() {
     setShopGeofences(shopLocs.map(l=>({id:l.id,name:l.name,lat:l.lat,lng:l.lng,radius:l.radius})),unpurchased);
   },[shopLocations,tasks,forgetAlerts,shopItems,loaded]);
   // 「あとでやる」タスクの場所通知。タイムラインにドロップされて時間指定タスクになっても
-  // （isLaterがfalseになっても）locationNotifyは維持され続けるので isLater では絞り込まない。
+  // （isLaterがfalseになっても）locationNotifyは維持され続けるので isLater では絞り込まない
+  // （時間指定になった後は date を渡し、その日だけ発火する挙動にネイティブ側で切り替わる）。
   // 完了・削除したタスクは tasks から外れる（または completed になる）ことで自動的に解除される
   useEffect(()=>{
     if(!loaded) return;
@@ -7473,7 +7473,7 @@ export default function App() {
     const enabledForgetCount=forgetAlerts.filter(a=>a.enabled).length;
     const budget=Math.max(0,MAX_MONITORED_REGIONS-enabledShopCount-enabledForgetCount);
     const locTasks=tasks.filter(t=>!t.completed&&t.locationNotify&&t.location).slice(0,budget);
-    setTaskLocationGeofences(locTasks.map(t=>({id:t.id,name:t.name,lat:t.location!.lat,lng:t.location!.lng,radius:TASK_LOCATION_RADIUS_M})));
+    setTaskLocationGeofences(locTasks.map(t=>({id:t.id,name:t.name,lat:t.location!.lat,lng:t.location!.lng,radius:TASK_LOCATION_RADIUS_M,date:t.isLater?undefined:t.date})));
   },[tasks,shopLocations,forgetAlerts,loaded]);
   // 忘れ物防止アラート（PRO機能）。「あとでやる」とは独立した機能。買い物リストの場所通知・
   // タスクの場所通知と同じCLLocationManagerの監視上限（20件）を共有するため予算を分け合う

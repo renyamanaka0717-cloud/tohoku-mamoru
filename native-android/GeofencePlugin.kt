@@ -161,24 +161,23 @@ class GeofencePlugin : Plugin() {
         prefs.edit().putString("shopItemNames", shopItemsJson).apply()
 
         val entries = try { parseLocationEntries(json) } catch (e: Exception) { call.reject("invalid locationsJson"); return }
-        syncGeofenceCategory(SHOP_PREFIX, "shopRegisteredIds", "geofenceNames", entries) { true }
+        syncGeofenceCategory(SHOP_PREFIX, "shopRegisteredIds", "geofenceNames", entries, { true })
         call.resolve()
     }
 
-    // 「あとでやる」タスクの場所通知。setGeofencesと同じ全解除→再登録方式だが、
-    // 発火済み(taskLocationFired_<id>)のエントリはgetFiredTaskLocationIds()で
-    // JS側がlocationNotifyをfalseにするまで再登録しない
+    // 「あとでやる」タスクの場所通知。setGeofencesと同じ全解除→再登録方式。発火してもリージョン
+    // 監視自体は解除しない（あとでやるタスクは1日1回を上限に毎日発火し続け、時間指定タスクは
+    // その日だけ発火する。判定はGeofenceReceiver.handleTaskLocationEnterで発火時点に行う）
     @PluginMethod
     fun setTaskLocationGeofences(call: PluginCall) {
         val json = call.getString("locationsJson") ?: "[]"
-        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val entries = try { parseLocationEntries(json) } catch (e: Exception) { call.reject("invalid locationsJson"); return }
-        syncGeofenceCategory(TASK_PREFIX, "taskRegisteredIds", "taskLocationNames", entries) { entry ->
-            !prefs.getBoolean("taskLocationFired_${entry.id}", false)
-        }
+        syncGeofenceCategory(TASK_PREFIX, "taskRegisteredIds", "taskLocationNames", entries, { true }, datesKey = "taskLocationDates")
         call.resolve()
     }
 
+    // アナリティクス計測専用。taskLocationLastNotified_<id>（日付クールダウン）はここでは
+    // クリアしない——発火した事実の通知用リストと、再発火を防ぐクールダウンの記録は別物のため
     @PluginMethod
     fun getFiredTaskLocationIds(call: PluginCall) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -188,10 +187,7 @@ class GeofencePlugin : Plugin() {
             val arr = JSONArray(idsJson)
             for (i in 0 until arr.length()) ids.add(arr.getString(i))
         } catch (e: Exception) { /* 壊れた保存データは無視 */ }
-        val editor = prefs.edit()
-        for (id in ids) editor.remove("taskLocationFired_$id")
-        editor.remove("taskLocationFiredIds")
-        editor.apply()
+        prefs.edit().remove("taskLocationFiredIds").apply()
         val obj = JSObject()
         obj.put("ids", JSONArray(ids))
         call.resolve(obj)
@@ -246,13 +242,18 @@ class GeofencePlugin : Plugin() {
         call.resolve()
     }
 
-    private data class LocationEntry(val id: String, val name: String, val lat: Double, val lng: Double, val radius: Double)
+    // dateは「あとでやる」タスクの場所通知にのみ使う。時間指定タスクになった後の"YYYY-MM-DD"
+    // （nullなら「あとでやる」タスクのまま＝毎日1回を上限に発火し続ける）
+    private data class LocationEntry(val id: String, val name: String, val lat: Double, val lng: Double, val radius: Double, val date: String?)
 
     private fun parseLocationEntries(json: String): List<LocationEntry> {
         val arr = JSONArray(json)
         return (0 until arr.length()).map {
             val o = arr.getJSONObject(it)
-            LocationEntry(o.getString("id"), o.getString("name"), o.getDouble("lat"), o.getDouble("lng"), o.getDouble("radius"))
+            LocationEntry(
+                o.getString("id"), o.getString("name"), o.getDouble("lat"), o.getDouble("lng"), o.getDouble("radius"),
+                if (o.has("date")) o.getString("date") else null
+            )
         }
     }
 
@@ -266,10 +267,12 @@ class GeofencePlugin : Plugin() {
     }
 
     // 買い物リスト・タスクの場所通知で共通の「全解除→再登録」処理。includeフィルタは
-    // タスクの場所通知だけが使う（発火済みエントリのスキップ）。買い物リストは常にtrue
+    // 将来他カテゴリで絞り込みが必要になった時のためのフック（現状はどちらも常にtrue）。
+    // datesKeyを渡すとentry.dateがあるものだけ id→date の辞書として別途保存する
+    // （タスクの場所通知が時間指定タスクの発火日判定に使う。GeofenceReceiver参照）
     private fun syncGeofenceCategory(
         prefix: String, idsKey: String, namesKey: String,
-        entries: List<LocationEntry>, include: (LocationEntry) -> Boolean
+        entries: List<LocationEntry>, include: (LocationEntry) -> Boolean, datesKey: String? = null
     ) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val oldIds = storedIds(idsKey)
@@ -278,6 +281,7 @@ class GeofencePlugin : Plugin() {
         }
 
         val names = JSONObject()
+        val dates = JSONObject()
         val newIds = mutableListOf<String>()
         val geofences = mutableListOf<Geofence>()
         for (entry in entries) {
@@ -285,6 +289,7 @@ class GeofencePlugin : Plugin() {
             val requestId = prefix + entry.id
             newIds.add(requestId)
             names.put(entry.id, entry.name)
+            if (entry.date != null) dates.put(entry.id, entry.date)
             geofences.add(
                 Geofence.Builder()
                     .setRequestId(requestId)
@@ -294,10 +299,11 @@ class GeofencePlugin : Plugin() {
                     .build()
             )
         }
-        prefs.edit()
+        val editor = prefs.edit()
             .putString(idsKey, JSONArray(newIds).toString())
             .putString(namesKey, names.toString())
-            .apply()
+        if (datesKey != null) editor.putString(datesKey, dates.toString())
+        editor.apply()
 
         if (geofences.isNotEmpty() && hasFineLocation()) {
             val request = GeofencingRequest.Builder().addGeofences(geofences).build()

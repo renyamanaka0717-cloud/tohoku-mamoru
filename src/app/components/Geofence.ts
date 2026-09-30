@@ -4,6 +4,9 @@ import { isDevDenied, DEV_LOCATION_DENIED_KEY, DEV_NOTIF_DENIED_KEY } from './De
 import { logPermissionGrantedOnce } from './Analytics';
 
 export interface GeofenceLocation { id: string; name: string; lat: number; lng: number; radius: number; }
+// 「あとでやる」タスクの場所通知。dateがあれば時間指定タスク（その日のみ発火）、
+// 無ければ「あとでやる」タスク（毎日1回を上限に発火し続ける）
+export interface TaskLocationGeofence { id: string; name: string; lat: number; lng: number; radius: number; date?: string; }
 export interface GeofencePermissionStatus { location: string; notifications: string; }
 // 忘れ物防止アラート（退出トリガー）。weekdaysは0=日〜6=土。timeStart/timeEndは"HH:mm"、空文字なら終日対象
 export interface ForgetAlertGeofence { id: string; name: string; lat: number; lng: number; radius: number; trigger: 'enter'|'exit'; weekdays: number[]; timeStart: string; timeEnd: string; items: string[]; }
@@ -42,7 +45,7 @@ export async function setShopGeofences(locations: GeofenceLocation[], shopItemNa
 
 // 「あとでやる」タスクの場所通知（syncTaskAlerts等と同じ全解除→再登録方式）。
 // name には通知に表示するタスク名をそのまま渡す（ShopLocationとは別の"task-loc-"prefixで管理される）
-export async function setTaskLocationGeofences(locations: GeofenceLocation[]): Promise<void> {
+export async function setTaskLocationGeofences(locations: TaskLocationGeofence[]): Promise<void> {
   if (!isNative()) return;
   try {
     await GeofencePlugin.setTaskLocationGeofences({ locationsJson: JSON.stringify(locations) });
@@ -112,8 +115,8 @@ export async function getPendingGeofenceAction(): Promise<{ shouldOpenShop: bool
 }
 
 // バックグラウンド中に場所到着で発火済みになったタスクIDを取得する（読み取り後はネイティブ側でクリアされる）。
-// 場所通知は1タスク1回のみのため、呼び出し元はこれを受けて該当タスクのlocationNotifyをfalseにする
-// （時間通知とは独立しており、互いに解除し合う仕様ではない）
+// アナリティクス計測専用。発火してもlocationNotifyは解除しない（あとでやるタスクは1日1回を上限に
+// 毎日発火し続け、時間指定タスクはその日だけ発火する仕様のため、1回発火しただけでは無効化しない）
 export async function getFiredTaskLocationIds(): Promise<string[]> {
   if (!isNative()) return [];
   try {

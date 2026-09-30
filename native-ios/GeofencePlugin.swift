@@ -5,7 +5,7 @@ import CoreLocation
 import UserNotifications
 import UIKit
 
-private struct GeofenceLocationEntry: Codable { let id: String; let name: String; let lat: Double; let lng: Double; let radius: Double }
+private struct GeofenceLocationEntry: Codable { let id: String; let name: String; let lat: Double; let lng: Double; let radius: Double; let date: String? }
 private struct WidgetShopEntry: Codable { let id: String; let name: String }
 // 忘れ物防止アラート（退出トリガー）。weekdaysは0=日〜6=土、timeStart/timeEndは"HH:mm"（空文字なら終日対象）
 private struct ForgetAlertEntry: Codable { let id: String; let name: String; let lat: Double; let lng: Double; let radius: Double; let trigger: String; let weekdays: [Int]; let timeStart: String; let timeEnd: String; let items: [String] }
@@ -131,7 +131,11 @@ public class GeofencePlugin: CAPPlugin, CLLocationManagerDelegate, UNUserNotific
     }
 
     // 「あとでやる」タスクの場所通知。setGeofences（買い物リスト用）と同じ全解除→再登録方式だが、
-    // "task-loc-" prefixで別管理し、通知内容用にタスク名を "taskLocationNames" に保存する
+    // "task-loc-" prefixで別管理し、通知内容用にタスク名を "taskLocationNames" に保存する。
+    // entry.dateがあれば時間指定タスク（その日だけ発火）、無ければ「あとでやる」タスク
+    // （毎日1回を上限に発火し続ける）。どちらも発火してもリージョン監視自体は解除しない
+    // （翌日以降・当日中の再訪でも判定できるようにするため。実際の重複防止は発火時点の
+    // 日付クールダウンで行う。handleTaskLocationEnter参照）
     @objc func setTaskLocationGeofences(_ call: CAPPluginCall) {
         let json = call.getString("locationsJson") ?? "[]"
         guard let data = json.data(using: .utf8),
@@ -143,12 +147,8 @@ public class GeofencePlugin: CAPPlugin, CLLocationManagerDelegate, UNUserNotific
             locationManager.stopMonitoring(for: region)
         }
         var names: [String: String] = [:]
+        var dates: [String: String] = [:]
         for entry in entries {
-            // 発火済みのタスクは、アプリがフォアグラウンドに戻って
-            // getFiredTaskLocationIds() が処理する（JS側でlocationNotifyがfalseになる）まで
-            // 再登録しない。バックグラウンド中に他の理由でこの関数が再度呼ばれても
-            // 発火済みリージョンが誤って再武装されるのを防ぐため
-            if UserDefaults.standard.bool(forKey: "taskLocationFired_\(entry.id)") { continue }
             let region = CLCircularRegion(
                 center: CLLocationCoordinate2D(latitude: entry.lat, longitude: entry.lng),
                 radius: entry.radius,
@@ -158,6 +158,12 @@ public class GeofencePlugin: CAPPlugin, CLLocationManagerDelegate, UNUserNotific
             region.notifyOnExit = false
             locationManager.startMonitoring(for: region)
             names[entry.id] = entry.name
+            if let date = entry.date { dates[entry.id] = date }
+        }
+        if let data = try? JSONEncoder().encode(dates), let json = String(data: data, encoding: .utf8) {
+            UserDefaults.standard.set(json, forKey: "taskLocationDates")
+        } else {
+            UserDefaults.standard.removeObject(forKey: "taskLocationDates")
         }
         if let data = try? JSONEncoder().encode(names), let json = String(data: data, encoding: .utf8) {
             UserDefaults.standard.set(json, forKey: "taskLocationNames")
@@ -166,8 +172,9 @@ public class GeofencePlugin: CAPPlugin, CLLocationManagerDelegate, UNUserNotific
     }
 
     // アプリがフォアグラウンドに戻ったタイミングでJS側から呼ばれる。バックグラウンド中に
-    // 場所到着で発火済みのタスクID一覧を返し、読み取り後はネイティブ側のフラグをクリアする
-    // （JS側はこれを受けて該当タスクのlocationNotifyをfalseにし、以後の再登録対象から外す）
+    // 場所到着で発火したタスクID一覧を返す（アナリティクス計測専用。読み取り後はリストをクリアするが、
+    // taskLocationLastNotified_<id>（日付クールダウン）はここではクリアしない——
+    // 発火した事実の通知用リストと、再発火を防ぐクールダウンの記録は別物のため）
     @objc func getFiredTaskLocationIds(_ call: CAPPluginCall) {
         let defaults = UserDefaults.standard
         let ids = defaults.string(forKey: "taskLocationFiredIds")
@@ -175,7 +182,6 @@ public class GeofencePlugin: CAPPlugin, CLLocationManagerDelegate, UNUserNotific
         if let ids = ids, let data = ids.data(using: .utf8), let arr = try? JSONDecoder().decode([String].self, from: data) {
             idList = arr
         }
-        for id in idList { defaults.removeObject(forKey: "taskLocationFired_\(id)") }
         defaults.removeObject(forKey: "taskLocationFiredIds")
         call.resolve(["ids": idList])
     }
@@ -361,13 +367,26 @@ public class GeofencePlugin: CAPPlugin, CLLocationManagerDelegate, UNUserNotific
 
     // 「あとでやる」タスクの場所通知。時間通知（task-alert-）とは独立して動作し、
     // 発火してもお互いを解除しない（ADHDの特性上「重複通知は問題ではなく、必要なタイミングで
-    // 思い出せることを優先する」方針のため）。このリージョン自体の監視は1タスク1回のみ
+    // 思い出せることを優先する」方針のため）。
+    // ・「あとでやる」タスク（taskLocationDatesにエントリが無い）: 1日1回を上限に毎日発火し続ける
+    // ・時間指定タスクになった後（date付き）: そのdateと今日が一致する日だけ発火する
+    // どちらの場合もリージョン監視自体は解除しない（翌日以降も判定を続ける必要があるため）
     private func handleTaskLocationEnter(_ region: CLRegion) {
         let taskId = String(region.identifier.dropFirst(GeofencePlugin.taskLocPrefix.count))
         let defaults = UserDefaults.standard
-        let firedKey = "taskLocationFired_\(taskId)"
-        if defaults.bool(forKey: firedKey) { return }
-        defaults.set(true, forKey: firedKey)
+        let today = todayDateString()
+
+        if let datesJson = defaults.string(forKey: "taskLocationDates"),
+           let datesData = datesJson.data(using: .utf8),
+           let dates = try? JSONDecoder().decode([String: String].self, from: datesData),
+           let targetDate = dates[taskId], targetDate != today {
+            // 時間指定タスクで、今日がその日でなければ何もしない（フラグ更新もしない）
+            return
+        }
+
+        let lastKey = "taskLocationLastNotified_\(taskId)"
+        if defaults.string(forKey: lastKey) == today { return }
+        defaults.set(today, forKey: lastKey)
 
         var firedIds: [String] = []
         if let idsJson = defaults.string(forKey: "taskLocationFiredIds"),
@@ -417,10 +436,6 @@ public class GeofencePlugin: CAPPlugin, CLLocationManagerDelegate, UNUserNotific
         content.userInfo = ["openLater": true]
         let request = UNNotificationRequest(identifier: "task-loc-fire-\(taskId)-\(Int(Date().timeIntervalSince1970))", content: content, trigger: nil)
         UNUserNotificationCenter.current().add(request)
-
-        if let circular = region as? CLCircularRegion {
-            locationManager.stopMonitoring(for: circular)
-        }
     }
 
     public func locationManager(_ manager: CLLocationManager, didExitRegion region: CLRegion) {
@@ -559,6 +574,13 @@ public class GeofencePlugin: CAPPlugin, CLLocationManagerDelegate, UNUserNotific
         let parts = s.split(separator: ":")
         guard parts.count == 2, let h = Int(parts[0]), let m = Int(parts[1]) else { return nil }
         return h * 60 + m
+    }
+
+    // 端末のローカルカレンダー日付を"YYYY-MM-DD"で返す。JS側のTask.date（dateToStr()）と
+    // 同じ形式（ローカル日付、UTCではない）にそろえる
+    private func todayDateString() -> String {
+        let comps = Calendar.current.dateComponents([.year, .month, .day], from: Date())
+        return String(format: "%04d-%02d-%02d", comps.year ?? 0, comps.month ?? 0, comps.day ?? 0)
     }
 
     // MARK: - UNUserNotificationCenterDelegate

@@ -52,6 +52,13 @@ class GeofenceReceiver : BroadcastReceiver() {
     private fun prefs(context: Context) =
         context.getSharedPreferences(GeofencePlugin.PREFS_NAME, Context.MODE_PRIVATE)
 
+    // 端末のローカルカレンダー日付を"YYYY-MM-DD"で返す。JS側のTask.date（dateToStr()）と
+    // 同じ形式（ローカル日付、UTCではない）にそろえる
+    private fun todayDateString(): String {
+        val cal = Calendar.getInstance()
+        return String.format(Locale.US, "%04d-%02d-%02d", cal.get(Calendar.YEAR), cal.get(Calendar.MONTH) + 1, cal.get(Calendar.DAY_OF_MONTH))
+    }
+
     private fun handleShopEnter(context: Context, locId: String) {
         val prefs = prefs(context)
         val cooldownKey = "geofenceLastNotified_$locId"
@@ -84,12 +91,23 @@ class GeofenceReceiver : BroadcastReceiver() {
     }
 
     // 「あとでやる」タスクの場所通知。時間通知(task-alert-)とは独立して動作し、発火してもお互いを
-    // 解除しない。このリージョン自体の監視は1タスク1回のみ（発火後にremoveGeofencesで止める）
+    // 解除しない。
+    // ・「あとでやる」タスク（taskLocationDatesにエントリが無い）: 1日1回を上限に毎日発火し続ける
+    // ・時間指定タスクになった後（date付き）: そのdateと今日が一致する日だけ発火する
+    // どちらの場合もジオフェンス自体は解除しない（翌日以降も判定を続ける必要があるため）
     private fun handleTaskLocationEnter(context: Context, taskId: String) {
         val prefs = prefs(context)
-        val firedKey = "taskLocationFired_$taskId"
-        if (prefs.getBoolean(firedKey, false)) return
-        prefs.edit().putBoolean(firedKey, true).apply()
+        val today = todayDateString()
+
+        val targetDate = try {
+            val dates = JSONObject(prefs.getString("taskLocationDates", "{}") ?: "{}")
+            if (dates.has(taskId)) dates.getString(taskId) else null
+        } catch (e: Exception) { null }
+        if (targetDate != null && targetDate != today) return
+
+        val lastKey = "taskLocationLastNotified_$taskId"
+        if (prefs.getString(lastKey, null) == today) return
+        prefs.edit().putString(lastKey, today).apply()
 
         val firedIds = try {
             val arr = JSONArray(prefs.getString("taskLocationFiredIds", "[]") ?: "[]")
@@ -108,10 +126,6 @@ class GeofenceReceiver : BroadcastReceiver() {
         val body = arrivedBodyText(lang)
         val notifId = ("task-loc-fire-$taskId-${System.currentTimeMillis()}").hashCode()
         BrainBoxNotifications.show(context, notifId, taskName, body, openShop = false, openLater = true)
-
-        try {
-            removeGeofenceRegion(context, GeofencePlugin.TASK_PREFIX + taskId)
-        } catch (e: Exception) { /* 無視。次回のsetTaskLocationGeofences再同期で自然に整理される */ }
     }
 
     // 忘れ物防止アラート。到着(Enter)/退出(Exit)いずれかをトリガーに選べる。条件を満たすたびに
@@ -287,9 +301,4 @@ class GeofenceReceiver : BroadcastReceiver() {
         }
     }
 
-    // タスクの場所通知は1回発火したらそのリージョンの監視を止める（iOS版のstopMonitoringに相当）。
-    // BroadcastReceiverはPluginインスタンスを持たないため、GeofencingClientを直接ここで生成して使う
-    private fun removeGeofenceRegion(context: Context, requestId: String) {
-        com.google.android.gms.location.LocationServices.getGeofencingClient(context).removeGeofences(listOf(requestId))
-    }
 }
