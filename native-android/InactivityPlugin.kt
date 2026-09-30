@@ -31,7 +31,13 @@ class InactivityPlugin : Plugin() {
 
     @PluginMethod
     fun scheduleReminder(call: PluginCall) {
-        val hoursList = call.getArray("hoursList")?.toList()?.mapNotNull { (it as? Number)?.toDouble() } ?: emptyList()
+        val hoursArr = call.getArray("hoursList")
+        val hoursList = mutableListOf<Double>()
+        if (hoursArr != null) {
+            for (i in 0 until hoursArr.length()) {
+                (hoursArr.opt(i) as? Number)?.let { hoursList.add(it.toDouble()) }
+            }
+        }
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         cancelAll(alarmManager)
 
