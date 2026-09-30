@@ -1434,6 +1434,12 @@ const HOURS = Array.from({length:24},(_,i)=>String(i).padStart(2,'0'));
 const MINS  = ['00','05','10','15','20','25','30','35','40','45','50','55'];
 
 function PickerCol({items,value,onChange,keyboardMax,displayValue}:{items:string[];value:string;onChange:(v:string)=>void;keyboardMax:number;displayValue?:string}){
+  // フォーカス中に入力欄へ「確定済みの桁数」（0〜2）を記録するref。2桁確定済みの状態で
+  // さらに数字を打つと、そのままだと古い桁と結合して意図しない値になる（例:"50"の後に"2"を
+  // 打つと"502"→clampされて予期しない値になる）ため、既に2桁確定済みなら新しい1桁だけで
+  // 上書きする（"02"になる）。2桁未満ならこれまで通り結合する（フォーカス直後に"5"→"9"と
+  // 打って"59"にする、のような連続入力は維持する）
+  const composedRef=useRef(0);
   const H=44,SHOW=5,HALF=2;
   const N=items.length;
   // Triple the items for infinite circular scroll
@@ -1532,11 +1538,21 @@ function PickerCol({items,value,onChange,keyboardMax,displayValue}:{items:string
           `keyboardMax`まで1単位で自由に指定できる */}
       <input type="tel" inputMode="numeric" value={displayValue??value} onTouchStart={e=>e.stopPropagation()}
         onFocus={e=>{
+          composedRef.current=0;
           const el=e.target;
           requestAnimationFrame(()=>el.select());
         }}
         onChange={e=>{
-          const n=Math.min(keyboardMax,Math.max(0,parseInt(e.target.value.replace(/\D/g,''))||0));
+          const raw=e.target.value.replace(/\D/g,'');
+          let digits:string;
+          if(raw.length>2){
+            if(composedRef.current>=2){ digits=raw.slice(-1); composedRef.current=1; }
+            else { digits=raw.slice(-2); composedRef.current=2; }
+          } else {
+            digits=raw;
+            composedRef.current=Math.min(2,raw.length);
+          }
+          const n=Math.min(keyboardMax,Math.max(0,digits===''?0:parseInt(digits)));
           onChange(String(n).padStart(2,'0'));
         }}
         style={{position:'absolute',top:HALF*H,height:H,left:0,right:0,zIndex:3,
