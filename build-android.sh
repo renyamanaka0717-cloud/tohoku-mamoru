@@ -10,6 +10,8 @@ elif [ -d src/app/api ]; then
 fi
 
 echo "🔨 Androidビルド中..."
+# クローズドテスト用に購入フロー無しで全員PRO化したいビルドだけ、呼び出し時に
+# NEXT_PUBLIC_FORCE_PREMIUM_ANDROID=true ./build-android.sh のように付ける（本番ビルドでは付けない）
 BUILD_TARGET=android npm run build
 
 echo "📦 APIルートを戻す..."

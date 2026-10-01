@@ -31,6 +31,16 @@ function isNative(): boolean {
   return !!(window as {Capacitor?: {isNativePlatform?: () => boolean}}).Capacitor?.isNativePlatform?.();
 }
 
+// Androidクローズドテスト専用の強制PRO化（購入フローを一切使わないため誤課金が起きない）。
+// `NEXT_PUBLIC_FORCE_PREMIUM_ANDROID=true` を付けてビルドした時だけ有効。
+// iOSに波及しないよう、ビルド時の環境変数に加えて実行時のプラットフォーム判定も必須にしている
+// （同じビルド成果物を誤ってiOS側にも同期してしまった場合の保険）。
+const FORCE_PREMIUM_ANDROID = process.env.NEXT_PUBLIC_FORCE_PREMIUM_ANDROID === 'true';
+function isAndroidNative(): boolean {
+  if (typeof window === 'undefined') return false;
+  return (window as {Capacitor?: {getPlatform?: () => string}}).Capacitor?.getPlatform?.() === 'android';
+}
+
 export function PremiumProvider({ children }: { children: React.ReactNode }) {
   const [isPremium, setIsPremium] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -49,6 +59,12 @@ export function PremiumProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!isNative()) {
       // ブラウザ・開発環境では全機能解放
+      setIsPremium(true);
+      setIsLoading(false);
+      return;
+    }
+    if (FORCE_PREMIUM_ANDROID && isAndroidNative()) {
+      // クローズドテスト用ビルドのみ。RevenueCat/Play Billingに一切触れないため誤課金が起きない
       setIsPremium(true);
       setIsLoading(false);
       return;
@@ -80,6 +96,7 @@ export function PremiumProvider({ children }: { children: React.ReactNode }) {
 
   const purchase = useCallback(async () => {
     if (!isNative()) return;
+    if (FORCE_PREMIUM_ANDROID && isAndroidNative()) return;
     setIsPurchasing(true);
     try {
       const { Purchases } = await import('@revenuecat/purchases-capacitor');

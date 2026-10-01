@@ -342,6 +342,20 @@ const pkg = offerings.current?.monthly;
 - `@revenuecat/purchases-capacitor` を **static import** しない（ビルドエラー）。ただし **dynamic import に `webpackIgnore: true` は付けない**（実機で購入が失敗する実際のバグの原因になった）
 - v13 の `getOfferings()` を `{ offerings }` で分割代入しない
 
+### Google Play クローズドテスト用の強制PRO化（Android限定、`FORCE_PREMIUM_ANDROID`）
+
+Google Playのクローズドテストでテスターに課金リスクなくPRO機能を使ってもらうための仕組み。ライセンステスター（Googleアカウント個別登録・実購入フローを通すが課金はされない方式）ではなく、**購入フロー自体を呼ばず端末上で強制的に`isPremium=true`にする**方式を採用した（登録漏れによる誤課金が原理的に起きないため）。
+
+- `Premium.tsx`の`FORCE_PREMIUM_ANDROID`定数（`process.env.NEXT_PUBLIC_FORCE_PREMIUM_ANDROID==='true'`）が立っている時だけ、ネイティブ判定後にRevenueCatへ一切触れず`isPremium`をtrue固定する（`purchase()`も早期returnする）
+- **iOSには絶対に波及させない。** ビルド時の環境変数だけに頼らず、`isAndroidNative()`（`Capacitor.getPlatform()==='android'`）を実行時にも必ず併せてチェックする二重ガードにしてある（iOS用ビルドにこの環境変数が紛れ込む・同じビルド成果物を誤ってiOS側にも同期してしまう、といった人為ミスが起きてもiOS側では絶対に発動しないようにするための保険）
+- 普段の`./build-android.sh`（環境変数無し）はこれまで通り実購入フローのまま。クローズドテスト用ビルドの時だけ`NEXT_PUBLIC_FORCE_PREMIUM_ANDROID=true ./build-android.sh`のように明示的に付けてビルドする。**この環境変数は`.env.local`等に永続化せず、クローズドテスト用ビルドのたびに手動で付ける**（本番ビルドへの付け忘れによる事故より、通常ビルドへの付け忘れ＝デフォルトで通常の課金フローに戻る方が安全なため、あえて永続化しない設計）
+- クローズドテストを終了する時は、何もしない（この環境変数を付けずに本番用AABをビルドし直すだけで自然に通常の課金フローに戻る）
+
+**避けるパターン:**
+- `FORCE_PREMIUM_ANDROID`の判定からプラットフォームチェック（`isAndroidNative()`）を外さない（環境変数だけの判定にすると、ビルド成果物の取り違え等でiOSに波及するリスクが生まれる）
+- `NEXT_PUBLIC_FORCE_PREMIUM_ANDROID`を`.env.local`やVercelの環境変数に恒久的に設定しない（Web/開発環境は元々`isPremium`が常にtrueなので無意味な上、Androidの通常ビルド時に誤って有効なままになるリスクを増やすだけ）
+- この仕組みを開発者モード（`DevMode.ts`）の`DEV_PREMIUM_OVERRIDE_KEY`と混同・統合しない（開発者モードは今後もアプリバージョン7回タップで解放する自分専用の検証ツールとして維持する方針。クローズドテスターにはその存在を一切教えない）
+
 ---
 
 ## アプリ内通知の送信（LocalNotifyPlugin）
