@@ -3101,8 +3101,8 @@ function TaskCard({task,onToggle,onEdit,globalTags,onSubtaskToggle,tabName,iconD
           )}
           {task.memo&&(
             <button onClick={e=>{e.stopPropagation();setOpenPanel(p=>p==='memo'?null:'memo');}}
-              className="text-[11px] text-gray-400 mt-1 flex items-center gap-1 w-full text-left min-w-0">
-              <AppIcons.task size={10+iconDelta} className="shrink-0"/><span className="truncate">{task.memo}</span>
+              className="text-[11px] text-gray-400 mt-1 flex items-center gap-1.5 w-full text-left min-w-0">
+              <AppIcons.task size={16+iconDelta} className="shrink-0 text-gray-500"/><span className="truncate">{task.memo}</span>
             </button>
           )}
           {hasIcons&&(
