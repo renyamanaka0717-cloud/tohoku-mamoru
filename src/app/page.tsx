@@ -3058,7 +3058,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
 // ── TaskCard ──────────────────────────────────────────────────────────────────
 
 function TaskCard({task,onToggle,onEdit,globalTags,onSubtaskToggle,tabName,iconDelta=0}:{task:Task;onToggle:()=>void;onEdit:()=>void;globalTags:TagDef[];onSubtaskToggle?:(subtaskId:string)=>void;tabName?:string;iconDelta?:number;}) {
-  const [openPanel,setOpenPanel] = useState<'subtask'|null>(null);
+  const [openPanel,setOpenPanel] = useState<'subtask'|'memo'|null>(null);
   const {language} = useI18n();
   const endTime = (task.startTime&&(task.duration??0)>0) ? fromMin(toMin(task.startTime)+(task.duration??0)) : null;
   const subtasks = task.subtasks??[];
@@ -3100,9 +3100,10 @@ function TaskCard({task,onToggle,onEdit,globalTags,onSubtaskToggle,tabName,iconD
             </p>
           )}
           {task.memo&&(
-            <p className="text-[11px] text-gray-400 mt-1 flex items-center gap-1 truncate">
+            <button onClick={e=>{e.stopPropagation();setOpenPanel(p=>p==='memo'?null:'memo');}}
+              className="text-[11px] text-gray-400 mt-1 flex items-center gap-1 w-full text-left min-w-0">
               <AppIcons.task size={10+iconDelta} className="shrink-0"/><span className="truncate">{task.memo}</span>
-            </p>
+            </button>
           )}
           {hasIcons&&(
             <div className="flex items-center gap-2 mt-2">
@@ -3136,6 +3137,11 @@ function TaskCard({task,onToggle,onEdit,globalTags,onSubtaskToggle,tabName,iconD
               <span className={`text-xs ${st.completed?'line-through text-gray-400':'text-gray-700'}`}>{st.name}</span>
             </div>
           ))}
+        </div>
+      )}
+      {openPanel==='memo'&&task.memo&&(
+        <div className="mt-2 pb-0.5" onClick={e=>e.stopPropagation()}>
+          <p className="text-xs text-gray-600 whitespace-pre-wrap">{task.memo}</p>
         </div>
       )}
     </div>
