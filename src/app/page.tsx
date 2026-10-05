@@ -4797,14 +4797,14 @@ function ForgetAlertsPanel({alerts,onChange,isPremium,onProPrompt}:{
 // ── BottomTabs ────────────────────────────────────────────────────────────────
 
 function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,shopPending,
-  onToggle,onEdit,onAddShop,onToggleShop,onDeleteShop,onReorderLater,shopNotifSettings,onShopNotifSettings,
+  onToggle,onEdit,onAddShop,onToggleShop,onDeleteShop,onEditShop,onReorderLater,shopNotifSettings,onShopNotifSettings,
   shopLocations,onShopLocations,isPremium,onOpenPro,
   notificationsEnabled,onEnableNotifications
 }:{
   activeTab:'later'|'shop'; onSwitchTab:(t:'later'|'shop')=>void; onClose:()=>void;
   tasks:Task[]; shopItems:ShopItem[]; pendingCount:number; shopPending:number;
   onToggle:(id:string)=>void; onEdit:(t:Task)=>void;
-  onAddShop:(n:string)=>void; onToggleShop:(id:string)=>void; onDeleteShop:(id:string)=>void;
+  onAddShop:(n:string)=>void; onToggleShop:(id:string)=>void; onDeleteShop:(id:string)=>void; onEditShop:(id:string,name:string)=>void;
   onReorderLater:(orderedIds:string[])=>void;
   shopNotifSettings:ShopNotifSetting[]; onShopNotifSettings:(s:ShopNotifSetting[])=>void;
   shopLocations:ShopLocation[]; onShopLocations:(l:ShopLocation[])=>void;
@@ -4821,6 +4821,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
   // 一覧内で直接ドラッグする方式は、長押しでの並び替え開始とタップでの編集開始の判定が
   // 実機で不安定になりやすかったため撤去した
   const [showReorderPopup,setShowReorderPopup] = useState(false);
+  const [editingShopItem,setEditingShopItem] = useState<ShopItem|null>(null);
   const swX=useRef(0), swY=useRef(0);
   const tabs:('later'|'shop')[]=['later','shop'];
   const onSheetSwipe=(e:React.TouchEvent)=>{
@@ -5104,7 +5105,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
                     <div key={item.id} className="flex items-center gap-3 bg-white border border-gray-100 rounded-2xl shadow-sm px-4 py-3">
                       <button onClick={()=>onToggleShop(item.id)} className="w-5 h-5 rounded border-2 border-gray-300 shrink-0"/>
                       <p className="flex-1 text-sm font-medium text-gray-800">{item.name}</p>
-                      <button onClick={()=>onDeleteShop(item.id)} className="text-gray-300 text-xl leading-none">×</button>
+                      <button onClick={()=>setEditingShopItem(item)} className="text-gray-300 shrink-0"><AppIcons.pencil size={16}/></button>
                     </div>
                   ))}
                   {shopDoneItems.length>0&&<>
@@ -5115,7 +5116,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
                           <span className="text-white text-[10px] font-bold">✓</span>
                         </button>
                         <p className="flex-1 text-sm font-medium text-gray-400 line-through">{item.name}</p>
-                        <button onClick={()=>onDeleteShop(item.id)} className="text-gray-300 text-xl leading-none">×</button>
+                        <button onClick={()=>setEditingShopItem(item)} className="text-gray-300 shrink-0"><AppIcons.pencil size={16}/></button>
                       </div>
                     ))}
                   </>}
@@ -5129,7 +5130,38 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
     {showReorderPopup&&(
       <ReorderLaterPopup tasks={nonPinnedLater} onSave={ids=>{onReorderLater(ids);setShowReorderPopup(false);}} onClose={()=>setShowReorderPopup(false)}/>
     )}
+    {editingShopItem&&(
+      <ShopItemEditPopup item={editingShopItem}
+        onSave={name=>{onEditShop(editingShopItem.id,name);setEditingShopItem(null);}}
+        onDelete={()=>{onDeleteShop(editingShopItem.id);setEditingShopItem(null);}}
+        onClose={()=>setEditingShopItem(null)}/>
+    )}
     </>
+  );
+}
+
+// ── ShopItemEditPopup ────────────────────────────────────────────────────────
+// 買い物リストの各アイテム右端の鉛筆ボタンから開く編集ポップアップ。旧実装の×ボタン
+// （タップ即削除）は誤タップ事故が起きやすいため撤去し、名前編集と削除をこのポップアップに
+// まとめた（削除はポップアップ内のボタンから。ユーザー確認済みの設計）
+function ShopItemEditPopup({item,onSave,onDelete,onClose}:{item:ShopItem;onSave:(name:string)=>void;onDelete:()=>void;onClose:()=>void;}) {
+  const {tr} = useI18n();
+  const [name,setName] = useState(item.name);
+  return (
+    <div className="fixed inset-0 z-[100] bg-black/40 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white w-full max-w-md mx-auto rounded-3xl p-4" onClick={e=>e.stopPropagation()}>
+        <input value={name} onChange={e=>setName(e.target.value)} autoFocus
+          className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50 mb-3"/>
+        <div className="flex gap-2 mb-2">
+          <button onClick={onClose}
+            className="flex-1 py-3 rounded-2xl bg-gray-100 text-gray-700 text-[15px] font-semibold">{tr('cancelButton')}</button>
+          <button onClick={()=>name.trim()&&onSave(name.trim())} disabled={!name.trim()}
+            className="flex-1 py-3 rounded-2xl bg-[var(--c-primary)] text-white text-[15px] font-semibold disabled:opacity-40">{tr('confirmButton')}</button>
+        </div>
+        <button onClick={onDelete}
+          className="w-full py-3 rounded-2xl bg-[#D97A7A] text-white text-[15px] font-semibold">{tr('deleteButton')}</button>
+      </div>
+    </div>
   );
 }
 
@@ -8099,6 +8131,7 @@ export default function App() {
       .filter(i=>!(i.checked&&i.purchasedAt&&now-new Date(i.purchasedAt).getTime()>=7*24*60*60*1000));
   });
   const deleteShop   = (id:string)   => setShopItems(prev=>prev.filter(i=>i.id!==id));
+  const editShopItem = (id:string, name:string) => setShopItems(prev=>prev.map(i=>i.id===id?{...i,name}:i));
 
   const addCustomTab=()=>{
     const newTab:CustomTab={id:uid(),name:`${tr('newTabDefaultName')}${customTabs.length+1}`};
@@ -8481,7 +8514,7 @@ export default function App() {
         <BottomTabs activeTab={activeTab} onSwitchTab={setActiveTab} onClose={()=>setActiveTab(null)}
           tasks={filteredTasks} shopItems={shopItems} pendingCount={pendingCount} shopPending={shopPending}
           onToggle={toggle} onEdit={openEdit}
-          onAddShop={addShopItem} onToggleShop={toggleShop} onDeleteShop={deleteShop}
+          onAddShop={addShopItem} onToggleShop={toggleShop} onDeleteShop={deleteShop} onEditShop={editShopItem}
           onReorderLater={reorderLaterTasks}
           shopNotifSettings={shopNotifSettings} onShopNotifSettings={setShopNotifSettings}
           shopLocations={shopLocations} onShopLocations={setShopLocations}
