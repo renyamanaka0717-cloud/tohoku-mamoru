@@ -3100,10 +3100,17 @@ function TaskCard({task,onToggle,onEdit,globalTags,onSubtaskToggle,tabName,iconD
             </p>
           )}
           {task.memo&&(
-            <button onClick={e=>{e.stopPropagation();setOpenPanel(p=>p==='memo'?null:'memo');}}
-              className="text-[11px] text-gray-400 mt-1 flex items-center gap-1.5 w-full text-left min-w-0">
-              <AppIcons.task size={16+iconDelta} className="shrink-0 text-gray-500"/><span className="truncate">{task.memo}</span>
-            </button>
+            <>
+              <button onClick={e=>{e.stopPropagation();setOpenPanel(p=>p==='memo'?null:'memo');}}
+                className="text-[11px] text-gray-400 mt-1 flex items-center gap-1.5 w-full text-left min-w-0">
+                <AppIcons.task size={20+iconDelta} className="shrink-0 text-gray-500"/><span className="truncate">{task.memo}</span>
+              </button>
+              {openPanel==='memo'&&(
+                <div className="mt-1.5 pb-0.5" onClick={e=>e.stopPropagation()}>
+                  <p className="text-xs text-gray-600 whitespace-pre-wrap">{task.memo}</p>
+                </div>
+              )}
+            </>
           )}
           {hasIcons&&(
             <div className="flex items-center gap-2 mt-2">
@@ -3137,11 +3144,6 @@ function TaskCard({task,onToggle,onEdit,globalTags,onSubtaskToggle,tabName,iconD
               <span className={`text-xs ${st.completed?'line-through text-gray-400':'text-gray-700'}`}>{st.name}</span>
             </div>
           ))}
-        </div>
-      )}
-      {openPanel==='memo'&&task.memo&&(
-        <div className="mt-2 pb-0.5" onClick={e=>e.stopPropagation()}>
-          <p className="text-xs text-gray-600 whitespace-pre-wrap">{task.memo}</p>
         </div>
       )}
     </div>
