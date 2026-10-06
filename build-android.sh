@@ -20,5 +20,24 @@ mv src/app/_api src/app/api
 echo "🔄 Capacitorと同期中..."
 ./node_modules/.bin/cap sync android
 
+# native-android/ のファイルは、android/app/src以下に既に同名ファイルが存在するものだけ
+# 中身ごと上書きコピーする。android/はgitignore対象でgit pullしても自動更新されないため、
+# ビルドのたびにここで同期する。*.snippet.xml（AndroidManifest.xml等へ手動で部分的に
+# マージする断片）は対象外。新規ファイルの追加はAndroid Studioで手動で行うこと
+# （未追加のファイルは警告を出してスキップする）
+if [ -d android/app/src ]; then
+  echo "🔁 ネイティブプラグインの内容を同期中..."
+  for src in native-android/*.kt native-android/*.java native-android/res/*/*.xml; do
+    [ -f "$src" ] || continue
+    name=$(basename "$src")
+    dest=$(find android/app/src -type f -name "$name" 2>/dev/null | head -n1)
+    if [ -n "$dest" ]; then
+      cp "$src" "$dest"
+    else
+      echo "  ⚠️  $name は未追加のためスキップ（Android Studioで手動追加が必要）"
+    fi
+  done
+fi
+
 echo "✅ 完了！次のコマンドでAndroid Studioを開いてください："
 echo "   npx cap open android"
