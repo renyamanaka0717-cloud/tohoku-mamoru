@@ -1934,6 +1934,12 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
     address:address.trim()||undefined,
   });
 
+  // 編集開始時点のスナップショット。繰り返しタスクで「完了」を押した時、何も変更していなければ
+  // 「この日だけ/すべて」の確認を出さずそのまま閉じるために比較する
+  const initialDataStrRef = useRef<string|null>(null);
+  if(initialDataStrRef.current===null) initialDataStrRef.current = JSON.stringify(buildData());
+  const recurringDataChanged = !!task?.recurrence && JSON.stringify(buildData())!==initialDataStrRef.current;
+
   const doSave = (data: Omit<Task,'id'>) => {
     if(!onUpdate) return;
     const str = JSON.stringify(data);
@@ -2166,7 +2172,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                       {saveStatus==='saving'?tr('taskModalSaving'):saveStatus==='saved'?tr('taskModalSaved'):tr('taskModalSaveFailed')}
                     </span>
                   )}
-                  <button onClick={task.recurrence?()=>onRequestRecurringSave?.(buildData()):flushAndClose}
+                  <button onClick={recurringDataChanged?()=>onRequestRecurringSave?.(buildData()):flushAndClose}
                     className="px-4 py-1.5 text-sm font-semibold rounded-full bg-white/90 text-gray-800">{tr('taskModalDone')}</button>
                 </>
               ) : (
