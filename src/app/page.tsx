@@ -1698,9 +1698,14 @@ function VoiceCapturePopup({isPremium,language,onProPrompt,onDone}:{isPremium:bo
 
 // ── TaskModal ─────────────────────────────────────────────────────────────────
 
-function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:initIconSheet,onSave,onUpdate,onDelete,onClose,onBulkInput,globalTags,customTabs,notificationsEnabled,onEnableNotifications,isPremium=true,onOpenTagSettings,onOpenPro,atLocationLimit=false,suppressAutoFocus=false,focusNameSignal,fillTestNameSignal}:{
+function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:initIconSheet,onSave,onUpdate,onRequestRecurringSave,onDelete,onClose,onBulkInput,globalTags,customTabs,notificationsEnabled,onEnableNotifications,isPremium=true,onOpenTagSettings,onOpenPro,atLocationLimit=false,suppressAutoFocus=false,focusNameSignal,fillTestNameSignal}:{
   task:Task|null; currentDate:string; prefillTime?:string; prefillCategory?:string; openIconSheet?:boolean;
-  onSave:(tasks:Omit<Task,'id'>[])=>void; onUpdate?:(data:Omit<Task,'id'>)=>void; onDelete?:(scope:'one'|'all')=>void; onClose:()=>void; onBulkInput?:()=>void;
+  onSave:(tasks:Omit<Task,'id'>[])=>void; onUpdate?:(data:Omit<Task,'id'>)=>void;
+  // 繰り返しタスクの既存インスタンスを編集して「完了」を押した時に呼ばれる。
+  // この時点ではまだ保存せず、呼び出し元（App）が「この予定のみ／すべての予定」の
+  // 確認ポップアップを表示してから実際の保存を行う
+  onRequestRecurringSave?:(data:Omit<Task,'id'>)=>void;
+  onDelete?:(scope:'one'|'all')=>void; onClose:()=>void; onBulkInput?:()=>void;
   isPremium?:boolean;
   globalTags:TagDef[]; customTabs:CustomTab[];
   notificationsEnabled?:boolean; onEnableNotifications?:()=>void;
@@ -2161,7 +2166,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                       {saveStatus==='saving'?tr('taskModalSaving'):saveStatus==='saved'?tr('taskModalSaved'):tr('taskModalSaveFailed')}
                     </span>
                   )}
-                  <button onClick={flushAndClose}
+                  <button onClick={task.recurrence?()=>onRequestRecurringSave?.(buildData()):flushAndClose}
                     className="px-4 py-1.5 text-sm font-semibold rounded-full bg-white/90 text-gray-800">{tr('taskModalDone')}</button>
                 </>
               ) : (
@@ -7304,10 +7309,11 @@ export default function App() {
   const layoutYRef = useRef<((min:number)=>number)|null>(null);
   const dragSettingInitY   = useRef<number>(0);
   const dragSettingInitMin = useRef<number>(0);
-  const [recConfirm,setRecConfirm] = useState<Task|null>(null);
+  // 繰り返しタスク編集時の「この予定のみ／すべての予定」確認。タスク編集画面を開く前ではなく、
+  // 「完了」ボタンを押した時点で表示する（dataに編集後の内容を保持しておき、選択後に保存する）
+  const [recConfirm,setRecConfirm] = useState<{task:Task;data:Omit<Task,'id'>}|null>(null);
   const [pendingDragMove,setPendingDragMove] = useState<{task:Task;time:string}|null>(null);
   const [pendingDragDelete,setPendingDragDelete] = useState<Task|null>(null);
-  const [editScope,setEditScope]   = useState<'one'|'all'>('one');
   const [overTrash,setOverTrash]   = useState(false);
   const [overLater,setOverLater]   = useState(false);
   const [settingConfirm,setSettingConfirm] = useState<{type:'wake'|'sleep';newTime:string}|null>(null);
@@ -8167,12 +8173,8 @@ export default function App() {
   };
 
   const openAdd  = (prefillTime?:string) => setModal({open:true,task:null,prefillTime,prefillCategory:activeCategory??undefined});
-  const openEdit = (task:Task) => {
-    if(task.recurrence) { setRecConfirm(task); } else { setModal({open:true,task}); }
-  };
-  const openEditIconSheet=(task:Task)=>{
-    if(task.recurrence){setRecConfirm(task);}else{setModal({open:true,task,iconSheet:true});}
-  };
+  const openEdit = (task:Task) => setModal({open:true,task});
+  const openEditIconSheet=(task:Task)=>setModal({open:true,task,iconSheet:true});
   const closeModal = () => setModal({open:false,task:null});
 
   const bulkAddTasks = (newTasks:Omit<Task,'id'>[], endTime:string) => {
@@ -8206,8 +8208,32 @@ export default function App() {
   };
 
   const saveTasks = (data:Omit<Task,'id'>[]) => {
-    if(editScope==='all'&&modal.task){
-      const orig=modal.task, d=data[0];
+    const newTasks=data.map(d=>({...d,id:uid()}));
+    setTasks(prev=>modal.task
+      ?prev.map(t=>t.id===modal.task!.id?{...newTasks[0],id:t.id}:t)
+      :[...prev,...newTasks]
+    );
+    if(showTour&&!modal.task) setTourTaskSavedSignal(n=>n+1);
+    if(!modal.task){
+      logAnalyticsEvent('task_created',{mode:newTasks[0].isLater?'later':newTasks[0].recurrence?'recurring':'scheduled'});
+      if(newTasks[0].isLater) logAnalyticsEvent('later_task_created');
+      else if(newTasks[0].startTime) logAnalyticsEvent('timeline_task_added');
+    }
+    const wasTimeNotify=(modal.task?.notifications?.length??0)>0;
+    const wasLocNotify=modal.task?.locationNotify??false;
+    if(!wasTimeNotify&&(newTasks[0].notifications?.length??0)>0) logAnalyticsEvent('time_notification_created');
+    if(!wasLocNotify&&newTasks[0].locationNotify) logAnalyticsEvent('location_notification_created');
+    closeModal();
+  };
+  // 繰り返しタスク編集の「完了」確認ポップアップ（recConfirm）から呼ばれる。
+  // 'one': 編集中のインスタンス1件のみ更新。'all': 同じ名前・繰り返し設定・開始時刻を
+  // 持つ全インスタンスに反映する（新規作成時の一括生成と同じ一致条件）
+  const finalizeRecurringEdit = (scope:'one'|'all') => {
+    if(!recConfirm) return;
+    const {task:orig,data:d} = recConfirm;
+    if(scope==='one'){
+      setTasks(prev=>prev.map(t=>t.id===orig.id?{...t,...d,id:t.id}:t));
+    } else {
       setTasks(prev=>prev.map(t=>
         t.name===orig.name&&t.recurrence===orig.recurrence&&t.startTime===orig.startTime
           ?{...t,name:d.name,startTime:d.startTime,duration:d.duration,memo:d.memo,icon:d.icon,color:d.color,category:d.category,tags:d.tags,notifications:d.notifications,
@@ -8215,24 +8241,8 @@ export default function App() {
             locationNotify:d.locationNotify,location:d.location,address:d.address}
           :t
       ));
-    } else {
-      const newTasks=data.map(d=>({...d,id:uid()}));
-      setTasks(prev=>modal.task
-        ?prev.map(t=>t.id===modal.task!.id?{...newTasks[0],id:t.id}:t)
-        :[...prev,...newTasks]
-      );
-      if(showTour&&!modal.task) setTourTaskSavedSignal(n=>n+1);
-      if(!modal.task){
-        logAnalyticsEvent('task_created',{mode:newTasks[0].isLater?'later':newTasks[0].recurrence?'recurring':'scheduled'});
-        if(newTasks[0].isLater) logAnalyticsEvent('later_task_created');
-        else if(newTasks[0].startTime) logAnalyticsEvent('timeline_task_added');
-      }
-      const wasTimeNotify=(modal.task?.notifications?.length??0)>0;
-      const wasLocNotify=modal.task?.locationNotify??false;
-      if(!wasTimeNotify&&(newTasks[0].notifications?.length??0)>0) logAnalyticsEvent('time_notification_created');
-      if(!wasLocNotify&&newTasks[0].locationNotify) logAnalyticsEvent('location_notification_created');
     }
-    setEditScope('one');
+    setRecConfirm(null);
     closeModal();
   };
   // VoiceCapturePopup（ウィジェットの「音声でタスク追加」）専用。TaskModalを介さず、
@@ -8642,6 +8652,7 @@ export default function App() {
       {modal.open&&(
         <TaskModal task={modal.task} currentDate={date} prefillTime={modal.prefillTime} prefillCategory={modal.prefillCategory} openIconSheet={!!modal.iconSheet}
           onSave={saveTasks} onUpdate={modal.task?updateTask:undefined}
+          onRequestRecurringSave={modal.task?(data)=>setRecConfirm({task:modal.task!,data}):undefined}
           onDelete={modal.task?(scope)=>delTask(modal.task!.id,scope==='all'&&modal.task!.recurrence?modal.task!:undefined):undefined}
           onClose={closeModal} onBulkInput={()=>{closeModal();setSettingsInitSub('bulkInput');setSOp(true);}}
           onOpenTagSettings={()=>{closeModal();setSettingsInitSub('tags');setSOp(true);}}
@@ -8752,11 +8763,11 @@ export default function App() {
         <div className="fixed inset-0 z-[200] bg-black/50 flex items-end justify-center" onClick={()=>setRecConfirm(null)}>
           <div className="bg-white w-full max-w-md rounded-t-3xl px-5 pt-6 pb-10 shadow-2xl" onClick={e=>e.stopPropagation()}>
             <p className="text-base font-bold text-gray-900 mb-1">{tr('recurringEditTitle')}</p>
-            <p className="text-sm text-gray-500 mb-6">{tr('recurringEditConfirmBody').replace('{name}',()=>recConfirm.name)}</p>
+            <p className="text-sm text-gray-500 mb-6">{tr('recurringEditConfirmBody').replace('{name}',()=>recConfirm.task.name)}</p>
             <div className="space-y-3">
-              <button onClick={()=>{setEditScope('one');setModal({open:true,task:recConfirm});setRecConfirm(null);}}
+              <button onClick={()=>finalizeRecurringEdit('one')}
                 className="w-full py-3.5 bg-gray-100 rounded-2xl text-sm font-semibold text-gray-900">{tr('thisOccurrenceOnlyButton')}</button>
-              <button onClick={()=>{setEditScope('all');setModal({open:true,task:recConfirm});setRecConfirm(null);}}
+              <button onClick={()=>finalizeRecurringEdit('all')}
                 className="w-full py-3.5 bg-[var(--c-primary)] rounded-2xl text-sm font-semibold text-white">{tr('allOccurrencesButton')}</button>
               <button onClick={()=>setRecConfirm(null)}
                 className="w-full py-2.5 text-sm text-gray-400 font-semibold">{tr('cancelButton')}</button>
