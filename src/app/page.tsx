@@ -65,6 +65,9 @@ interface Task {
   location?: { name:string; lat:number; lng:number };  // 選択した場所
   completedAt?: string;  // 完了した日時（ISO文字列）。「あとでやる」完了済みの7日後自動削除の起点
   address?: string;  // タスクの住所（表示用の自由入力文字列。通知・ジオフェンスとは無関係）
+  seriesId?: string;  // 繰り返しタスクのシリーズ識別子（作成時に発行、以後不変）。
+                       // 「すべての予定を変更/削除」等の一致判定に使う。無い場合は
+                       // レガシーデータとして 名前+繰り返し設定+開始時刻 で判定する
 }
 
 type FontSize = 'small'|'standard'|'large'|'xlarge';
@@ -496,6 +499,19 @@ const shiftDate   = (s: string, n: number) => { const d=new Date(s+'T12:00:00');
 const shiftMonthBy= (s: string, n: number) => { const d=new Date(s+'T12:00:00'); d.setMonth(d.getMonth()+n); return dateToStr(d); };
 const shiftYearBy = (s: string, n: number) => { const d=new Date(s+'T12:00:00'); d.setFullYear(d.getFullYear()+n); return dateToStr(d); };
 const uid         = () => `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+// 繰り返しタスクの「同じ回」判定。seriesId（作成時に割り当てる、以後不変のシリーズ識別子）が
+// あればそれだけで判定する。無い場合（この仕組みを導入する前に作られたレガシーデータ）は
+// 従来通り 名前+繰り返し設定+開始時刻 の一致で判定するが、相手が既にseriesIdを持つ場合
+// （「この予定のみ変更」で切り離された回など）はレガシー判定に巻き込まない。
+// 所要時間やメモ等、一致条件に含まれない項目だけを個別編集しても、次に別の回から
+// 「すべての予定を変更」を押すとその個別編集が上書きされてしまう不具合があったため、
+// 「この予定のみ変更」を選んだ回には必ずseriesIdを新規発行してシリーズから切り離し、
+// 以後どの項目の一括変更からも除外されるようにしている
+function sameRecurringSeries(t:Task, orig:Task): boolean {
+  if(orig.seriesId) return t.seriesId===orig.seriesId;
+  if(t.seriesId) return false;
+  return t.name===orig.name && t.recurrence===orig.recurrence && t.startTime===orig.startTime;
+}
 const durLabel    = (m: number, lang: Language = 'ja') => {
   if(m<=0) return '';
   if(lang==='en') return m>=60?`${Math.floor(m/60)}h${m%60?` ${m%60}m`:''}`:`${m}m`;
@@ -1931,6 +1947,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
     deadlineNotify:(mode!=='recurring'&&deadlineDate)?deadlineNotify:undefined,
     locationNotify:locationNotify&&!!taskLocation,
     location:taskLocation??undefined,
+    seriesId:task?.seriesId,
     address:address.trim()||undefined,
   });
 
@@ -2033,6 +2050,10 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
     if(savedOnceRef.current) return;
     savedOnceRef.current=true;
     const dur=duration;
+    // 新規の繰り返しシリーズには、生成する全インスタンス共通のseriesIdを1つだけ発行する
+    // （baseに含めてspreadすれば各インスタンスに自動的に引き継がれる）。既存タスクの
+    // 編集（非新規）ではtaskが持つseriesIdをそのまま維持する
+    const seriesId=(mode==='recurring'&&!task)?uid():task?.seriesId;
     const base:Omit<Task,'id'>={
       name:name.trim(),
       startTime:(mode==='later'||mode==='allday')?null:(startTime||null),
@@ -2057,6 +2078,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
       locationNotify:locationNotify&&!!taskLocation,
       location:taskLocation??undefined,
       address:address.trim()||undefined,
+      seriesId,
     };
     if(mode==='recurring'&&!task){
       const instances:Omit<Task,'id'>[]=[];
@@ -8232,19 +8254,26 @@ export default function App() {
     closeModal();
   };
   // 繰り返しタスク編集の「完了」確認ポップアップ（recConfirm）から呼ばれる。
-  // 'one': 編集中のインスタンス1件のみ更新。'all': 同じ名前・繰り返し設定・開始時刻を
-  // 持つ全インスタンスに反映する（新規作成時の一括生成と同じ一致条件）
+  // 'one': 編集中のインスタンス1件のみ更新し、新しいseriesIdを発行してシリーズから切り離す
+  // （以後「すべての予定を変更/削除」等の対象から外れる。所要時間やメモ等、名前・繰り返し設定・
+  // 開始時刻以外の項目を個別編集しても、後で別の回から「すべて」を押すと上書きされてしまう
+  // 不具合があったため、個別編集した回は項目を問わず一括操作の対象外にする設計にした）。
+  // 'all': 同じseriesId（レガシーデータはsameRecurringSeriesが名前・繰り返し設定・開始時刻で
+  // 代替判定）を持つ全インスタンスに反映する。レガシーデータはこの操作を機にseriesIdを
+  // 新規発行し、以後は安定した判定に移行する
   const finalizeRecurringEdit = (scope:'one'|'all') => {
     if(!recConfirm) return;
     const {task:orig,data:d} = recConfirm;
     if(scope==='one'){
-      setTasks(prev=>prev.map(t=>t.id===orig.id?{...t,...d,id:t.id}:t));
+      const detachedId=uid();
+      setTasks(prev=>prev.map(t=>t.id===orig.id?{...t,...d,id:t.id,seriesId:detachedId}:t));
     } else {
+      const sid=orig.seriesId??uid();
       setTasks(prev=>prev.map(t=>
-        t.name===orig.name&&t.recurrence===orig.recurrence&&t.startTime===orig.startTime
+        sameRecurringSeries(t,orig)
           ?{...t,name:d.name,startTime:d.startTime,duration:d.duration,memo:d.memo,icon:d.icon,color:d.color,category:d.category,tags:d.tags,notifications:d.notifications,
             incompleteReminder:d.incompleteReminder,subtasks:d.subtasks,pinned:d.pinned,allDay:d.allDay,
-            locationNotify:d.locationNotify,location:d.location,address:d.address}
+            locationNotify:d.locationNotify,location:d.location,address:d.address,seriesId:sid}
           :t
       ));
     }
@@ -8269,7 +8298,7 @@ export default function App() {
       :t));
   const delTask  = (id:string, seriesOf?:Task) => {
     if(seriesOf){
-      setTasks(prev=>prev.filter(t=>!(t.name===seriesOf.name&&t.recurrence===seriesOf.recurrence&&t.startTime===seriesOf.startTime)));
+      setTasks(prev=>prev.filter(t=>!sameRecurringSeries(t,seriesOf)));
     } else {
       setTasks(prev=>prev.filter(t=>t.id!==id));
     }
@@ -8732,14 +8761,14 @@ export default function App() {
             <div className="space-y-3">
               <button onClick={()=>{
                 const {task:orig,time}=pendingDragMove;
-                setTasks(prev=>prev.map(tk=>tk.id===orig.id?{...tk,startTime:time}:tk));
+                setTasks(prev=>prev.map(tk=>tk.id===orig.id?{...tk,startTime:time,seriesId:uid()}:tk));
                 setPendingDragMove(null);
               }} className="w-full py-3.5 bg-gray-100 rounded-2xl text-sm font-semibold text-gray-900">{tr('thisOccurrenceOnlyButton')}</button>
               <button onClick={()=>{
                 const {task:orig,time}=pendingDragMove;
+                const sid=orig.seriesId??uid();
                 setTasks(prev=>prev.map(tk=>
-                  tk.name===orig.name&&tk.recurrence===orig.recurrence&&tk.startTime===orig.startTime
-                    ?{...tk,startTime:time}:tk
+                  sameRecurringSeries(tk,orig)?{...tk,startTime:time,seriesId:sid}:tk
                 ));
                 setPendingDragMove(null);
               }} className="w-full py-3.5 bg-[var(--c-primary)] rounded-2xl text-sm font-semibold text-white">{tr('allOccurrencesButton')}</button>
