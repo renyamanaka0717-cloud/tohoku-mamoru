@@ -2813,7 +2813,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
             {(mode==='scheduled'||mode==='recurring'||mode==='allday')&&(<>
               <div className="h-px bg-gray-100 mx-4"/>
               <div className="w-full flex items-center gap-3 px-4 py-3.5">
-                <AppIcons.checkSquare size={18} className="text-gray-400 shrink-0"/>
+                <AppIcons.pin size={18} className="text-gray-400 shrink-0"/>
                 <span className="flex-1 text-sm font-medium text-gray-800">{tr('fieldNoComplete')}</span>
                 <button onClick={()=>setNoComplete(v=>!v)}
                   className={`w-10 h-5 rounded-full transition-colors relative shrink-0 ${noComplete?'bg-[var(--c-primary)]':'bg-gray-200'}`}>
