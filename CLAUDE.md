@@ -585,6 +585,15 @@ iOS標準のホーム画面ウィジェット（WidgetKit）。1つの大きい�
 2. 実機のホーム画面で長押し →「ウィジェットを追加」→「BrainBox」を検索 →「次の予定 & 買い物リスト」（systemLarge）を追加
 3. 行をタップ →その場でウィジェットから消える→ アプリを開くと実際に完了/購入済みになっていることを確認
 
+### ロック画面ウィジェット（`AddLaterVoiceLockScreenWidget`、`.accessoryCircular`）
+
+iOS 16+のロック画面ウィジェット（丸いバッジ型）。ホーム画面の「音声でタスク追加」ウィジェット（`AddLaterVoiceWidget`）と全く同じ`brainbox://addLaterVoice`URLスキームを使うだけなので、新しいCapacitorプラグインやデータ連携は不要——`BrainBoxWidgets.swift`に`StaticConfiguration`をもう1つ追加しただけ（Widget Extensionターゲットの既存ファイルを更新するだけで、新規ターゲット作成は不要）。
+
+- `AddLaterVoiceLockScreenView`／`AddLaterVoiceLockScreenWidget`（`BrainBoxWidgets.swift`） — マイクアイコン1つのみの最小構成。`AccessoryWidgetBackground()`（WidgetKitがロック画面ウィジェット用に提供するシステム標準の背景）を使い、アイコンには`.widgetAccentable()`を付ける
+- **ロック画面ウィジェットは常にシステムがモノクロ/ユーザー選択のアクセントカラーでレンダリングする**（ホーム画面ウィジェットのようにテーマカラーをそのまま使ったフルカラー表示にはならない）。`.widgetAccentable()`を付けた要素だけがユーザーのアクセントカラーに追従する対象になる——`entry.themeColor`をこのビューで使っていないのはこのため（渡しても意味を持たない）
+- `supportedFamilies([.accessoryCircular])`のみ指定（`.accessoryRectangular`/`.accessoryInline`は今回未対応）
+- `BrainBoxWidgetBundle`に追加するだけで、ホーム画面ウィジェットと同じギャラリーに並ぶ（ユーザーがロック画面編集時に選ぶとロック画面専用のウィジェットとして候補に出る。Xcode側の追加セットアップ手順は無い——既存のWidget Extensionターゲットの`BrainBoxWidgets.swift`を最新内容に差し替えるだけでよい）
+
 ### Android実装（`native-android/WidgetDataPlugin.kt`・`BrainBoxWidgetProvider.kt`等）
 
 **iOSのWidgetKitとは根本的に仕組みが異なる。** SwiftUI + TimelineProviderで宣言的に描画するiOSに対し、Androidは`AppWidgetProvider` + `RemoteViews`（あらかじめ用意した固定レイアウトの一部だけをリモートから書き換える方式）で実装する。タスク最大4件・買い物最大6件という表示件数の上限がすでに決まっているため、可変長リスト用の`RemoteViewsService`（実装コストが高い）は使わず、レイアウトXMLに固定で用意した`task_row_0..3`/`shop_row_0..5`の表示/非表示を切り替えるだけで足りる設計にした。

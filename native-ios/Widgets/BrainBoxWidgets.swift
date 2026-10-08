@@ -410,10 +410,42 @@ struct AddLaterVoiceWidget: Widget {
     }
 }
 
+// MARK: - 音声でタスク追加 ロック画面ウィジェット（.accessoryCircular）
+
+// ホーム画面版（AddLaterVoiceWidget）と同じURLスキームで、ロック画面の丸いウィジェット
+// 枠に収まるよう最小限の構成にしたもの。ロック画面ウィジェットは常にシステムが
+// モノクロ/アクセントカラーでレンダリングするため、.widgetAccentable()で
+// アイコンをアクセント対象としてマークする（通常のフルカラー表示にはならない）
+struct AddLaterVoiceLockScreenView: View {
+    var body: some View {
+        Link(destination: URL(string: "brainbox://addLaterVoice")!) {
+            ZStack {
+                AccessoryWidgetBackground()
+                Image(systemName: "mic.fill")
+                    .font(.system(size: 20, weight: .bold))
+                    .widgetAccentable()
+            }
+        }
+    }
+}
+
+struct AddLaterVoiceLockScreenWidget: Widget {
+    let kind: String = "BrainBoxAddLaterVoiceLockScreenWidget"
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: kind, provider: CombinedProvider()) { _ in
+            AddLaterVoiceLockScreenView()
+        }
+        .configurationDisplayName("音声でタスク追加")
+        .description("ロック画面から話しかけるだけで「あとでやる」タスクを追加できます。")
+        .supportedFamilies([.accessoryCircular])
+    }
+}
+
 @main
 struct BrainBoxWidgetBundle: WidgetBundle {
     var body: some Widget {
         AddLaterVoiceWidget()
+        AddLaterVoiceLockScreenWidget()
         CombinedWidget()
         QuadWidget()
         AddLaterWidget()
