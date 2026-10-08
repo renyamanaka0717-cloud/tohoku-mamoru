@@ -2269,7 +2269,9 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
         </div>
 
         {/* ── White content ── */}
-        <div className="bg-gray-50 overflow-y-auto" style={{maxHeight:contentMaxH}}>
+        {/* heightで固定する（maxHeightだと「あとで」のように項目が少ないモードだけ
+            シートが短くなり、モード切替のたびに高さがガタつくため、常に同じ高さで統一する） */}
+        <div className="bg-gray-50 overflow-y-auto" style={{height:contentMaxH}}>
           {/* Recurring settings */}
           {mode==='recurring'&&(
             <>
