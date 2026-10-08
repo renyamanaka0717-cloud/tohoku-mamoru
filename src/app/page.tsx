@@ -2518,22 +2518,6 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
               </div>
             </>)}
 
-            {/* 完了チェックなし — 起床・出勤など記録専用の項目向け。scheduled/recurring/allday のみ */}
-            {(mode==='scheduled'||mode==='recurring'||mode==='allday')&&(<>
-              <div className="h-px bg-gray-100 mx-4"/>
-              <div className="w-full flex items-center gap-3 px-4 py-3.5">
-                <AppIcons.checkSquare size={18} className="text-gray-400 shrink-0"/>
-                <div className="flex-1 min-w-0">
-                  <span className="text-sm font-medium text-gray-800">{tr('fieldNoComplete')}</span>
-                  <p className="text-xs text-gray-400">{tr('taskModalNoCompleteHint')}</p>
-                </div>
-                <button onClick={()=>setNoComplete(v=>!v)}
-                  className={`w-10 h-5 rounded-full transition-colors relative shrink-0 ${noComplete?'bg-[var(--c-primary)]':'bg-gray-200'}`}>
-                  <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${noComplete?'left-[22px]':'left-0.5'}`}/>
-                </button>
-              </div>
-            </>)}
-
             {/* 所要時間 — not shown for allday */}
             {mode!=='allday'&&(<>
               <div className="h-px bg-gray-100 mx-4"/>
@@ -2824,6 +2808,22 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                 </button>
               </div>
             )}
+
+            {/* 完了チェックなし — 起床・出勤など記録専用の項目向け。scheduled/recurring/allday のみ */}
+            {(mode==='scheduled'||mode==='recurring'||mode==='allday')&&(<>
+              <div className="h-px bg-gray-100 mx-4"/>
+              <div className="w-full flex items-center gap-3 px-4 py-3.5">
+                <AppIcons.checkSquare size={18} className="text-gray-400 shrink-0"/>
+                <div className="flex-1 min-w-0">
+                  <span className="text-sm font-medium text-gray-800">{tr('fieldNoComplete')}</span>
+                  <p className="text-xs text-gray-400">{tr('taskModalNoCompleteHint')}</p>
+                </div>
+                <button onClick={()=>setNoComplete(v=>!v)}
+                  className={`w-10 h-5 rounded-full transition-colors relative shrink-0 ${noComplete?'bg-[var(--c-primary)]':'bg-gray-200'}`}>
+                  <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${noComplete?'left-[22px]':'left-0.5'}`}/>
+                </button>
+              </div>
+            </>)}
 
             {/* サブタスク */}
             <div className="h-px bg-gray-100 mx-4"/>
