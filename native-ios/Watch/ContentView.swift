@@ -5,23 +5,15 @@
 // アプリを開いた瞬間（.onAppear）に、マイクボタンのタップを待たずに自動でダイクテーションを
 // 開始する。マイクボタン自体は、キャンセル・空発話等でidleに戻った時の手動リトライ用に残す。
 //
-// 【音声入力の実装方法】watchOSにはiOS版VoiceInputPlugin（SFSpeechRecognizer＋AVAudioEngine自前実装）
-// に相当する作り込みは不要。WatchKitのpresentTextInputController(withSuggestions:allowedInputMode:)を
-// allowedInputMode: .plain で呼ぶと、システム標準の入力選択画面（ダイクテーション/Scribble/
-// 定型リスト）が開き、ダイクテーションを選んで話し終えると自動でテキストに変換されてcompletionに返る
-// （.forceDictationというケースは実在しない。WKTextInputModeは.plain/.allowEmoji/
-// .allowAnimatedEmojiの3つのみで、候補チップ/Scribble選択を完全にスキップする手段は無い）
-// （音声キャプチャ・認識はシステムのプロセスが行うため、アプリ側でNSMicrophoneUsageDescription/
-// NSSpeechRecognitionUsageDescriptionをWatch App側Info.plistに追加する必要は無い——iOS版の
-// VoiceInputPluginが自前でマイクを掴む方式とはこの点が根本的に異なる）。
-// SwiftUIのみのApp lifecycle（WKApplicationDelegateAdaptorを使わない、このファイルのような
-// @main struct ... : App構成）でも、WatchKitはSwiftUIビューをWKHostingController
-// （WKInterfaceControllerのサブクラス）でホストしているため、WKExtension.shared().
-// visibleInterfaceControllerは引き続き解決できる（多くのwatchOS SwiftUIアプリで使われている
-// 標準的なテクニック）。ただし実機・実際のwatchOSバージョンでの動作は必ず確認すること
-// （このセッションではwatchOSシミュレータ/実機を操作できないため未検証）。
-// 万一nilが返る場合に備え、プレーンなTextField（タップで同じダイクテーション選択肢が出る）を
-// フォールバックとして用意してある
+// 【音声入力の実装方法（変更履歴あり）】当初はWatchKitのpresentTextInputController
+// （allowedInputMode: .plain）でシステム標準の入力選択画面を開く方式にしていたが、実機で
+// 確認したところ「候補チップ/Scribble選択を完全にスキップする手段が無い」というAPIの制約により
+// 手書き（Scribble）の画面が毎回先に出てしまい、「開いた瞬間にダイクテーションが始まる」という
+// 狙った体験にならなかった。そのため、iOS版VoiceInputPluginと同じ方式（SFSpeechRecognizer＋
+// AVAudioEngineの自前実装、WatchVoiceRecognizer.swift）に作り変えた。この方式では
+// システムの入力選択画面を経由しないため、Watch App側のInfo.plistに
+// NSMicrophoneUsageDescription / NSSpeechRecognitionUsageDescription の追加が必要
+// （Xcodeの対象ターゲット → Info タブ → Custom watchOS Target Propertiesで追加する）。
 import SwiftUI
 import WatchKit
 
@@ -31,11 +23,12 @@ private enum FlowState: Equatable {
     case preview(String)
     case sending
     case done
-    case error
+    case error(String)
 }
 
 struct ContentView: View {
     @EnvironmentObject var connector: WatchConnector
+    @StateObject private var recognizer = WatchVoiceRecognizer()
     @State private var state: FlowState = .idle
     @State private var fallbackText: String = ""
     @State private var showFallbackField = false
@@ -61,7 +54,7 @@ struct ContentView: View {
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(accentColor)
-                // フォールバック用（visibleInterfaceControllerがnilだった場合のみ表示される）
+                // マイク権限が無い場合等のフォールバック用（手入力で保存できるようにする）
                 if showFallbackField {
                     TextField("タスク名", text: $fallbackText, onCommit: {
                         submit(fallbackText)
@@ -70,7 +63,15 @@ struct ContentView: View {
                     })
                 }
             case .dictating:
-                ProgressView()
+                // もう一度タップすると、無音を待たずに早めに認識を打ち切れる
+                Button(action: { recognizer.stop() }) {
+                    VStack(spacing: 6) {
+                        ProgressView()
+                        Text("聞き取り中…タップで終了")
+                            .font(.caption2)
+                    }
+                }
+                .buttonStyle(.plain)
             case .preview(let text):
                 Text(text)
                     .font(.footnote)
@@ -86,13 +87,14 @@ struct ContentView: View {
                     Text("追加しました")
                         .font(.footnote)
                 }
-            case .error:
+            case .error(let message):
                 VStack(spacing: 6) {
                     Image(systemName: "exclamationmark.circle.fill")
                         .font(.system(size: 36))
                         .foregroundStyle(.red)
-                    Text("送信できませんでした")
+                    Text(message)
                         .font(.footnote)
+                        .multilineTextAlignment(.center)
                 }
             }
         }
@@ -107,21 +109,22 @@ struct ContentView: View {
     }
 
     private func startDictation() {
-        state = .dictating
-        if let controller = WKExtension.shared().visibleInterfaceController {
-            controller.presentTextInputController(withSuggestions: nil, allowedInputMode: .plain) { results in
-                DispatchQueue.main.async {
-                    if let text = (results?.first as? String), !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                        showPreviewThenSend(text)
-                    } else {
-                        state = .idle
-                    }
+        recognizer.requestAuthorization { granted in
+            guard granted else {
+                state = .error("マイクの使用が許可されていません")
+                showFallbackField = true
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) { state = .idle }
+                return
+            }
+            state = .dictating
+            recognizer.start { text in
+                let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !trimmed.isEmpty {
+                    showPreviewThenSend(trimmed)
+                } else {
+                    state = .idle
                 }
             }
-        } else {
-            // 実機で visibleInterfaceController が取れなかった場合の最終手段
-            state = .idle
-            showFallbackField = true
         }
     }
 
@@ -136,7 +139,7 @@ struct ContentView: View {
     private func submit(_ text: String) {
         state = .sending
         let ok = connector.send(text)
-        state = ok ? .done : .error
+        state = ok ? .done : .error("送信できませんでした")
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) {
             state = .idle
         }
