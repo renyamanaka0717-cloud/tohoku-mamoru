@@ -68,6 +68,8 @@ interface Task {
   seriesId?: string;  // 繰り返しタスクのシリーズ識別子（作成時に発行、以後不変）。
                        // 「すべての予定を変更/削除」等の一致判定に使う。無い場合は
                        // レガシーデータとして 名前+繰り返し設定+開始時刻 で判定する
+  noComplete?: boolean;  // true: 完了チェックを持たない記録専用の項目（起床・出勤等）。
+                          // 時間が過ぎても未完了扱いにしない・放置通知/朝の未完了移動の対象外
 }
 
 type FontSize = 'small'|'standard'|'large'|'xlarge';
@@ -1902,6 +1904,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
   const [custNotifOpen,setCNOpen]  = useState(false);
   const [custNotifMin,setCNMin]    = useState(60);
   const [pinned,setPinned]    = useState(task?.pinned??false);
+  const [noComplete,setNoComplete] = useState(task?.noComplete??false);
   const [tags,setTags]        = useState<string[]>(task?.tags??[]);
   const [taskDate,setTaskDate]= useState(task?.date??currentDate);
   const [dateOpen,setDateOpen]= useState(false);
@@ -1949,6 +1952,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
     location:taskLocation??undefined,
     seriesId:task?.seriesId,
     address:address.trim()||undefined,
+    noComplete:mode!=='later'?noComplete:false,
   });
 
   // 編集開始時点のスナップショット。繰り返しタスクで「完了」を押した時、何も変更していなければ
@@ -1984,7 +1988,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
     },400);
     return ()=>{if(autoSaveTimer.current) clearTimeout(autoSaveTimer.current);};
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[name,taskDate,startTime,duration,mode,recur,customRec,tags,subtasks,memo,category,notifications,incompleteRem,icon,color,deadlineDate,deadlineTime,deadlineNotify,locationNotify,taskLocation,address]);
+  },[name,taskDate,startTime,duration,mode,recur,customRec,tags,subtasks,memo,category,notifications,incompleteRem,icon,color,deadlineDate,deadlineTime,deadlineNotify,locationNotify,taskLocation,address,noComplete]);
 
   const flushAndClose = () => {
     if(autoSaveTimer.current){
@@ -2079,6 +2083,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
       location:taskLocation??undefined,
       address:address.trim()||undefined,
       seriesId,
+      noComplete:mode!=='later'?noComplete:false,
     };
     if(mode==='recurring'&&!task){
       const instances:Omit<Task,'id'>[]=[];
@@ -2510,6 +2515,22 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                     <AppIcons.caretRight size={14} className="text-gray-300"/>
                   </button>
                 )}
+              </div>
+            </>)}
+
+            {/* 完了チェックなし — 起床・出勤など記録専用の項目向け。scheduled/recurring/allday のみ */}
+            {(mode==='scheduled'||mode==='recurring'||mode==='allday')&&(<>
+              <div className="h-px bg-gray-100 mx-4"/>
+              <div className="w-full flex items-center gap-3 px-4 py-3.5">
+                <AppIcons.checkSquare size={18} className="text-gray-400 shrink-0"/>
+                <div className="flex-1 min-w-0">
+                  <span className="text-sm font-medium text-gray-800">{tr('fieldNoComplete')}</span>
+                  <p className="text-xs text-gray-400">{tr('taskModalNoCompleteHint')}</p>
+                </div>
+                <button onClick={()=>setNoComplete(v=>!v)}
+                  className={`w-10 h-5 rounded-full transition-colors relative shrink-0 ${noComplete?'bg-[var(--c-primary)]':'bg-gray-200'}`}>
+                  <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${noComplete?'left-[22px]':'left-0.5'}`}/>
+                </button>
               </div>
             </>)}
 
@@ -3161,12 +3182,18 @@ function TaskCard({task,onToggle,onEdit,globalTags,onSubtaskToggle,tabName,iconD
             </div>
           )}
         </div>
-        <button onClick={e=>{e.stopPropagation();onToggle();}}
-          className="w-9 h-9 -m-1.5 shrink-0 flex items-center justify-center">
-          <span className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${task.completed?'border-[var(--c-primary)] bg-[var(--c-primary)]':'border-gray-300'}`}>
-            {task.completed&&<span className="text-white text-[10px] font-bold leading-none">✓</span>}
-          </span>
-        </button>
+        {task.noComplete ? (
+          <div className="w-9 h-9 -m-1.5 shrink-0 flex items-center justify-center">
+            <span className="w-2.5 h-2.5 rounded-full bg-gray-300"/>
+          </div>
+        ) : (
+          <button onClick={e=>{e.stopPropagation();onToggle();}}
+            className="w-9 h-9 -m-1.5 shrink-0 flex items-center justify-center">
+            <span className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${task.completed?'border-[var(--c-primary)] bg-[var(--c-primary)]':'border-gray-300'}`}>
+              {task.completed&&<span className="text-white text-[10px] font-bold leading-none">✓</span>}
+            </span>
+          </button>
+        )}
       </div>
       {openPanel==='subtask'&&subtasks.length>0&&(
         <div className="mt-2 space-y-1.5 pb-0.5" onClick={e=>e.stopPropagation()}>
@@ -5046,7 +5073,11 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
                         <p className="text-xs text-gray-400">{t.date.slice(5).replace('-','/')} {t.startTime}</p>
                         <p className="text-sm font-semibold text-gray-900">{t.name}</p>
                       </div>
-                      <button onClick={()=>onToggle(t.id)} className="w-6 h-6 rounded-full border-2 border-gray-300 shrink-0"/>
+                      {t.noComplete ? (
+                        <div className="w-6 h-6 flex items-center justify-center shrink-0"><span className="w-2 h-2 rounded-full bg-gray-300"/></div>
+                      ) : (
+                        <button onClick={()=>onToggle(t.id)} className="w-6 h-6 rounded-full border-2 border-gray-300 shrink-0"/>
+                      )}
                     </div>
                   );})}
                 </div>
@@ -7772,12 +7803,12 @@ export default function App() {
       if(Date.now()<parseInt(snoozeTs)) return;
       localStorage.removeItem(MORNING_SNOOZE_KEY);
       morningShownRef.current=false;
-      const past2=tasks.filter(t=>!t.completed&&!t.isLater&&!!t.startTime&&!t.recurrence&&t.date===shiftDate(today,-1));
+      const past2=tasks.filter(t=>!t.completed&&!t.isLater&&!t.noComplete&&!!t.startTime&&!t.recurrence&&t.date===shiftDate(today,-1));
       if(past2.length>0) notify(tr('notifYesterdayTasksTitle'),tr('notifYesterdayTasksBody').replace('{n}',()=>String(past2.length)));
     }
     if(morningShownRef.current) return;
     const yesterday=shiftDate(today,-1);
-    const past=tasks.filter(t=>!t.completed&&!t.isLater&&!!t.startTime&&!t.recurrence&&t.date===yesterday);
+    const past=tasks.filter(t=>!t.completed&&!t.isLater&&!t.noComplete&&!!t.startTime&&!t.recurrence&&t.date===yesterday);
     if(past.length===0) return;
     morningShownRef.current=true;
     setMorningTasks(past);
@@ -7836,7 +7867,7 @@ export default function App() {
     if(toMin(now)!==toMin(settings.wakeTime)) return;
     if(localStorage.getItem(WAKE_CHECKIN_NOTIF_KEY)===today) return;
     localStorage.setItem(WAKE_CHECKIN_NOTIF_KEY,today);
-    const past=tasks.filter(t=>!t.completed&&!t.isLater&&!!t.startTime&&!t.recurrence&&t.date===shiftDate(today,-1));
+    const past=tasks.filter(t=>!t.completed&&!t.isLater&&!t.noComplete&&!!t.startTime&&!t.recurrence&&t.date===shiftDate(today,-1));
     const body=past.length>0?tr('notifWakeCheckinBodyPast').replace('{n}',()=>String(past.length)):tr('notifWakeCheckinBody');
     notify(tr('notifWakeCheckinTitle'),body);
   },[loaded,now,tasks,settings.wakeTime,settings.notificationsEnabled,tr]);
@@ -7858,7 +7889,7 @@ export default function App() {
       let body=tr('notifWakeCheckinBody');
       if(d===0){
         const yesterday=shiftDate(todayStr(),-1);
-        const past=tasks.filter(t=>!t.completed&&!t.isLater&&!!t.startTime&&!t.recurrence&&t.date===yesterday);
+        const past=tasks.filter(t=>!t.completed&&!t.isLater&&!t.noComplete&&!!t.startTime&&!t.recurrence&&t.date===yesterday);
         if(past.length>0) body=tr('notifWakeCheckinBodyPast').replace('{n}',()=>String(past.length));
       }
       alerts.push({id:`wake-checkin-${d}`,title:tr('notifWakeCheckinTitle'),body,timestamp:Math.floor(dt.getTime()/1000)});
@@ -8275,7 +8306,7 @@ export default function App() {
         sameRecurringSeries(t,orig)
           ?{...t,name:d.name,startTime:d.startTime,duration:d.duration,memo:d.memo,icon:d.icon,color:d.color,category:d.category,tags:d.tags,notifications:d.notifications,
             incompleteReminder:d.incompleteReminder,subtasks:d.subtasks,pinned:d.pinned,allDay:d.allDay,
-            locationNotify:d.locationNotify,location:d.location,address:d.address,seriesId:sid}
+            locationNotify:d.locationNotify,location:d.location,address:d.address,seriesId:sid,noComplete:d.noComplete}
           :t
       ));
     }
@@ -8464,10 +8495,14 @@ export default function App() {
                   <button key={t.id} onClick={()=>openEdit(t)}
                     className="inline-flex items-center gap-1.5 shrink-0">
                     <span className={`text-sm font-medium ${t.completed?'text-gray-400 line-through':'text-gray-700'}`}>{t.name}</span>
-                    <span className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${t.completed?'border-[var(--c-primary)] bg-[var(--c-primary)]':'border-gray-400'}`}
-                      onClick={e=>{e.stopPropagation();toggle(t.id);}}>
-                      {t.completed&&<span className="w-1.5 h-1.5 rounded-full bg-white"/>}
-                    </span>
+                    {t.noComplete ? (
+                      <span className="w-1.5 h-1.5 rounded-full bg-gray-300 shrink-0"/>
+                    ) : (
+                      <span className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${t.completed?'border-[var(--c-primary)] bg-[var(--c-primary)]':'border-gray-400'}`}
+                        onClick={e=>{e.stopPropagation();toggle(t.id);}}>
+                        {t.completed&&<span className="w-1.5 h-1.5 rounded-full bg-white"/>}
+                      </span>
+                    )}
                   </button>
                 ))}
               </div>
