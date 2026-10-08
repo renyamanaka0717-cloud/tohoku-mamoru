@@ -2814,10 +2814,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
               <div className="h-px bg-gray-100 mx-4"/>
               <div className="w-full flex items-center gap-3 px-4 py-3.5">
                 <AppIcons.checkSquare size={18} className="text-gray-400 shrink-0"/>
-                <div className="flex-1 min-w-0">
-                  <span className="text-sm font-medium text-gray-800">{tr('fieldNoComplete')}</span>
-                  <p className="text-xs text-gray-400">{tr('taskModalNoCompleteHint')}</p>
-                </div>
+                <span className="flex-1 text-sm font-medium text-gray-800">{tr('fieldNoComplete')}</span>
                 <button onClick={()=>setNoComplete(v=>!v)}
                   className={`w-10 h-5 rounded-full transition-colors relative shrink-0 ${noComplete?'bg-[var(--c-primary)]':'bg-gray-200'}`}>
                   <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${noComplete?'left-[22px]':'left-0.5'}`}/>
