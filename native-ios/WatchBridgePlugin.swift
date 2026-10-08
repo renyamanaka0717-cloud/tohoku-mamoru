@@ -24,6 +24,12 @@ import WatchConnectivity
 public class WatchBridgePlugin: CAPPlugin, WCSessionDelegate {
     static let pendingKey = "pendingWatchTaskTexts"
 
+    // activate()は非同期のため、アプリ起動直後にupdateThemeColorが呼ばれた場合
+    // activationStateがまだ.activatedになっていないことがある。「あとでやる」受信側は
+    // 未活性化を気にしなくてよい（OS側が後から呼んでくれる）が、こちらは能動的に送る側のため、
+    // 未活性化中に来た色をここに保持しておき、活性化完了時に送り直す
+    private var pendingThemeHex: String?
+
     public override func load() {
         guard WCSession.isSupported() else { return }
         let session = WCSession.default
@@ -45,7 +51,11 @@ public class WatchBridgePlugin: CAPPlugin, WCSessionDelegate {
     @objc func updateThemeColor(_ call: CAPPluginCall) {
         guard let hex = call.getString("hex") else { call.resolve(); return }
         let session = WCSession.default
-        guard session.activationState == .activated else { call.resolve(); return }
+        guard session.activationState == .activated else {
+            pendingThemeHex = hex
+            call.resolve()
+            return
+        }
         try? session.updateApplicationContext(["themeColor": hex])
         call.resolve()
     }
@@ -70,7 +80,11 @@ public class WatchBridgePlugin: CAPPlugin, WCSessionDelegate {
         if let text = userInfo["text"] as? String { enqueue(text) }
     }
 
-    public func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {}
+    public func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {
+        guard activationState == .activated, let hex = pendingThemeHex else { return }
+        pendingThemeHex = nil
+        try? session.updateApplicationContext(["themeColor": hex])
+    }
     // iOSは複数Watchのペアリングに対応するため、この2つの実装が必須
     // （watchOS側のWCSessionDelegateには存在しない、iOS固有の要件）
     public func sessionDidBecomeInactive(_ session: WCSession) {}
