@@ -32,21 +32,29 @@ struct WatchComplicationProvider: TimelineProvider {
 struct WatchComplicationView: View {
     @Environment(\.widgetFamily) private var family
 
+    // ロゴ画像(PNG)ではなく"BB"の文字をそのまま使う。accessory系ファミリー（文字盤の
+    // コンプリケーション・ロック画面ウィジェット共通）はシステムが強制的にモノクロ/
+    // アクセントカラーでレンダリングする文字盤がほとんどで、複雑な形のロゴ画像は
+    // 塗りつぶされてシルエットが判別できなくなる・transparent前提のテンプレート画像を
+    // 別途用意する手間が発生する。Textはどの文字盤でも綴りが崩れず読めるため、
+    // 新しい画像アセットを用意せずに済むこの方式にした
     var body: some View {
         switch family {
         case .accessoryInline:
-            Label("音声で追加", systemImage: "mic.fill")
+            Label("BB", systemImage: "mic.fill")
         case .accessoryRectangular:
             VStack(alignment: .leading, spacing: 2) {
-                Image(systemName: "mic.fill")
+                Text("BB")
+                    .font(.system(size: 15, weight: .bold, design: .rounded))
                 Text("音声で追加")
                     .font(.caption2)
             }
             .widgetAccentable()
         default:
             // .accessoryCircular・.accessoryCorner向け。文字盤の小さい円形スロットでは
-            // アイコン1つだけがちょうどよいサイズになる
-            Image(systemName: "mic.fill")
+            // "BB"の2文字だけがちょうどよいサイズになる
+            Text("BB")
+                .font(.system(size: 20, weight: .bold, design: .rounded))
                 .widgetAccentable()
         }
     }

@@ -1062,15 +1062,17 @@ src/app/page.tsx（Appコンポーネント） … applyPending()内で読み出
 2. マイクボタンをタップ→ダイクテーション画面が開くことを確認→適当に話す→「追加しました」が表示されることを確認
 3. iPhone側でBrainBoxアプリを開き（またはフォアグラウンドに戻し）、「あとでやる」一覧に音声で話した内容がタスクとして追加されていることを確認（Watch側がreachableだった場合は数秒以内、そうでない場合はiPhoneが近くに来てから）
 
-### Watch文字盤のコンプリケーション（`WatchComplication.swift`、マイクアイコンのみ）
+### Watch文字盤のコンプリケーション（`WatchComplication.swift`、「BB」の文字表示）
 
 Apple Watchの文字盤に表示する小さいアイコン（コンプリケーション）。タップすると`BrainBox Watch App`が起動し、`ContentView.swift`の0.4秒遅延自動開始ロジックによってそのままダイクテーションが始まる。
 
 **iPhone側のロック画面ウィジェット（`BrainBoxWidgets.swift`の`AddLaterVoiceLockScreenWidget`）とは完全に別物。** 文字盤コンプリケーションは**Watch App自身に埋め込まれた専用のWidget Extension**でしか提供できず、iPhone側のWidget Extension（`BrainBoxWidgetsExtension`）を共有・流用することはできない。新しいセッションでこの2つを混同しないこと——「ロック画面ウィジェットを作ったのに文字盤のコンプリケーション一覧に出てこない」という形で過去に実際に混同が発生した。
 
-- `native-ios/Watch/WatchComplication.swift` — `WatchComplicationView`が`.accessoryCircular`/`.accessoryCorner`は アイコンのみ、`.accessoryRectangular`はアイコン+「音声で追加」ラベル、`.accessoryInline`はラベルのみ、と`@Environment(\.widgetFamily)`で出し分ける
+- `native-ios/Watch/WatchComplication.swift` — `WatchComplicationView`が`.accessoryCircular`/`.accessoryCorner`は「BB」の文字のみ、`.accessoryRectangular`は「BB」+「音声で追加」ラベル、`.accessoryInline`はマイクアイコン+「BB」ラベル、と`@Environment(\.widgetFamily)`で出し分ける
 - タップ時のdeep link処理は一切不要（WidgetKitのwidgetはLink/URLが無くてもタップで単純にアプリを起動する標準動作のため）。`ContentView.swift`の既存の自動開始ロジックにそのまま乗る
-- データの同期（App Group等）は不要——常に同じ見た目（マイクアイコンのみ）を表示するだけなので`TimelineProvider`は固定の1エントリ・`policy: .never`で完結する
+- データの同期（App Group等）は不要——常に同じ見た目を表示するだけなので`TimelineProvider`は固定の1エントリ・`policy: .never`で完結する
+
+**ロゴ画像（PNG）ではなく「BB」の文字で実装している理由（重要）:** 当初は汎用の`mic.fill`（SF Symbols）だったが、ユーザーから「BBのアイコンにできないか」と要望を受けて検討した。`native-ios/icons/AppIcon-*.png`（ホーム画面アイコン切り替え機能の9色ぶんのフルカラー画像）は存在するが、**accessory系ウィジェットファミリー（文字盤コンプリケーション・ロック画面ウィジェット共通）はシステムが文字盤ごとにモノクロ/ユーザー選択のアクセントカラーで強制的にレンダリングすることが多い**（iPhoneのロック画面ウィジェットの節にある既知の制約と同じ）。フルカラーのロゴ画像をそのまま使っても、多くの文字盤では複雑な形がつぶれて判別できないシルエットになるか、透明背景を持つ専用のテンプレート画像（アルファチャンネルのみで形を表現する白黒マスク）を新たに用意する追加の画像制作作業が必要になる。**`Text("BB")`はSwiftUIの標準テキストとして、モノクロ/アクセントカラーどちらのレンダリングでも綴りが崩れず読める**ため、新しい画像アセットを用意せずに「BB」のブランドを示すという要望を満たせるこの方式にした。**新しいセッションでロゴ画像を使う実装に変更する場合は、まずアルファチャンネルのみの白黒テンプレート画像を用意できるかを確認すること**（フルカラーPNGをそのまま`Image("...")`で使うと文字盤によって見た目が崩れる）。
 
 **Xcodeでの手動セットアップ（`ios/`はgitignore対象・新規Widget Extensionターゲットなので毎回必要）:**
 
