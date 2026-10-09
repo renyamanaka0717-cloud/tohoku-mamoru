@@ -1062,6 +1062,28 @@ src/app/page.tsx（Appコンポーネント） … applyPending()内で読み出
 2. マイクボタンをタップ→ダイクテーション画面が開くことを確認→適当に話す→「追加しました」が表示されることを確認
 3. iPhone側でBrainBoxアプリを開き（またはフォアグラウンドに戻し）、「あとでやる」一覧に音声で話した内容がタスクとして追加されていることを確認（Watch側がreachableだった場合は数秒以内、そうでない場合はiPhoneが近くに来てから）
 
+### Watch文字盤のコンプリケーション（`WatchComplication.swift`、マイクアイコンのみ）
+
+Apple Watchの文字盤に表示する小さいアイコン（コンプリケーション）。タップすると`BrainBox Watch App`が起動し、`ContentView.swift`の0.4秒遅延自動開始ロジックによってそのままダイクテーションが始まる。
+
+**iPhone側のロック画面ウィジェット（`BrainBoxWidgets.swift`の`AddLaterVoiceLockScreenWidget`）とは完全に別物。** 文字盤コンプリケーションは**Watch App自身に埋め込まれた専用のWidget Extension**でしか提供できず、iPhone側のWidget Extension（`BrainBoxWidgetsExtension`）を共有・流用することはできない。新しいセッションでこの2つを混同しないこと——「ロック画面ウィジェットを作ったのに文字盤のコンプリケーション一覧に出てこない」という形で過去に実際に混同が発生した。
+
+- `native-ios/Watch/WatchComplication.swift` — `WatchComplicationView`が`.accessoryCircular`/`.accessoryCorner`は アイコンのみ、`.accessoryRectangular`はアイコン+「音声で追加」ラベル、`.accessoryInline`はラベルのみ、と`@Environment(\.widgetFamily)`で出し分ける
+- タップ時のdeep link処理は一切不要（WidgetKitのwidgetはLink/URLが無くてもタップで単純にアプリを起動する標準動作のため）。`ContentView.swift`の既存の自動開始ロジックにそのまま乗る
+- データの同期（App Group等）は不要——常に同じ見た目（マイクアイコンのみ）を表示するだけなので`TimelineProvider`は固定の1エントリ・`policy: .never`で完結する
+
+**Xcodeでの手動セットアップ（`ios/`はgitignore対象・新規Widget Extensionターゲットなので毎回必要）:**
+
+1. Xcodeメニュー File → New → Target → 「Widget Extension」を選択。**Embed in Application（埋め込み先）は必ず`BrainBox Watch App`を選ぶこと**（デフォルトでメインの`App`が選ばれていないか確認。iPhone側に埋め込むと文字盤コンプリケーションとして機能しない）
+2. Product Name: `BrainBoxWatchComplication`（任意）。"Include Live Activity"・"Include Configuration App Intent"・"Include Control"は**オフ**
+3. 作成すると自動生成される雛形の`.swift`ファイル（サンプルWidgetコード）は削除する
+4. `native-ios/Watch/WatchComplication.swift`をこの**新規Widget Extensionターゲット**に追加（Target Membership: 作成したこのターゲットのみ。`BrainBox Watch App`本体にもiPhone側の`App`にも追加しない）
+5. Minimum Deploymentを**watchOS 9.0以上**に設定する（`.accessoryCircular`等のaccessory系ウィジェットファミリーがwatchOS 9+のAPIのため）
+6. App Group・Info.plistの追加設定は不要（静的な見た目のみで共有データを持たないため）
+7. `BrainBox Watch App`スキームでビルド・実行（Widget Extensionは自動的に埋め込まれる）
+8. 実機のApple Watchで文字盤を長押し →「編集」→ コンプリケーションの追加 →「BrainBox」を検索して配置する（または、iPhone側の「Watch」アプリ →「マイウォッチ」→ 文字盤を選択 →「コンプリケーション」から追加。今回の操作で確認した画面はこちら）
+9. コンプリケーションをタップ→アプリが起動し、0.4秒後に自動でダイクテーションが始まることを確認する
+
 ### Android版（Wear OS）は現時点で未対応
 
 Wear OSはApple WatchのWatchConnectivityとは全く異なる仕組み（Google Play services の Wearable Data Layer API等）が必要で、今回のスコープには含めていない。将来Wear OS対応を検討する場合、`native-android/`配下に別途新しいモジュール構成が必要になる点に注意すること（iOS版の`native-ios/Watch/`をそのまま流用できない）。
@@ -1069,6 +1091,8 @@ Wear OSはApple WatchのWatchConnectivityとは全く異なる仕組み（Google
 ### 避けるパターン
 
 - Watch Appターゲットに`native-ios/`直下のiPhone用ファイル（`WatchBridgePlugin.swift`等）を追加しない（Target Membershipを間違えるとビルドできない、または意図しない重複シンボルになる）
+- 新しいCapacitorプラグインファイルを`native-ios/`に追加した時、`BridgeViewController.swift`への`registerPluginInstance`登録を忘れない（ファイルをXcodeに追加しただけでは動かない。`WatchBridgePlugin`でこの登録漏れが実機不具合として発生した実績がある）
+- Apple Watchの「文字盤コンプリケーション」（`WatchComplication.swift`、Watch App自身に埋め込むWidget Extension）とiPhoneの「ロック画面ウィジェット」（`BrainBoxWidgets.swift`の`AddLaterVoiceLockScreenWidget`、iPhone側のWidget Extensionに埋め込む）を混同しない。別物のXcodeターゲットで、どちらかを作ってももう片方には出てこない
 - watchOS側で`SFSpeechRecognizer`/`AVAudioEngine`を自前実装しようとしない（`Speech`フレームワーク自体がwatchOS単体アプリに存在せず技術的に不可能。過去に試みて実機ビルドが失敗しrevertした実績がある。`presentTextInputController(allowedInputMode: .plain)`で十分——マイク権限のInfo.plist設定も不要になる。iOS版VoiceInputPluginの設計をそのまま移植しようとしないこと）
 - `ContentView.swift`の`.onAppear`で即座に（遅延なしで）`startDictation()`を呼ばない（実機検証済みの不具合：`WKExtension.shared().visibleInterfaceController`が`.onAppear`発火と同時だと`nil`を返し、常にフォールバックTextFieldに落ちる。現在は0.4秒遅延させてから自動開始する方式——`didAutoStart`フラグで1回限り。この遅延方式もまだ実機未検証なので、同じ不具合が再発したら遅延を伸ばすかタップ起点に戻すことを検討する）
 - `WatchBridgePlugin`の受信処理から`notifyListeners`でJSにライブ配信しようとしない（バックグラウンド/未起動時にWebViewが読み込まれていない可能性があるため。他の「保留アクション」系と同じポーリング方式に統一すること）
