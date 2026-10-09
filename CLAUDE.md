@@ -1062,17 +1062,17 @@ src/app/page.tsx（Appコンポーネント） … applyPending()内で読み出
 2. マイクボタンをタップ→ダイクテーション画面が開くことを確認→適当に話す→「追加しました」が表示されることを確認
 3. iPhone側でBrainBoxアプリを開き（またはフォアグラウンドに戻し）、「あとでやる」一覧に音声で話した内容がタスクとして追加されていることを確認（Watch側がreachableだった場合は数秒以内、そうでない場合はiPhoneが近くに来てから）
 
-### Watch文字盤のコンプリケーション（`WatchComplication.swift`、「BB」の文字表示）
+### Watch文字盤のコンプリケーション（`WatchComplication.swift`、「BB」ロゴマークのテンプレート画像）
 
 Apple Watchの文字盤に表示する小さいアイコン（コンプリケーション）。タップすると`BrainBox Watch App`が起動し、`ContentView.swift`の0.4秒遅延自動開始ロジックによってそのままダイクテーションが始まる。
 
 **iPhone側のロック画面ウィジェット（`BrainBoxWidgets.swift`の`AddLaterVoiceLockScreenWidget`）とは完全に別物。** 文字盤コンプリケーションは**Watch App自身に埋め込まれた専用のWidget Extension**でしか提供できず、iPhone側のWidget Extension（`BrainBoxWidgetsExtension`）を共有・流用することはできない。新しいセッションでこの2つを混同しないこと——「ロック画面ウィジェットを作ったのに文字盤のコンプリケーション一覧に出てこない」という形で過去に実際に混同が発生した。
 
-- `native-ios/Watch/WatchComplication.swift` — `WatchComplicationView`は`@Environment(\.widgetFamily)`で全ファミリー（`.accessoryCircular`/`.accessoryCorner`/`.accessoryRectangular`/`.accessoryInline`）とも「BB」の文字のみを表示する（アイコンだけのシンプルな見た目にしたいというフィードバックを受け、「音声で追加」ラベル文言は撤去済み。再度ラベルを付けたくなっても、このフィードバックを踏まえて復活させないこと）
+- `native-ios/Watch/WatchComplication.swift` — `WatchComplicationView`は`@Environment(\.widgetFamily)`で全ファミリー（`.accessoryCircular`/`.accessoryCorner`/`.accessoryRectangular`/`.accessoryInline`）とも「BB」ロゴマーク画像のみを表示する（テキストラベルは一切付けない。アイコンだけのシンプルな見た目にしたいというフィードバックを受けた設計）
 - タップ時のdeep link処理は一切不要（WidgetKitのwidgetはLink/URLが無くてもタップで単純にアプリを起動する標準動作のため）。`ContentView.swift`の既存の自動開始ロジックにそのまま乗る
 - データの同期（App Group等）は不要——常に同じ見た目を表示するだけなので`TimelineProvider`は固定の1エントリ・`policy: .never`で完結する
 
-**ロゴ画像（PNG）ではなく「BB」の文字で実装している理由（重要）:** 当初は汎用の`mic.fill`（SF Symbols）だったが、ユーザーから「BBのアイコンにできないか」と要望を受けて検討した。`native-ios/icons/AppIcon-*.png`（ホーム画面アイコン切り替え機能の9色ぶんのフルカラー画像）は存在するが、**accessory系ウィジェットファミリー（文字盤コンプリケーション・ロック画面ウィジェット共通）はシステムが文字盤ごとにモノクロ/ユーザー選択のアクセントカラーで強制的にレンダリングすることが多い**（iPhoneのロック画面ウィジェットの節にある既知の制約と同じ）。フルカラーのロゴ画像をそのまま使っても、多くの文字盤では複雑な形がつぶれて判別できないシルエットになるか、透明背景を持つ専用のテンプレート画像（アルファチャンネルのみで形を表現する白黒マスク）を新たに用意する追加の画像制作作業が必要になる。**`Text("BB")`はSwiftUIの標準テキストとして、モノクロ/アクセントカラーどちらのレンダリングでも綴りが崩れず読める**ため、新しい画像アセットを用意せずに「BB」のブランドを示すという要望を満たせるこの方式にした。**新しいセッションでロゴ画像を使う実装に変更する場合は、まずアルファチャンネルのみの白黒テンプレート画像を用意できるかを確認すること**（フルカラーPNGをそのまま`Image("...")`で使うと文字盤によって見た目が崩れる）。
+**ロゴ画像の実装経緯（重要）:** 当初は汎用の`mic.fill`（SF Symbols）だったが、ユーザーから「BBのアイコンにできないか」と要望を受けた。フルカラーのアプリアイコンPNG（`native-ios/icons/AppIcon-*.png`、背景色付きの正方形）をそのまま使わなかった理由は、**accessory系ウィジェットファミリー（文字盤コンプリケーション・ロック画面ウィジェット共通）はシステムが文字盤ごとに強制的にモノクロ/アクセントカラーでレンダリングすることが多く、そのレンダリングは画像のアルファチャンネルだけを形状として使う**（iPhoneのロック画面ウィジェットの節にある既知の制約と同じ）ため。背景まで不透明なフルカラーPNGをそのまま使うと、文字盤によっては形が失われて単なる塗りつぶしの丸/四角になってしまう。一度は`Text("BB")`で妥協したが、「文字っぽくて微妙、アイコンそのままがいい」というフィードバックを受け、**`native-ios/icons/AppIcon-Mint.png`から「BB」の文字部分だけをアルファ抜き（背景のミント色を透明化、白文字だけを不透明として残す）したテンプレート画像`native-ios/icons/BBMark-Template.png`を新規生成し、それを使う方式に変更した。** コードでは`Image("BBMark").renderingMode(.template)`で明示的にテンプレート画像として扱い、`.widgetAccentable()`を付けることで、どの文字盤でも実際のロゴの形のまま正しくモノクロ/アクセントカラー表示される（白一色のテンプレート画像のため、フルカラー対応の文字盤でも「白いBBマーク」として表示され、色が崩れることはない）。
 
 **Xcodeでの手動セットアップ（`ios/`はgitignore対象・新規Widget Extensionターゲットなので毎回必要）:**
 
@@ -1080,11 +1080,12 @@ Apple Watchの文字盤に表示する小さいアイコン（コンプリケー
 2. Product Name: `BrainBoxWatchComplication`（任意）。"Include Live Activity"・"Include Configuration App Intent"・"Include Control"は**オフ**
 3. 作成すると自動生成される雛形の`.swift`ファイル（サンプルWidgetコード）は削除する
 4. `native-ios/Watch/WatchComplication.swift`をこの**新規Widget Extensionターゲット**に追加（Target Membership: 作成したこのターゲットのみ。`BrainBox Watch App`本体にもiPhone側の`App`にも追加しない）
-5. Minimum Deploymentを**watchOS 9.0以上**に設定する（`.accessoryCircular`等のaccessory系ウィジェットファミリーがwatchOS 9+のAPIのため）
-6. App Group・Info.plistの追加設定は不要（静的な見た目のみで共有データを持たないため）
-7. `BrainBox Watch App`スキームでビルド・実行（Widget Extensionは自動的に埋め込まれる）
-8. 実機のApple Watchで文字盤を長押し →「編集」→ コンプリケーションの追加 →「BrainBox」を検索して配置する（または、iPhone側の「Watch」アプリ →「マイウォッチ」→ 文字盤を選択 →「コンプリケーション」から追加。今回の操作で確認した画面はこちら）
-9. コンプリケーションをタップ→アプリが起動し、0.4秒後に自動でダイクテーションが始まることを確認する
+5. **この新規Widget Extensionターゲットの`Assets.xcassets`（ターゲット作成時に自動生成される）に`native-ios/icons/BBMark-Template.png`を画像セットとして追加する**（Xcodeの`Assets.xcassets`を開き、右クリック→「New Image Set」→名前を`BBMark`に変更→画像ファイルを1x枠にドラッグ＆ドロップ。Attributes Inspectorで「Scales」を「Single Scale」にすると1枠で済む。「Render As」を「Template Image」にしておくとプレビューが分かりやすいが、コード側で`.renderingMode(.template)`を明示しているため必須ではない）。**画像セット名は必ず`BBMark`にすること**（`WatchComplicationView`の`Image("BBMark")`と一致させる必要がある）
+6. Minimum Deploymentを**watchOS 9.0以上**に設定する（`.accessoryCircular`等のaccessory系ウィジェットファミリーがwatchOS 9+のAPIのため）
+7. App Group・Info.plistの追加設定は不要（静的な見た目のみで共有データを持たないため）
+8. `BrainBox Watch App`スキームでビルド・実行（Widget Extensionは自動的に埋め込まれる）
+9. 実機のApple Watchで文字盤を長押し →「編集」→ コンプリケーションの追加 →「BrainBox」を検索して配置する（または、iPhone側の「Watch」アプリ →「マイウォッチ」→ 文字盤を選択 →「コンプリケーション」から追加。今回の操作で確認した画面はこちら）
+10. コンプリケーションをタップ→アプリが起動し、0.4秒後に自動でダイクテーションが始まることを確認する
 
 ### Android版（Wear OS）は現時点で未対応
 
@@ -1096,6 +1097,7 @@ Wear OSはApple WatchのWatchConnectivityとは全く異なる仕組み（Google
 - 新しいCapacitorプラグインファイルを`native-ios/`に追加した時、`BridgeViewController.swift`への`registerPluginInstance`登録を忘れない（ファイルをXcodeに追加しただけでは動かない。`WatchBridgePlugin`でこの登録漏れが実機不具合として発生した実績がある）
 - Apple Watchの「文字盤コンプリケーション」（`WatchComplication.swift`、Watch App自身に埋め込むWidget Extension）とiPhoneの「ロック画面ウィジェット」（`BrainBoxWidgets.swift`の`AddLaterVoiceLockScreenWidget`、iPhone側のWidget Extensionに埋め込む）を混同しない。別物のXcodeターゲットで、どちらかを作ってももう片方には出てこない
 - watchOS側で`SFSpeechRecognizer`/`AVAudioEngine`を自前実装しようとしない（`Speech`フレームワーク自体がwatchOS単体アプリに存在せず技術的に不可能。過去に試みて実機ビルドが失敗しrevertした実績がある。`presentTextInputController(allowedInputMode: .plain)`で十分——マイク権限のInfo.plist設定も不要になる。iOS版VoiceInputPluginの設計をそのまま移植しようとしないこと）
+- 文字盤コンプリケーションにフルカラーのアプリアイコンPNG（`AppIcon-*.png`）をそのまま`Image("...")`で使わない（accessory系ファミリーは文字盤ごとにモノクロ/アクセントカラーでレンダリングされ、不透明な背景込みの画像は形が失われて塗りつぶしの丸/四角になる。`native-ios/icons/BBMark-Template.png`のような、アルファ抜きした透明背景のテンプレート画像＋`.renderingMode(.template)`を使うこと）
 - `ContentView.swift`の`.onAppear`で即座に（遅延なしで）`startDictation()`を呼ばない（実機検証済みの不具合：`WKExtension.shared().visibleInterfaceController`が`.onAppear`発火と同時だと`nil`を返し、常にフォールバックTextFieldに落ちる。現在は0.4秒遅延させてから自動開始する方式——`didAutoStart`フラグで1回限り。この遅延方式もまだ実機未検証なので、同じ不具合が再発したら遅延を伸ばすかタップ起点に戻すことを検討する）
 - `WatchBridgePlugin`の受信処理から`notifyListeners`でJSにライブ配信しようとしない（バックグラウンド/未起動時にWebViewが読み込まれていない可能性があるため。他の「保留アクション」系と同じポーリング方式に統一すること）
 - `applyPending()`内でWatch由来のタスクを追加する時に`addVoiceLaterTask(text)`をそのまま呼ばない（`date`を参照するため、`deps=[loaded]`のuseEffect内ではstale closureになる。`todayStr()`を使ってタスクオブジェクトをその場で組み立てること）

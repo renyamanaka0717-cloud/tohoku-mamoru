@@ -32,26 +32,35 @@ struct WatchComplicationProvider: TimelineProvider {
 struct WatchComplicationView: View {
     @Environment(\.widgetFamily) private var family
 
-    // ロゴ画像(PNG)ではなく"BB"の文字をそのまま使う。accessory系ファミリー（文字盤の
-    // コンプリケーション・ロック画面ウィジェット共通）はシステムが強制的にモノクロ/
-    // アクセントカラーでレンダリングする文字盤がほとんどで、複雑な形のロゴ画像は
-    // 塗りつぶされてシルエットが判別できなくなる・transparent前提のテンプレート画像を
-    // 別途用意する手間が発生する。Textはどの文字盤でも綴りが崩れず読めるため、
-    // 新しい画像アセットを用意せずに済むこの方式にした
-    // 「音声で追加」のラベル文言は撤去済み（見た目がダサいというフィードバックを受けて削除）。
-    // 全ファミリーとも「BB」の文字だけを表示する（アイコンのみのシンプルな見た目に統一）
+    // "BB"のロゴマーク（アプリアイコンの文字部分だけを白シルエット・透明背景で切り出した
+    // テンプレート画像、native-ios/icons/BBMark-Template.png）を使う。
+    // 当初はTextで"BB"の2文字を描画していたが「文字っぽくて微妙、アイコンそのままがいい」
+    // というフィードバックを受けて画像に変更した。
+    // フルカラーのアプリアイコンPNG（背景色付きの正方形）をそのまま使わなかった理由:
+    // accessory系ファミリー（文字盤コンプリケーション・ロック画面ウィジェット共通）は
+    // システムが文字盤ごとに強制的にモノクロ/アクセントカラーでレンダリングすることが多く、
+    // そのレンダリングは画像のアルファチャンネルだけを形状として使う。背景まで不透明な
+    // フルカラーPNGをそのまま使うと、形が失われて単なる塗りつぶしの丸/四角になってしまう。
+    // そのため「BB」の文字部分だけをアルファ抜きした透明背景のテンプレート画像を用意し、
+    // .renderingMode(.template)で明示的にテンプレート扱いにすることで、どの文字盤でも
+    // 実際のロゴの形のまま正しくモノクロ/アクセントカラー表示される
+    private var mark: some View {
+        Image("BBMark")
+            .renderingMode(.template)
+            .resizable()
+            .aspectRatio(contentMode: .fit)
+            .widgetAccentable()
+    }
+
     var body: some View {
         switch family {
         case .accessoryRectangular:
-            Text("BB")
-                .font(.system(size: 22, weight: .bold, design: .rounded))
-                .widgetAccentable()
+            mark.frame(height: 20)
+        case .accessoryInline:
+            mark.frame(height: 12)
         default:
-            // .accessoryCircular・.accessoryCorner・.accessoryInline向け。
-            // いずれも「BB」の2文字だけがちょうどよいサイズになる
-            Text("BB")
-                .font(.system(size: 20, weight: .bold, design: .rounded))
-                .widgetAccentable()
+            // .accessoryCircular・.accessoryCorner向け
+            mark.frame(height: 22).padding(3)
         }
     }
 }
