@@ -48,10 +48,11 @@ struct ContentView: View {
     @FocusState private var fallbackFieldFocused: Bool
 
     // iPhone側（設定 → 表示設定 → テーマカラー）が選んでいる色にマイクアイコンを追従させる。
-    // まだWatchConnectorが受信できていない場合（初回起動直後等）は、アプリ全体の既定色
-    // （#D9A3B2、ダスティピンク）にフォールバックする
+    // まだWatchConnectorが受信できていない場合（初回起動直後等）は、テーマカラーの既定値
+    // （THEMESのid:'mint'、#94CFC8）にフォールバックする。#D9A3B2はタブ・FAB等に使う
+    // 固定UIアクセントカラーで、テーマカラーの既定値とは別物なので混同しないこと
     private var accentColor: Color {
-        Color(hex: connector.themeColorHex ?? "#D9A3B2")
+        Color(hex: connector.themeColorHex ?? "#94CFC8")
     }
 
     var body: some View {
