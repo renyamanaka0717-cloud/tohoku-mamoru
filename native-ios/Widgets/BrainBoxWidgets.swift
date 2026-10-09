@@ -466,11 +466,95 @@ struct AddLaterVoiceLockScreenWidget: Widget {
     }
 }
 
+// MARK: - あとでやるを追加 ロック画面ウィジェット（.accessoryCircular）
+
+struct AddLaterLockScreenView: View {
+    var body: some View {
+        Link(destination: URL(string: "brainbox://addLater")!) {
+            ZStack {
+                AccessoryWidgetBackground()
+                VStack(spacing: 1) {
+                    Image(systemName: "plus")
+                        .font(.system(size: 18, weight: .bold))
+                    Text("BB")
+                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                }
+                .widgetAccentable()
+            }
+        }
+        .containerBackground(for: .widget) {
+            Color.clear
+        }
+    }
+}
+
+struct AddLaterLockScreenWidget: Widget {
+    let kind: String = "BrainBoxAddLaterLockScreenWidget"
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: kind, provider: CombinedProvider()) { _ in
+            AddLaterLockScreenView()
+        }
+        .configurationDisplayName("あとでやるを追加")
+        .description("ロック画面からすぐに「あとでやる」タスクを追加できます。")
+        .supportedFamilies([.accessoryCircular])
+    }
+}
+
+// MARK: - あとでやる一覧 & 音声入力 ロック画面ウィジェット（.accessoryRectangular）
+
+// .accessoryCircular版と同じく、AccessoryWidgetBackground()をcontainerBackgroundの
+// クロージャ側ではなくbody側のZStackに含めることで半透明の背景を表示する
+// （AccessoryWidgetBackground()はwidgetFamilyに応じて円/角丸長方形に自動で形が変わる）
+struct LaterVoiceLockScreenView: View {
+    var entry: CombinedEntry
+
+    var body: some View {
+        Link(destination: URL(string: "brainbox://addLaterVoice")!) {
+            ZStack {
+                AccessoryWidgetBackground()
+                HStack(spacing: 6) {
+                    VStack(alignment: .leading, spacing: 1) {
+                        if entry.laterItems.isEmpty {
+                            Text("あとでやる").font(.caption2)
+                        } else {
+                            ForEach(entry.laterItems.prefix(3), id: \.id) { item in
+                                Text(item.name).font(.caption2).lineLimit(1)
+                            }
+                        }
+                    }
+                    Spacer(minLength: 2)
+                    Image(systemName: "mic.fill")
+                        .font(.system(size: 16, weight: .bold))
+                }
+                .widgetAccentable()
+                .padding(.horizontal, 4)
+            }
+        }
+        .containerBackground(for: .widget) {
+            Color.clear
+        }
+    }
+}
+
+struct LaterVoiceLockScreenWidget: Widget {
+    let kind: String = "BrainBoxLaterVoiceLockScreenWidget"
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: kind, provider: CombinedProvider()) { entry in
+            LaterVoiceLockScreenView(entry: entry)
+        }
+        .configurationDisplayName("あとでやる & 音声入力")
+        .description("ロック画面で「あとでやる」一覧を確認し、タップで音声入力を開始できます。")
+        .supportedFamilies([.accessoryRectangular])
+    }
+}
+
 @main
 struct BrainBoxWidgetBundle: WidgetBundle {
     var body: some Widget {
         AddLaterVoiceWidget()
         AddLaterVoiceLockScreenWidget()
+        AddLaterLockScreenWidget()
+        LaterVoiceLockScreenWidget()
         CombinedWidget()
         QuadWidget()
         AddLaterWidget()
