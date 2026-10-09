@@ -416,15 +416,25 @@ struct AddLaterVoiceWidget: Widget {
 // 枠に収まるよう最小限の構成にしたもの。ロック画面ウィジェットは常にシステムが
 // モノクロ/アクセントカラーでレンダリングするため、.widgetAccentable()で
 // アイコンをアクセント対象としてマークする（通常のフルカラー表示にはならない）
+//
+// 過去の不具合: .containerBackground(for: .widget)の指定が抜けていたため、
+// ウィジェットを追加しても常に「Please adopt containerBackground API」エラー
+// （グレーの丸に「！」＋「Ple...」の表示）になり、タップしてもアプリが開くだけで
+// 音声入力画面にならない不具合があった。iOS 17+ではアクセサリー系（ロック画面・
+// 文字盤）含む全ウィジェットでcontainerBackgroundの指定が必須——他のウィジェット
+// （CombinedWidgetView等）には付いていたのに、このビューだけ漏れていたのが原因。
+// AccessoryWidgetBackground()はcontainerBackgroundのクロージャ側に移し、
+// bodyにはタップ対象のアイコンだけを残すこと（bodyの中にAccessoryWidgetBackground
+// を直接置かない）
 struct AddLaterVoiceLockScreenView: View {
     var body: some View {
         Link(destination: URL(string: "brainbox://addLaterVoice")!) {
-            ZStack {
-                AccessoryWidgetBackground()
-                Image(systemName: "mic.fill")
-                    .font(.system(size: 20, weight: .bold))
-                    .widgetAccentable()
-            }
+            Image(systemName: "mic.fill")
+                .font(.system(size: 20, weight: .bold))
+                .widgetAccentable()
+        }
+        .containerBackground(for: .widget) {
+            AccessoryWidgetBackground()
         }
     }
 }

@@ -598,6 +598,8 @@ iOS 16+のロック画面ウィジェット（丸いバッジ型）。ホーム�
 - `supportedFamilies([.accessoryCircular])`のみ指定（`.accessoryRectangular`/`.accessoryInline`は今回未対応）
 - `BrainBoxWidgetBundle`に追加するだけで、ホーム画面ウィジェットと同じギャラリーに並ぶ（ユーザーがロック画面編集時に選ぶとロック画面専用のウィジェットとして候補に出る。Xcode側の追加セットアップ手順は無い——既存のWidget Extensionターゲットの`BrainBoxWidgets.swift`を最新内容に差し替えるだけでよい）
 
+**過去の不具合（実機で発覚）: `.containerBackground(for: .widget)`の指定漏れで、ロック画面に追加してもグレーの丸に「！」＋「Please...」のエラー表示のまま、タップしてもアプリが開くだけで音声入力画面にならなかった。** `CombinedWidgetView`/`QuadWidgetView`/`AddLaterWidgetView`/`AddLaterVoiceWidgetView`はいずれも`.containerBackground(adaptiveWidgetBackground, for: .widget)`を付けているのに、`AddLaterVoiceLockScreenView`だけ`body`の中に直接`AccessoryWidgetBackground()`を置いていて、このcontainerBackground指定が抜けていた。**iOS 17+では、ロック画面・文字盤コンプリケーションを含む全ウィジェットファミリーで`.containerBackground(for: .widget)`の指定が必須**——無いとWidgetKitがレンダリングを拒否し、「Please adopt containerBackground API」というシステムのエラープレースホルダー（グレーの丸に「！」＋「Please...」の切れた表示）になる。同じ原因による不具合はビルド番号・バージョン不一致の警告とは別物で、Xcodeの警告一覧には出てこない（コンパイルは普通に通る）ため気づきにくい。ホーム画面側のウィジェットが同じBuild/Versionで正常に動いていたのに、ロック画面側だけ症状が出ていたのもこれが原因（`.accessoryCircular`ファミリー固有の実装だけがこの指定を欠いていたため）。修正: `AccessoryWidgetBackground()`を`.containerBackground(for: .widget){ }`のクロージャ側に移し、`body`にはタップ対象のアイコン（`Image(systemName:...)`）だけを残した。**新しいaccessory系ウィジェット（ロック画面・文字盤コンプリケーション）を追加する時は、`AccessoryWidgetBackground()`を`body`に直接置かず、必ず`.containerBackground(for: .widget){ AccessoryWidgetBackground() }`の形にすること。** この不具合の調査では、アプリを完全削除してもロック画面に置いたままのウィジェットインスタンスがエラー表示のまま残り続けるというiOS側のキャッシュ挙動も確認された（ホーム画面ウィジェットはアプリ削除で自動的に消えるのに対し、ロック画面は消えないことがある）——この種の不具合を調査する時は、壊れたウィジェットインスタンス自体をロック画面の編集画面から手動で削除してから再インストール・再追加する必要がある。
+
 ### Android実装（`native-android/WidgetDataPlugin.kt`・`BrainBoxWidgetProvider.kt`等）
 
 **iOSのWidgetKitとは根本的に仕組みが異なる。** SwiftUI + TimelineProviderで宣言的に描画するiOSに対し、Androidは`AppWidgetProvider` + `RemoteViews`（あらかじめ用意した固定レイアウトの一部だけをリモートから書き換える方式）で実装する。タスク最大4件・買い物最大6件という表示件数の上限がすでに決まっているため、可変長リスト用の`RemoteViewsService`（実装コストが高い）は使わず、レイアウトXMLに固定で用意した`task_row_0..3`/`shop_row_0..5`の表示/非表示を切り替えるだけで足りる設計にした。
@@ -1743,6 +1745,8 @@ useEffect(()=>{
 **必ず現在の実装を Read/Grep で確認してから変更する。** 既存コードを見ずに書き直さない。  
 関連する定数・型・コンポーネントを grep で把握してから手を入れる。  
 「こうなっているはず」という推測で変更しない。
+
+**実機不具合の調査で、同じ対処（Build/Version揃え・再インストール等）を何度試しても改善しない場合は、推測だけで次の対処を続ける前にWebSearchで同じ症状の既知情報がないか調べること。** 実際にこのパターンで「Lock Screen widgetが`.containerBackground(for: .widget)`指定漏れでエラー表示のままになる」という既知の原因をWebSearchで見つけ、繰り返す試行錯誤を終わらせられた実績がある。ユーザーからの明示的な要望でもある。
 
 ### 変更の原則
 
