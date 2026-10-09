@@ -502,33 +502,29 @@ struct AddLaterLockScreenWidget: Widget {
 
 // MARK: - あとでやる一覧 & 音声入力 ロック画面ウィジェット（.accessoryRectangular）
 
-// .accessoryCircular版と同じく、AccessoryWidgetBackground()をcontainerBackgroundの
-// クロージャ側ではなくbody側のZStackに含めることで半透明の背景を表示する
-// （AccessoryWidgetBackground()はwidgetFamilyに応じて円/角丸長方形に自動で形が変わる）
+// あとでやる一覧（最大3件）とマイクアイコンを横並びで表示する。半透明の背景は
+// 付けない（ユーザー希望により不要と判断）——containerBackgroundはiOS 17+の
+// 必須API要件を満たすためだけにColor.clearを指定している
 struct LaterVoiceLockScreenView: View {
     var entry: CombinedEntry
 
     var body: some View {
         Link(destination: URL(string: "brainbox://addLaterVoice")!) {
-            ZStack {
-                AccessoryWidgetBackground()
-                HStack(spacing: 6) {
-                    VStack(alignment: .leading, spacing: 1) {
-                        if entry.laterItems.isEmpty {
-                            Text("あとでやる").font(.caption2)
-                        } else {
-                            ForEach(entry.laterItems.prefix(3), id: \.id) { item in
-                                Text(item.name).font(.caption2).lineLimit(1)
-                            }
+            HStack(spacing: 6) {
+                VStack(alignment: .leading, spacing: 1) {
+                    if entry.laterItems.isEmpty {
+                        Text("あとでやる").font(.caption2)
+                    } else {
+                        ForEach(entry.laterItems.prefix(3), id: \.id) { item in
+                            Text(item.name).font(.caption2).lineLimit(1)
                         }
                     }
-                    Spacer(minLength: 2)
-                    Image(systemName: "mic.fill")
-                        .font(.system(size: 16, weight: .bold))
                 }
-                .widgetAccentable()
-                .padding(.horizontal, 4)
+                Spacer(minLength: 2)
+                Image(systemName: "mic.fill")
+                    .font(.system(size: 16, weight: .bold))
             }
+            .widgetAccentable()
         }
         .containerBackground(for: .widget) {
             Color.clear
