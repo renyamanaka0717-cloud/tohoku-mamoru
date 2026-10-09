@@ -18,5 +18,6 @@ class BridgeViewController: CAPBridgeViewController {
         bridge?.registerPluginInstance(LocalNotifyPlugin())
         bridge?.registerPluginInstance(AnalyticsPlugin())
         bridge?.registerPluginInstance(VoiceInputPlugin())
+        bridge?.registerPluginInstance(WatchBridgePlugin())
     }
 }
