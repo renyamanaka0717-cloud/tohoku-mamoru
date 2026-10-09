@@ -38,21 +38,17 @@ struct WatchComplicationView: View {
     // 塗りつぶされてシルエットが判別できなくなる・transparent前提のテンプレート画像を
     // 別途用意する手間が発生する。Textはどの文字盤でも綴りが崩れず読めるため、
     // 新しい画像アセットを用意せずに済むこの方式にした
+    // 「音声で追加」のラベル文言は撤去済み（見た目がダサいというフィードバックを受けて削除）。
+    // 全ファミリーとも「BB」の文字だけを表示する（アイコンのみのシンプルな見た目に統一）
     var body: some View {
         switch family {
-        case .accessoryInline:
-            Label("BB", systemImage: "mic.fill")
         case .accessoryRectangular:
-            VStack(alignment: .leading, spacing: 2) {
-                Text("BB")
-                    .font(.system(size: 15, weight: .bold, design: .rounded))
-                Text("音声で追加")
-                    .font(.caption2)
-            }
-            .widgetAccentable()
+            Text("BB")
+                .font(.system(size: 22, weight: .bold, design: .rounded))
+                .widgetAccentable()
         default:
-            // .accessoryCircular・.accessoryCorner向け。文字盤の小さい円形スロットでは
-            // "BB"の2文字だけがちょうどよいサイズになる
+            // .accessoryCircular・.accessoryCorner・.accessoryInline向け。
+            // いずれも「BB」の2文字だけがちょうどよいサイズになる
             Text("BB")
                 .font(.system(size: 20, weight: .bold, design: .rounded))
                 .widgetAccentable()

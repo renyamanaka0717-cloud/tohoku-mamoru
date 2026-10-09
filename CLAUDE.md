@@ -1068,7 +1068,7 @@ Apple Watchの文字盤に表示する小さいアイコン（コンプリケー
 
 **iPhone側のロック画面ウィジェット（`BrainBoxWidgets.swift`の`AddLaterVoiceLockScreenWidget`）とは完全に別物。** 文字盤コンプリケーションは**Watch App自身に埋め込まれた専用のWidget Extension**でしか提供できず、iPhone側のWidget Extension（`BrainBoxWidgetsExtension`）を共有・流用することはできない。新しいセッションでこの2つを混同しないこと——「ロック画面ウィジェットを作ったのに文字盤のコンプリケーション一覧に出てこない」という形で過去に実際に混同が発生した。
 
-- `native-ios/Watch/WatchComplication.swift` — `WatchComplicationView`が`.accessoryCircular`/`.accessoryCorner`は「BB」の文字のみ、`.accessoryRectangular`は「BB」+「音声で追加」ラベル、`.accessoryInline`はマイクアイコン+「BB」ラベル、と`@Environment(\.widgetFamily)`で出し分ける
+- `native-ios/Watch/WatchComplication.swift` — `WatchComplicationView`は`@Environment(\.widgetFamily)`で全ファミリー（`.accessoryCircular`/`.accessoryCorner`/`.accessoryRectangular`/`.accessoryInline`）とも「BB」の文字のみを表示する（アイコンだけのシンプルな見た目にしたいというフィードバックを受け、「音声で追加」ラベル文言は撤去済み。再度ラベルを付けたくなっても、このフィードバックを踏まえて復活させないこと）
 - タップ時のdeep link処理は一切不要（WidgetKitのwidgetはLink/URLが無くてもタップで単純にアプリを起動する標準動作のため）。`ContentView.swift`の既存の自動開始ロジックにそのまま乗る
 - データの同期（App Group等）は不要——常に同じ見た目を表示するだけなので`TimelineProvider`は固定の1エントリ・`policy: .never`で完結する
 
