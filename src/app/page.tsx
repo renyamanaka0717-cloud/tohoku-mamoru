@@ -7556,10 +7556,19 @@ export default function App() {
     // brainbox://addLaterVoice というLink）からアプリが開かれた時の導線。addLaterの方は
     // 通常通りあとでやるタブ＋新規作成モーダルを開く。addLaterVoiceの方はTaskModal自体は開かず
     // VoiceCapturePopupを表示する（録音→保存までポップアップだけで完結させる設計）
-    const handle=CapApp.addListener('appUrlOpen',data=>{
-      if(data.url.includes('addLaterVoice')){ setActiveTab('later'); setShowVoicePopup(true); }
-      else if(data.url.includes('addLater')){ setActiveTab('later'); openAdd(); }
-    });
+    const handleUrl=(url:string)=>{
+      if(url.includes('addLaterVoice')){ setActiveTab('later'); setShowVoicePopup(true); }
+      else if(url.includes('addLater')){ setActiveTab('later'); openAdd(); }
+    };
+    // 過去の不具合: ロック画面ウィジェット（未起動状態からの起動になりやすい）からタップ
+    // すると、appUrlOpenイベントがこのuseEffectのリスナー登録より先に発火して取りこぼされ、
+    // アプリが開くだけで音声入力画面にならない不具合があった（ホーム画面ウィジェットは既に
+    // アプリがバックグラウンドで動いていることが多く、この競合が起きにくかったため気づかれ
+    // にくかった）。Capacitorはリスナー未登録時に発火したappUrlOpenイベントを後から再配信
+    // しないため、getLaunchUrl()で起動時のURLを明示的に取得し、ライブイベントと合わせて
+    // 処理することで取りこぼしを防ぐ
+    CapApp.getLaunchUrl().then(res=>{ if(res?.url) handleUrl(res.url); });
+    const handle=CapApp.addListener('appUrlOpen',data=>handleUrl(data.url));
     return ()=>{ handle.then(h=>h.remove()); };
   },[loaded]);
   useEffect(()=>{

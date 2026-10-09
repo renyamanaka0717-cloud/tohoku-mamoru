@@ -947,6 +947,8 @@ Android版も同様に`GeofencePlugin.kt`/`GeofenceReceiver.kt`は同じ物理�
 
 - `AddLaterVoiceWidget`/`AddLaterVoiceWidgetView`（`AddLaterWidget`と同じsystemSmall、マイクアイコン）が`brainbox://addLaterVoice`という別のURLスキームへリンクする
 - `src/app/page.tsx`の`appUrlOpen`リスナーが`addLaterVoice`を`addLater`より先にチェックする（`'addLaterVoice'.includes('addLater')`がtrueなので、判定順を間違えると`addLaterVoice`が常に通常の`addLater`分岐に吸われてしまう）。`addLaterVoice`の場合は`openAdd()`を呼ばず`setShowVoicePopup(true)`だけを呼ぶ
+
+**過去の不具合（ロック画面ウィジェット`AddLaterVoiceLockScreenWidget`追加時に発覚）: アプリが未起動の状態（コールドスタート）でこのURLから開くと、タップしてもアプリが開くだけで音声入力ポップアップが出ないことがあった。** ホーム画面の`AddLaterVoiceWidget`（systemSmall）はアプリが既にバックグラウンドで動いていることが多く症状が出にくかったが、ロック画面ウィジェットは未起動からの起動になりやすく再現した。原因は、`appUrlOpen`イベントがJS側の`useEffect`（`CapApp.addListener('appUrlOpen',...)`、`deps=[loaded]`）がリスナーを登録するより先にネイティブ側で発火してしまい、Capacitorはリスナー未登録時に発火したイベントを後から再配信しないため、そのまま取りこぼされていたこと。**修正: 同じ`useEffect`内で`CapApp.getLaunchUrl()`（Capacitor Appプラグインが提供する、起動時のURLを明示的に取得できるAPI）も呼び、ライブの`appUrlOpen`イベントと同じ`handleUrl()`処理に通すようにした。** これにより、ライブイベントを取りこぼしても起動時URLの明示的な取得でカバーできる。**新しくURLスキーム経由でアプリを起動する導線（ウィジェット・文字盤コンプリケーション等）を追加する時は、`appUrlOpen`のライブリスナーだけに頼らず、`getLaunchUrl()`も合わせて呼ぶこのパターンに倣うこと**（未起動状態からの起動になりやすい導線ほどこの不具合が顕在化しやすい）。
 - `VoiceCapturePopup`（`src/app/page.tsx`）— `App`直下に`{showVoicePopup&&<VoiceCapturePopup .../>}`として描画する独立したフルスクリーンポップアップ。マウント時の`useEffect`内で権限確認→`startVoiceInput()`→`onVoiceInputFinished`/`onVoiceLevelUpdate`の購読、まで一通り自前で行う（`TaskModal`の`toggleVoiceInput`とはコードが独立しており、あえて共通化していない——`TaskModal`側は「タップで開始・タップで停止」のトグル、こちらは「マウントで自動開始・結果が届いたら自動的に閉じる」という起動条件が異なるため、無理に共通関数へ抽出せずそれぞれの文脈に合わせて素直に書いた）
 - 状態は`'starting'`（権限確認中）→`'recording'`（波形表示）→`'done'`（認識結果をプレビュー表示してから自動で閉じる）/`'error'`（権限拒否等）の4つ。`'done'`到達後は`text.trim()?700:900`msの短い待機を挟んでから`onDone(text)`を呼ぶ（結果が見える間を持たせるため）
 - 非PROの場合は録音を一切開始せず、即座に`onProPrompt()`（設定→PRO画面）を呼んでポップアップを閉じる（`toggleVoiceInput`と同じ判断だが、`VoiceCapturePopup`はTaskModalの外で完結する独立コンポーネントのため`ProGateSheet`ではなく設定画面への遷移にしている）
@@ -990,6 +992,7 @@ Android版も同様に`GeofencePlugin.kt`/`GeofenceReceiver.kt`は同じ物理�
 - `TaskModal`側で`autoIcon`のような可変stateを、空配列depsの`useEffect`内クロージャから直接参照しない（stale closureになる。`autoIconRef`のような参照経由で最新値を読むこと）
 - ウィジェットからの音声入力起動を、新しいCapacitorプラグインやApp Group経由のpendingフラグ・AppIntentを新設して作らない（実際には既存の`AddLaterWidget`と同じ`brainbox://`URLスキーム＋`appUrlOpen`リスナーの仕組みだけで十分に実現できた。新しい仕組みを増やす前に、まずこの既存パターンで足りないか確認すること）
 - `appUrlOpen`リスナーで`addLaterVoice`より先に`addLater`を判定しない（`'addLaterVoice'.includes('addLater')`が真になるため、判定順を逆にすると`addLaterVoice`が常に通常の`addLater`分岐に吸われてしまう）
+- URLスキーム起動の処理を`appUrlOpen`のライブリスナーだけに頼らない（コールドスタートだとリスナー登録前にイベントが発火して取りこぼされることがある。`CapApp.getLaunchUrl()`も合わせて呼ぶこと）
 - PROゲートを`isPremium`チェック無しで素通りさせない（PRO比較表（`sub==='pro'`）にも`proFeatureVoiceInput`の行を追加済み）。**`TaskModal`のマイクボタン（`toggleVoiceInput`内の`!isPremium`チェック→`ProGateSheet`）と`VoiceCapturePopup`（独自の`!isPremium`チェック→`onProPrompt`で設定画面へ）はゲートの実装が別々にある点に注意**——`VoiceCapturePopup`は`TaskModal`を介さない独立コンポーネントのため、`toggleVoiceInput`のチェックは効かない。音声入力の起動経路を新しく増やす時は、その経路自身で`isPremium`を確認すること
 - `VoiceCapturePopup`を`TaskModal`の`toggleVoiceInput`と無理に共通化しない（「タップで開始・タップで停止」のトグルと「マウントで自動開始・結果が届いたら自動的に閉じる」は起動条件が異なるため、意図的に別々のコードのまま書いてある）
 - `notifyListeners("audioLevel", ...)`の継続配信を「ライブストリーミングは禁止」というルール（`recognitionFinished`の節を参照）と混同して削除しない。**禁止されているのはテキスト（部分認識結果）の逐次配信であり、音量レベルの逐次配信は波形表示のために意図的に導入した別の仕組み**（`levelNotifyInterval=0.08秒`で間引き済み）
