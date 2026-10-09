@@ -24,10 +24,13 @@
 
 **実機検証で判明した不具合: `.onAppear`直後の即時自動ダイクテーション開始は動作しなかった。** アプリを開いた瞬間に即座に`WKExtension.shared().visibleInterfaceController`を呼ぶと実機では`nil`が返り、常にフォールバックのTextFieldに落ちてしまい、かつ「あとでやるに追加」ボタンとTextFieldが同時に表示される分かりにくい画面になっていた（`WKHostingController`がvisibleInterfaceControllerとして解決されるのに`.onAppear`発火のタイミングでは間に合っていなかったと考えられる）。**一度は自動開始を撤回しタップ起点のみにしたが、ユーザーからの希望で再度自動開始を試みることになり、`.onAppear`から0.4秒遅延させてから`startDictation()`を呼ぶ方式に変更した**（`didAutoStart`フラグで1回限りに制限、フォアグラウンド復帰のたびに二重発火しないようにしている）。idle画面は常にマイクボタンを表示しており、タップ起点のリトライにも同じ`startDictation()`を使う。タップ/自動いずれで呼んでも`visibleInterfaceController`がまだ`nil`だった場合はボタンをフォールバックのTextFieldに差し替える（同時表示はしない。TextFieldには`@FocusState`で自動フォーカスを当てる）。**この0.4秒遅延での自動開始はまだ実機未検証。** 次回セッションで実機確認し、もし依然として`nil`に落ちるようなら遅延を伸ばすか、再度タップ起点のみに戻すこと。
 
+**実機検証で判明した不具合（修正済み）: `WatchBridgePlugin`がiPhone側で未登録だった。** `native-ios/WatchBridgePlugin.swift`ファイル自体はXcodeプロジェクトに追加されていたが、`native-ios/BridgeViewController.swift`の`capacitorDidLoad()`に`bridge?.registerPluginInstance(WatchBridgePlugin())`の行が**抜けていた**ため、Watch側から送信しても`WCSessionDelegate`がiPhone側に存在せず、「あとでやる」に一切反映されない不具合があった。修正してpush済み。**新しいCapacitorプラグインファイルを追加する時は、ファイルを追加しただけで満足せず、必ず`BridgeViewController.swift`（または該当する登録箇所）に`registerPluginInstance`の行も追加したか確認すること**（ファイルが存在するだけでは動かない、という典型的な見落としパターン）。
+
+**実機確認済み: Watch→iPhoneの「あとでやる」反映フローが動作することを確認した。** Watchでダイクテーション→完了→iPhone側でBrainBoxアプリを開く、という流れで実際に「あとでやる」にタスクが追加されることを実機で確認済み。
+
 次回セッションで実機確認すること:
-1. アプリを開いて0.4秒後に自動でダイクテーション画面が開くか（開かずフォールバックのTextFieldになる場合は遅延不足の可能性がある）
-2. 話した内容が「あとでやる」に正しく追加されるか（`WatchConnector.swift`の`WCSession`未活性化時キューイング修正・`WatchBridgePlugin.swift`の受信処理を含む）
-3. マイクアイコンの色がiPhone側のテーマカラー（未受信時はミント`#94CFC8`にフォールバック）に追従するか（`WatchBridgePlugin.swift`の`updateThemeColor`・`WatchConnector.swift`の`didReceiveApplicationContext`）
+1. アプリを開いて0.4秒後に自動でダイクテーション画面が開くか（開かずフォールバックのTextFieldになる場合は遅延不足の可能性がある。この時点ではまだ未検証）
+2. マイクアイコンの色がiPhone側のテーマカラー（未受信時はミント`#94CFC8`にフォールバック）に追従するか（`WatchBridgePlugin.swift`の`updateThemeColor`・`WatchConnector.swift`の`didReceiveApplicationContext`）
 
 ---
 
@@ -1051,7 +1054,7 @@ src/app/page.tsx（Appコンポーネント） … applyPending()内で読み出
 **② WatchBridgePlugin を追加（メインAppターゲット、他のCapacitorプラグインと同じ手順）**
 
 1. `native-ios/WatchBridgePlugin.swift`/`.m`を`ios/App/App/`に追加（Target Membership: App）
-2. `native-ios/BridgeViewController.swift`の`capacitorDidLoad()`に`bridge?.registerPluginInstance(WatchBridgePlugin())`があることを確認（無ければ追記。既存の`ios/App/App/BridgeViewController.swift`は`git pull`で自動反映されないので**Xcode上で直接編集**）
+2. `native-ios/BridgeViewController.swift`の`capacitorDidLoad()`に`bridge?.registerPluginInstance(WatchBridgePlugin())`があることを確認（無ければ追記。既存の`ios/App/App/BridgeViewController.swift`は`git pull`で自動反映されないので**Xcode上で直接編集**）。**過去にこの2.の登録行だけが抜けたまま気づかず、「Watch側から送信しても『あとでやる』に一切反映されない」不具合を実機まで気づけなかった実績がある。** ファイル自体（1.）がXcodeプロジェクトに追加されていても、このregisterPluginInstanceの行が無いと`WCSessionDelegate`が設定されず何も受信できない。ファイルを追加しただけで満足せず、必ずこの行の存在を確認すること
 
 **③ ビルド・実機確認**
 
