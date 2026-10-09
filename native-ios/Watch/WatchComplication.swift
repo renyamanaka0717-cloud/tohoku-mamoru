@@ -31,25 +31,37 @@ struct WatchComplicationProvider: TimelineProvider {
 
 struct WatchComplicationView: View {
     @Environment(\.widgetFamily) private var family
+    @Environment(\.widgetRenderingMode) private var renderingMode
 
     // "BB"のロゴマーク（アプリアイコンの文字部分だけを白シルエット・透明背景で切り出した
     // テンプレート画像、native-ios/icons/BBMark-Template.png）を使う。
-    // 当初はTextで"BB"の2文字を描画していたが「文字っぽくて微妙、アイコンそのままがいい」
-    // というフィードバックを受けて画像に変更した。
-    // フルカラーのアプリアイコンPNG（背景色付きの正方形）をそのまま使わなかった理由:
-    // accessory系ファミリー（文字盤コンプリケーション・ロック画面ウィジェット共通）は
-    // システムが文字盤ごとに強制的にモノクロ/アクセントカラーでレンダリングすることが多く、
-    // そのレンダリングは画像のアルファチャンネルだけを形状として使う。背景まで不透明な
-    // フルカラーPNGをそのまま使うと、形が失われて単なる塗りつぶしの丸/四角になってしまう。
-    // そのため「BB」の文字部分だけをアルファ抜きした透明背景のテンプレート画像を用意し、
-    // .renderingMode(.template)で明示的にテンプレート扱いにすることで、どの文字盤でも
-    // 実際のロゴの形のまま正しくモノクロ/アクセントカラー表示される
+    //
+    // 色について: widgetRenderingModeが.fullColorの文字盤（フルカラー表示に対応した
+    // 一部の文字盤）では、アプリのデフォルトテーマカラー（THEMESの'mint'、#94CFC8）で
+    // 固定表示する。一方、.accented/.vibrant（大半の文字盤はこちら。モノクロ/ユーザーが
+    // その文字盤向けに選んだ単色でシステムが強制的に着色するモード）では、.widgetAccentable()
+    // を付けてシステムに着色を委ねる——**ここでアプリ独自の色を指定することはできない**。
+    // これはiPhoneのロック画面ウィジェットの節に書いた既知の制約と同じで、Appleの仕様上
+    // 「その文字盤の配色に全コンプリケーションを統一させる」ための意図的な挙動のため、
+    // アプリ側から強制的にmintへ固定する手段は無い（新しいセッションで「ミント固定に
+    // できないか」という要望が来ても、.accented/.vibrantモードについては技術的に不可能
+    // であることを説明すること。可能なのは.fullColorモードの文字盤限定）
     private var mark: some View {
-        Image("BBMark")
-            .renderingMode(.template)
-            .resizable()
-            .aspectRatio(contentMode: .fit)
-            .widgetAccentable()
+        Group {
+            if renderingMode == .fullColor {
+                Image("BBMark")
+                    .renderingMode(.template)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .foregroundStyle(Color(red: 148/255, green: 207/255, blue: 200/255))
+            } else {
+                Image("BBMark")
+                    .renderingMode(.template)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .widgetAccentable()
+            }
+        }
     }
 
     var body: some View {
