@@ -22,12 +22,12 @@
 
 **Apple Watch版、実機（Apple Watch SE 2nd gen・watchOS 26.6）でのビルド・インストールまでは確認済み。** Xcode実機認識の問題（デベロッパモード・信頼するコンピュータのペアリング情報が古くなっていた）は解消済み——iPhoneをUSB接続した状態でXcode上の信頼関係を一度リセットし、Watch側で再度「信頼する」操作をすることで実機が`Devices and Simulators`に表示され、ビルド・実行できるようになった。
 
-**実機検証で判明した不具合（修正済み）: `.onAppear`での自動ダイクテーション開始は動作しなかった。** アプリを開いた瞬間に`WKExtension.shared().visibleInterfaceController`を呼ぶと実機では`nil`が返り、常にフォールバックのTextFieldに落ちてしまい、かつ「あとでやるに追加」ボタンとTextFieldが同時に表示される分かりにくい画面になっていた（`WKHostingController`がvisibleInterfaceControllerとして解決されるのに`.onAppear`のタイミングでは間に合っていなかったと考えられる）。**修正: 自動開始をやめ、必ずマイクボタンをタップしてから`startDictation()`を呼ぶ設計に戻した**（ユーザーが実際にタップする頃にはhostingControllerのアタッチが完了しており成功する）。idle画面は常にマイクボタンのみを表示し、タップした結果`visibleInterfaceController`がまだ`nil`だった場合にのみボタンをフォールバックのTextFieldに差し替える（同時表示はしない。フォールバックのTextFieldには`@FocusState`で自動フォーカスを当て、せめてタップなしでキーボード/ダイクテーション選択肢が開くようにしてある）。**`.onAppear`での自動開始を新しいセッションで復活させないこと**——実機で確認済みの不具合であり、今後も同じタイミング問題が再発する。
+**実機検証で判明した不具合: `.onAppear`直後の即時自動ダイクテーション開始は動作しなかった。** アプリを開いた瞬間に即座に`WKExtension.shared().visibleInterfaceController`を呼ぶと実機では`nil`が返り、常にフォールバックのTextFieldに落ちてしまい、かつ「あとでやるに追加」ボタンとTextFieldが同時に表示される分かりにくい画面になっていた（`WKHostingController`がvisibleInterfaceControllerとして解決されるのに`.onAppear`発火のタイミングでは間に合っていなかったと考えられる）。**一度は自動開始を撤回しタップ起点のみにしたが、ユーザーからの希望で再度自動開始を試みることになり、`.onAppear`から0.4秒遅延させてから`startDictation()`を呼ぶ方式に変更した**（`didAutoStart`フラグで1回限りに制限、フォアグラウンド復帰のたびに二重発火しないようにしている）。idle画面は常にマイクボタンを表示しており、タップ起点のリトライにも同じ`startDictation()`を使う。タップ/自動いずれで呼んでも`visibleInterfaceController`がまだ`nil`だった場合はボタンをフォールバックのTextFieldに差し替える（同時表示はしない。TextFieldには`@FocusState`で自動フォーカスを当てる）。**この0.4秒遅延での自動開始はまだ実機未検証。** 次回セッションで実機確認し、もし依然として`nil`に落ちるようなら遅延を伸ばすか、再度タップ起点のみに戻すこと。
 
 次回セッションで実機確認すること:
-1. マイクボタンをタップするとダイクテーション画面（またはフォールバックのTextField）が開くか
+1. アプリを開いて0.4秒後に自動でダイクテーション画面が開くか（開かずフォールバックのTextFieldになる場合は遅延不足の可能性がある）
 2. 話した内容が「あとでやる」に正しく追加されるか（`WatchConnector.swift`の`WCSession`未活性化時キューイング修正・`WatchBridgePlugin.swift`の受信処理を含む）
-3. マイクアイコンの色がiPhone側のテーマカラーに追従するか（`WatchBridgePlugin.swift`の`updateThemeColor`・`WatchConnector.swift`の`didReceiveApplicationContext`）
+3. マイクアイコンの色がiPhone側のテーマカラー（未受信時はミント`#94CFC8`にフォールバック）に追従するか（`WatchBridgePlugin.swift`の`updateThemeColor`・`WatchConnector.swift`の`didReceiveApplicationContext`）
 
 ---
 
@@ -1030,12 +1030,12 @@ src/app/page.tsx（Appコンポーネント） … applyPending()内で読み出
 - `session(_:didReceiveMessage:)`と`session(_:didReceiveUserInfo:)`の使い分け: Watch側の`WatchConnector.send()`が`session.isReachable`なら`sendMessage`（即時配信、`replyHandler`は待たない=fire-and-forget）、そうでなければ`transferUserInfo`（キュー配信、いつかiPhoneが近くに来た時に届く）を使う。BrainBoxは「あとでやる」タスクを1件ずつ独立して送るだけなので、往復確認（reply）は不要と判断した
 - `sessionDidBecomeInactive`/`sessionDidDeactivate`はiOS側のみ実装が必須（watchOS側の`WCSessionDelegate`には存在しない、複数Watchペアリング対応のためのiOS固有要件）。`sessionDidDeactivate`では`WCSession.default.activate()`を再度呼ぶ（Appleの定型実装）
 
-### Watch側のUI・音声入力（`presentTextInputController`、マイクボタンのタップ起点）
+### Watch側のUI・音声入力（`presentTextInputController`、0.4秒遅延での自動開始）
 
-**watchOS版はiOS版VoiceInputPlugin（`SFSpeechRecognizer`＋`AVAudioEngine`の自前実装、マイク権限リクエストあり）を移植しない**（`SFSpeechRecognizer`/`Speech`フレームワーク自体がwatchOS単体アプリには提供されておらず、技術的に不可能——過去に自前実装を試みて実機ビルドが失敗し、revertした実績がある。新しいセッションでこの自前実装を再び試みないこと）。代わりにWatchKitの`WKInterfaceController.presentTextInputController(withSuggestions:allowedInputMode:completion:)`を`allowedInputMode: .plain`で呼ぶと、システム標準の入力選択画面（ダイクテーション/Scribble/定型リスト）が開き、ダイクテーションを選んで話し終えると自動でテキスト化されて返ってくる（`.forceDictation`というケースは実在せず、候補チップ/Scribble選択を完全にスキップする手段は無い）。**音声キャプチャ・認識はシステムのプロセスが行うため、アプリ側で`NSMicrophoneUsageDescription`/`NSSpeechRecognitionUsageDescription`をWatch App側のInfo.plistに追加する必要が無い**（iOS版のVoiceInputPluginが自前でマイクを掴む方式との大きな違い）。
+**watchOS版はiOS版VoiceInputPlugin（`SFSpeechRecognizer`＋`AVAudioEngine`の自前実装、マイク権限リクエストあり）を移植しない**（`SFSpeechRecognizer`/`Speech`フレームワーク自体がwatchOS単体アプリには提供されておらず、技術的に不可能——過去に自前実装を試みて実機ビルドが失敗し、revertした実績がある。新しいセッションでこの自前実装を再び試みないこと）。代わりにWatchKitの`WKInterfaceController.presentTextInputController(withSuggestions:allowedInputMode:completion:)`を`allowedInputMode: .plain`で呼ぶと、システム標準の入力選択画面（ダイクテーション/Scribble/定型リスト）が開き、ダイクテーションを選んで話し終えると自動でテキスト化されて返ってくる（`.forceDictation`というケースは実在せず、候補チップ/Scribble選択を完全にスキップする手段は無い。話し終えた後も「完了」をタップして確定する必要がある——これはOS標準の仕様でアプリ側からは変更できない）。**音声キャプチャ・認識はシステムのプロセスが行うため、アプリ側で`NSMicrophoneUsageDescription`/`NSSpeechRecognitionUsageDescription`をWatch App側のInfo.plistに追加する必要が無い**（iOS版のVoiceInputPluginが自前でマイクを掴む方式との大きな違い）。
 
-- **【実機検証済み・重要】アプリを開いた瞬間（`.onAppear`）の自動ダイクテーション開始は撤回済み。** `WKExtension.shared().visibleInterfaceController`はSwiftUI Onlyの`App`ライフサイクルでも解決できる設計のはずだったが、実機（watchOS 26.6）で検証したところ`.onAppear`のタイミングでは`nil`を返すことが判明した（`WKHostingController`のアタッチが`.onAppear`発火時点ではまだ間に合っていないためと考えられる）。常にフォールバックのTextFieldに落ち、かつマイクボタンとTextFieldが同時に表示される分かりにくい画面になっていた。**修正: 自動開始をやめ、`idle`画面は常にマイクボタンのみを表示し、ユーザーが実際にタップしてから`startDictation()`を呼ぶ設計にした**（タップされる頃にはhostingControllerのアタッチが完了しており成功する）。タップした結果`visibleInterfaceController`がまだ`nil`だった場合にのみ、マイクボタンをフォールバックの`TextField`に差し替える（`@FocusState`で自動フォーカスし、タップなしでキーボード/ダイクテーション選択肢が開くようにしてある。ボタンとTextFieldを同時には出さない）。**`.onAppear`での自動開始を新しいセッションで復活させないこと。**
-- フロー: `idle`（マイクボタン、タップでダイクテーション開始）→`dictating`（システムのダイクテーション画面、アプリ側では何も描画しない）→`preview`（認識結果を0.8秒だけプレビュー表示、iOS版`VoiceCapturePopup`と同じ「結果が見える間を持たせる」設計を踏襲）→`sending`→`done`（「追加しました」）/`error`（「送信できませんでした」）→1.6秒後に自動的に`idle`へ戻る
+- **【実機検証済み】アプリを開いた瞬間（`.onAppear`）の即時自動ダイクテーション開始は失敗する。** `WKExtension.shared().visibleInterfaceController`はSwiftUI Onlyの`App`ライフサイクルでも解決できる設計のはずだったが、実機（watchOS 26.6）で検証したところ`.onAppear`発火と同時に即座に呼ぶと`nil`を返すことが判明した（`WKHostingController`のアタッチが`.onAppear`発火時点ではまだ間に合っていないためと考えられる）。常にフォールバックのTextFieldに落ち、かつマイクボタンとTextFieldが同時に表示される分かりにくい画面になっていた。**一度はタップ起点のみに撤回したが、「開いたらすぐ音声入力したい」という要望により、`.onAppear`から0.4秒遅延させてから`startDictation()`を呼ぶ方式で再挑戦した**（`didAutoStart`フラグで1回限りに制限）。`idle`画面は常にマイクボタンを表示しており、自動開始・タップ起点のリトライのどちらでも同じ`startDictation()`を使う。呼んだ結果`visibleInterfaceController`がまだ`nil`だった場合にのみ、マイクボタンをフォールバックの`TextField`に差し替える（`@FocusState`で自動フォーカスし、タップなしでキーボード/ダイクテーション選択肢が開くようにしてある。ボタンとTextFieldを同時には出さない）。**この0.4秒遅延方式はまだ実機未検証——次回セッションで確認し、もし依然として`nil`に落ちるようなら遅延を伸ばすか、タップ起点のみに戻すことを検討すること。**
+- フロー: `idle`（マイクボタン。`.onAppear`から0.4秒後に自動でダイクテーション開始、またはタップで開始）→`dictating`（システムのダイクテーション画面、アプリ側では何も描画しない）→`preview`（認識結果を0.8秒だけプレビュー表示、iOS版`VoiceCapturePopup`と同じ「結果が見える間を持たせる」設計を踏襲）→`sending`→`done`（「追加しました」）/`error`（「送信できませんでした」）→1.6秒後に自動的に`idle`へ戻る
 - **送信の成否判定は「配信されたか」ではなく「送信呼び出し自体が成功したか」で行う。** `transferUserInfo`はローカルでのキューイングにほぼ確実に成功し、実際の配信（iPhoneに実際に届くタイミング）は非同期・不確定だが、BrainBoxは「まず記録できたら安心させる」思想のアプリ（買い物リストの場所通知等と同じ「通知を減らすより思い出すきっかけ・記録の安心感を優先する」方針）のため、配信の遅延をユーザーに気にさせない楽観的なUIにしている
 
 ### Xcodeでの手動セットアップ（`ios/`はgitignore対象・新規Watch Appターゲットなので毎回必要）
@@ -1067,7 +1067,7 @@ Wear OSはApple WatchのWatchConnectivityとは全く異なる仕組み（Google
 
 - Watch Appターゲットに`native-ios/`直下のiPhone用ファイル（`WatchBridgePlugin.swift`等）を追加しない（Target Membershipを間違えるとビルドできない、または意図しない重複シンボルになる）
 - watchOS側で`SFSpeechRecognizer`/`AVAudioEngine`を自前実装しようとしない（`Speech`フレームワーク自体がwatchOS単体アプリに存在せず技術的に不可能。過去に試みて実機ビルドが失敗しrevertした実績がある。`presentTextInputController(allowedInputMode: .plain)`で十分——マイク権限のInfo.plist設定も不要になる。iOS版VoiceInputPluginの設計をそのまま移植しようとしないこと）
-- `ContentView.swift`の`.onAppear`で自動的に`startDictation()`を呼ばない（実機検証済みの不具合：`WKExtension.shared().visibleInterfaceController`が`.onAppear`時点では`nil`を返し、常にフォールバックTextFieldに落ちる。必ずマイクボタンのタップを起点にすること）
+- `ContentView.swift`の`.onAppear`で即座に（遅延なしで）`startDictation()`を呼ばない（実機検証済みの不具合：`WKExtension.shared().visibleInterfaceController`が`.onAppear`発火と同時だと`nil`を返し、常にフォールバックTextFieldに落ちる。現在は0.4秒遅延させてから自動開始する方式——`didAutoStart`フラグで1回限り。この遅延方式もまだ実機未検証なので、同じ不具合が再発したら遅延を伸ばすかタップ起点に戻すことを検討する）
 - `WatchBridgePlugin`の受信処理から`notifyListeners`でJSにライブ配信しようとしない（バックグラウンド/未起動時にWebViewが読み込まれていない可能性があるため。他の「保留アクション」系と同じポーリング方式に統一すること）
 - `applyPending()`内でWatch由来のタスクを追加する時に`addVoiceLaterTask(text)`をそのまま呼ばない（`date`を参照するため、`deps=[loaded]`のuseEffect内ではstale closureになる。`todayStr()`を使ってタスクオブジェクトをその場で組み立てること）
 - Watch→iPhoneの送信に`sendMessage`の`replyHandler`での往復確認を必須にしない（「あとでやる」への追加は片道の記録で十分。往復待ちを入れるとreachableでない時に機能全体が動かなくなる）

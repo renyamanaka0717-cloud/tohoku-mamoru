@@ -3,19 +3,21 @@
 // UIは「マイクボタン」＋状態表示のみ。日時設定・所要時間設定は意図的に持たない
 // （「思いついた瞬間に、とりあえず頭の外に出す」ことに特化させる方針）。
 //
-// 【実機検証で判明: .onAppear自動開始は撤回済み】当初はアプリを開いた瞬間（.onAppear）に
-// マイクボタンのタップを待たずに自動でダイクテーションを開始する設計だったが、実機
-// （watchOS 26.6）で確認したところ、この自動開始のタイミングでは
+// 【実機検証で判明: .onAppear直後の即時自動開始は失敗した→遅延を入れて再挑戦】当初はアプリを
+// 開いた瞬間（.onAppear）にマイクボタンのタップを待たずに即座にダイクテーションを開始する
+// 設計だったが、実機（watchOS 26.6）で確認したところ、この即時呼び出しのタイミングでは
 // WKExtension.shared().visibleInterfaceController がnilを返り、常にフォールバック
-// （下記TextField）に落ちてしまう不具合が実際に発生した。さらにidle状態の描画とフォール
-// バックのTextFieldが同時に出てしまい、「ボタンとテキスト欄が両方出ていて何をすればいいか
-// 分からない」画面になっていた。原因は、WKHostingControllerがvisibleInterfaceControllerとして
-// 解決されるまでにビュー階層の初期化が完了している保証がなく、.onAppear発火時点ではまだ
-// 間に合っていないため（ユーザーが実際にボタンをタップする頃にはhostingControllerの
-// アタッチが完了しており、手動タップ起点なら成功する）。そのため**自動開始はやめ、
-// 必ずマイクボタンをタップしてから起動する設計に戻した**。idle画面は常にマイクボタンのみを
-// 表示し、タップした結果visibleInterfaceControllerがまだnilだった場合にのみ、ボタンを
-// フォールバックのTextFieldに差し替える（ボタンとTextFieldを同時に出さない）。
+// （下記TextField）に落ちてしまう不具合が実際に発生した。原因は、WKHostingControllerが
+// visibleInterfaceControllerとして解決されるまでにビュー階層の初期化が完了している保証が
+// なく、.onAppear発火の時点ではまだ間に合っていないため（ユーザーが実際にボタンをタップする
+// 頃にはhostingControllerのアタッチが完了しており、手動タップ起点なら成功していた）。
+// そのため、**即時呼び出しではなく0.4秒だけ遅延させてから自動開始する**ことで、
+// hostingControllerのアタッチが間に合うことを期待する方式に変更した（この遅延設計自体は
+// 実機未検証。もし同じく失敗する場合は、遅延をさらに伸ばすか、手動タップ起点に戻すこと）。
+// idle画面は常にマイクボタンを表示しており、タップ起点でのリトライ（キャンセル・空発話等で
+// idleに戻った時）にも同じ`startDictation()`が使われる。タップ起点で呼んだ結果
+// visibleInterfaceControllerがまだnilだった場合にのみ、ボタンをフォールバックのTextFieldに
+// 差し替える（ボタンとTextFieldを同時に出さない）。
 //
 // 【音声入力の実装方法】watchOSにはiOS版VoiceInputPlugin（SFSpeechRecognizer＋AVAudioEngine自前実装）
 // に相当する作り込みは不要。WatchKitのpresentTextInputController(withSuggestions:allowedInputMode:)を
@@ -46,6 +48,7 @@ struct ContentView: View {
     @State private var fallbackText: String = ""
     @State private var showFallbackField = false
     @FocusState private var fallbackFieldFocused: Bool
+    @State private var didAutoStart = false
 
     // iPhone側（設定 → 表示設定 → テーマカラー）が選んでいる色にマイクアイコンを追従させる。
     // まだWatchConnectorが受信できていない場合（初回起動直後等）は、テーマカラーの既定値
@@ -109,6 +112,15 @@ struct ContentView: View {
             }
         }
         .padding()
+        // 0.4秒待ってからの自動開始。didAutoStartで1回だけに制限する（ここを制限しないと、
+        // バックグラウンド→フォアグラウンド復帰のたびにビューが再表示されて二重に開始してしまう）
+        .onAppear {
+            guard !didAutoStart else { return }
+            didAutoStart = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                if state == .idle { startDictation() }
+            }
+        }
     }
 
     private func startDictation() {
