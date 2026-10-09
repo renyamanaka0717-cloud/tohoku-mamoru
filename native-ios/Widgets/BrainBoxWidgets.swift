@@ -421,26 +421,35 @@ struct AddLaterVoiceWidget: Widget {
 // ウィジェットを追加しても常に「Please adopt containerBackground API」エラー
 // （グレーの丸に「！」＋「Ple...」の表示）になり、タップしてもアプリが開くだけで
 // 音声入力画面にならない不具合があった。iOS 17+ではアクセサリー系（ロック画面・
-// 文字盤）含む全ウィジェットでcontainerBackgroundの指定が必須——他のウィジェット
-// （CombinedWidgetView等）には付いていたのに、このビューだけ漏れていたのが原因。
-// AccessoryWidgetBackground()はcontainerBackgroundのクロージャ側に移し、
-// bodyにはタップ対象のアイコンだけを残すこと（bodyの中にAccessoryWidgetBackground
-// を直接置かない）
+// 文字盤）含む全ウィジェットでcontainerBackgroundの指定が必須。
+//
+// 続けて見つかった不具合: AccessoryWidgetBackground()をcontainerBackgroundの
+// クロージャ側だけに置いたところ、エラーは直ったがロック画面上で半透明の丸い背景
+// （他の標準ウィジェットに見られる、文字盤的な円形の縁取り）が表示されず、
+// アイコンと文字だけが壁紙の上に浮いた状態になっていた。AccessoryWidgetBackground()
+// はcontainerBackgroundの中ではなく、実際に描画されるbody側のコンテンツ
+// （アイコン・文字と同じZStack）に含めないと円形の背景が見えない。
+// containerBackground自体はiOS 17+の必須APIなので省略できず、代わりに中身を
+// 空のColor.clearにして「containerBackgroundの指定はある・実際の見た目の背景は
+// body側のAccessoryWidgetBackground()が担う」という二段構成にした
 struct AddLaterVoiceLockScreenView: View {
     // .accessoryCircularの枠は直径50px前後と非常に小さいため、"BrainBox"のフルスペルは
     // 入らない。マイクアイコンを少し小さくして、その下に"BB"の2文字だけ添える
     var body: some View {
         Link(destination: URL(string: "brainbox://addLaterVoice")!) {
-            VStack(spacing: 1) {
-                Image(systemName: "mic.fill")
-                    .font(.system(size: 15, weight: .bold))
-                Text("BB")
-                    .font(.system(size: 9, weight: .bold, design: .rounded))
+            ZStack {
+                AccessoryWidgetBackground()
+                VStack(spacing: 1) {
+                    Image(systemName: "mic.fill")
+                        .font(.system(size: 18, weight: .bold))
+                    Text("BB")
+                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                }
+                .widgetAccentable()
             }
-            .widgetAccentable()
         }
         .containerBackground(for: .widget) {
-            AccessoryWidgetBackground()
+            Color.clear
         }
     }
 }
