@@ -427,11 +427,17 @@ struct AddLaterVoiceWidget: Widget {
 // bodyにはタップ対象のアイコンだけを残すこと（bodyの中にAccessoryWidgetBackground
 // を直接置かない）
 struct AddLaterVoiceLockScreenView: View {
+    // .accessoryCircularの枠は直径50px前後と非常に小さいため、"BrainBox"のフルスペルは
+    // 入らない。マイクアイコンを少し小さくして、その下に"BB"の2文字だけ添える
     var body: some View {
         Link(destination: URL(string: "brainbox://addLaterVoice")!) {
-            Image(systemName: "mic.fill")
-                .font(.system(size: 20, weight: .bold))
-                .widgetAccentable()
+            VStack(spacing: 1) {
+                Image(systemName: "mic.fill")
+                    .font(.system(size: 15, weight: .bold))
+                Text("BB")
+                    .font(.system(size: 9, weight: .bold, design: .rounded))
+            }
+            .widgetAccentable()
         }
         .containerBackground(for: .widget) {
             AccessoryWidgetBackground()

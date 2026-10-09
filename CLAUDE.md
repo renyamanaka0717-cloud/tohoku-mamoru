@@ -593,7 +593,7 @@ iOS標準のホーム画面ウィジェット（WidgetKit）。1つの大きい�
 
 iOS 16+のロック画面ウィジェット（丸いバッジ型）。ホーム画面の「音声でタスク追加」ウィジェット（`AddLaterVoiceWidget`）と全く同じ`brainbox://addLaterVoice`URLスキームを使うだけなので、新しいCapacitorプラグインやデータ連携は不要——`BrainBoxWidgets.swift`に`StaticConfiguration`をもう1つ追加しただけ（Widget Extensionターゲットの既存ファイルを更新するだけで、新規ターゲット作成は不要）。
 
-- `AddLaterVoiceLockScreenView`／`AddLaterVoiceLockScreenWidget`（`BrainBoxWidgets.swift`） — マイクアイコン1つのみの最小構成。`AccessoryWidgetBackground()`（WidgetKitがロック画面ウィジェット用に提供するシステム標準の背景）を使い、アイコンには`.widgetAccentable()`を付ける
+- `AddLaterVoiceLockScreenView`／`AddLaterVoiceLockScreenWidget`（`BrainBoxWidgets.swift`） — マイクアイコン＋「BB」の2文字（`VStack`で縦に並べる）という最小構成。`.accessoryCircular`の枠は直径50px前後と非常に小さく「BrainBox」のフルスペルは入らないため、「BB」の2文字に短縮した。`AccessoryWidgetBackground()`（WidgetKitがロック画面ウィジェット用に提供するシステム標準の半透明円背景）を使い、アイコン・文字をまとめて`.widgetAccentable()`でアクセント対象としてマークする
 - **ロック画面ウィジェットは常にシステムがモノクロ/ユーザー選択のアクセントカラーでレンダリングする**（ホーム画面ウィジェットのようにテーマカラーをそのまま使ったフルカラー表示にはならない）。`.widgetAccentable()`を付けた要素だけがユーザーのアクセントカラーに追従する対象になる——`entry.themeColor`をこのビューで使っていないのはこのため（渡しても意味を持たない）
 - `supportedFamilies([.accessoryCircular])`のみ指定（`.accessoryRectangular`/`.accessoryInline`は今回未対応）
 - `BrainBoxWidgetBundle`に追加するだけで、ホーム画面ウィジェットと同じギャラリーに並ぶ（ユーザーがロック画面編集時に選ぶとロック画面専用のウィジェットとして候補に出る。Xcode側の追加セットアップ手順は無い——既存のWidget Extensionターゲットの`BrainBoxWidgets.swift`を最新内容に差し替えるだけでよい）
