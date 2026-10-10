@@ -3247,6 +3247,26 @@ function FreeTimeCard({slot,fits,moreCount=0,height,onDragStart,onMoreClick,meas
     if(Math.abs(touch.clientX-lpStart.current.x)>12||Math.abs(touch.clientY-lpStart.current.y)>12) cancelLP();
   };
 
+  // マウス操作（デスクトップ）向けドラッグ開始。長押しタイマーは不要で、ボタンを押したまま
+  // 5px以上動いた時点でドラッグとみなす（タップ/クリックとの判定はこの移動量だけで区別する）
+  const mouseStart=useRef<{x:number;y:number;task:Task}|null>(null);
+  const mouseArmed=useRef(false);
+  useEffect(()=>{
+    const onMove=(e:MouseEvent)=>{
+      if(!mouseStart.current||mouseArmed.current) return;
+      if(Math.abs(e.clientX-mouseStart.current.x)>5||Math.abs(e.clientY-mouseStart.current.y)>5){
+        mouseArmed.current=true;
+        didDrag.current=true;
+        onDragStart(mouseStart.current.task,e.clientX,e.clientY);
+      }
+    };
+    const onUp=()=>{ mouseStart.current=null; mouseArmed.current=false; };
+    document.addEventListener('mousemove',onMove);
+    document.addEventListener('mouseup',onUp);
+    return ()=>{ document.removeEventListener('mousemove',onMove); document.removeEventListener('mouseup',onUp); };
+  },[onDragStart]);
+  const startMouseLP=(task:Task,e:React.MouseEvent)=>{ mouseStart.current={x:e.clientX,y:e.clientY,task}; mouseArmed.current=false; };
+
   const h=Math.floor(slot.min/60), m=slot.min%60;
   return (
     <div ref={outerRef} className="bg-gray-50 rounded-2xl px-3 pt-3 pb-3 flex flex-col border border-gray-100" style={{minHeight:`${height}px`}} data-tour="free-time-card">
@@ -3270,6 +3290,7 @@ function FreeTimeCard({slot,fits,moreCount=0,height,onDragStart,onMoreClick,meas
                 onTouchStart={e=>startLP(t,e)}
                 onTouchEnd={cancelLP}
                 onTouchMove={moveLP}
+                onMouseDown={e=>startMouseLP(t,e)}
                 data-tour="tour-draggable"
                 className={`inline-flex items-center justify-center gap-1 min-w-12 bg-gray-100 rounded-full px-2.5 py-1 text-xs font-medium text-gray-500 select-none transition-transform${pressingId===t.id?' scale-95':''}`}>
                 {t.deadlineAt&&<AppIcons.deadline size={10+iconDelta} className={deadlineLabelColor(t.deadlineAt)}/>}
@@ -3375,6 +3396,24 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
     if(lpTimer.current){clearTimeout(lpTimer.current);lpTimer.current=null;}
     setPressingId(null);
   };
+  // マウス操作向け: FreeTimeCardと同じ、5px以上動いたらドラッグ開始とみなす方式
+  const mouseStart=useRef<{x:number;y:number;task:Task}|null>(null);
+  const mouseArmed=useRef(false);
+  useEffect(()=>{
+    const onMove=(e:MouseEvent)=>{
+      if(!mouseStart.current||mouseArmed.current) return;
+      if(Math.abs(e.clientX-mouseStart.current.x)>5||Math.abs(e.clientY-mouseStart.current.y)>5){
+        mouseArmed.current=true;
+        setPressingId(null);
+        onDragStart(mouseStart.current.task,e.clientX,e.clientY);
+      }
+    };
+    const onUp=()=>{ mouseStart.current=null; mouseArmed.current=false; };
+    document.addEventListener('mousemove',onMove);
+    document.addEventListener('mouseup',onUp);
+    return ()=>{ document.removeEventListener('mousemove',onMove); document.removeEventListener('mouseup',onUp); };
+  },[onDragStart]);
+  const startMouseLP=(task:Task,e:React.MouseEvent)=>{ mouseStart.current={x:e.clientX,y:e.clientY,task}; mouseArmed.current=false; };
   const wakeMin=toMin(settings.wakeTime),sleepMin=toMin(settings.sleepTime);
   // When sleep < wake (midnight-crossing), treat sleep as next-day for layout math
   const sleepMinEff=sleepMin<wakeMin?sleepMin+1440:sleepMin;
@@ -3820,7 +3859,8 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
                 opacity:isDragging?0.25:1,pointerEvents:isDragging?'none':'auto'}}
               onTouchStart={e=>startLP(task,e)}
               onTouchEnd={cancelLP}
-              onTouchMove={cancelLP}>
+              onTouchMove={cancelLP}
+              onMouseDown={e=>startMouseLP(task,e)}>
               <TaskCard task={task} onToggle={()=>onToggle(task.id)} onEdit={()=>onEdit(task)} globalTags={globalTags} onSubtaskToggle={(sid)=>onSubtaskToggle(task.id,sid)} tabName={task.category?customTabs.find(t=>t.id===task.category)?.name:undefined} iconDelta={iconDelta}/>
             </div>,
           ];
@@ -3885,7 +3925,8 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
                     ref={el=>{if(el){el.dataset.gk=task.id;roRef.current?.observe(el);}}}
                     onTouchStart={e=>startLP(task,e)}
                     onTouchEnd={cancelLP}
-                    onTouchMove={cancelLP}>
+                    onTouchMove={cancelLP}
+                    onMouseDown={e=>startMouseLP(task,e)}>
                     <TaskCard task={task} onToggle={()=>onToggle(task.id)} onEdit={()=>onEdit(task)} globalTags={globalTags} onSubtaskToggle={(sid)=>onSubtaskToggle(task.id,sid)} tabName={task.category?customTabs.find(t=>t.id===task.category)?.name:undefined} iconDelta={iconDelta}/>
                   </div>
                 );
@@ -8169,30 +8210,29 @@ export default function App() {
     const isInBottomZone=(y:number)=>y>window.innerHeight-TRASH_H;
     const isInTrash=(x:number,y:number)=>isInBottomZone(y)&&x>=window.innerWidth/2;
     const isInLater=(x:number,y:number)=>isInBottomZone(y)&&x<window.innerWidth/2;
-    const onMove=(e:TouchEvent)=>{
-      e.preventDefault();
-      const t=e.touches[0];
-      setDragPos({x:t.clientX,y:t.clientY});
-      setOverTrash(isInTrash(t.clientX,t.clientY));
-      setOverLater(isInLater(t.clientX,t.clientY));
-      if(!isInBottomZone(t.clientY)) setDropTime(calcTime(t.clientY));
+    // タッチ・マウス共通のドラッグ追従/ドロップ処理。座標(x,y)だけを受け取り、
+    // TouchEvent/MouseEventどちらから呼ばれても同じ判定になるようにする
+    const onMoveXY=(x:number,y:number)=>{
+      setDragPos({x,y});
+      setOverTrash(isInTrash(x,y));
+      setOverLater(isInLater(x,y));
+      if(!isInBottomZone(y)) setDropTime(calcTime(y));
     };
-    const onEnd=(e:TouchEvent)=>{
-      const t=e.changedTouches[0];
-      if(isInTrash(t.clientX,t.clientY)){
+    const onEndXY=(x:number,y:number)=>{
+      if(isInTrash(x,y)){
         if(dragTask.recurrence){
           setPendingDragDelete(dragTask);
         } else {
           setTasks(prev=>prev.filter(tk=>tk.id!==dragTask.id));
           logAnalyticsEvent('task_deleted');
         }
-      } else if(isInLater(t.clientX,t.clientY)){
+      } else if(isInLater(x,y)){
         setTasks(prev=>prev.map(tk=>tk.id===dragTask.id
           ? {...tk,isLater:true,startTime:null,laterSince:tk.laterSince??new Date().toISOString()}
           : tk
         ));
       } else {
-        const time=calcTime(t.clientY);
+        const time=calcTime(y);
         if(dragTask.recurrence){
           setPendingDragMove({task:dragTask,time});
         } else {
@@ -8209,11 +8249,19 @@ export default function App() {
       setOverLater(false);
       setTourDragSignal(n=>n+1);
     };
+    const onMove=(e:TouchEvent)=>{ e.preventDefault(); const t=e.touches[0]; onMoveXY(t.clientX,t.clientY); };
+    const onEnd=(e:TouchEvent)=>{ const t=e.changedTouches[0]; onEndXY(t.clientX,t.clientY); };
+    const onMouseMove=(e:MouseEvent)=>{ onMoveXY(e.clientX,e.clientY); };
+    const onMouseUp=(e:MouseEvent)=>{ onEndXY(e.clientX,e.clientY); };
     document.addEventListener('touchmove',onMove,{passive:false});
     document.addEventListener('touchend',onEnd);
+    document.addEventListener('mousemove',onMouseMove);
+    document.addEventListener('mouseup',onMouseUp);
     return ()=>{
       document.removeEventListener('touchmove',onMove);
       document.removeEventListener('touchend',onEnd);
+      document.removeEventListener('mousemove',onMouseMove);
+      document.removeEventListener('mouseup',onMouseUp);
     };
   },[dragTask,settings,date]);
 
