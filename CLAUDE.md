@@ -32,6 +32,14 @@
 1. アプリを開いて0.4秒後に自動でダイクテーション画面が開くか（開かずフォールバックのTextFieldになる場合は遅延不足の可能性がある。この時点ではまだ未検証）
 2. マイクアイコンの色がiPhone側のテーマカラー（未受信時はミント`#94CFC8`にフォールバック）に追従するか（`WatchBridgePlugin.swift`の`updateThemeColor`・`WatchConnector.swift`の`didReceiveApplicationContext`）
 
+**ログイン・クラウド同期（後述の「## ログイン・クラウド同期」節）はPhase A（Google/Appleログイン＋ローカルデータの初回クラウド移行）のみ実装・push済み。** ユーザーから「これはあとでやる、覚えといて」と明示的に次回以降へ保留する指示があった残りの作業:
+
+1. **複数端末の継続的なリアルタイム同期（未実装）。** 現在は「ログイン時に1回だけローカル→クラウドへアップロードする」移行のみで、クラウド側の変更を他端末が取り込む仕組み（Firestoreのリアルタイムリスナー、ローカルとの差分解決）は無い。次に着手する時は、既存の「id付き配列は1件1ドキュメントのサブコレクション」という安全なマージ設計を崩さないこと（配列全体を1フィールドとして上書き保存する方式に戻すと、複数端末間の統合が壊れる）。
+2. **iOSネイティブのGoogle/Appleログイン（未実装）。** 現在のログインはWeb版（ブラウザのFirebase JS SDK、`signInWithPopup`/`signInWithRedirect`）のみ対応。iOSネイティブでは別途Capacitorカスタムプラグイン（ネイティブGoogleSignIn SDK・`AuthenticationServices`のSign in with Apple）でネイティブの認証情報を取得し、Firebase Authのcredentialとして交換する実装が必要（他のCapacitorプラグインと同じ「JS薄いラッパー→ネイティブプラグイン」構成に倣うこと）。
+3. **Androidネイティブの同等実装も未着手。**
+
+ユーザー側の作業として、Firebase ConsoleでAuthentication（Google/Appleプロバイダ）とFirestore Database・セキュリティルールの設定がまだ済んでいない（済ませないと、すでに実装済みのWeb版ログインUIも実際には動作しない）。詳細は「## ログイン・クラウド同期」節を参照。
+
 ---
 
 ## 開発コマンド
