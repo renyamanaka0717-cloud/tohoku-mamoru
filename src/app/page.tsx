@@ -8307,6 +8307,34 @@ export default function App() {
   const openEditIconSheet=(task:Task)=>setModal({open:true,task,iconSheet:true});
   const closeModal = () => setModal({open:false,task:null});
 
+  // PCレイアウト向けキーボードショートカット（isDesktop時のみ・モバイルのタッチ操作には影響しない）。
+  // 入力欄にフォーカスがある間は文字入力を優先し、ショートカットとして横取りしない
+  useEffect(()=>{
+    if(!isDesktop) return;
+    const onKey=(e:KeyboardEvent)=>{
+      const el=e.target as HTMLElement|null;
+      const isTyping=el&&(el.tagName==='INPUT'||el.tagName==='TEXTAREA'||el.isContentEditable);
+      if(e.key==='Escape'){
+        if(modal.open){closeModal();return;}
+        if(colorPickTarget){setColorPickTarget(null);return;}
+        if(timePickerTarget){setTimePickerTarget(null);return;}
+        if(searchOpen){setSearchOpen(false);return;}
+        if(calendarOpen){setCalOp(false);return;}
+        if(settingsOpen){setSOp(false);return;}
+        return;
+      }
+      if(isTyping) return;
+      if(modal.open||searchOpen||calendarOpen||settingsOpen) return;
+      if(e.key==='n'||e.key==='N'){e.preventDefault();openAdd();return;}
+      if(e.key==='/'){e.preventDefault();setSearchOpen(true);return;}
+      if(e.key==='t'||e.key==='T'){const nd=todayStr();setDate(nd);setWeekAnchor(nd);return;}
+      if(e.key==='ArrowLeft'){const nd=shiftDate(date,-1);setDate(nd);setWeekAnchor(nd);return;}
+      if(e.key==='ArrowRight'){const nd=shiftDate(date,1);setDate(nd);setWeekAnchor(nd);return;}
+    };
+    document.addEventListener('keydown',onKey);
+    return ()=>document.removeEventListener('keydown',onKey);
+  },[isDesktop,modal.open,colorPickTarget,timePickerTarget,searchOpen,calendarOpen,settingsOpen,date]);
+
   const bulkAddTasks = (newTasks:Omit<Task,'id'>[], endTime:string) => {
     const withIds=newTasks.map(t=>({...t,id:uid()}));
     setTasks(prev=>[...prev,...withIds]);
