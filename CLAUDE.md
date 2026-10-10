@@ -1205,6 +1205,7 @@ Wear OSはApple WatchのWatchConnectivityとは全く異なる仕組み（Google
 | `FEATURE_USAGE_KEY` | `'tl-feature-usage-v1'` | 「おすすめ機能」判定用の機能利用履歴（`FeatureUsage`） |
 | `RECOMMEND_STATE_KEY` | `'tl-recommend-state-v1'` | 「おすすめ機能」の表示・却下状態（`RecommendationState`） |
 | `TOUR_COMPLETED_KEY` | `'tl-product-tour-completed-v1'` | プロダクトツアー完了フラグ |
+| `CLOUD_MIGRATED_KEY`（`Cloud.ts`） | `'tl-cloud-migrated-v1'` | この端末のクラウド移行が完了したか（端末ローカル・Firestore側には置かない） |
 
 ---
 
@@ -2120,6 +2121,78 @@ DEV_PREMIUM_CHANGED_EVENT  // プラン上書きの変更をPremiumProviderに�
 - 開発者モードから実際にRevenueCatの購入処理を呼んだり、実際のOS権限ダイアログを操作しようとしない（見た目の上書きのみに留める設計）
 - `DevMode.ts`のキーを他のファイルに文字列としてベタ書きしない（`Premium.tsx`/`Geofence.ts`/`page.tsx`すべて`DevMode.ts`からimportする）
 - 一般ユーザーが誤って踏まないよう、7回タップ以外の導線（メニュー項目など）を新設しない
+
+---
+
+## ログイン・クラウド同期（Google/Apple ＋ Cloud Firestore、設定 → アカウント）
+
+**現在のスコープ: ログイン ＋ ローカルデータの初回クラウド移行まで（Phase A）。** ログイン後にクラウド側の変更をリアルタイムで取り込む「複数端末での継続的な同期」自体はまだ未実装（次フェーズ）。iOS/Androidのネイティブログイン（Googleネイティブサインイン・Sign in with Apple）も未実装で、現状はWeb版（ブラウザ）でのみ動作する。
+
+### 設計方針
+
+- **無料版は常にlocalStorage完結。ログインは課金のゲートではなく、設定画面からいつでも行える任意の操作。** Web版には元々課金の仕組みが無く、ブラウザ・開発環境では`isPremium`が常に`true`（既存方針）であるため、「PRO加入時にログインを促す」という条件分岐は作らず、「ログインすると複数端末同期が使えます」という価値訴求のみで誘導する。
+- **ログインしてもローカルデータ（localStorage）は一切削除しない。** クラウドへのアップロードは常に追加的（additive）で、移行に失敗してもローカルデータは無傷のまま残る。
+- **認証: Firebase Authentication、Google＋Appleログインのみ**（メール＋パスワードは提供しない）。`src/app/components/Cloud.ts`の`signInWithGoogle()`/`signInWithApple()`がWeb版は`signInWithPopup`（ポップアップブロック時は`signInWithRedirect`にフォールバック）を使う。Appleログインは旧実装（`AuthUser`型・生の`AppleID` JS SDK、`tl-auth-v1`キー、設定→アカウント画面の「近日公開」プレースホルダー3行）を置き換えたもの——Firebase Authが`OAuthProvider('apple.com')`としてApple自体を標準サポートしているため、生のAppleID SDKは不要になった。
+- **データ: Cloud Firestore。** 既存のFirebase Analytics（`NEXT_PUBLIC_FIREBASE_*`環境変数）と同じFirebaseプロジェクトをそのまま使う。新しいプロジェクト作成は不要。
+
+### Firestoreのデータモデル（安全な自動統合のための設計）
+
+```
+users/{uid}                          … 設定（Settings）を1フィールドとして持つルートドキュメント
+users/{uid}/tasks/{taskId}           … Task 1件 = 1ドキュメント
+users/{uid}/shopItems/{itemId}       … ShopItem 1件 = 1ドキュメント
+users/{uid}/customTabs/{tabId}       … CustomTab 1件 = 1ドキュメント
+users/{uid}/moveHistory/{id}         … MoveHistory 1件 = 1ドキュメント
+users/{uid}/bulkHistory/{id}         … BulkHistoryEntry 1件 = 1ドキュメント
+users/{uid}/shopNotifSettings/{id}   … ShopNotifSetting 1件 = 1ドキュメント
+users/{uid}/shopLocations/{id}       … ShopLocation 1件 = 1ドキュメント
+users/{uid}/forgetAlerts/{id}        … ForgetAlert 1件 = 1ドキュメント
+users/{uid}/lifePatterns/{id}        … LifePattern 1件 = 1ドキュメント
+users/{uid}/tags/{name}              … TagDef（idを持たないため name をドキュメントIDに使う）
+users/{uid}/dayOverrides/{date}      … 日別の起床・就寝オーバーライド（1日1ドキュメント）
+users/{uid}/patternOverrides/{key}   … 生活パターンの日別上書き（1キー1ドキュメント）
+```
+
+**「PCとスマホの両方で無料版を別々に使っていたユーザーが後から同じアカウントでログインしても、データが上書きされて消えない」という要件を、Firestoreのドキュメント構造だけでほぼ自動的に満たす設計にしてある。** `uid()`（`${Date.now()}-${Math.random()...}`）で生成されるIDは端末をまたいでも衝突がほぼ起こらないため、id付きの配列（タスク・買い物アイテム等）は**1件＝1ドキュメントとしてサブコレクションに書き込むだけで、複数端末分を書き込んでも自然に重複なしの統合（union）になる**（上書き・削除は一切発生しない）。新しく似たような「端末をまたいで安全に統合したい配列データ」をクラウド同期する時は、配列全体を1つのフィールドとしてまとめて書き込む（＝後から書いた端末が前の内容を丸ごと上書きしてしまう）のではなく、この「id付きサブコレクション」パターンに倣うこと。
+
+**`Settings`のような単一オブジェクト（配列ではない）は、この「id単位で統合」という手法が使えない。** 複数端末の設定を自動で「マージ」する一般的な方法は無いため、**クラウド側にまだ`settings`フィールドが無い場合だけ書き込む**（`writeSettingsIfAbsent`、先に移行した端末の設定を優先し、後から来た端末の設定で上書きしない）という設計にしてある。新しく単一オブジェクトの設定値を同期対象に加える時も、この「無ければ書く・あれば触らない」パターンに倣うこと（上書きしてしまうと「後からログインした端末の設定で、先に使っていた端末の設定が消える」という体験になり、データを失ったのと同等の不具合になる）。
+
+### 「この端末は移行済みか」はFirestore側ではなく端末ローカルで判定する（重要）
+
+`hasMigratedThisDevice()`/`CLOUD_MIGRATED_KEY`（`tl-cloud-migrated-v1`）は**localStorageのフラグ**であり、Firestore側に「このアカウントは移行済みか」というグローバルなフラグは一切置いていない。これは意図的な設計——もしグローバルなフラグにしてしまうと、PC（端末A）が最初にログインして移行を終えた後、スマホ（端末B）が同じアカウントで初めてログインした時に「もう移行済みだから」とスキップされてしまい、端末Bのローカルデータが永久にクラウドへ上がらなくなる（＝端末Bで無料版として使っていた分のタスクが統合されずに消えたも同然になる）。**ローカルフラグにすることで、端末ごとに独立して「自分はまだ移行していない」と判定でき、A・B両方が自分の持ち分を安全にアップロードできる。** 新しく「一度だけ実行したい移行・初期化処理」を同期機能に追加する時は、グローバル（Firestore）側にフラグを置きたくなる誘惑に注意し、本当に「端末ごとに1回」なのか「アカウントごとに1回」なのかを区別すること。
+
+### stale closureの罠（既存パターンの踏襲）
+
+`App`コンポーネントの`onCloudAuthChange`の購読は`useEffect(...,[])`でマウント時に1回だけ登録されるクロージャのため、コールバック内で`tasks`等のstateを直接参照すると登録時点の値のまま固定される（`TaskModal`の`autoIconRef`・Watch連携の`todayStr()`と同じ罠）。これを避けるため、`migrationDataRef`という「毎レンダーで最新のローカルデータ一式を書き込むref」を用意し、実際の移行処理（`runMigrationIfNeeded`）はこのrefを経由して読む。新しく「ログイン・起動時コールバックの中で現在のstateを使いたい」処理を追加する時は、この`migrationDataRef`と同じパターン（depsなしの`useEffect`で毎レンダーrefを更新）に倣うこと。
+
+### Firebase Consoleでの手動セットアップ（ユーザー側の作業、未実施）
+
+1. 既存のFirebaseプロジェクト（Analyticsで使っているもの）で、左メニュー「Authentication」→「Sign-in method」を開く
+2. 「Google」プロバイダを有効化
+3. 「Apple」プロバイダを有効化（Apple Developer側でのServices ID作成・Firebase側へのリダイレクトURL設定が必要。[Firebase公式のApple連携ガイド](https://firebase.google.com/docs/auth/web/apple)を参照）
+4. 左メニュー「Firestore Database」→ まだ作成していなければデータベースを作成（本番モード推奨）
+5. **Firestoreのセキュリティルールを設定する（重要・未設定だと全ユーザーが他人のデータを読み書きできてしまう）。** 各ユーザーは自分の`users/{uid}`配下だけを読み書きできるよう制限すること。例:
+   ```
+   rules_version = '2';
+   service cloud.firestore {
+     match /databases/{database}/documents {
+       match /users/{uid}/{document=**} {
+         allow read, write: if request.auth != null && request.auth.uid == uid;
+       }
+     }
+   }
+   ```
+
+### 避けるパターン
+
+- ログインを課金（PRO加入）のゲートにしない（Web版には元々課金の仕組みが無いため。設定画面からいつでも任意にログインできる設計を維持する）
+- ログイン・移行処理でローカルデータ（localStorage）を削除・上書きするコードを書かない（クラウドへのアップロードは常に追加的。移行に失敗してもローカルデータが無傷で残ることが「移行に失敗した場合も元のデータを保持する」という要件そのもの）
+- id付き配列データを、個別ドキュメントではなく1つのフィールドにまとめて（配列ごと）書き込まない（端末をまたいだ時に後から書いた端末が前の内容を丸ごと上書きしてしまい、安全な統合にならない）
+- `Settings`のような単一オブジェクトを無条件に上書きするコードを書かない（`writeSettingsIfAbsent`と同じ「クラウドにまだ無ければ書く」パターンを守ること）
+- 「この端末は移行済みか」の判定をFirestore側のグローバルなフラグにしない（端末ローカルのlocalStorageフラグにすること。グローバルにすると2台目の端末のデータが永久に統合されなくなる）
+- `onCloudAuthChange`等のマウント時コールバック内でtasks等のstateを直接参照しない（stale closureになる。`migrationDataRef`経由で読むこと）
+- 生の`AppleID` JS SDK（`window.AppleID`）を新たに使わない（Firebase Authが`OAuthProvider('apple.com')`としてApple自体を標準サポートしているため不要。旧実装はこの置き換えで撤去済み）
+- プライバシーポリシー・FAQ（`faqA1`）の「データはすべてローカルに保存される」という説明を、ログイン機能追加後もそのままにしない（ログインした場合はFirestoreにも保存される旨を明記すること。実際に`faqA1`は本機能追加時に更新済み）
 
 ---
 

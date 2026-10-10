@@ -13,6 +13,7 @@ import { voiceInputSupported, ensureVoiceInputPermission, startVoiceInput, stopV
 import { getAppVersion } from './components/AppVersion';
 import { logAnalyticsEvent } from './components/Analytics';
 import { isDevModeUnlocked, DEV_MODE_UNLOCKED_KEY, getDevPremiumOverride, setDevPremiumOverride, isDevDenied, DEV_LOCATION_DENIED_KEY, DEV_NOTIF_DENIED_KEY } from './components/DevMode';
+import { signInWithGoogle, signInWithApple, signOutCloud, onCloudAuthChange, consumeRedirectResult, migrateLocalDataToCloud, hasMigratedThisDevice, type CloudUser, type LocalDataForMigration } from './components/Cloud';
 import { App as CapApp } from '@capacitor/app';
 import ProductTour from './components/ProductTour';
 import Welcome from './components/Welcome';
@@ -102,7 +103,6 @@ const RECOMMENDATION_DEFS: RecommendationDef[] = [
   { id:'repeatTask', usedKey:'repeatTaskUsedAt', title:'recommendRepeatTitle', body:'recommendRepeatBody', cta:'recommendCta' },
 ];
 const daysBetween=(fromMs:number,toMs:number):number=>(toMs-fromMs)/86400000;
-type AuthUser = {uid:string;email?:string;displayName?:string;isPremium?:boolean};
 interface FreeSlot  { start: string; end: string; min: number; }
 interface ShopItem  { id: string; name: string; checked: boolean; purchasedAt?: string; }
 interface ShopNotifSetting { id: string; days: number[]; time: string; enabled: boolean; }
@@ -167,7 +167,6 @@ const APP_INACTIVITY_OPTS_PT = [{v:0,l:'Desativado'},{v:6,l:'6 h'},{v:12,l:'12 h
 const APP_INACTIVITY_OPTS_VI = [{v:0,l:'Tắt'},{v:6,l:'6 giờ'},{v:12,l:'12 giờ'},{v:24,l:'1 ngày'},{v:48,l:'2 ngày'},{v:72,l:'3 ngày'}];
 const APP_INACTIVITY_OPTS_TH = [{v:0,l:'ปิด'},{v:6,l:'6 ชม.'},{v:12,l:'12 ชม.'},{v:24,l:'1 วัน'},{v:48,l:'2 วัน'},{v:72,l:'3 วัน'}];
 const APP_INACTIVITY_OPTS_ID = [{v:0,l:'Nonaktif'},{v:6,l:'6 jam'},{v:12,l:'12 jam'},{v:24,l:'1 hari'},{v:48,l:'2 hari'},{v:72,l:'3 hari'}];
-const AUTH_KEY          = 'tl-auth-v1';
 
 // テーマカラー — 将来的にここを差し替えるだけで全体の色が変わる
 const THEME = {
@@ -5484,7 +5483,7 @@ function SettingsRow({icon,iconBg,title,desc,onClick,isLast=false,pro=false,isPr
   );
 }
 
-function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,customTabs,onCustomTabs,onDeleteTabTasks,onDeleteTag,onRenameTag,shopNotifSettings,onShopNotifSettings,shopLocations,onShopLocations,forgetAlerts,onForgetAlerts,authUser,isPremium,onAppleSignIn,onSignOut,onBulkAdd,bulkHistory,onBulkHistoryDelete,onBulkHistoryEdit,lifePatterns,onLifePatterns,patternOverrides,onApplyPattern,initialSub,tasks,onEditTask}:{
+function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,customTabs,onCustomTabs,onDeleteTabTasks,onDeleteTag,onRenameTag,shopNotifSettings,onShopNotifSettings,shopLocations,onShopLocations,forgetAlerts,onForgetAlerts,cloudUser,migrationStatus,isPremium,onGoogleSignIn,onAppleSignIn,onSignOut,onBulkAdd,bulkHistory,onBulkHistoryDelete,onBulkHistoryEdit,lifePatterns,onLifePatterns,patternOverrides,onApplyPattern,initialSub,tasks,onEditTask}:{
   settings:Settings; onSettings:(s:Settings)=>void; onClose:()=>void;
   globalTags:TagDef[]; onGlobalTags:(tags:TagDef[])=>void;
   customTabs:CustomTab[]; onCustomTabs:(tabs:CustomTab[])=>void; onDeleteTabTasks:(tabId:string)=>void;
@@ -5492,8 +5491,8 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   shopNotifSettings:ShopNotifSetting[]; onShopNotifSettings:(s:ShopNotifSetting[])=>void;
   shopLocations:ShopLocation[]; onShopLocations:(l:ShopLocation[])=>void;
   forgetAlerts:ForgetAlert[]; onForgetAlerts:(a:ForgetAlert[])=>void;
-  authUser:AuthUser|null; isPremium:boolean;
-  onAppleSignIn:()=>Promise<void>; onSignOut:()=>void;
+  cloudUser:CloudUser|null; migrationStatus:'idle'|'syncing'|'done'|'error'; isPremium:boolean;
+  onGoogleSignIn:()=>Promise<void>; onAppleSignIn:()=>Promise<void>; onSignOut:()=>void;
   onBulkAdd:(tasks:Omit<Task,'id'>[],endTime:string)=>void;
   bulkHistory:BulkHistoryEntry[];
   onBulkHistoryDelete:(entryId:string)=>void;
@@ -6854,20 +6853,50 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
       {subHeader(tr('rowAccountTitle'))}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
-        <div className="bg-white rounded-2xl overflow-hidden shadow-sm mt-6">
-          <SettingsRow icon={<AppIcons.link size={18}/>} iconBg="bg-gray-100"
-            title={tr('appleAccountTitle')}
-            desc={tr('comingSoonDesc')}
-            onClick={()=>{}} />
-          <SettingsRow icon={<AppIcons.sparkle size={18}/>} iconBg="bg-gray-100"
-            title={tr('icloudBackupTitle')}
-            desc={tr('comingSoonDesc')}
-            onClick={()=>{}} />
-          <SettingsRow icon={<AppIcons.clock size={18}/>} iconBg="bg-gray-100"
-            title={tr('syncStatusTitle')}
-            desc={tr('comingSoonDesc')}
-            onClick={()=>{}} isLast/>
-        </div>
+        <p className="text-xs text-gray-400 px-1 mb-4 mt-4 leading-relaxed">{tr('accountIntro')}</p>
+
+        {cloudUser ? (
+          <>
+            <div className="bg-white rounded-2xl shadow-sm px-4 py-4 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-[var(--c-primary)]/10 flex items-center justify-center shrink-0">
+                <AppIcons.link size={18} className="text-[var(--c-primary)]"/>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[11px] font-semibold text-[var(--c-primary)]">{tr('accountSignedInTitle')}</p>
+                <p className="text-sm font-medium text-gray-900 truncate">{cloudUser.displayName||cloudUser.email||cloudUser.uid}</p>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl shadow-sm px-4 py-3.5 mt-3 flex items-center gap-2">
+              {migrationStatus==='syncing'&&(<><AppIcons.clock size={16} className="text-gray-400 shrink-0"/><p className="text-sm text-gray-500">{tr('accountSyncingStatus')}</p></>)}
+              {migrationStatus==='done'&&(<><AppIcons.checkSquare size={16} className="text-[var(--c-primary)] shrink-0"/><p className="text-sm text-gray-700">{tr('accountSyncedStatus')}</p></>)}
+              {migrationStatus==='error'&&(
+                <>
+                  <AppIcons.smileySad size={16} className="text-[#D97A7A] shrink-0"/>
+                  <p className="text-sm text-[#D97A7A] flex-1">{tr('accountSyncErrorStatus')}</p>
+                  <button onClick={()=>onGoogleSignIn()} className="text-xs font-semibold text-[var(--c-primary)] shrink-0">{tr('accountSyncRetryButton')}</button>
+                </>
+              )}
+              {migrationStatus==='idle'&&(<><AppIcons.checkSquare size={16} className="text-gray-300 shrink-0"/><p className="text-sm text-gray-400">{tr('accountSyncedStatus')}</p></>)}
+            </div>
+
+            <button onClick={onSignOut}
+              className="w-full bg-white rounded-2xl shadow-sm px-4 py-3.5 mt-3 text-sm font-semibold text-[#D97A7A] active:bg-gray-50">
+              {tr('accountSignOutButton')}
+            </button>
+          </>
+        ) : (
+          <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+            <button onClick={onGoogleSignIn} className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50 border-b border-gray-100">
+              <AppIcons.link size={18} className="text-gray-400 shrink-0"/>
+              <span className="flex-1 text-left text-sm font-semibold text-gray-800">{tr('accountSignInGoogle')}</span>
+            </button>
+            <button onClick={onAppleSignIn} className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50">
+              <AppIcons.link size={18} className="text-gray-400 shrink-0"/>
+              <span className="flex-1 text-left text-sm font-semibold text-gray-800">{tr('accountSignInApple')}</span>
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -7443,7 +7472,8 @@ export default function App() {
   const [bulkHistory,setBulkHistory] = useState<BulkHistoryEntry[]>([]);
   const [lifePatterns,setLifePatterns] = useState<LifePattern[]>([]);
   const [patternOverrides,setPatternOverrides] = useState<Record<string,string>>({});
-  const [authUser,setAuthUser] = useState<AuthUser|null>(null);
+  const [cloudUser,setCloudUser] = useState<CloudUser|null>(null);
+  const [migrationStatus,setMigrationStatus] = useState<'idle'|'syncing'|'done'|'error'>('idle');
   const [showTour,setShowTour] = useState(false);
   const [showWelcome,setShowWelcome] = useState(false);
   const [tourDragSignal,setTourDragSignal] = useState(0);
@@ -7517,8 +7547,6 @@ export default function App() {
       if(sl) setShopLocations(JSON.parse(sl) as ShopLocation[]);
       const fga=localStorage.getItem(FORGET_ALERTS_KEY);
       if(fga) setForgetAlerts(JSON.parse(fga) as ForgetAlert[]);
-      const au=localStorage.getItem(AUTH_KEY);
-      if(au) setAuthUser(JSON.parse(au) as AuthUser);
       const bh=localStorage.getItem(BULK_HIST_KEY);
       if(bh) setBulkHistory(JSON.parse(bh) as BulkHistoryEntry[]);
       const lp=localStorage.getItem(LIFE_PATTERNS_KEY);
@@ -7733,29 +7761,65 @@ export default function App() {
     document.documentElement.style.setProperty('--text-delta',`${delta}px`);
   },[settings.fontSize]);
 
-  const handleAppleSignIn=async():Promise<void>=>{
-    try{
-      const apple=(window as {AppleID?:{auth:{init:(c:object)=>void;signIn:()=>Promise<{authorization:{id_token:string;code:string};user?:{name?:{firstName?:string;lastName?:string};email?:string}}>}}}).AppleID;
-      if(!apple) return;
-      apple.auth.init({clientId:'com.tohoku-mamoru.app',scope:'name email',redirectURI:window.location.origin,usePopup:true});
-      const res=await apple.auth.signIn();
-      const token=res.authorization.id_token;
-      const payload=JSON.parse(atob(token.split('.')[1]));
-      const uid=payload.sub as string;
-      const email=res.user?.email||payload.email as string|undefined;
-      const firstName=res.user?.name?.firstName||'';
-      const lastName=res.user?.name?.lastName||'';
-      const displayName=[lastName,firstName].filter(Boolean).join(' ')||undefined;
-      const au:AuthUser={uid,email,displayName};
-      setAuthUser(au);
-      localStorage.setItem(AUTH_KEY,JSON.stringify(au));
-    }catch(e){console.error('Apple sign in failed:',e);}
+  // ログイン直後のクラウド移行に使うローカルデータのスナップショット。
+  // onCloudAuthChangeのコールバックはマウント時に1回だけ登録されるクロージャのため、
+  // tasks等のstateを直接参照するとstale closureになる（TaskModalのautoIconRefと同じ罠）。
+  // 毎レンダーで最新値を書き込むrefを経由することで、ログインがどのタイミングで
+  // 発生しても常に最新のローカルデータを移行できるようにする
+  const migrationDataRef=useRef<LocalDataForMigration>({
+    tasks:[],shopItems:[],globalTags:[],customTabs:[],moveHistory:[],bulkHistory:[],
+    shopNotifSettings:[],shopLocations:[],forgetAlerts:[],lifePatterns:[],
+    dayOverrides:{},patternOverrides:{},settings:{},
+  });
+  useEffect(()=>{
+    migrationDataRef.current={
+      tasks,shopItems,globalTags,customTabs,moveHistory,bulkHistory,
+      shopNotifSettings,shopLocations,forgetAlerts,lifePatterns,
+      dayOverrides,patternOverrides,settings,
+    };
+  });
+
+  // この端末がまだクラウドに一度も移行していない場合のみ実行する（hasMigratedThisDeviceは
+  // 端末ローカルのフラグ。同じアカウントの別端末が既に移行済みでもこの端末は独立して実行する
+  // ——PCとスマホを別々に無料版として使っていた場合に両方のデータを安全に統合するため）
+  const runMigrationIfNeeded=async(uid:string):Promise<void>=>{
+    if(hasMigratedThisDevice()) return;
+    setMigrationStatus('syncing');
+    const ok=await migrateLocalDataToCloud(uid,migrationDataRef.current);
+    setMigrationStatus(ok?'done':'error');
   };
 
-  const handleSignOut=():void=>{
-    setAuthUser(null);
-    localStorage.removeItem(AUTH_KEY);
+  const handleGoogleSignIn=async():Promise<void>=>{
+    const u=await signInWithGoogle();
+    if(u){ setCloudUser(u); await runMigrationIfNeeded(u.uid); }
   };
+
+  const handleAppleSignIn=async():Promise<void>=>{
+    const u=await signInWithApple();
+    if(u){ setCloudUser(u); await runMigrationIfNeeded(u.uid); }
+  };
+
+  const handleSignOut=async():Promise<void>=>{
+    await signOutCloud();
+    setCloudUser(null);
+    setMigrationStatus('idle');
+  };
+
+  // アプリ起動時、Firebaseが保持しているログインセッションを復元する。
+  // signInWithRedirect経由でログインした場合（ポップアップがブロックされる環境向けの
+  // フォールバック）はconsumeRedirectResultでその結果も拾う
+  useEffect(()=>{
+    let unsub:(()=>void)|null=null;
+    (async()=>{
+      const redirectUser=await consumeRedirectResult();
+      if(redirectUser){ setCloudUser(redirectUser); await runMigrationIfNeeded(redirectUser.uid); }
+      unsub=await onCloudAuthChange(async(u)=>{
+        setCloudUser(u);
+        if(u) await runMigrationIfNeeded(u.uid);
+      });
+    })();
+    return ()=>{ unsub?.(); };
+  },[]);
 
   const maybeShowProductTour=()=>{
     if(localStorage.getItem(TOUR_COMPLETED_KEY)){ maybeShowNotifPrompt(); return; }
@@ -8850,7 +8914,7 @@ export default function App() {
 
       {/* ── Settings Screen ── */}
       {settingsOpen&&(
-        <SettingsScreen settings={settings} onSettings={setSettings} onClose={()=>setSOp(false)} globalTags={globalTags} onGlobalTags={setGlobalTags} customTabs={customTabs} onCustomTabs={setCustomTabs} onDeleteTabTasks={(tabId)=>setTasks(prev=>prev.filter(t=>t.category!==tabId))} onDeleteTag={(tagName)=>{setGlobalTags(prev=>prev.filter(t=>t.name!==tagName));setTasks(prev=>prev.map(t=>({...t,tags:(t.tags??[]).filter(n=>n!==tagName)})));}} onRenameTag={(oldName,newName,newColor)=>{setGlobalTags(prev=>prev.map(t=>t.name===oldName?{name:newName,color:newColor}:t));setTasks(prev=>prev.map(t=>({...t,tags:(t.tags??[]).map(n=>n===oldName?newName:n)})));}} shopNotifSettings={shopNotifSettings} onShopNotifSettings={setShopNotifSettings} shopLocations={shopLocations} onShopLocations={setShopLocations} forgetAlerts={forgetAlerts} onForgetAlerts={setForgetAlerts} authUser={authUser} isPremium={isPremium} onAppleSignIn={handleAppleSignIn} onSignOut={handleSignOut} onBulkAdd={bulkAddTasks} bulkHistory={bulkHistory} onBulkHistoryDelete={bulkHistoryDelete} onBulkHistoryEdit={bulkHistoryEdit} lifePatterns={lifePatterns} onLifePatterns={setLifePatterns} patternOverrides={patternOverrides} onApplyPattern={applyPattern} initialSub={settingsInitSub} tasks={tasks} onEditTask={(t)=>{setSOp(false);openEdit(t);}}/>
+        <SettingsScreen settings={settings} onSettings={setSettings} onClose={()=>setSOp(false)} globalTags={globalTags} onGlobalTags={setGlobalTags} customTabs={customTabs} onCustomTabs={setCustomTabs} onDeleteTabTasks={(tabId)=>setTasks(prev=>prev.filter(t=>t.category!==tabId))} onDeleteTag={(tagName)=>{setGlobalTags(prev=>prev.filter(t=>t.name!==tagName));setTasks(prev=>prev.map(t=>({...t,tags:(t.tags??[]).filter(n=>n!==tagName)})));}} onRenameTag={(oldName,newName,newColor)=>{setGlobalTags(prev=>prev.map(t=>t.name===oldName?{name:newName,color:newColor}:t));setTasks(prev=>prev.map(t=>({...t,tags:(t.tags??[]).map(n=>n===oldName?newName:n)})));}} shopNotifSettings={shopNotifSettings} onShopNotifSettings={setShopNotifSettings} shopLocations={shopLocations} onShopLocations={setShopLocations} forgetAlerts={forgetAlerts} onForgetAlerts={setForgetAlerts} cloudUser={cloudUser} migrationStatus={migrationStatus} isPremium={isPremium} onGoogleSignIn={handleGoogleSignIn} onAppleSignIn={handleAppleSignIn} onSignOut={handleSignOut} onBulkAdd={bulkAddTasks} bulkHistory={bulkHistory} onBulkHistoryDelete={bulkHistoryDelete} onBulkHistoryEdit={bulkHistoryEdit} lifePatterns={lifePatterns} onLifePatterns={setLifePatterns} patternOverrides={patternOverrides} onApplyPattern={applyPattern} initialSub={settingsInitSub} tasks={tasks} onEditTask={(t)=>{setSOp(false);openEdit(t);}}/>
       )}
 
       {/* ── Tab filter bottom sheet ── */}
