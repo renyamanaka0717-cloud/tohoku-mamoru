@@ -4866,7 +4866,7 @@ function ForgetAlertsPanel({alerts,onChange,isPremium,onProPrompt}:{
 function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,shopPending,
   onToggle,onEdit,onAddShop,onToggleShop,onDeleteShop,onEditShop,onReorderLater,shopNotifSettings,onShopNotifSettings,
   shopLocations,onShopLocations,isPremium,onOpenPro,
-  notificationsEnabled,onEnableNotifications
+  notificationsEnabled,onEnableNotifications,isDesktop
 }:{
   activeTab:'later'|'shop'; onSwitchTab:(t:'later'|'shop')=>void; onClose:()=>void;
   tasks:Task[]; shopItems:ShopItem[]; pendingCount:number; shopPending:number;
@@ -4877,6 +4877,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
   shopLocations:ShopLocation[]; onShopLocations:(l:ShopLocation[])=>void;
   isPremium:boolean; onOpenPro:()=>void;
   notificationsEnabled?:boolean; onEnableNotifications?:()=>void;
+  isDesktop?:boolean;
 }) {
   const {tr,language} = useI18n();
   const [shopInput,setShopInput] = useState('');
@@ -4986,16 +4987,21 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
   const shopDoneItems=shopItems.filter(i=>i.checked);
 
 
+  {/* デスクトップでは背景オーバーレイなしの常時表示サイドバーとして描画する
+      （タブバー以降のJSXは完全に共通。外側2枚のラッパーのクラス/ハンドラだけを分岐させる） */}
   return (
     <>
-    <div className="fixed inset-0 z-50 flex flex-col bg-black/20" onClick={onClose}>
-      <div className="flex-1"/>
-      <div className="bg-white w-full max-w-md mx-auto rounded-t-3xl max-h-[85vh] flex flex-col shadow-2xl" onClick={e=>e.stopPropagation()}
-        onTouchStart={e=>{swX.current=e.touches[0].clientX;swY.current=e.touches[0].clientY;}}
-        onTouchEnd={onSheetSwipe}>
+    <div className={isDesktop?"fixed right-0 top-0 bottom-0 z-40":"fixed inset-0 z-50 flex flex-col bg-black/20"} onClick={isDesktop?undefined:onClose}>
+      {!isDesktop&&<div className="flex-1"/>}
+      <div className={isDesktop?"bg-white w-[380px] h-full border-l border-gray-200 flex flex-col shadow-2xl":"bg-white w-full max-w-md mx-auto rounded-t-3xl max-h-[85vh] flex flex-col shadow-2xl"}
+        onClick={isDesktop?undefined:e=>e.stopPropagation()}
+        onTouchStart={isDesktop?undefined:e=>{swX.current=e.touches[0].clientX;swY.current=e.touches[0].clientY;}}
+        onTouchEnd={isDesktop?undefined:onSheetSwipe}>
+        {!isDesktop&&(
         <button onClick={onClose} className="flex items-center justify-center pt-3 pb-2 w-full shrink-0 active:opacity-60">
           <div className="w-12 h-1.5 bg-gray-300 rounded-full"/>
         </button>
+        )}
         {/* Tab bar */}
         <div className="flex border-b border-gray-100 shrink-0 mt-1">
           {([['later',tr('laterTabLabel'),pendingCount],['shop',tr('shopTabLabel'),shopPending]] as const).map(([t,label,cnt])=>(
@@ -7353,6 +7359,15 @@ export default function App() {
   const [searchOpen,setSearchOpen] = useState(false);
   const [activeTab,setActiveTab] = useState<'later'|'shop'|null>(null);
   const [loaded,setLoaded]       = useState(false);
+  // PCレイアウト判定（デスクトップ幅のブラウザ向け、1024px以上）。モバイル版の挙動は一切変えず、
+  // isDesktop時だけ別のレイアウト分岐を通す
+  const [isDesktop,setIsDesktop] = useState(false);
+  useEffect(()=>{
+    const check=()=>setIsDesktop(window.innerWidth>=1024);
+    check();
+    window.addEventListener('resize',check);
+    return ()=>window.removeEventListener('resize',check);
+  },[]);
   const [now,setNow]             = useState(nowStr());
   const [touchY,setTouchY]       = useState(0);
   const [dragTask,setDragTask]   = useState<Task|null>(null);
@@ -8398,7 +8413,8 @@ export default function App() {
   if(!loaded) return <div className="flex h-screen items-center justify-center text-gray-400">{tr('loading')}</div>;
 
   return (
-    <div className="max-w-md mx-auto bg-white font-sans flex flex-col" style={{height:'100%'}}>
+    <div className={isDesktop?"bg-white font-sans flex flex-col":"max-w-md mx-auto bg-white font-sans flex flex-col"}
+      style={{height:'100%',...(isDesktop?{paddingRight:'380px'}:{})}}>
       {/* ── Header ── */}
       <header className="z-30 bg-gray-50 flex-shrink-0" style={{paddingTop:'env(safe-area-inset-top)'}}>
         <div className="px-4 pt-1 pb-0">
@@ -8538,6 +8554,8 @@ export default function App() {
       </main>
 
       {/* ── Bottom bar ── */}
+      {/* デスクトップでは常時表示のサイドバー（BottomTabs）がこの役割を兼ねるため非表示にする */}
+      {!isDesktop&&(
       <div
         className="fixed bottom-0 left-0 right-0 z-40 max-w-md mx-auto bg-gray-50 rounded-t-2xl"
         style={{boxShadow:'0 -4px 16px rgba(0,0,0,0.10)'}}
@@ -8556,6 +8574,7 @@ export default function App() {
         <div style={{height:'env(safe-area-inset-bottom)'}}/>
 
       </div>
+      )}
 
       {/* ── Wake/Sleep color picker ── */}
       {colorPickTarget&&(
@@ -8597,7 +8616,7 @@ export default function App() {
       )}
 
       {/* ── FAB ── */}
-      <div className="fixed right-4 z-50" style={{bottom:'calc(3.5rem + env(safe-area-inset-bottom))'}} data-tour="fab-add">
+      <div className="fixed z-50" style={{bottom:'calc(3.5rem + env(safe-area-inset-bottom))',right:isDesktop?'calc(380px + 1rem)':'1rem'}} data-tour="fab-add">
         <button onClick={()=>openAdd()}
           className="w-14 h-14 bg-[var(--c-primary)] text-white rounded-full shadow-2xl active:bg-gray-700"
           style={{display:'grid',placeItems:'center'}}>
@@ -8605,9 +8624,9 @@ export default function App() {
         </button>
       </div>
 
-      {/* ── Bottom sheet ── */}
-      {activeTab&&(
-        <BottomTabs activeTab={activeTab} onSwitchTab={setActiveTab} onClose={()=>setActiveTab(null)}
+      {/* ── Bottom sheet（デスクトップでは常時表示のサイドバーとして表示） ── */}
+      {(activeTab||isDesktop)&&(
+        <BottomTabs activeTab={activeTab??'later'} onSwitchTab={setActiveTab} onClose={()=>setActiveTab(null)}
           tasks={filteredTasks} shopItems={shopItems} pendingCount={pendingCount} shopPending={shopPending}
           onToggle={toggle} onEdit={openEdit}
           onAddShop={addShopItem} onToggleShop={toggleShop} onDeleteShop={deleteShop} onEditShop={editShopItem}
@@ -8616,11 +8635,12 @@ export default function App() {
           shopLocations={shopLocations} onShopLocations={setShopLocations}
           isPremium={isPremium} onOpenPro={()=>{setActiveTab(null);setSettingsInitSub('premium');setSOp(true);}}
           notificationsEnabled={settings.notificationsEnabled??true}
-          onEnableNotifications={()=>setSettings(s=>({...s,notificationsEnabled:true}))}/>
+          onEnableNotifications={()=>setSettings(s=>({...s,notificationsEnabled:true}))}
+          isDesktop={isDesktop}/>
       )}
 
       {/* あとでやる FAB */}
-      {activeTab==='later'&&(
+      {activeTab==='later'&&!isDesktop&&(
         <div className="fixed right-4 z-[60]" style={{bottom:'calc(1.5rem + env(safe-area-inset-bottom))'}}>
           <button onClick={()=>{setActiveTab(null);openAdd();}}
             className="w-14 h-14 bg-[var(--c-primary)] text-white rounded-full shadow-2xl active:bg-gray-700"
