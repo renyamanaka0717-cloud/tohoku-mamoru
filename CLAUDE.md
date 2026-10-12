@@ -1323,6 +1323,108 @@ interface RecommendationDef { id:RecommendationId; usedKey:keyof Omit<FeatureUsa
 
 ---
 
+## PC版（デスクトップレイアウト、進行中）
+
+BrainBoxのWeb版（ブラウザ）は従来スマホ幅（`max-w-md mx-auto`）固定だったが、PCの広い画面向けに別レイアウトを追加している。**iOS/Androidネイティブアプリ（Capacitor）はスマホ幅のまま変更なし**——`isDesktop`はブラウザの`window.innerWidth`を見るだけなので、ネイティブのWKWebView/WebViewでは常にfalseになり影響しない。
+
+### 現状のスコープ・ロードマップ
+
+ユーザーから「スマホ版＝手軽に記録、PC版＝まとめて整理」という方向性で、以下の段階的ロードマップが共有されている（シンプルさは維持し機能を増やしすぎない方針）。
+
+- **第1段階（着手中）**: PC向けレイアウト改善／ドラッグ＆ドロップ／キーボードショートカット／タスク検索／サイドパネルの開閉
+- **第2段階**: 3日・7日表示（複数日表示）／タスクの複数選択・一括操作／「あとでやる」のグループ分け
+- **第3段階**: タスクの所要時間設定・空き時間への自動配置・振り返り分析
+
+**現時点で実装済みなのは第1段階の一部のみ**（レイアウト基盤・マウスドラッグ＆ドロップ・キーボードショートカット・ポップアップの中央表示・左サイドバーナビ）。複数日表示・サイドパネルの開閉トグル・一括操作・グループ分け・所要時間・iOS/Androidネイティブログイン等は**まだ未実装**。新しいセッションでこのロードマップの続きを求められたら、ここに書かれていない項目はゼロから設計すること（下記の既存実装を壊さないよう、特に`isDesktop`分岐の既存パターンに倣う）。
+
+参考デザイン: ユーザーが提示したモックアップは「左サイドバー（ロゴ＋今日/週間/あとでやる/買い物リスト/検索/統計/設定）＋中央タイムライン（日付ナビ＋1日/3日/7日表示切替＋空き時間カードへのインライン追加ボタン＋画面下部に"+タスクを追加"ボタン）＋右パネル（検索バー・通知ベル・アバター、あとでやる/買い物リスト/今日の進捗）」という構成。**ただし「見た目だけ参考にし、被っている機能や不要なデザインは取り入れなくてよい」という指示**のため、週間表示・統計・通知ベル・アバター・今日の進捗カードなどモックアップに写っている要素でもまだ実装していないものが多数ある（既存機能にマッピングできる項目だけを先に実装した）。
+
+### `isDesktop`判定とブレークポイント
+
+```typescript
+// App コンポーネント内
+const [isDesktop,setIsDesktop] = useState(false);
+useEffect(()=>{
+  const check=()=>setIsDesktop(window.innerWidth>=1024);
+  check();
+  window.addEventListener('resize',check);
+  return ()=>window.removeEventListener('resize',check);
+},[]);
+```
+
+`1024px`はTailwindの`lg:`ブレークポイントと完全に一致する値にしてある。**JS側の`isDesktop` stateが必要なのは、サブコンポーネントへのprop分岐（左サイドバー自体の表示・右パネルの常時表示化・マウスイベントの付与等、構造そのものを変える必要がある箇所）に限定し、見た目の微調整（中央寄せ・角丸の付け方など）は極力CSSの`lg:`バリアントで完結させる。** 理由: `isDesktop`をprop経由で子コンポーネント（`SettingsScreen`・`BottomTabs`内の各種確認ポップアップ等）に渡すには呼び出し階層をまたいで追加する必要があるが、`lg:`はどのコンポーネントからでもクラス名だけで効くため、後述の「確認ポップアップの中央表示」のような横断的な調整にはこちらが圧倒的に低コスト。**新しくデスクトップ専用の見た目調整を追加する時は、まず`lg:`バリアントで足りないか検討してから、足りない場合のみ`isDesktop` stateのprop渡しを検討すること。**
+
+### ルートコンテナ・全体構造
+
+```typescript
+<div className={isDesktop?"bg-white font-sans flex flex-col":"max-w-md mx-auto bg-white font-sans flex flex-col"}
+  style={{height:'100%',...(isDesktop?{paddingRight:'380px',paddingLeft:'220px'}:{})}}>
+  {isDesktop&&<nav className="fixed left-0 top-0 bottom-0 z-40 w-[220px] ...">{/* 左サイドバー */}</nav>}
+  <header>...</header>{/* 中央タイムラインの日付ナビ・週カレンダー・ファイルタブはモバイルと共通のまま */}
+  <main>...</main>{/* Timeline、モバイルと共通 */}
+  {!isDesktop&&<div>{/* Bottom Bar、モバイルのみ */}</div>}
+  <div className="fixed z-50" style={{right:isDesktop?'calc(380px + 1rem)':'1rem'}}>{/* FAB */}</div>
+  {(activeTab||isDesktop)&&<BottomTabs isDesktop={isDesktop} .../>}{/* 右パネル、デスクトップは常時表示 */}
+</div>
+```
+
+- 中央タイムライン（`<header>`の日付ナビ・週カレンダー・ファイルタブ、`<main>`のTimeline）は**モバイルと完全に共通のコードパス**。幅・余白の専用調整は特に行っていない（`max-w-md`を外して可変幅にしているだけ）
+- 左サイドバー（220px）・右パネル（380px、`BottomTabs`の`isDesktop`時のスタイル）はどちらも`fixed`配置で、中央カラムはルートの`paddingLeft`/`paddingRight`で両脇を避ける
+- FAB・BottomTabsの`isDesktop`対応は前セッションで実装済み（既存のPhase 1〜3、マウスドラッグ＆ドロップは`FreeTimeCard`・`Timeline`双方に`onMouseDown`/`mouseStart`/`mouseArmed`パターンで追加、キーボードショートカットは`isDesktop`時のみ有効化する`keydown`リスナーで実装）。詳細はコード参照（コメントに「PCレイアウト向け」と明記してある）
+
+### 左サイドバーナビゲーション（新規）
+
+`App`コンポーネントのルート直下、`isDesktop`時のみ`<nav>`としてレンダリングする独立ブロック。ロゴ（`public/app-icons/mint.png`）＋「BrainBox」ワードマークのヘッダー、ナビ項目リスト、最下部に設定ボタン、という3段構成。
+
+**ナビ項目は「既存機能にマッピングできるものだけ」に絞ってある**（今日・あとでやる・買い物リスト・検索・設定の5つ）。参考モックアップには「週間」「統計」も含まれていたが、複数日表示・統計機能はまだ実装していないため、動かないボタンを置かないという方針で今回は含めていない（第2段階で複数日表示を実装したら「週間」を、振り返り分析を実装したら「統計」を追記する想定）。
+
+```typescript
+const active=(key==='today'&&date===todayStr())||(key==='later'&&effectiveTab==='later')||(key==='shop'&&effectiveTab==='shop');
+```
+
+`effectiveTab=activeTab??'later'`——`BottomTabs`の`activeTab={activeTab??'later'}`と同じフォールバックを使い、`activeTab`stateがnull（初期状態）でも実際に表示されている「あとでやる」タブをハイライトする。**「今日」と「あとでやる」が同時にアクティブ表示されることがある**（デスクトップでは中央タイムラインと右パネルが同時に見えているため、モバイルの「1画面1ビュー」という排他的な選択状態の概念がそのまま当てはまらない。これは意図的な割り切りで、不具合ではない）。
+
+「設定」ボタンは左サイドバー最下部に独立配置（ナビ項目リストとは`border-t`で区切る）。`setSettingsInitSub(undefined);setSOp(true);`で開く、モバイルのヘッダー歯車アイコンと同じ呼び出し。
+
+**避けるパターン:** 左サイドバーに、まだ実装していない機能（週間表示・統計等）への導線を先行して置かない。既存機能にマッピングできないナビ項目は、その機能自体を実装するタイミングで一緒に追加すること。
+
+### 確認ポップアップ・ピッカーの中央表示（`lg:`バリアント）
+
+モバイルはボトムシート（`items-end justify-center`＋`rounded-t-*`）だが、デスクトップの横に広い画面でボトムシートのまま出すと不格好（画面下端に偏って出る）という指摘を受け、**`lg:items-center`＋`lg:rounded-b-*`を追加するだけ**でデスクトップ時に画面中央・全角丸のダイアログへ切り替わるようにした。
+
+```jsx
+// Before（モバイル専用だった）
+<div className="fixed inset-0 z-[120] bg-black/40 flex items-end justify-center" onClick={onClose}>
+  <div className="bg-white w-full max-w-md rounded-t-3xl px-5 pt-5 pb-10 shadow-2xl">...</div>
+</div>
+// After（lg:バリアントを追加しただけ。isDesktop prop不要）
+<div className="fixed inset-0 z-[120] bg-black/40 flex items-end justify-center lg:items-center" onClick={onClose}>
+  <div className="bg-white w-full max-w-md rounded-t-3xl lg:rounded-b-3xl px-5 pt-5 pb-10 shadow-2xl">...</div>
+</div>
+```
+
+**`rounded-b-*`を追加する設計にしている理由（重要）:** `rounded-t-3xl`（上だけ角丸）を`rounded-3xl`（4隅角丸）に置き換えようとすると、同じ`border-radius`系プロパティを異なるTailwindユーティリティ（`rounded-t-*`と`rounded-*`）で二重指定することになり、どちらが勝つかはビルド順依存で不安定になる。`rounded-t-*`（上2隅）はそのまま残し、`lg:rounded-b-*`（下2隅、デスクトップだけ追加）を**別のユーティリティとして追加**すれば、プロパティが重ならないため優先順位の問題が一切発生しない。**新しくボトムシートをデスクトップで角丸にする時は、`rounded-*`への置き換えではなく`rounded-b-*`の追加で実装すること。**
+
+このパターンを、ウェイク/スリーププロンプト・色/時刻ピッカー・各種削除確認・タグ削除確認・空き時間マップピッカー・ドラッグ確認ポップアップなど、`fixed inset-0 ... flex items-end justify-center`型のポップアップ全箇所（`SettingsScreen`・`BottomTabs`内の子コンポーネントも含む）に一括適用済み。`isDesktop` propをこれらのサブコンポーネントに新規で渡す必要が無かった（`lg:`バリアントがどこからでも効くため）のが、上記「`isDesktop`判定とブレークポイント」節の設計方針通りの実例。
+
+**例外（別対応が必要な構造）:** `TaskModal`内のアイコン/色ピッカーのような`flex flex-col justify-end`型（`items-end justify-center`とは異なるクラス構成）のサブシートは、この一括修正の対象に含めていない。中央寄せにしたくなった場合は同じ発想（`lg:justify-center`等）で個別に対応すること。
+
+**避けるパターン:** ポップアップの中央寄せに`isDesktop` stateをpropとして新しいサブコンポーネントへ渡さない。既存のポップアップと同じ`fixed inset-0 ... flex items-end justify-center`パターンなら、`lg:items-center`（＋カードに`lg:rounded-b-*`）を追記するだけで済む。
+
+### ウェルカム画面（`Welcome.tsx`）のデスクトップ対応
+
+モバイルは背景画像（`public/welcome-bg.png`）を画面全体に`background-size:cover`で敷いていたが、デスクトップの横長画面でそのまま`cover`すると、画像上部のロゴマークが異常に拡大・トリミングされて不格好になる不具合があった（1920px幅で実機確認）。修正: `isDesktop`時は画面全体を無地（`var(--c-primary-dark)`）の背景にし、その中央にモバイル幅（`max-w-md`、画面高さいっぱい）のカードとして元の背景画像付きウェルカム画面を配置する入れ子構造にした。`Welcome`コンポーネントに`isDesktop?:boolean`propを追加し、呼び出し元（`App`）から`isDesktop`をそのまま渡している（こちらは`lg:`バリアントではなくprop方式——背景画像のサイズ基準そのものを切り替える必要があり、CSSのcover/containの指定だけでは解決できないため）。
+
+### 避けるパターン（PC版全体）
+
+- `isDesktop`の判定基準（`window.innerWidth>=1024`）とTailwindの`lg:`ブレークポイントをズラさない。ズレるとJS側の分岐とCSS側の分岐が別々のタイミングで切り替わり、中間幅で見た目が破綻する
+- 見た目だけの微調整（中央寄せ・角丸・余白等）に`isDesktop` stateをpropで新規に配線しない。まず`lg:`バリアントで実現できないか検討すること（構造自体を変える必要がある場合のみ`isDesktop` propを使う）
+- 左サイドバー・右パネルに、まだ実装していない機能への導線（動かないボタン）を先行して置かない
+- ネイティブ（iOS/Android）向けのコードパスに`isDesktop`分岐を持ち込まない（`window.innerWidth`はWKWebView/WebViewでも技術的には取得できるが、ネイティブは常にスマホ幅の設計のため、`isDesktop`はWeb版専用の概念として扱うこと）
+- モックアップ（ユーザー共有の参考デザイン）の見た目を未実装機能ごと丸ごと再現しようとしない。「見た目だけ参考にし、不要な機能・重複する機能は取り入れない」という明示的な指示が出ているため、既存機能にマッピングできる要素から段階的に実装すること
+
+---
+
 ## 現在のUI実装状態
 
 ### カラーシステム
