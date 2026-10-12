@@ -50,6 +50,9 @@ export const STRINGS = {
 
   // ヘッダー（App本体）
   headerFreeTimeToggle:      { ja: '空き時間',                     en: 'Free time', es: 'Tiempo libre', pt: 'Tempo livre', vi: 'Thời gian rảnh', th: 'เวลาว่าง', id: 'Waktu luang',                     ko: '여유 시간',                     'zh-TW': '空檔時間' },
+  viewMode1Day:              { ja: '1日',                         en: '1 day', es: '1 día', pt: '1 dia', vi: '1 ngày', th: '1 วัน', id: '1 hari',                        ko: '1일',                         'zh-TW': '1天' },
+  viewMode3Day:              { ja: '3日',                         en: '3 days', es: '3 días', pt: '3 dias', vi: '3 ngày', th: '3 วัน', id: '3 hari',                        ko: '3일',                         'zh-TW': '3天' },
+  viewMode7Day:              { ja: '7日',                         en: '7 days', es: '7 días', pt: '7 dias', vi: '7 ngày', th: '7 วัน', id: '7 hari',                        ko: '7일',                         'zh-TW': '7天' },
   fileTabAll:                { ja: 'すべて',                       en: 'All', es: 'Todo', pt: 'Tudo', vi: 'Tất cả', th: 'ทั้งหมด', id: 'Semua',                           ko: '전체',                        'zh-TW': '全部' },
   loading:                   { ja: '読み込み中…',                  en: 'Loading…', es: 'Cargando…', pt: 'Carregando…', vi: 'Đang tải…', th: 'กำลังโหลด…', id: 'Memuat…',                      ko: '불러오는 중…',                  'zh-TW': '載入中…' },
 

@@ -3331,6 +3331,52 @@ function CompactTaskCard({task,onToggle,onEdit}:{task:Task;onToggle:()=>void;onE
 }
 
 
+// ── MultiDayColumn（PC版・複数日表示の1カラム） ─────────────────────────────────
+// 既存の Timeline（絶対配置・anchors補間・ResizeObserver等の複雑な詰めレイアウト）は
+// 1カラムあたりの横幅が狭い複数日表示にはそのまま流用せず、縦積みの単純なリストで
+// 代替する。ドラッグ&ドロップ・空き時間カードの内容見積り等は意図的に持たず、
+// 「概観してタップで編集」に絞った軽量な表示にしてある（複数日表示の最初のバージョン）。
+function MultiDayColumn({date,label,isToday,tasks,wakeTime,sleepTime,onEdit,onAdd}:{
+  date:string;label:string;isToday:boolean;tasks:Task[];wakeTime:string;sleepTime:string;
+  onEdit:(t:Task)=>void;onAdd:()=>void;
+}){
+  const {tr} = useI18n();
+  const dayTasks = tasks.filter(t=>!t.isLater&&t.date===date&&t.startTime)
+    .sort((a,b)=>toMin(a.startTime!)-toMin(b.startTime!));
+  return (
+    <div className="flex-[1_0_240px] border-r border-gray-100 last:border-r-0 flex flex-col h-full">
+      <div className="flex items-center justify-between px-3 py-2.5 border-b border-gray-100 shrink-0">
+        <span className={`text-sm font-bold ${isToday?'text-[var(--c-primary)]':'text-gray-900'}`}>{label}</span>
+        <button onClick={onAdd} className="w-6 h-6 flex items-center justify-center text-gray-400 active:text-gray-600">
+          <AppIcons.plus size={16}/>
+        </button>
+      </div>
+      <div className="flex-1 overflow-y-auto px-2 py-2">
+        <div className="flex items-center gap-2 py-1.5 px-2">
+          <AppIcons.wake size={14} className="text-gray-400 shrink-0"/>
+          <span className="text-xs text-gray-400 w-10 shrink-0">{wakeTime}</span>
+          <span className="text-xs font-medium text-gray-600 truncate">{tr('timelineWake')}</span>
+        </div>
+        {dayTasks.map(t=>(
+          <button key={t.id} onClick={()=>onEdit(t)}
+            className="w-full flex items-center gap-2 py-2 px-2 rounded-lg hover:bg-gray-50 text-left">
+            <span className="text-xs text-gray-400 w-10 shrink-0">{t.startTime}</span>
+            <span className={`flex-1 text-sm truncate ${t.completed?'text-gray-400 line-through':'text-gray-800'}`}>{t.name}</span>
+          </button>
+        ))}
+        {dayTasks.length===0&&(
+          <p className="text-xs text-gray-300 text-center py-6">—</p>
+        )}
+        <div className="flex items-center gap-2 py-1.5 px-2">
+          <AppIcons.sleep size={14} className="text-gray-400 shrink-0"/>
+          <span className="text-xs text-gray-400 w-10 shrink-0">{sleepTime}</span>
+          <span className="text-xs font-medium text-gray-600 truncate">{tr('timelineSleep')}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Timeline ──────────────────────────────────────────────────────────────────
 
 function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet,onAddAtTime,onDragStart,dragTaskId,yToTimeRef,layoutYRef,globalTags,todayHistory,onSubtaskToggle,lifePatterns=[],patternOverrides={},onPickColor,onEditTime,onOpenLater,customTabs=[]}:{
@@ -8249,6 +8295,28 @@ export default function App() {
       sleepTime: ov.sleepTime ?? pat?.sleepTime ?? settings.sleepTime,
     };
   },[settings,dayOverrides,date,patternOverrides,lifePatterns]);
+  // 複数日表示（PC版）用、任意の日付の起床・就寝時刻を計算する版。effectiveSettingsと
+  // 同じロジックだが単一のdate stateに縛られないよう関数化している
+  const settingsForDate=(d:string)=>{
+    const patId=patternOverrides[d];
+    const pat=patId?lifePatterns.find(p=>p.id===patId):null;
+    const ov=dayOverrides[d]??{};
+    return {
+      wakeTime:  ov.wakeTime  ?? pat?.wakeTime  ?? settings.wakeTime,
+      sleepTime: ov.sleepTime ?? pat?.sleepTime ?? settings.sleepTime,
+    };
+  };
+  // 複数日表示（PC版のみ、第1段階の1日表示がデフォルト）
+  const [viewMode,setViewMode] = useState<'1day'|'3day'|'7day'>('1day');
+  const multiDayDates = useMemo(()=>{
+    const n = viewMode==='7day'?7:viewMode==='3day'?3:1;
+    return Array.from({length:n},(_,i)=>shiftDate(date,i));
+  },[date,viewMode]);
+  const multiDayLabel=(d:string)=>{
+    const {month,day}=getDateInfo(d);
+    const dow=new Date(d+'T12:00:00').getDay();
+    return `${month}/${day}(${dayNameFor(language,dow)})`;
+  };
 
   // Drag task from あとでやる to timeline
   const startDrag=(task:Task,x:number,y:number)=>{
@@ -8599,6 +8667,16 @@ export default function App() {
           <div className="flex items-center justify-between mb-1 gap-2">
             <span className="text-2xl font-bold text-gray-900 truncate min-w-0">{language==='ja'?`${year}年${month}月`:language==='ko'?`${year}년 ${month}월`:language==='zh-TW'?`${year}年${month}月`:language==='es'?`${MONTH_NAMES_ES[month-1].slice(0,3).replace(/^./,c=>c.toUpperCase())} ${year}`:language==='pt'?`${MONTH_NAMES_PT[month-1].slice(0,3).replace(/^./,c=>c.toUpperCase())} ${year}`:language==='vi'?`T${month} ${year}`:language==='th'?`${MONTH_NAMES_TH_SHORT[month-1]} ${year}`:language==='id'?`${MONTH_NAMES_ID[month-1].slice(0,3)} ${year}`:`${MONTH_NAMES_EN[month-1].slice(0,3)} ${year}`}</span>
             <div className="flex items-center gap-1 shrink-0">
+              {isDesktop&&(
+                <div className="flex items-center bg-gray-200 rounded-full p-0.5 mr-2">
+                  {([['1day',tr('viewMode1Day')],['3day',tr('viewMode3Day')],['7day',tr('viewMode7Day')]] as const).map(([vm,label])=>(
+                    <button key={vm} onClick={()=>setViewMode(vm)}
+                      className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${viewMode===vm?'bg-[var(--c-primary)] text-white':'text-gray-500'}`}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
               <button onClick={()=>setSettings(s=>({...s,showFreeCard:!(s.showFreeCard??true)}))}
                 className={`relative h-7 rounded-full font-medium whitespace-nowrap transition-colors duration-200 mr-1 ${(settings.showFreeCard??true)?'bg-[var(--c-primary)] text-white':'bg-gray-200 text-gray-500'}`}
                 style={{fontSize:'12px',paddingLeft:(settings.showFreeCard??true)?'10px':'26px',paddingRight:(settings.showFreeCard??true)?'26px':'10px',transition:'padding 0.2s, background-color 0.2s'}}>
@@ -8711,6 +8789,7 @@ export default function App() {
       </header>
 
       {/* ── Timeline ── */}
+      {(!isDesktop||viewMode==='1day')?(
       <main ref={mainRef} className="px-3 pt-3 flex-1 overflow-y-auto" style={{paddingBottom:'calc(3.5rem + env(safe-area-inset-bottom))'}}
         onTouchStart={e=>{mainSwX.current=e.touches[0].clientX;mainSwY.current=e.touches[0].clientY;}}
         onTouchEnd={e=>{
@@ -8729,6 +8808,19 @@ export default function App() {
           onOpenLater={()=>{if(showTour) return;setActiveTab('later');}}
           customTabs={activeCategory===null?customTabs:[]}/>
       </main>
+      ):(
+      <main className="flex-1 overflow-x-auto overflow-y-hidden flex">
+        {multiDayDates.map(d=>{
+          const ds=settingsForDate(d);
+          return (
+            <MultiDayColumn key={d} date={d} label={multiDayLabel(d)} isToday={d===today}
+              tasks={filteredTasks} wakeTime={ds.wakeTime} sleepTime={ds.sleepTime}
+              onEdit={openEdit}
+              onAdd={()=>{setDate(d);setWeekAnchor(d);openAdd('09:00');}}/>
+          );
+        })}
+      </main>
+      )}
 
       {/* ── Bottom bar ── */}
       {/* デスクトップでは常時表示のサイドバー（BottomTabs）がこの役割を兼ねるため非表示にする */}
