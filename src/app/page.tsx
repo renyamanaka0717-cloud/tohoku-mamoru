@@ -7438,6 +7438,8 @@ export default function App() {
     window.addEventListener('resize',check);
     return ()=>window.removeEventListener('resize',check);
   },[]);
+  // PC版右パネル（あとでやる・買い物リスト）の開閉状態。中央タイムラインを広く使いたい時に畳める
+  const [panelCollapsed,setPanelCollapsed] = useState(false);
   const [now,setNow]             = useState(nowStr());
   const [touchY,setTouchY]       = useState(0);
   const [dragTask,setDragTask]   = useState<Task|null>(null);
@@ -8554,7 +8556,7 @@ export default function App() {
 
   return (
     <div className={isDesktop?"bg-white font-sans flex flex-col":"max-w-md mx-auto bg-white font-sans flex flex-col"}
-      style={{height:'100%',...(isDesktop?{paddingRight:'380px',paddingLeft:'220px'}:{})}}>
+      style={{height:'100%',...(isDesktop?{paddingRight:panelCollapsed?'0px':'380px',paddingLeft:'220px'}:{})}}>
       {/* ── 左サイドバー（PC版のみ） ── */}
       {isDesktop&&(
         <nav className="fixed left-0 top-0 bottom-0 z-40 w-[220px] border-r border-gray-200 bg-gray-50 flex flex-col">
@@ -8791,7 +8793,7 @@ export default function App() {
       )}
 
       {/* ── FAB ── */}
-      <div className="fixed z-50" style={{bottom:'calc(3.5rem + env(safe-area-inset-bottom))',right:isDesktop?'calc(380px + 1rem)':'1rem'}} data-tour="fab-add">
+      <div className="fixed z-50" style={{bottom:'calc(3.5rem + env(safe-area-inset-bottom))',right:isDesktop?(panelCollapsed?'1rem':'calc(380px + 1rem)'):'1rem'}} data-tour="fab-add">
         <button onClick={()=>openAdd()}
           className="w-14 h-14 bg-[var(--c-primary)] text-white rounded-full shadow-2xl active:bg-gray-700"
           style={{display:'grid',placeItems:'center'}}>
@@ -8800,7 +8802,7 @@ export default function App() {
       </div>
 
       {/* ── Bottom sheet（デスクトップでは常時表示のサイドバーとして表示） ── */}
-      {(activeTab||isDesktop)&&(
+      {(activeTab||(isDesktop&&!panelCollapsed))&&(
         <BottomTabs activeTab={activeTab??'later'} onSwitchTab={setActiveTab} onClose={()=>setActiveTab(null)}
           tasks={filteredTasks} shopItems={shopItems} pendingCount={pendingCount} shopPending={shopPending}
           onToggle={toggle} onEdit={openEdit}
@@ -8812,6 +8814,15 @@ export default function App() {
           notificationsEnabled={settings.notificationsEnabled??true}
           onEnableNotifications={()=>setSettings(s=>({...s,notificationsEnabled:true}))}
           isDesktop={isDesktop}/>
+      )}
+
+      {/* ── 右パネルの開閉トグル（PC版のみ） ── */}
+      {isDesktop&&(
+        <button onClick={()=>setPanelCollapsed(v=>!v)}
+          className="fixed z-50 w-6 h-12 bg-white border border-gray-200 rounded-l-lg flex items-center justify-center shadow-md active:bg-gray-50"
+          style={{top:'calc(50% - 24px)',right:panelCollapsed?'0px':'380px'}}>
+          {panelCollapsed?<AppIcons.caretLeft size={14} className="text-gray-400"/>:<AppIcons.caretRight size={14} className="text-gray-400"/>}
+        </button>
       )}
 
       {/* あとでやる FAB */}

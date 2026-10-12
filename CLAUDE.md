@@ -1415,6 +1415,14 @@ const active=(key==='today'&&date===todayStr())||(key==='later'&&effectiveTab===
 
 モバイルは背景画像（`public/welcome-bg.png`）を画面全体に`background-size:cover`で敷いていたが、デスクトップの横長画面でそのまま`cover`すると、画像上部のロゴマークが異常に拡大・トリミングされて不格好になる不具合があった（1920px幅で実機確認）。修正: `isDesktop`時は画面全体を無地（`var(--c-primary-dark)`）の背景にし、その中央にモバイル幅（`max-w-md`、画面高さいっぱい）のカードとして元の背景画像付きウェルカム画面を配置する入れ子構造にした。`Welcome`コンポーネントに`isDesktop?:boolean`propを追加し、呼び出し元（`App`）から`isDesktop`をそのまま渡している（こちらは`lg:`バリアントではなくprop方式——背景画像のサイズ基準そのものを切り替える必要があり、CSSのcover/containの指定だけでは解決できないため）。
 
+### 右パネルの開閉（`panelCollapsed`）
+
+第1段階の「サイドパネルの開閉」に対応。`App`の`panelCollapsed` state（デフォルトfalse＝展開）で、右パネル（`BottomTabs`の常時表示部分）を畳めるようにしている。
+
+- ルートコンテナの`paddingRight`を`panelCollapsed?'0px':'380px'`に、FABの`right`を`panelCollapsed?'1rem':'calc(380px + 1rem)'`に、`BottomTabs`自体のレンダー条件を`(activeTab||(isDesktop&&!panelCollapsed))`に、それぞれ連動させている（`isDesktop`時の`380px`固定値を使っている箇所を触る時は、この3箇所すべてに`panelCollapsed`の分岐を入れ忘れていないか確認すること）
+- 開閉トグルは`BottomTabs`コンポーネントの内部ではなく、`App`側に独立した小さい`<button>`として置いてある（`fixed`、パネルとタイムラインの境界＝`right:panelCollapsed?'0px':'380px'`に追従させ、縦中央に固定）。`BottomTabs`に新しいpropを増やさずに済むようにするための設計判断
+- アイコンは`panelCollapsed?caretLeft:caretRight`（閉じている時は「開く」方向＝左向き矢印、開いている時は「閉じる」方向＝右向き矢印を示す。VSCodeのサイドバー折りたたみと同じ向きの約束事）
+
 ### 避けるパターン（PC版全体）
 
 - `isDesktop`の判定基準（`window.innerWidth>=1024`）とTailwindの`lg:`ブレークポイントをズラさない。ズレるとJS側の分岐とCSS側の分岐が別々のタイミングで切り替わり、中間幅で見た目が破綻する
