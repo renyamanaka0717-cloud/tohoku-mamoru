@@ -1,10 +1,15 @@
 'use client';
 import { useI18n } from './I18n';
 
-export default function Welcome({ onStartTour, onLater }: { onStartTour: () => void; onLater: () => void }) {
+export default function Welcome({ onStartTour, onLater, isDesktop }: { onStartTour: () => void; onLater: () => void; isDesktop?: boolean }) {
   const { tr } = useI18n();
+  // デスクトップはモバイル同様に画面全体へ背景画像を引き伸ばすと、カバー表示の都合で
+  // 上部のロゴマークが巨大に拡大・トリミングされて不格好になる（横1920px級の幅で確認済み）。
+  // モバイル幅（max-w-md）のカードを画面中央に配置し、はみ出す左右は無地の背景で埋める。
   return (
-    <div className="fixed inset-0 z-[300] flex flex-col overflow-hidden"
+    <div className="fixed inset-0 z-[300] flex items-center justify-center overflow-hidden"
+      style={isDesktop ? { background: 'var(--c-primary-dark)' } : undefined}>
+    <div className={isDesktop ? 'w-full max-w-md h-full flex flex-col overflow-hidden shadow-2xl' : 'fixed inset-0 flex flex-col overflow-hidden'}
       style={{ backgroundImage: 'url(/welcome-bg.png)', backgroundSize: 'cover', backgroundPosition: 'center' }}>
       {/* 背景画像のロゴマークが画面上部〜中央にあるため、その下に文字を配置する */}
       <div style={{ height: '48vh' }} />
@@ -30,6 +35,7 @@ export default function Welcome({ onStartTour, onLater }: { onStartTour: () => v
           {tr('welcomeLater')}
         </button>
       </div>
+    </div>
     </div>
   );
 }

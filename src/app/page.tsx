@@ -9017,9 +9017,9 @@ export default function App() {
       {appProPrompt&&<ProGateSheet onClose={()=>setAppProPrompt(false)} onView={()=>{setAppProPrompt(false);setSettingsInitSub('premium');setSOp(true);}} feature={tr('proFeatureWakeSleepColor')}/>}
 
       {showWakeSleepPrompt&&(
-        <div className="fixed inset-0 z-[210] flex items-end justify-center">
+        <div className={isDesktop?"fixed inset-0 z-[210] flex items-center justify-center":"fixed inset-0 z-[210] flex items-end justify-center"}>
           <div className="absolute inset-0 bg-black/40" onClick={dismissWakeSleepPrompt}/>
-          <div className="relative bg-white rounded-t-3xl w-full max-w-md px-6 pt-7 pb-10 shadow-2xl">
+          <div className={isDesktop?"relative bg-white rounded-3xl w-full max-w-md px-6 pt-7 pb-8 shadow-2xl":"relative bg-white rounded-t-3xl w-full max-w-md px-6 pt-7 pb-10 shadow-2xl"}>
             <div className="flex justify-center mb-4">
               <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{background:'rgba(217,163,178,0.12)'}}>
                 <AppIcons.wake size={32} className="text-[var(--c-primary)]"/>
@@ -9046,6 +9046,7 @@ export default function App() {
       {/* ── ウェルカム画面（初回起動時、プロダクトツアーの前） ── */}
       {showWelcome&&(
         <Welcome
+          isDesktop={isDesktop}
           onStartTour={()=>{
             setShowWelcome(false);
             setShowTour(true);
