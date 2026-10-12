@@ -4537,8 +4537,8 @@ function ShopLocationPanel({locations,onChange,isPremium,onProPrompt}:{
       )}
 
       {adding&&mapMode&&(
-        <div className="fixed inset-0 z-[110] bg-black/50 flex items-end justify-center" onClick={()=>{setMapMode(false);setMapCenter(null);}}>
-          <div className="bg-white w-full max-w-md mx-auto rounded-t-3xl p-4" onClick={e=>e.stopPropagation()}>
+        <div className="fixed inset-0 z-[110] bg-black/50 flex items-end justify-center lg:items-center" onClick={()=>{setMapMode(false);setMapCenter(null);}}>
+          <div className="bg-white w-full max-w-md mx-auto rounded-t-3xl lg:rounded-b-3xl p-4" onClick={e=>e.stopPropagation()}>
             <ShopMapPicker
               initialCenter={mapCenter??searchResults[0]??{lat:35.681236,lng:139.767125}}
               onConfirm={loc=>{setPendingCoord(prev=>editLocId&&prev?{...loc,name:prev.name}:loc);setMapMode(false);setMapCenter(null);}}
@@ -4888,8 +4888,8 @@ function ForgetAlertsPanel({alerts,onChange,isPremium,onProPrompt}:{
       )}
 
       {editing&&mapMode&&(
-        <div className="fixed inset-0 z-[110] bg-black/50 flex items-end justify-center" onClick={()=>{setMapMode(false);setMapCenter(null);}}>
-          <div className="bg-white w-full max-w-md mx-auto rounded-t-3xl p-4" onClick={e=>e.stopPropagation()}>
+        <div className="fixed inset-0 z-[110] bg-black/50 flex items-end justify-center lg:items-center" onClick={()=>{setMapMode(false);setMapCenter(null);}}>
+          <div className="bg-white w-full max-w-md mx-auto rounded-t-3xl lg:rounded-b-3xl p-4" onClick={e=>e.stopPropagation()}>
             <ShopMapPicker
               initialCenter={mapCenter??{lat:35.681236,lng:139.767125}}
               onConfirm={loc=>{pickLocation(loc);setMapMode(false);setMapCenter(null);}}
@@ -5445,8 +5445,8 @@ function ProGateSheet({onClose,onView,feature}:{onClose:()=>void;onView?:()=>voi
   const {tr} = useI18n();
   useEffect(()=>{ logAnalyticsEvent('paywall_viewed'); },[]);
   return (
-    <div className="fixed inset-0 z-[200] bg-black/40 flex items-end justify-center" onClick={onClose}>
-      <div className="bg-white w-full max-w-md rounded-t-3xl px-5 pt-5 pb-10 shadow-2xl" onClick={e=>e.stopPropagation()}>
+    <div className="fixed inset-0 z-[200] bg-black/40 flex items-end justify-center lg:items-center" onClick={onClose}>
+      <div className="bg-white w-full max-w-md rounded-t-3xl lg:rounded-b-3xl px-5 pt-5 pb-10 shadow-2xl" onClick={e=>e.stopPropagation()}>
         <div className="flex justify-center mb-4"><div className="w-10 h-1 bg-gray-200 rounded-full"/></div>
         <div className="flex flex-col items-center gap-3 mb-6">
           <div className="w-14 h-14 rounded-full flex items-center justify-center" style={{background:'var(--c-primary)'}}>
@@ -5914,9 +5914,9 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           const dp=bulkHistory.find(e=>e.id===bulkDeleteId);
           if(!dp) return null;
           return (
-            <div className="fixed inset-0 z-[100] flex items-end justify-center" onClick={()=>setBulkDeleteId(null)}>
+            <div className="fixed inset-0 z-[100] flex items-end justify-center lg:items-center" onClick={()=>setBulkDeleteId(null)}>
               <div className="absolute inset-0 bg-black/40"/>
-              <div className="relative bg-white rounded-t-2xl w-full max-w-md px-6 pt-6 pb-10" onClick={e=>e.stopPropagation()}>
+              <div className="relative bg-white rounded-t-2xl lg:rounded-b-2xl w-full max-w-md px-6 pt-6 pb-10" onClick={e=>e.stopPropagation()}>
                 <p className="text-center text-[17px] font-semibold text-gray-900 mb-1">{tr('deleteNamedConfirmTitle').replace('{name}',()=>dp.name)}</p>
                 <p className="text-center text-[13px] text-gray-400 mb-6">{tr('bulkDeleteAllDaysNote').replace('{n}',()=>String(dp.dates.length))}</p>
                 <div className="flex flex-col gap-3">
@@ -6038,9 +6038,9 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           </>
         )}
         {deleteTabId&&!deleteTabMode&&(()=>{const dt=customTabs.find(t=>t.id===deleteTabId);return(
-          <div className="fixed inset-0 z-[100] flex items-end justify-center" onClick={()=>setDeleteTabId(null)}>
+          <div className="fixed inset-0 z-[100] flex items-end justify-center lg:items-center" onClick={()=>setDeleteTabId(null)}>
             <div className="absolute inset-0 bg-black/40"/>
-            <div className="relative bg-white rounded-t-2xl w-full max-w-md px-6 pt-6 pb-10" onClick={e=>e.stopPropagation()}>
+            <div className="relative bg-white rounded-t-2xl lg:rounded-b-2xl w-full max-w-md px-6 pt-6 pb-10" onClick={e=>e.stopPropagation()}>
               <p className="text-center text-[17px] font-semibold text-gray-900 mb-1">{tr('deleteNamedConfirmTitle').replace('{name}',()=>dt?.name??'')}</p>
               <p className="text-center text-[13px] text-gray-400 mb-6">{tr('deleteTabConfirmBody')}</p>
               <div className="flex flex-col gap-3">
@@ -6052,9 +6052,9 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           </div>
         );})()}
         {deleteTabId&&deleteTabMode&&(()=>{const dt=customTabs.find(t=>t.id===deleteTabId);const isDelete=deleteTabMode==='delete';return(
-          <div className="fixed inset-0 z-[100] flex items-end justify-center" onClick={()=>setDeleteTabMode(null)}>
+          <div className="fixed inset-0 z-[100] flex items-end justify-center lg:items-center" onClick={()=>setDeleteTabMode(null)}>
             <div className="absolute inset-0 bg-black/40"/>
-            <div className="relative bg-white rounded-t-2xl w-full max-w-md px-6 pt-6 pb-10" onClick={e=>e.stopPropagation()}>
+            <div className="relative bg-white rounded-t-2xl lg:rounded-b-2xl w-full max-w-md px-6 pt-6 pb-10" onClick={e=>e.stopPropagation()}>
               <p className="text-center text-[17px] font-semibold text-gray-900 mb-1">{tr('confirmDeleteTitle')}</p>
               <p className="text-center text-[13px] text-gray-400 mb-6">{isDelete?tr('deleteAllTasksInTabBody').replace('{name}',()=>dt?.name??''):tr('moveTasksToAllBody').replace('{name}',()=>dt?.name??'')}</p>
               <div className="flex flex-col gap-3">
@@ -6163,9 +6163,9 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           <p className="text-sm text-gray-400 text-center mt-10">{tr('noTagsYet')}</p>
         )}
         {deleteTagIdx!==null&&(()=>{const dt=globalTags[deleteTagIdx];return(
-          <div className="fixed inset-0 z-[100] flex items-end justify-center" onClick={()=>setDeleteTagIdx(null)}>
+          <div className="fixed inset-0 z-[100] flex items-end justify-center lg:items-center" onClick={()=>setDeleteTagIdx(null)}>
             <div className="absolute inset-0 bg-black/40"/>
-            <div className="relative bg-white rounded-t-2xl w-full max-w-md px-6 pt-6 pb-10" onClick={e=>e.stopPropagation()}>
+            <div className="relative bg-white rounded-t-2xl lg:rounded-b-2xl w-full max-w-md px-6 pt-6 pb-10" onClick={e=>e.stopPropagation()}>
               <p className="text-center text-[17px] font-semibold text-gray-900 mb-1">{tr('deleteNamedConfirmTitle').replace('{name}',()=>dt?.name??'')}</p>
               <p className="text-center text-[13px] text-gray-400 mb-6">{tr('deleteTagConfirmBody')}</p>
               <div className="flex flex-col gap-3">
@@ -6176,9 +6176,9 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           </div>
         );})()}
         {pendingCommitEdit&&editIdx!==null&&(()=>{const orig=globalTags[editIdx];return(
-          <div className="fixed inset-0 z-[100] flex items-end justify-center" onClick={()=>setPendingCommitEdit(false)}>
+          <div className="fixed inset-0 z-[100] flex items-end justify-center lg:items-center" onClick={()=>setPendingCommitEdit(false)}>
             <div className="absolute inset-0 bg-black/40"/>
-            <div className="relative bg-white rounded-t-2xl w-full max-w-md px-6 pt-6 pb-10" onClick={e=>e.stopPropagation()}>
+            <div className="relative bg-white rounded-t-2xl lg:rounded-b-2xl w-full max-w-md px-6 pt-6 pb-10" onClick={e=>e.stopPropagation()}>
               <p className="text-center text-[17px] font-semibold text-gray-900 mb-1">{tr('renameNamedConfirmTitle').replace('{name}',()=>orig.name)}</p>
               <p className="text-center text-[13px] text-gray-400 mb-6">{tr('renameTagConfirmBody')}</p>
               <div className="flex flex-col gap-3">
@@ -6730,9 +6730,9 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           </div>
         </div>
         {lpDeleteId&&(()=>{const dp=lifePatterns.find(p=>p.id===lpDeleteId);const affectedDates=Object.keys(patternOverrides).filter(d=>patternOverrides[d]===lpDeleteId);return(
-          <div className="fixed inset-0 z-[100] flex items-end justify-center" onClick={()=>setLpDeleteId(null)}>
+          <div className="fixed inset-0 z-[100] flex items-end justify-center lg:items-center" onClick={()=>setLpDeleteId(null)}>
             <div className="absolute inset-0 bg-black/40"/>
-            <div className="relative bg-white rounded-t-2xl w-full max-w-md px-6 pt-6 pb-10" onClick={e=>e.stopPropagation()}>
+            <div className="relative bg-white rounded-t-2xl lg:rounded-b-2xl w-full max-w-md px-6 pt-6 pb-10" onClick={e=>e.stopPropagation()}>
               <p className="text-center text-[17px] font-semibold text-gray-900 mb-1">{tr('deleteNamedConfirmTitle').replace('{name}',()=>dp?.name??'')}</p>
               <p className="text-center text-[13px] text-gray-400 mb-6">
                 {affectedDates.length>0?tr('deletePatternAffectedBody').replace('{n}',String(affectedDates.length)):tr('deletePatternSimpleBody')}
@@ -6751,9 +6751,9 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           </div>
         );})()}
         {lpEditConfirmId&&(()=>{const dp=lifePatterns.find(p=>p.id===lpEditConfirmId);const affectedDates=Object.keys(patternOverrides).filter(d=>patternOverrides[d]===lpEditConfirmId);return(
-          <div className="fixed inset-0 z-[100] flex items-end justify-center" onClick={()=>setLpEditConfirmId(null)}>
+          <div className="fixed inset-0 z-[100] flex items-end justify-center lg:items-center" onClick={()=>setLpEditConfirmId(null)}>
             <div className="absolute inset-0 bg-black/40"/>
-            <div className="relative bg-white rounded-t-2xl w-full max-w-md px-6 pt-6 pb-10" onClick={e=>e.stopPropagation()}>
+            <div className="relative bg-white rounded-t-2xl lg:rounded-b-2xl w-full max-w-md px-6 pt-6 pb-10" onClick={e=>e.stopPropagation()}>
               <p className="text-center text-[17px] font-semibold text-gray-900 mb-1">{tr('changePatternConfirmTitle').replace('{name}',()=>dp?.name??'')}</p>
               <p className="text-center text-[13px] text-gray-400 mb-6">
                 {affectedDates.length>0?tr('changePatternAffectedBody').replace('{n}',String(affectedDates.length)):tr('changePatternSimpleBody')}
@@ -8718,8 +8718,8 @@ export default function App() {
 
       {/* ── Wake/Sleep color picker ── */}
       {colorPickTarget&&(
-        <div className="fixed inset-0 z-[120] bg-black/40 flex items-end justify-center" onClick={()=>setColorPickTarget(null)}>
-          <div className="bg-white w-full max-w-md rounded-t-3xl px-5 pt-5 pb-8 shadow-2xl" onClick={e=>e.stopPropagation()}>
+        <div className="fixed inset-0 z-[120] bg-black/40 flex items-end justify-center lg:items-center" onClick={()=>setColorPickTarget(null)}>
+          <div className="bg-white w-full max-w-md rounded-t-3xl lg:rounded-b-3xl px-5 pt-5 pb-8 shadow-2xl" onClick={e=>e.stopPropagation()}>
             <div className="flex justify-center mb-4"><div className="w-10 h-1 bg-gray-200 rounded-full"/></div>
             <div className="flex items-center gap-2 mb-4">
               <p className="text-[15px] font-semibold text-gray-900">{tr('wakeSleepIconColorTitle').replace('{label}',()=>tr(colorPickTarget==='wake'?'timelineWake':'timelineSleep'))}</p>
@@ -8739,8 +8739,8 @@ export default function App() {
 
       {/* ── Wake/Sleep time picker ── */}
       {timePickerTarget&&(
-        <div className="fixed inset-0 z-[120] bg-black/40 flex items-end justify-center" onClick={()=>setTimePickerTarget(null)}>
-          <div className="bg-white w-full max-w-md rounded-t-3xl px-5 pt-5 pb-10 shadow-2xl" onClick={e=>e.stopPropagation()}>
+        <div className="fixed inset-0 z-[120] bg-black/40 flex items-end justify-center lg:items-center" onClick={()=>setTimePickerTarget(null)}>
+          <div className="bg-white w-full max-w-md rounded-t-3xl lg:rounded-b-3xl px-5 pt-5 pb-10 shadow-2xl" onClick={e=>e.stopPropagation()}>
             <div className="flex justify-center mb-4"><div className="w-10 h-1 bg-gray-200 rounded-full"/></div>
             <p className="text-[15px] font-semibold text-gray-900 mb-5">{tr('wakeSleepTimeChangeTitle').replace('{label}',()=>tr(timePickerTarget==='wake'?'timelineWake':'timelineSleep'))}</p>
             <div className="flex items-center justify-center mb-6">
@@ -8837,8 +8837,8 @@ export default function App() {
         const activePat=activePatId?lifePatterns.find(p=>p.id===activePatId):null;
         const clearPattern=()=>setPatternOverrides(prev=>{const n={...prev};delete n[date];return n;});
         return(
-        <div className="fixed inset-0 z-[200] bg-black/50 flex items-end justify-center" onClick={()=>setSettingConfirm(null)}>
-          <div className="bg-white w-full max-w-md rounded-t-3xl px-5 pt-6 pb-10 shadow-2xl" onClick={e=>e.stopPropagation()}>
+        <div className="fixed inset-0 z-[200] bg-black/50 flex items-end justify-center lg:items-center" onClick={()=>setSettingConfirm(null)}>
+          <div className="bg-white w-full max-w-md rounded-t-3xl lg:rounded-b-3xl px-5 pt-6 pb-10 shadow-2xl" onClick={e=>e.stopPropagation()}>
             <p className="text-base font-bold text-gray-900 mb-1">{tr('wakeSleepTimeChangeTitle').replace('{label}',()=>tr(settingConfirm.type==='wake'?'timelineWake':'timelineSleep'))}</p>
             <p className="text-sm text-gray-500 mb-3">{tr('settingConfirmNewTimeNote').replace('{time}',()=>settingConfirm.newTime)}</p>
             {activePat&&(
@@ -8919,8 +8919,8 @@ export default function App() {
 
       {/* ── Tab filter bottom sheet ── */}
       {showTabFilter&&(
-        <div className="fixed inset-0 z-[200] bg-black/40 flex items-end justify-center" onClick={()=>setShowTabFilter(false)}>
-          <div className="bg-white w-full max-w-md rounded-t-3xl px-5 pt-5 pb-10 shadow-2xl" onClick={e=>e.stopPropagation()}>
+        <div className="fixed inset-0 z-[200] bg-black/40 flex items-end justify-center lg:items-center" onClick={()=>setShowTabFilter(false)}>
+          <div className="bg-white w-full max-w-md rounded-t-3xl lg:rounded-b-3xl px-5 pt-5 pb-10 shadow-2xl" onClick={e=>e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <p className="text-base font-bold text-gray-900">{tr('tabFilterTitle')}</p>
               {tabFilter.length>0&&(
@@ -8957,8 +8957,8 @@ export default function App() {
 
       {/* ── Recurrence edit confirm ── */}
       {pendingDragMove&&(
-        <div className="fixed inset-0 z-[200] bg-black/50 flex items-end justify-center" onClick={()=>setPendingDragMove(null)}>
-          <div className="bg-white w-full max-w-md rounded-t-3xl px-5 pt-6 pb-10 shadow-2xl" onClick={e=>e.stopPropagation()}>
+        <div className="fixed inset-0 z-[200] bg-black/50 flex items-end justify-center lg:items-center" onClick={()=>setPendingDragMove(null)}>
+          <div className="bg-white w-full max-w-md rounded-t-3xl lg:rounded-b-3xl px-5 pt-6 pb-10 shadow-2xl" onClick={e=>e.stopPropagation()}>
             <p className="text-base font-bold text-gray-900 mb-1">{tr('recurringMoveTitle')}</p>
             <p className="text-sm text-gray-500 mb-6">{tr('recurringMoveConfirmBody').replace('{name}',()=>pendingDragMove.task.name).replace('{time}',()=>pendingDragMove.time)}</p>
             <div className="space-y-3">
@@ -8982,8 +8982,8 @@ export default function App() {
         </div>
       )}
       {pendingDragDelete&&(
-        <div className="fixed inset-0 z-[200] bg-black/50 flex items-end justify-center" onClick={()=>setPendingDragDelete(null)}>
-          <div className="bg-white w-full max-w-md rounded-t-3xl px-5 pt-6 pb-10 shadow-2xl" onClick={e=>e.stopPropagation()}>
+        <div className="fixed inset-0 z-[200] bg-black/50 flex items-end justify-center lg:items-center" onClick={()=>setPendingDragDelete(null)}>
+          <div className="bg-white w-full max-w-md rounded-t-3xl lg:rounded-b-3xl px-5 pt-6 pb-10 shadow-2xl" onClick={e=>e.stopPropagation()}>
             <p className="text-base font-bold text-gray-900 mb-1">{tr('deleteTaskConfirmTitle')}</p>
             <p className="text-sm text-gray-500 mb-6">{tr('recurringEditConfirmBody').replace('{name}',()=>pendingDragDelete.name)}</p>
             <div className="space-y-3">
@@ -8998,8 +8998,8 @@ export default function App() {
         </div>
       )}
       {recConfirm&&(
-        <div className="fixed inset-0 z-[200] bg-black/50 flex items-end justify-center" onClick={()=>setRecConfirm(null)}>
-          <div className="bg-white w-full max-w-md rounded-t-3xl px-5 pt-6 pb-10 shadow-2xl" onClick={e=>e.stopPropagation()}>
+        <div className="fixed inset-0 z-[200] bg-black/50 flex items-end justify-center lg:items-center" onClick={()=>setRecConfirm(null)}>
+          <div className="bg-white w-full max-w-md rounded-t-3xl lg:rounded-b-3xl px-5 pt-6 pb-10 shadow-2xl" onClick={e=>e.stopPropagation()}>
             <p className="text-base font-bold text-gray-900 mb-1">{tr('recurringEditTitle')}</p>
             <p className="text-sm text-gray-500 mb-6">{tr('recurringEditConfirmBody').replace('{name}',()=>recConfirm.task.name)}</p>
             <div className="space-y-3">
@@ -9017,9 +9017,9 @@ export default function App() {
       {appProPrompt&&<ProGateSheet onClose={()=>setAppProPrompt(false)} onView={()=>{setAppProPrompt(false);setSettingsInitSub('premium');setSOp(true);}} feature={tr('proFeatureWakeSleepColor')}/>}
 
       {showWakeSleepPrompt&&(
-        <div className={isDesktop?"fixed inset-0 z-[210] flex items-center justify-center":"fixed inset-0 z-[210] flex items-end justify-center"}>
+        <div className="fixed inset-0 z-[210] flex items-end justify-center lg:items-center">
           <div className="absolute inset-0 bg-black/40" onClick={dismissWakeSleepPrompt}/>
-          <div className={isDesktop?"relative bg-white rounded-3xl w-full max-w-md px-6 pt-7 pb-8 shadow-2xl":"relative bg-white rounded-t-3xl w-full max-w-md px-6 pt-7 pb-10 shadow-2xl"}>
+          <div className="relative bg-white rounded-t-3xl lg:rounded-b-3xl w-full max-w-md px-6 pt-7 pb-10 shadow-2xl">
             <div className="flex justify-center mb-4">
               <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{background:'rgba(217,163,178,0.12)'}}>
                 <AppIcons.wake size={32} className="text-[var(--c-primary)]"/>
