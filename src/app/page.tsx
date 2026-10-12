@@ -3357,13 +3357,17 @@ function MultiDayColumn({date,label,isToday,tasks,wakeTime,sleepTime,onEdit,onAd
           <span className="text-xs text-gray-400 w-10 shrink-0">{wakeTime}</span>
           <span className="text-xs font-medium text-gray-600 truncate">{tr('timelineWake')}</span>
         </div>
-        {dayTasks.map(t=>(
+        {dayTasks.map(t=>{
+          const Icon=getTaskIcon(t.icon);
+          return (
           <button key={t.id} onClick={()=>onEdit(t)}
             className="w-full flex items-center gap-2 py-2 px-2 rounded-lg hover:bg-gray-50 text-left">
             <span className="text-xs text-gray-400 w-10 shrink-0">{t.startTime}</span>
+            <Icon size={14} className="text-gray-400 shrink-0"/>
             <span className={`flex-1 text-sm truncate ${t.completed?'text-gray-400 line-through':'text-gray-800'}`}>{t.name}</span>
           </button>
-        ))}
+          );
+        })}
         {dayTasks.length===0&&(
           <p className="text-xs text-gray-300 text-center py-6">—</p>
         )}
