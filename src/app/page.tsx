@@ -8554,7 +8554,42 @@ export default function App() {
 
   return (
     <div className={isDesktop?"bg-white font-sans flex flex-col":"max-w-md mx-auto bg-white font-sans flex flex-col"}
-      style={{height:'100%',...(isDesktop?{paddingRight:'380px'}:{})}}>
+      style={{height:'100%',...(isDesktop?{paddingRight:'380px',paddingLeft:'220px'}:{})}}>
+      {/* ── 左サイドバー（PC版のみ） ── */}
+      {isDesktop&&(
+        <nav className="fixed left-0 top-0 bottom-0 z-40 w-[220px] border-r border-gray-200 bg-gray-50 flex flex-col">
+          <div className="flex items-center gap-2 px-5" style={{height:'64px'}}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/app-icons/mint.png" alt="" className="w-7 h-7 rounded-lg shrink-0"/>
+            <span className="text-[15px] font-bold text-gray-900">BrainBox</span>
+          </div>
+          <div className="flex-1 overflow-y-auto px-3 pb-3">
+            {([
+              ['today',tr('todayButton'),AppIcons.home,()=>{const d=todayStr();setDate(d);setWeekAnchor(d);setActiveCat(null);}],
+              ['later',tr('laterTabLabel'),AppIcons.postponed,()=>setActiveTab('later')],
+              ['shop',tr('shopTabLabel'),AppIcons.shopping,()=>setActiveTab('shop')],
+              ['search',tr('searchLabel'),AppIcons.search,()=>setSearchOpen(true)],
+            ] as const).map(([key,label,Icon,onClick])=>{
+              const effectiveTab=activeTab??'later';
+              const active=(key==='today'&&date===todayStr())||(key==='later'&&effectiveTab==='later')||(key==='shop'&&effectiveTab==='shop');
+              return (
+                <button key={key} onClick={onClick}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl mb-0.5 transition-colors ${active?'bg-white shadow-sm':'hover:bg-gray-100'}`}>
+                  <Icon size={19} className={active?'text-[var(--c-primary)]':'text-gray-400'}/>
+                  <span className={`text-sm ${active?'font-semibold text-gray-900':'font-medium text-gray-600'}`}>{label}</span>
+                </button>
+              );
+            })}
+          </div>
+          <div className="px-3 pb-4 border-t border-gray-200 pt-3">
+            <button onClick={()=>{setSettingsInitSub(undefined);setSOp(true);}}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-100 transition-colors">
+              <AppIcons.settings size={19} className="text-gray-400"/>
+              <span className="text-sm font-medium text-gray-600">{tr('settingsTitle')}</span>
+            </button>
+          </div>
+        </nav>
+      )}
       {/* ── Header ── */}
       <header className="z-30 bg-gray-50 flex-shrink-0" style={{paddingTop:'env(safe-area-inset-top)'}}>
         <div className="px-4 pt-1 pb-0">
