@@ -1150,7 +1150,7 @@ function CalendarPage({date,tasks,customTabs,onSelect,onClose,weekStartsOn=0}:{d
 
       {/* Calendar grid */}
       <div className="flex-1 overflow-y-auto px-2 pb-8">
-        <div className="grid grid-cols-7">
+        <div className="grid grid-cols-7" style={{height:'100%',gridAutoRows:'1fr'}}>
           {days.map((d,i)=>{
             const dayTasks=d?(tasksByDate.get(d)??[]):[];
             const isSel=d===date,isToday=d===today;
@@ -9061,7 +9061,13 @@ export default function App() {
         <div className="px-4 pt-1 pb-0">
           {/* Date + nav */}
           <div className="flex items-center justify-between mb-1 gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              {isDesktop&&(
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img src="/app-icons/mint.png" alt="" className="w-7 h-7 rounded-lg shrink-0"/>
+              )}
             <span className="text-2xl font-bold text-gray-900 truncate min-w-0">{language==='ja'?`${year}年${month}月`:language==='ko'?`${year}년 ${month}월`:language==='zh-TW'?`${year}年${month}月`:language==='es'?`${MONTH_NAMES_ES[month-1].slice(0,3).replace(/^./,c=>c.toUpperCase())} ${year}`:language==='pt'?`${MONTH_NAMES_PT[month-1].slice(0,3).replace(/^./,c=>c.toUpperCase())} ${year}`:language==='vi'?`T${month} ${year}`:language==='th'?`${MONTH_NAMES_TH_SHORT[month-1]} ${year}`:language==='id'?`${MONTH_NAMES_ID[month-1].slice(0,3)} ${year}`:`${MONTH_NAMES_EN[month-1].slice(0,3)} ${year}`}</span>
+            </div>
             <div className="flex items-center gap-1 shrink-0">
               {isDesktop&&(
                 <div className="flex items-center bg-gray-200 rounded-full p-0.5 mr-2">
