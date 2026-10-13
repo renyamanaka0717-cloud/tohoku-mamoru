@@ -3482,7 +3482,7 @@ function MultiDayColumn({date,label,isToday,tasks,wakeTime,sleepTime,onEdit,onAd
           const isDragging=dragTaskId===t.id;
           const isSelected=!!selectedIds?.has(t.id);
           return (
-          <button key={t.id}
+          <button key={t.id} data-mdrow={t.id}
             onClick={()=>selectMode?onToggleSelect?.(t.id):onEdit(t)}
             onMouseDown={selectMode?undefined:e=>onDragStart(t,e)}
             className={`w-full flex items-center gap-2 py-2 px-2 rounded-lg text-left select-none ${selectMode?'':'hover:bg-gray-50 cursor-grab'}`}
@@ -7673,8 +7673,15 @@ export default function App() {
   const [mdDragTask,setMdDragTask]       = useState<Task|null>(null);
   const [mdDragPos,setMdDragPos]         = useState({x:0,y:0});
   const [mdDragOverDate,setMdDragOverDate] = useState<string|null>(null);
+  // 複数日表示のドラッグ中、カーソルの縦位置から逆算した「このまま離したら何時に入るか」を
+  // フローティングカードにリアルタイム表示するための値（mdDragPreviewTime）
+  const [mdDragPreviewTime,setMdDragPreviewTime] = useState<string|null>(null);
   const mdDragTaskRef = useRef<Task|null>(null);
   useEffect(()=>{mdDragTaskRef.current=mdDragTask;},[mdDragTask]);
+  // マウント時に一度だけ登録されるmdDrag用effect（下記）がtasks/settingsForDateの最新値を
+  // stale closureなしで読むためのref（TaskModalのautoIconRef等と同じパターン）
+  const tasksRef = useRef<Task[]>(tasks);
+  useEffect(()=>{tasksRef.current=tasks;},[tasks]);
   const mainRef = useRef<HTMLElement|null>(null);
   const mainSwX = useRef(0);
   const mainSwY = useRef(0);
@@ -8490,6 +8497,8 @@ export default function App() {
       sleepTime: ov.sleepTime ?? pat?.sleepTime ?? settings.sleepTime,
     };
   };
+  const settingsForDateRef = useRef(settingsForDate);
+  useEffect(()=>{settingsForDateRef.current=settingsForDate;});
   // 複数日表示（PC版のみ、第1段階の1日表示がデフォルト）
   const [viewMode,setViewMode] = useState<'1day'|'3day'|'7day'>('1day');
   const multiDayDates = useMemo(()=>{
@@ -8605,10 +8614,44 @@ export default function App() {
       }
       return null;
     };
+    // カーソルの縦位置から「ドラッグ中の行を除いた、この列の何番目に差し込むか」を求める。
+    // DOM上はドラッグ中の行（半透明のまま）もまだ描画されているため、その行より後ろにヒットした
+    // 場合はインデックスを1つ戻し、「ドラッグ中の行を除いた並び」での位置に揃える
+    const rowInsertIndex=(colDate:string,y:number,excludeId:string):number=>{
+      const col=document.querySelector<HTMLElement>(`[data-mdcol="${colDate}"]`);
+      if(!col) return 0;
+      const rowEls=Array.from(col.querySelectorAll<HTMLElement>('[data-mdrow]'));
+      let idx=rowEls.length;
+      for(let i=0;i<rowEls.length;i++){
+        const r=rowEls[i].getBoundingClientRect();
+        if(y<r.top+r.height/2){ idx=i; break; }
+      }
+      const selfIdx=rowEls.findIndex(el=>el.dataset.mdrow===excludeId);
+      if(selfIdx!==-1&&idx>selfIdx) idx-=1;
+      return idx;
+    };
+    // 差し込み位置（前後のタスクの時刻の中間、5分単位に丸め）から新しい開始時刻を計算する。
+    // 複数日表示のMultiDayColumnは時刻軸を持たない単純な縦積みリストのため、ドラッグで並び替えた
+    // 結果から逆算して時刻を決める方式にしてある（絶対座標→時刻変換のTimelineとは別の仕組み）
+    const computeInsertTime=(colDate:string,idx:number,excludeId:string):string=>{
+      const ds=settingsForDateRef.current(colDate);
+      const wMin=toMin(ds.wakeTime);
+      const adjM=(t:string)=>{const m=toMin(t);return m<wMin?m+1440:m;};
+      const sMin=adjM(ds.sleepTime);
+      const dayTasks=tasksRef.current
+        .filter(t=>t.date===colDate&&!t.isLater&&t.startTime&&t.id!==excludeId)
+        .sort((a,b)=>adjM(a.startTime!)-adjM(b.startTime!));
+      const prevMin=idx>0?adjM(dayTasks[idx-1].startTime!):wMin;
+      const nextMin=idx<dayTasks.length?adjM(dayTasks[idx].startTime!):sMin;
+      const mid=Math.max(prevMin,Math.min(nextMin,Math.round((prevMin+nextMin)/2/5)*5));
+      return fromMin(mid);
+    };
     const onMove=(e:MouseEvent)=>{
       if(mdDragTaskRef.current){
         setMdDragPos({x:e.clientX,y:e.clientY});
-        setMdDragOverDate(colAt(e.clientX));
+        const col=colAt(e.clientX);
+        setMdDragOverDate(col);
+        setMdDragPreviewTime(col?computeInsertTime(col,rowInsertIndex(col,e.clientY,mdDragTaskRef.current.id),mdDragTaskRef.current.id):null);
         return;
       }
       if(!mdMouseStart.current||mdMouseArmed.current) return;
@@ -8622,12 +8665,15 @@ export default function App() {
       if(mdDragTaskRef.current){
         const dragged=mdDragTaskRef.current;
         const target=colAt(e.clientX);
-        if(target&&target!==dragged.date){
-          setTasks(prev=>prev.map(tk=>tk.id===dragged.id?{...tk,date:target}:tk));
+        if(target){
+          const idx=rowInsertIndex(target,e.clientY,dragged.id);
+          const newTime=computeInsertTime(target,idx,dragged.id);
+          setTasks(prev=>prev.map(tk=>tk.id===dragged.id?{...tk,date:target,startTime:newTime}:tk));
           logAnalyticsEvent('timeline_task_moved');
         }
         setMdDragTask(null);
         setMdDragOverDate(null);
+        setMdDragPreviewTime(null);
       }
       mdMouseStart.current=null;
       mdMouseArmed.current=false;
@@ -9362,7 +9408,9 @@ export default function App() {
           style={{left:`${Math.min(mdDragPos.x+14,window.innerWidth-180)}px`,top:`${mdDragPos.y+14}px`}}>
           <div className="bg-white rounded-xl shadow-2xl border border-gray-100 px-3 py-2 w-40">
             <p className="text-xs font-bold text-gray-900 truncate">{mdDragTask.name}</p>
-            <p className="text-[11px] text-gray-400 mt-0.5">{mdDragTask.startTime}</p>
+            <p className="text-[11px] mt-0.5" style={{color:mdDragPreviewTime?'var(--c-primary)':'#9CA3AF',fontWeight:mdDragPreviewTime?700:400}}>
+              {mdDragPreviewTime??mdDragTask.startTime}
+            </p>
           </div>
         </div>
       )}

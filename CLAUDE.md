@@ -1444,16 +1444,19 @@ const multiDayDates = useMemo(()=>{
 
 **各カラムの「＋」ボタンは`openAdd('09:00')`で呼ぶ（`openAdd()`を引数なしで呼ばない）。** `TaskModal`の`initMode()`は`prefillTime`の有無だけで新規タスクのモードを決める（`prefillTime`があれば`'scheduled'`、無ければ`'later'`）。複数日表示のカラムで「＋」を押すのは明らかに「この日に予定を入れたい」という操作なので、`prefillTime`を省略すると`'later'`モードで開いてしまい、せっかくクリックしたカラムの日付が一切反映されない（「あとでやる」に入るだけで、どの日のカラムから押しても同じ場所に積まれる）という不具合になる。`09:00`という固定デフォルト時刻を渡すことで`'scheduled'`モードを強制しつつ、ユーザーは開いたモーダル内で自由に時刻を変更できる。合わせて`onAdd`は`setDate(d);setWeekAnchor(d);`も呼び、`TaskModal`の`currentDate={date}`がそのカラムの日付になるようにしている（`TaskModal`自体には複数日対応のための変更を加えていない）。
 
-### 日付をまたぐドラッグ&ドロップ（複数日表示、実装済み）
+### 日付をまたぐドラッグ&ドロップ（複数日表示、実装済み。時刻の変更にも対応済み）
 
-`MultiDayColumn`の行をマウスでドラッグし、別の日のカラムにドロップすると、そのタスクの`date`だけが差し替わる（`startTime`は変更しない。単一インスタンス操作で、繰り返しタスクでも確認ポップアップは出さない——「あとでやる」ドロップゾーン（既存の単一日Timelineの仕組み）が繰り返しタスクでも確認なしで単一インスタンスだけを動かすのと同じ前例に倣った設計）。
+`MultiDayColumn`の行をマウスでドラッグし、別の日のカラム（または同じカラムの別の位置）にドロップすると、そのタスクの`date`と`startTime`の両方が更新される（単一インスタンス操作で、繰り返しタスクでも確認ポップアップは出さない——「あとでやる」ドロップゾーン（既存の単一日Timelineの仕組み）が繰り返しタスクでも確認なしで単一インスタンスだけを動かすのと同じ前例に倣った設計）。**初回実装（PC版ロードマップ第2段階）は`date`のみ変更する設計だったが、ユーザーからの要望で時刻も変えられるよう拡張した。**
 
-**既存の`dragTask`（単一日Timeline・FreeTimeCardのドラッグ、`calcTime`でY座標→時刻変換・トラッシュ/あとでやるゾーン判定を行う仕組み）とは完全に独立した別系統（`mdDragTask`/`mdDragPos`/`mdDragOverDate`）として実装してある。** 複数日表示のカラムは時刻軸を持たない単純な縦積みリストのため、Y座標から時刻を計算する意味が無く、代わりにX座標がどのカラムの範囲に入っているかだけを判定する（`[data-mdcol]`属性を各カラムのルート要素に付け、`getBoundingClientRect()`で総当たりして現在のカーソルXを含むカラムを探す）。既存の`dragTask`系に機能を継ぎ足すと「時刻ベースの判定」と「カラムベースの判定」が同じ状態変数の中で分岐だらけになり複雑化するため、最初から別系統にした。
+**既存の`dragTask`（単一日Timeline・FreeTimeCardのドラッグ、`calcTime`でY座標→時刻変換・トラッシュ/あとでやるゾーン判定を行う仕組み）とは完全に独立した別系統（`mdDragTask`/`mdDragPos`/`mdDragOverDate`/`mdDragPreviewTime`）として実装してある。** 複数日表示のカラムは時刻軸を持たない単純な縦積みリストのため、`Timeline`のような絶対座標→時刻の変換（`calcTime`）は使えない。代わりに**「ドラッグ中の行を今どの2行の間に差し込もうとしているか」をカーソルの縦位置から判定し、その前後のタスクの時刻の中間（5分単位に丸め）を新しい開始時刻にする**という、Trello風のリスト並び替えから時刻を逆算する方式にした。既存の`dragTask`系に機能を継ぎ足すと「時刻ベースの判定」と「カラムベースの判定」が同じ状態変数の中で分岐だらけになり複雑化するため、最初から別系統にした。
 
 - `App`コンポーネントの`armMdDrag(task,e)`——`MultiDayColumn`の行に`onMouseDown`で登録する。実際のドラッグには昇格させず、`mdMouseStart`/`mdMouseArmed`（ref）に記録するだけ
-- マウント時に一度だけ登録される`useEffect(()=>{...},[])`内の`mousemove`/`mouseup`リスナーが、5px以上動いたら`armMdDrag`で記録した対象を実際のドラッグ（`mdDragTask` state）に昇格させる（Timeline/FreeTimeCardの`mouseStart`/`mouseArmed`と同じ閾値判定パターン）。**`mdDragTask` stateを直接読まずrefを経由する**——このeffectはdeps `[]`で一度しか登録されないクロージャのため、state を直接参照すると値が古いまま固定される（stale closure、`TaskModal`の`autoIconRef`と同じ罠）。`mdDragTaskRef`を別のeffectで毎レンダー同期させ、そちらを読む
-- ドロップ時（`mouseup`）、カーソルXが指すカラムが元の`date`と異なれば`tk.date`だけを書き換えて`setTasks`する。同じカラムに戻した場合は何もしない
-- ドラッグ中はカーソル位置にタスク名・時刻を表示する小さいフローティングカード（`mdDragTask&&...`、既存の単一日ドラッグのフローティングカードとは別に追加）と、ホバー中のカラムの背景ハイライトを表示する
+- マウント時に一度だけ登録される`useEffect(()=>{...},[])`内の`mousemove`/`mouseup`リスナーが、5px以上動いたら`armMdDrag`で記録した対象を実際のドラッグ（`mdDragTask` state）に昇格させる（Timeline/FreeTimeCardの`mouseStart`/`mouseArmed`と同じ閾値判定パターン）。**`mdDragTask`/`tasks`/`settingsForDate`のいずれも直接読まずrefを経由する**——このeffectはdeps `[]`で一度しか登録されないクロージャのため、state・クロージャ内の変数を直接参照すると値が古いまま固定される（stale closure、`TaskModal`の`autoIconRef`と同じ罠）。`mdDragTaskRef`/`tasksRef`/`settingsForDateRef`をそれぞれ別のeffectで毎レンダー同期させ、そちらを読む
+- `MultiDayColumn`の各行に`data-mdrow={t.id}`属性を付与。`rowInsertIndex(colDate,y,excludeId)`が、そのカラム内の`[data-mdrow]`要素を`getBoundingClientRect()`で総当たりし、カーソルYが「行の上半分」に来た最初の行の手前を差し込み位置とする。**ドラッグ中の行自身も半透明のままDOMに残り続けている**ため、差し込み位置がドラッグ中の行より後ろに来た場合はインデックスを1つ戻し、「ドラッグ中の行を除いた並び」での位置に揃える（`selfIdx`を見つけてから`idx>selfIdx`なら`idx-=1`）
+- `computeInsertTime(colDate,idx,excludeId)`が、差し込み位置の前後にあるタスクの時刻（無ければ`settingsForDate(colDate)`の起床/就寝時刻）の中間を5分単位に丸めて返す。**空のカラムにドロップした場合は起床〜就寝の中間時刻になる**
+- ドラッグ中は`mousemove`のたびに`rowInsertIndex`→`computeInsertTime`を再計算して`mdDragPreviewTime`に反映し、フローティングカード（`mdDragTask&&...`）に今まさに離したら入る時刻をリアルタイム表示する（アクセントカラー＋太字で、まだホバー中のどのカラムにも入っていない時は元の時刻をグレーで表示）
+- ドロップ時（`mouseup`）も同じ`rowInsertIndex`/`computeInsertTime`で最終的な`date`/`startTime`を確定して`setTasks`する。カーソルがどのカラムの上にも無い（`colAt`が`null`）場合は何もしない（元の予定のまま）
+- 視覚的な「ここに入ります」という行間インジケーター線は実装していない。フローティングカードの時刻表示だけでフィードバックを与える設計にして、各カラムの行要素をインデックス計算用に過不足なく挿入描画するだけの複雑なロジックを避けた（`タスクの所要時間クイック設定`同様、シンプルさ優先の判断）
 
 **過去の不具合（実装直後に発覚）: ホバー中のカラムの背景ハイライトに`bg-[var(--c-primary)]/5`（Tailwindの不透明度修飾子）を使ったところ、クラス名自体はDOMに付与されるのに実際の背景色が透明なまま（`getComputedStyle().backgroundColor`が`rgba(0,0,0,0)`）という不具合があった。** 原因は`--c-primary`が`globals.css`で単なるhex文字列（`#94CFC8`）として定義されており、TailwindのCSS変数＋不透明度修飾子（`bg-[var(--...)]/N`）はRGB成分を空白区切りで持つ特殊な変数形式でないとアルファ合成ができない仕様のため。修正: `globals.css`の他箇所（`tourPulse`キーフレーム等）ですでに使われている`color-mix(in srgb, var(--c-primary) 6%, white)`をinline styleとして使うよう変更した。**新しく`--c-primary`のようなhex形式のCSSカスタムプロパティに不透明度を掛けたい時は、`bg-[var(...)]/N`のようなTailwindの不透明度修飾子を使わず、`color-mix()`をinline styleで使うこと**（Playwrightで`getComputedStyle`を確認するまで、クラス名が付いているのに視覚的に何も起きないこの種の不具合は気づきにくい）。
 
@@ -1463,7 +1466,9 @@ const multiDayDates = useMemo(()=>{
 - 複数日表示のカラムから新規タスクを追加する導線で`openAdd()`を引数なしで呼ばない（`'later'`モードで開いてしまい、クリックしたカラムの日付が反映されない）。`openAdd('09:00')`のように`prefillTime`を渡して`'scheduled'`モードを強制すること
 - 日またぎドラッグ&ドロップを既存の`dragTask`（単一日Timeline用）に継ぎ足さない。カラムベースの判定（X座標→`[data-mdcol]`）と時刻ベースの判定（Y座標→`calcTime`）は別系統に保つこと（`mdDragTask`系）
 - カラムのドラッグオーバー時ハイライトに`bg-[var(--c-primary)]/N`のようなTailwindの不透明度修飾子を使わない（`--c-primary`がhex文字列のため合成されず透明なままになる）。`color-mix(in srgb, var(--c-primary) N%, white)`をinline styleで使うこと
-- `mdDragTask`系のmousemove/mouseupリスナー内で`mdDragTask` stateを直接参照しない（`useEffect(...,[])`の中なのでstale closureになる。`mdDragTaskRef`経由で読むこと）
+- `mdDragTask`系のmousemove/mouseupリスナー内で`mdDragTask`/`tasks`/`settingsForDate`を直接参照しない（`useEffect(...,[])`の中なのでstale closureになる。それぞれ`mdDragTaskRef`/`tasksRef`/`settingsForDateRef`経由で読むこと）
+- `MultiDayColumn`の行に`data-mdrow`を付け忘れない（`rowInsertIndex`はこの属性でDOM上の行を総当たりするため、無いと差し込み位置の計算そのものが機能しない）
+- 差し込み時刻の計算（`computeInsertTime`）で、ドラッグ中の行自身を候補から除外し忘れない（除外しないと、自分自身の元の位置を基準に時刻を計算してしまい、同じ時刻に戻るだけで何も動かせなくなる）
 
 ### タスクの複数選択・一括操作（複数日表示、実装済み）
 
