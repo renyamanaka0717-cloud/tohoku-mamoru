@@ -3338,9 +3338,11 @@ function CompactTaskCard({task,onToggle,onEdit}:{task:Task;onToggle:()=>void;onE
 // 「概観してタップで編集」に絞った軽量な表示にしてある。
 // 日またぎドラッグ&ドロップ（行をmousedown→別カラムへドロップで日付を変更）のみ対応。
 // 時刻は変更しない（startTimeは維持したままdateだけ差し替える、単一インスタンス操作）。
-function MultiDayColumn({date,label,isToday,tasks,wakeTime,sleepTime,onEdit,onAdd,onDragStart,dragTaskId,isDragOver}:{
+// 複数選択（selectMode）中は行クリックが編集ではなく選択トグルになり、誤操作防止のためドラッグも無効化する
+function MultiDayColumn({date,label,isToday,tasks,wakeTime,sleepTime,onEdit,onAdd,onDragStart,dragTaskId,isDragOver,selectMode,selectedIds,onToggleSelect}:{
   date:string;label:string;isToday:boolean;tasks:Task[];wakeTime:string;sleepTime:string;
   onEdit:(t:Task)=>void;onAdd:()=>void;onDragStart:(t:Task,e:React.MouseEvent)=>void;dragTaskId?:string;isDragOver?:boolean;
+  selectMode?:boolean;selectedIds?:Set<string>;onToggleSelect?:(id:string)=>void;
 }){
   const {tr} = useI18n();
   const dayTasks = tasks.filter(t=>!t.isLater&&t.date===date&&t.startTime)
@@ -3367,10 +3369,18 @@ function MultiDayColumn({date,label,isToday,tasks,wakeTime,sleepTime,onEdit,onAd
         {dayTasks.map(t=>{
           const Icon=getTaskIcon(t.icon);
           const isDragging=dragTaskId===t.id;
+          const isSelected=!!selectedIds?.has(t.id);
           return (
-          <button key={t.id} onClick={()=>onEdit(t)} onMouseDown={e=>onDragStart(t,e)}
-            className="w-full flex items-center gap-2 py-2 px-2 rounded-lg hover:bg-gray-50 text-left select-none cursor-grab"
-            style={{opacity:isDragging?0.3:1}}>
+          <button key={t.id}
+            onClick={()=>selectMode?onToggleSelect?.(t.id):onEdit(t)}
+            onMouseDown={selectMode?undefined:e=>onDragStart(t,e)}
+            className={`w-full flex items-center gap-2 py-2 px-2 rounded-lg text-left select-none ${selectMode?'':'hover:bg-gray-50 cursor-grab'}`}
+            style={{opacity:isDragging?0.3:1,background:isSelected?'color-mix(in srgb, var(--c-primary) 10%, white)':undefined}}>
+            {selectMode&&(
+              <span className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${isSelected?'border-[var(--c-primary)] bg-[var(--c-primary)]':'border-gray-300'}`}>
+                {isSelected&&<span className="w-1.5 h-1.5 rounded-full bg-white"/>}
+              </span>
+            )}
             <span className="text-xs text-gray-400 w-10 shrink-0">{t.startTime}</span>
             <Icon size={14} className="text-gray-400 shrink-0"/>
             <span className={`flex-1 text-sm truncate ${t.completed?'text-gray-400 line-through':'text-gray-800'}`}>{t.name}</span>
@@ -8338,6 +8348,34 @@ export default function App() {
     return `${month}/${day}(${dayNameFor(language,dow)})`;
   };
 
+  // タスクの複数選択・一括操作（PC版、複数日表示限定）。単一日Timelineは絶対配置・ドラッグ等が
+  // 絡み合っていて選択モードを継ぎ足すと複雑化するため、MultiDayColumnの単純な縦積みリストにのみ対応する
+  const [selectMode,setSelectMode] = useState(false);
+  const [selectedIds,setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkDeleteConfirm,setBulkDeleteConfirm] = useState(false);
+  const toggleSelectId=(id:string)=>setSelectedIds(prev=>{
+    const next=new Set(prev);
+    if(next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+  const visibleMultiDayTaskIds = useMemo(()=>{
+    const dateSet=new Set(multiDayDates);
+    return filteredTasks.filter(t=>!t.isLater&&t.startTime&&dateSet.has(t.date)).map(t=>t.id);
+  },[filteredTasks,multiDayDates]);
+  const bulkCompleteSelected=()=>{
+    setTasks(prev=>prev.map(t=>selectedIds.has(t.id)?{...t,completed:true}:t));
+    setSelectedIds(new Set());
+  };
+  const bulkDeleteSelected=()=>{
+    setTasks(prev=>prev.filter(t=>!selectedIds.has(t.id)));
+    setSelectedIds(new Set());
+    setBulkDeleteConfirm(false);
+  };
+  // 1日表示に戻った・デスクトップでなくなった時は選択モードごと破棄する（選択対象のUI自体が消えるため）
+  useEffect(()=>{
+    if(!isDesktop||viewMode==='1day'){ setSelectMode(false); setSelectedIds(new Set()); }
+  },[isDesktop,viewMode]);
+
   // Drag task from あとでやる to timeline
   const startDrag=(task:Task,x:number,y:number)=>{
     setDragTask(task);
@@ -8746,6 +8784,12 @@ export default function App() {
                   ))}
                 </div>
               )}
+              {isDesktop&&viewMode!=='1day'&&(
+                <button onClick={()=>{setSelectMode(m=>!m);setSelectedIds(new Set());}}
+                  className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors mr-2 ${selectMode?'bg-[var(--c-primary)] text-white':'bg-gray-200 text-gray-500'}`}>
+                  {selectMode?tr('multiSelectExitButton'):tr('multiSelectButton')}
+                </button>
+              )}
               <button onClick={()=>setSettings(s=>({...s,showFreeCard:!(s.showFreeCard??true)}))}
                 className={`relative h-7 rounded-full font-medium whitespace-nowrap transition-colors duration-200 mr-1 ${(settings.showFreeCard??true)?'bg-[var(--c-primary)] text-white':'bg-gray-200 text-gray-500'}`}
                 style={{fontSize:'12px',paddingLeft:(settings.showFreeCard??true)?'10px':'26px',paddingRight:(settings.showFreeCard??true)?'26px':'10px',transition:'padding 0.2s, background-color 0.2s'}}>
@@ -8886,10 +8930,46 @@ export default function App() {
               tasks={filteredTasks} wakeTime={ds.wakeTime} sleepTime={ds.sleepTime}
               onEdit={openEdit}
               onAdd={()=>{setDate(d);setWeekAnchor(d);openAdd('09:00');}}
-              onDragStart={armMdDrag} dragTaskId={mdDragTask?.id} isDragOver={mdDragOverDate===d}/>
+              onDragStart={armMdDrag} dragTaskId={mdDragTask?.id} isDragOver={mdDragOverDate===d}
+              selectMode={selectMode} selectedIds={selectedIds} onToggleSelect={toggleSelectId}/>
           );
         })}
       </main>
+      )}
+
+      {/* ── 複数日表示（PC版）タスク一括操作バー ── */}
+      {selectMode&&(
+        <div className="fixed bottom-6 z-50 flex items-center gap-3 bg-white rounded-2xl shadow-2xl border border-gray-100 px-4 py-2.5"
+          style={{left:'calc(220px + (100% - 220px - 380px) / 2)',transform:'translateX(-50%)'}}>
+          <span className="text-sm font-semibold text-gray-900 whitespace-nowrap">{tr('selectedCountLabel').replace('{n}',String(selectedIds.size))}</span>
+          <button onClick={()=>setSelectedIds(new Set(visibleMultiDayTaskIds))}
+            className="text-xs font-semibold text-gray-500 whitespace-nowrap">{tr('selectAllButton')}</button>
+          <div className="w-px h-5 bg-gray-200"/>
+          <button onClick={bulkCompleteSelected} disabled={selectedIds.size===0}
+            className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-[var(--c-primary)] text-white whitespace-nowrap disabled:opacity-40">
+            {tr('multiSelectCompleteButton')}
+          </button>
+          <button onClick={()=>setBulkDeleteConfirm(true)} disabled={selectedIds.size===0}
+            className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-[#D97A7A] text-white whitespace-nowrap disabled:opacity-40">
+            {tr('multiSelectDeleteButton')}
+          </button>
+          <button onClick={()=>{setSelectMode(false);setSelectedIds(new Set());}}
+            className="text-xs font-semibold text-gray-400 whitespace-nowrap">{tr('cancelButton')}</button>
+        </div>
+      )}
+      {bulkDeleteConfirm&&(
+        <div className="fixed inset-0 z-[200] bg-black/50 flex items-end justify-center lg:items-center" onClick={()=>setBulkDeleteConfirm(false)}>
+          <div className="bg-white w-full max-w-md rounded-t-3xl lg:rounded-b-3xl px-5 pt-6 pb-10 shadow-2xl" onClick={e=>e.stopPropagation()}>
+            <p className="text-base font-bold text-gray-900 mb-1">{tr('multiSelectDeleteConfirmTitle')}</p>
+            <p className="text-sm text-gray-500 mb-6">{tr('multiSelectDeleteConfirmBody').replace('{n}',String(selectedIds.size))}</p>
+            <div className="space-y-3">
+              <button onClick={bulkDeleteSelected}
+                className="w-full py-3.5 bg-[#D97A7A] rounded-2xl text-sm font-semibold text-white">{tr('deleteTaskButton')}</button>
+              <button onClick={()=>setBulkDeleteConfirm(false)}
+                className="w-full py-2.5 text-sm text-gray-400 font-semibold">{tr('cancelButton')}</button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ── Bottom bar ── */}
