@@ -3334,17 +3334,24 @@ function CompactTaskCard({task,onToggle,onEdit}:{task:Task;onToggle:()=>void;onE
 // ── MultiDayColumn（PC版・複数日表示の1カラム） ─────────────────────────────────
 // 既存の Timeline（絶対配置・anchors補間・ResizeObserver等の複雑な詰めレイアウト）は
 // 1カラムあたりの横幅が狭い複数日表示にはそのまま流用せず、縦積みの単純なリストで
-// 代替する。ドラッグ&ドロップ・空き時間カードの内容見積り等は意図的に持たず、
-// 「概観してタップで編集」に絞った軽量な表示にしてある（複数日表示の最初のバージョン）。
-function MultiDayColumn({date,label,isToday,tasks,wakeTime,sleepTime,onEdit,onAdd}:{
+// 代替する。空き時間カードの内容見積り・アイコンカプセル連結等は意図的に持たず、
+// 「概観してタップで編集」に絞った軽量な表示にしてある。
+// 日またぎドラッグ&ドロップ（行をmousedown→別カラムへドロップで日付を変更）のみ対応。
+// 時刻は変更しない（startTimeは維持したままdateだけ差し替える、単一インスタンス操作）。
+function MultiDayColumn({date,label,isToday,tasks,wakeTime,sleepTime,onEdit,onAdd,onDragStart,dragTaskId,isDragOver}:{
   date:string;label:string;isToday:boolean;tasks:Task[];wakeTime:string;sleepTime:string;
-  onEdit:(t:Task)=>void;onAdd:()=>void;
+  onEdit:(t:Task)=>void;onAdd:()=>void;onDragStart:(t:Task,e:React.MouseEvent)=>void;dragTaskId?:string;isDragOver?:boolean;
 }){
   const {tr} = useI18n();
   const dayTasks = tasks.filter(t=>!t.isLater&&t.date===date&&t.startTime)
     .sort((a,b)=>toMin(a.startTime!)-toMin(b.startTime!));
   return (
-    <div className="flex-[1_0_240px] border-r border-gray-100 last:border-r-0 flex flex-col h-full">
+    // isDragOver時の背景は`bg-[var(--c-primary)]/5`のようなTailwindの不透明度修飾子では効かない
+    // （--c-primaryが単なるhex文字列のため、Tailwindがアルファチャンネルを合成できず透明なまま
+    // になる不具合を実機確認済み）。globals.cssの他箇所と同じcolor-mix()をinline styleで使う
+    <div data-mdcol={date}
+      className="flex-[1_0_240px] border-r border-gray-100 last:border-r-0 flex flex-col h-full transition-colors"
+      style={isDragOver?{background:'color-mix(in srgb, var(--c-primary) 6%, white)'}:undefined}>
       <div className="flex items-center justify-between px-3 py-2.5 border-b border-gray-100 shrink-0">
         <span className={`text-sm font-bold ${isToday?'text-[var(--c-primary)]':'text-gray-900'}`}>{label}</span>
         <button onClick={onAdd} className="w-6 h-6 flex items-center justify-center text-gray-400 active:text-gray-600">
@@ -3359,9 +3366,11 @@ function MultiDayColumn({date,label,isToday,tasks,wakeTime,sleepTime,onEdit,onAd
         </div>
         {dayTasks.map(t=>{
           const Icon=getTaskIcon(t.icon);
+          const isDragging=dragTaskId===t.id;
           return (
-          <button key={t.id} onClick={()=>onEdit(t)}
-            className="w-full flex items-center gap-2 py-2 px-2 rounded-lg hover:bg-gray-50 text-left">
+          <button key={t.id} onClick={()=>onEdit(t)} onMouseDown={e=>onDragStart(t,e)}
+            className="w-full flex items-center gap-2 py-2 px-2 rounded-lg hover:bg-gray-50 text-left select-none cursor-grab"
+            style={{opacity:isDragging?0.3:1}}>
             <span className="text-xs text-gray-400 w-10 shrink-0">{t.startTime}</span>
             <Icon size={14} className="text-gray-400 shrink-0"/>
             <span className={`flex-1 text-sm truncate ${t.completed?'text-gray-400 line-through':'text-gray-800'}`}>{t.name}</span>
@@ -7495,6 +7504,13 @@ export default function App() {
   const [dragTask,setDragTask]   = useState<Task|null>(null);
   const [dragPos,setDragPos]     = useState({x:0,y:0});
   const [dropTime,setDropTime]   = useState<string|null>(null);
+  // 複数日表示（PC版）のカラム間ドラッグ&ドロップ用。単一日のTimeline/FreeTimeCardが使う
+  // dragTask系（calcTime・trash/laterゾーン判定等が1日分のレイアウト前提）とは独立させてある
+  const [mdDragTask,setMdDragTask]       = useState<Task|null>(null);
+  const [mdDragPos,setMdDragPos]         = useState({x:0,y:0});
+  const [mdDragOverDate,setMdDragOverDate] = useState<string|null>(null);
+  const mdDragTaskRef = useRef<Task|null>(null);
+  useEffect(()=>{mdDragTaskRef.current=mdDragTask;},[mdDragTask]);
   const mainRef = useRef<HTMLElement|null>(null);
   const mainSwX = useRef(0);
   const mainSwY = useRef(0);
@@ -8333,6 +8349,55 @@ export default function App() {
     setTimePickerTarget(type);
   };
 
+  // 複数日表示（PC版）: MultiDayColumn内の行をmousedownした時点で呼ばれ、5px動いたら実際の
+  // ドラッグに昇格させる（Timeline/FreeTimeCardのmouseStart/mouseArmedパターンと同じ閾値判定）。
+  // mdDragTaskRef経由で最新値を読むため、このeffect自体はマウント時に一度だけ登録すればよい
+  const mdMouseStart = useRef<{x:number;y:number;task:Task}|null>(null);
+  const mdMouseArmed = useRef(false);
+  const armMdDrag=(task:Task,e:React.MouseEvent)=>{ mdMouseStart.current={x:e.clientX,y:e.clientY,task}; mdMouseArmed.current=false; };
+  useEffect(()=>{
+    const colAt=(x:number):string|null=>{
+      for(const el of Array.from(document.querySelectorAll<HTMLElement>('[data-mdcol]'))){
+        const r=el.getBoundingClientRect();
+        if(x>=r.left&&x<=r.right) return el.dataset.mdcol!;
+      }
+      return null;
+    };
+    const onMove=(e:MouseEvent)=>{
+      if(mdDragTaskRef.current){
+        setMdDragPos({x:e.clientX,y:e.clientY});
+        setMdDragOverDate(colAt(e.clientX));
+        return;
+      }
+      if(!mdMouseStart.current||mdMouseArmed.current) return;
+      if(Math.abs(e.clientX-mdMouseStart.current.x)>5||Math.abs(e.clientY-mdMouseStart.current.y)>5){
+        mdMouseArmed.current=true;
+        setMdDragTask(mdMouseStart.current.task);
+        setMdDragPos({x:e.clientX,y:e.clientY});
+      }
+    };
+    const onUp=(e:MouseEvent)=>{
+      if(mdDragTaskRef.current){
+        const dragged=mdDragTaskRef.current;
+        const target=colAt(e.clientX);
+        if(target&&target!==dragged.date){
+          setTasks(prev=>prev.map(tk=>tk.id===dragged.id?{...tk,date:target}:tk));
+          logAnalyticsEvent('timeline_task_moved');
+        }
+        setMdDragTask(null);
+        setMdDragOverDate(null);
+      }
+      mdMouseStart.current=null;
+      mdMouseArmed.current=false;
+    };
+    document.addEventListener('mousemove',onMove);
+    document.addEventListener('mouseup',onUp);
+    return ()=>{
+      document.removeEventListener('mousemove',onMove);
+      document.removeEventListener('mouseup',onUp);
+    };
+  },[]);
+
   useEffect(()=>{
     if(!dragTask) return;
     const calcTime=(clientY:number)=>{
@@ -8820,7 +8885,8 @@ export default function App() {
             <MultiDayColumn key={d} date={d} label={multiDayLabel(d)} isToday={d===today}
               tasks={filteredTasks} wakeTime={ds.wakeTime} sleepTime={ds.sleepTime}
               onEdit={openEdit}
-              onAdd={()=>{setDate(d);setWeekAnchor(d);openAdd('09:00');}}/>
+              onAdd={()=>{setDate(d);setWeekAnchor(d);openAdd('09:00');}}
+              onDragStart={armMdDrag} dragTaskId={mdDragTask?.id} isDragOver={mdDragOverDate===d}/>
           );
         })}
       </main>
@@ -8972,6 +9038,17 @@ export default function App() {
         </div>
         );
       })()}
+
+      {/* ── 複数日表示（PC版）カラム間ドラッグのフローティングカード ── */}
+      {mdDragTask&&(
+        <div className="fixed z-[70] pointer-events-none"
+          style={{left:`${Math.min(mdDragPos.x+14,window.innerWidth-180)}px`,top:`${mdDragPos.y+14}px`}}>
+          <div className="bg-white rounded-xl shadow-2xl border border-gray-100 px-3 py-2 w-40">
+            <p className="text-xs font-bold text-gray-900 truncate">{mdDragTask.name}</p>
+            <p className="text-[11px] text-gray-400 mt-0.5">{mdDragTask.startTime}</p>
+          </div>
+        </div>
+      )}
 
       {/* ── Setting time confirm popup ── */}
       {settingConfirm&&(()=>{
