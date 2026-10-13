@@ -2340,6 +2340,50 @@ users/{uid}/patternOverrides/{key}   … 生活パターンの日別上書き（
 
 ---
 
+## 独自ドメイン（`getbrainbox.app`）
+
+**ドメインは`getbrainbox.app`、Cloudflare Registrarで購入済み。** Cloudflareへのログインは**Appleアカウント（Sign in with Apple）**を使っている——新しいセッションでCloudflare側の作業（DNSレコード追加等）が必要になった時は、ユーザーにこのログイン方法を案内すること（パスワード認証ではない）。
+
+### 予定しているURL構成
+
+| URL | 用途 |
+|---|---|
+| `getbrainbox.app`（apex） | BrainBox公式サイト（`public/landing.html`、既存のマーケティングページ） |
+| `app.getbrainbox.app` | BrainBox PC版・PWA（Next.jsアプリ本体、`page.tsx`） |
+
+**現状はこの独自ドメインをVercelの既存プロジェクトに接続する方針。** 将来的にFirebase HostingやCloudflare Pagesへの移行も検討しているが、まずはVercel接続を優先する（ユーザーからの明示的な指示）。
+
+### next.config.jsでのホストベース振り分け（実装済み）
+
+1つのVercelプロジェクト・1つのNext.jsアプリのまま、アクセスしたホスト名によって`/`の中身を出し分けるようにしてある。
+
+```javascript
+// 静的書き出し（output:'export'、iOS/Android向け）ではrewritesが使えないため、
+// isNativeBuildの時だけ除外する
+...(!isNativeBuild && {
+  async rewrites() {
+    return [
+      { source: '/', has: [{ type: 'host', value: 'getbrainbox.app' }], destination: '/landing.html' },
+    ]
+  },
+}),
+```
+
+`getbrainbox.app`（apex）でアクセスされた時だけ`/`を`/landing.html`（公式サイト）にrewriteする。`app.getbrainbox.app`・既存の`brainbox-app.vercel.app`はこの条件にマッチしないため、従来通りアプリ本体（`page.tsx`）がそのまま表示される。**`www.getbrainbox.app`は現時点では対象に含めていない**（ユーザーから指定が無いため。必要になったら`has`の`value`に追加すること）。
+
+### ドメイン接続の手順（ユーザー側の作業・未実施）
+
+このセッションからはVercel・Cloudflareのダッシュボードを直接操作できないため、以下はユーザー自身が行う必要がある。
+
+1. Vercelのプロジェクト設定 → Domains → `getbrainbox.app`と`app.getbrainbox.app`の両方を追加
+2. Vercelが表示するDNSレコード（apexは`A`レコードまたはCloudflareのCNAMEフラットニング対応のCNAME、サブドメインは`cname.vercel-dns.com`へのCNAME）を、CloudflareのDNS設定画面（Appleアカウントでログイン）に追加
+3. VercelがSSL証明書を発行するまで待つ（通常は数分〜1時間程度）
+4. 両ドメインでアプリ・公式サイトがそれぞれ正しく表示されることを確認する
+
+**避けるパターン:** このドメイン接続作業を、Vercel/CloudflareのAPIやMCPツールが無い状態で自動化しようとしない（このセッションにはその権限が無い。手順を案内するに留め、実際の操作はユーザーに委ねること）。
+
+---
+
 ## Vercel / Git 運用
 
 - `main` または `claude/**` branch への push で **GitHub Actions** が Vercel deploy hook を呼び出して自動デプロイ
