@@ -5716,7 +5716,7 @@ function SettingsRow({icon,iconBg,title,desc,onClick,isLast=false,pro=false,isPr
   );
 }
 
-function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,customTabs,onCustomTabs,onDeleteTabTasks,onDeleteTag,onRenameTag,shopNotifSettings,onShopNotifSettings,shopLocations,onShopLocations,forgetAlerts,onForgetAlerts,cloudUser,migrationStatus,isPremium,onGoogleSignIn,onAppleSignIn,onSignOut,onBulkAdd,bulkHistory,onBulkHistoryDelete,onBulkHistoryEdit,lifePatterns,onLifePatterns,patternOverrides,onApplyPattern,initialSub,tasks,onEditTask}:{
+function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,customTabs,onCustomTabs,onDeleteTabTasks,onDeleteTag,onRenameTag,shopNotifSettings,onShopNotifSettings,shopLocations,onShopLocations,forgetAlerts,onForgetAlerts,cloudUser,migrationStatus,isPremium,onGoogleSignIn,onAppleSignIn,onSignOut,onBulkAdd,bulkHistory,onBulkHistoryDelete,onBulkHistoryEdit,lifePatterns,onLifePatterns,patternOverrides,onApplyPattern,initialSub,tasks,onEditTask,isDesktop=false}:{
   settings:Settings; onSettings:(s:Settings)=>void; onClose:()=>void;
   globalTags:TagDef[]; onGlobalTags:(tags:TagDef[])=>void;
   customTabs:CustomTab[]; onCustomTabs:(tabs:CustomTab[])=>void; onDeleteTabTasks:(tabId:string)=>void;
@@ -5734,6 +5734,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   patternOverrides:Record<string,string>; onApplyPattern:(dates:string[],patternId:string|null)=>void;
   initialSub?:string;
   tasks:Task[]; onEditTask:(t:Task)=>void;
+  isDesktop?:boolean;
 }) {
   const { tr, language, languagePref, setLanguage } = useI18n();
   const [sub,setSubRaw]        = useState<string|null>(initialSub??null);
@@ -5744,6 +5745,8 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
     subHistoryRef.current.push(sub);
     setSubRaw(next);
   };
+  // PC版の設定画面（独立ページ・左カテゴリナビ＋右コンテンツの2カラム）でのみ使う、選択中カテゴリ
+  const [activeSettingsCat,setActiveSettingsCat] = useState<'basic'|'notifications'|'general'|'integration'|'subscription'|'info'>('basic');
   useEffect(()=>{ if(sub==='premium') logAnalyticsEvent('paywall_viewed'); },[sub]);
   const [appVersion,setAppVersion] = useState<string|null>(null);
   useEffect(()=>{ getAppVersion().then(setAppVersion); },[]);
@@ -5863,7 +5866,16 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
 
   const back = () => setSubRaw(subHistoryRef.current.pop() ?? null);
 
-  const subHeader = (title:string) => (
+  const subHeader = (title:string) => isDesktop ? (
+    <div className="bg-white border-b border-gray-200 px-8 py-4 flex items-center shrink-0">
+      <button onClick={back} className="flex items-center gap-1 shrink-0" style={{color:'var(--c-primary)'}}>
+        <AppIcons.caretLeft size={20}/>
+        <span className="text-[15px] font-medium whitespace-nowrap">{tr('settingsTitle')}</span>
+      </button>
+      <h2 className="flex-1 text-center text-[19px] font-bold text-gray-900 truncate px-1">{title}</h2>
+      <div className="shrink-0" style={{width:'70px'}}/>
+    </div>
+  ) : (
     <div className="bg-white border-b border-gray-200 px-4 py-3.5 flex items-center shrink-0" style={{paddingTop:'calc(0.875rem + env(safe-area-inset-top))'}}>
 
       <button onClick={back} className="flex items-center gap-0.5 shrink-0 min-w-[44px]" style={{color:'var(--c-primary)'}}>
@@ -5937,7 +5949,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
       setTimeout(()=>setBulkDone(false),2000);
     };
     return (
-      <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
+      <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto lg:max-w-none lg:w-full lg:[&>*:not(.fixed)]:max-w-[1000px] lg:[&>*:not(.fixed)]:mx-auto lg:[&>*:not(.fixed)]:w-full">
         {subHeader(tr('bulkInputTitle'))}{proSheet}
         <div className="flex-1 overflow-y-auto px-4 pb-10">
           {!isPremium&&<p className="text-xs text-gray-400 px-1 mt-4 mb-4">{tr('bulkInputFreeLimitNote')}</p>}
@@ -6059,7 +6071,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   if(sub==='bulkHistory'){
     const disp=bulkHistory.slice(0,10);
     return (
-      <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
+      <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto lg:max-w-none lg:w-full lg:[&>*:not(.fixed)]:max-w-[1000px] lg:[&>*:not(.fixed)]:mx-auto lg:[&>*:not(.fixed)]:w-full">
         {subHeader(tr('bulkHistoryTitle'))}{proSheet}
         <div className="flex-1 overflow-y-auto px-4 pb-10">
           {disp.length===0&&(
@@ -6208,14 +6220,14 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   }
 
   if(sub==='stats') return (
-    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
+    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto lg:max-w-none lg:w-full lg:[&>*:not(.fixed)]:max-w-[1000px] lg:[&>*:not(.fixed)]:mx-auto lg:[&>*:not(.fixed)]:w-full">
       {subHeader(tr('statsScreenTitle'))}
       <div className="flex-1 overflow-y-auto px-4 pb-8">{comingSoon(<AppIcons.stats size={48}/>,tr('statsComingSoonDesc'))}</div>
     </div>
   );
 
   if(sub==='tabs') return (
-    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
+    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto lg:max-w-none lg:w-full lg:[&>*:not(.fixed)]:max-w-[1000px] lg:[&>*:not(.fixed)]:mx-auto lg:[&>*:not(.fixed)]:w-full">
       {subHeader(tr('rowTabsTitle'))}{proSheet}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
         {!isPremium&&<p className="text-xs text-gray-400 px-1 mt-4 mb-4">{tr('fileTabsFreeLimitNote')}</p>}
@@ -6308,7 +6320,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   );
 
   if(sub==='forgetAlerts') return (
-    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
+    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto lg:max-w-none lg:w-full lg:[&>*:not(.fixed)]:max-w-[1000px] lg:[&>*:not(.fixed)]:mx-auto lg:[&>*:not(.fixed)]:w-full">
       {subHeader(tr('rowForgetAlertTitle'))}{proSheet}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
         <ForgetAlertsPanel alerts={forgetAlerts} onChange={onForgetAlerts} isPremium={isPremium} onProPrompt={setProPrompt}/>
@@ -6317,7 +6329,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   );
 
   if(sub==='tags') return (
-    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
+    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto lg:max-w-none lg:w-full lg:[&>*:not(.fixed)]:max-w-[1000px] lg:[&>*:not(.fixed)]:mx-auto lg:[&>*:not(.fixed)]:w-full">
       {subHeader(tr('rowTagsTitle'))}{proSheet}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
         {!isPremium&&<p className="text-xs text-gray-400 px-1 mt-4">{tr('tagsFreeLimitNote')}</p>}
@@ -6435,7 +6447,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
       return true;
     }).sort((a,b)=>(a.startTime??'').localeCompare(b.startTime??''));
     return (
-      <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
+      <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto lg:max-w-none lg:w-full lg:[&>*:not(.fixed)]:max-w-[1000px] lg:[&>*:not(.fixed)]:mx-auto lg:[&>*:not(.fixed)]:w-full">
         {subHeader(tr('rowRecurringTitle'))}
         <div className="flex-1 overflow-y-auto px-4 pb-8">
           {recurTasks.length===0?(
@@ -6473,7 +6485,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   }
 
   if(sub==='notifications') return (
-    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
+    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto lg:max-w-none lg:w-full lg:[&>*:not(.fixed)]:max-w-[1000px] lg:[&>*:not(.fixed)]:mx-auto lg:[&>*:not(.fixed)]:w-full">
       {subHeader(tr('rowNotificationsTitle'))}{proSheet}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm mt-6">
@@ -6486,7 +6498,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   );
 
   if(sub==='notifications-later') return (
-    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
+    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto lg:max-w-none lg:w-full lg:[&>*:not(.fixed)]:max-w-[1000px] lg:[&>*:not(.fixed)]:mx-auto lg:[&>*:not(.fixed)]:w-full">
       {subHeader(tr('rowLaterAlertTitle'))}{proSheet}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-4">{tr('laterAlertSectionLabel')}</p>
@@ -6545,7 +6557,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   );
 
   if(sub==='notifications-general') return (
-    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
+    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto lg:max-w-none lg:w-full lg:[&>*:not(.fixed)]:max-w-[1000px] lg:[&>*:not(.fixed)]:mx-auto lg:[&>*:not(.fixed)]:w-full">
       {subHeader(tr('notificationSettingsRowTitle'))}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm mt-6">
@@ -6576,7 +6588,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   );
 
   if(sub==='notifications-shop') return (
-    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
+    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto lg:max-w-none lg:w-full lg:[&>*:not(.fixed)]:max-w-[1000px] lg:[&>*:not(.fixed)]:mx-auto lg:[&>*:not(.fixed)]:w-full">
       {subHeader(tr('rowShopNotifTitle'))}
       <div className="flex-1 overflow-y-auto pb-8">
         <div className="mt-6">
@@ -6590,7 +6602,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   );
 
   if(sub==='freeCard') return (
-    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
+    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto lg:max-w-none lg:w-full lg:[&>*:not(.fixed)]:max-w-[1000px] lg:[&>*:not(.fixed)]:mx-auto lg:[&>*:not(.fixed)]:w-full">
       {subHeader(tr('freeCardScreenTitle'))}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm mt-6">
@@ -6630,7 +6642,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   );
 
   if(sub==='display') return (
-    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
+    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto lg:max-w-none lg:w-full lg:[&>*:not(.fixed)]:max-w-[1000px] lg:[&>*:not(.fixed)]:mx-auto lg:[&>*:not(.fixed)]:w-full">
       {subHeader(tr('settingsDisplayTitle'))}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm mt-6">
@@ -6669,7 +6681,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   );
 
   if(sub==='language') return (
-    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
+    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto lg:max-w-none lg:w-full lg:[&>*:not(.fixed)]:max-w-[1000px] lg:[&>*:not(.fixed)]:mx-auto lg:[&>*:not(.fixed)]:w-full">
       {subHeader(tr('settingsLanguageRowTitle'))}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm mt-6">
@@ -6692,7 +6704,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   );
 
   if(sub==='weekStart') return (
-    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
+    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto lg:max-w-none lg:w-full lg:[&>*:not(.fixed)]:max-w-[1000px] lg:[&>*:not(.fixed)]:mx-auto lg:[&>*:not(.fixed)]:w-full">
       {subHeader(tr('weekStartRowTitle'))}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm mt-6">
@@ -6712,7 +6724,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   );
 
   if(sub==='fontSize') return (
-    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
+    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto lg:max-w-none lg:w-full lg:[&>*:not(.fixed)]:max-w-[1000px] lg:[&>*:not(.fixed)]:mx-auto lg:[&>*:not(.fixed)]:w-full">
       {subHeader(tr('fontSizeRowTitle'))}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm mt-6">
@@ -6732,7 +6744,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   );
 
   if(sub==='themeColor') return (
-    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
+    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto lg:max-w-none lg:w-full lg:[&>*:not(.fixed)]:max-w-[1000px] lg:[&>*:not(.fixed)]:mx-auto lg:[&>*:not(.fixed)]:w-full">
       {subHeader(tr('themeColorRowTitle'))}{proSheet}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
         <p className="text-xs text-gray-400 px-1 mb-4 mt-6">{tr('themeColorScreenSubtitle')}</p>
@@ -6770,7 +6782,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   );
 
   if(sub==='appIcon') return (
-    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
+    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto lg:max-w-none lg:w-full lg:[&>*:not(.fixed)]:max-w-[1000px] lg:[&>*:not(.fixed)]:mx-auto lg:[&>*:not(.fixed)]:w-full">
       {subHeader(tr('appIconRowTitle'))}{proSheet}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
         <p className="text-xs text-gray-400 px-1 mb-4 mt-6">{tr('appIconScreenSubtitle')}</p>
@@ -6824,7 +6836,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
     while(calCells.length%7!==0) calCells.push(null);
     const cellDate=(day:number)=>`${lpVm.year}-${String(lpVm.month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
     return (
-      <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
+      <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto lg:max-w-none lg:w-full lg:[&>*:not(.fixed)]:max-w-[1000px] lg:[&>*:not(.fixed)]:mx-auto lg:[&>*:not(.fixed)]:w-full">
         {subHeader(tr('rowLifePatternsTitle'))}{proSheet}
         <div className="flex-1 overflow-y-auto px-4 pb-10">
           {!isPremium&&<p className="text-xs text-gray-400 px-1 mt-4 mb-2">{tr('lifePatternsFreeLimitNote')}</p>}
@@ -7018,7 +7030,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
     while(calCells.length%7!==0) calCells.push(null);
     const cellDate=(day:number)=>`${lpVm.year}-${String(lpVm.month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
     return (
-      <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
+      <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto lg:max-w-none lg:w-full lg:[&>*:not(.fixed)]:max-w-[1000px] lg:[&>*:not(.fixed)]:mx-auto lg:[&>*:not(.fixed)]:w-full">
         {subHeader(tr('rowWakeSleepTitle'))}{proSheet}
         <div className="flex-1 overflow-y-auto px-4 pb-10">
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">{tr('timeSettingsSectionLabel')}</p>
@@ -7083,7 +7095,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   }
 
   if(sub==='account') return (
-    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
+    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto lg:max-w-none lg:w-full lg:[&>*:not(.fixed)]:max-w-[1000px] lg:[&>*:not(.fixed)]:mx-auto lg:[&>*:not(.fixed)]:w-full">
       {subHeader(tr('rowAccountTitle'))}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
         <p className="text-xs text-gray-400 px-1 mb-4 mt-4 leading-relaxed">{tr('accountIntro')}</p>
@@ -7136,7 +7148,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
 
 
   if(sub==='devMode') return (
-    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
+    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto lg:max-w-none lg:w-full lg:[&>*:not(.fixed)]:max-w-[1000px] lg:[&>*:not(.fixed)]:mx-auto lg:[&>*:not(.fixed)]:w-full">
       {subHeader('開発者モード')}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
         <p className="text-xs text-gray-400 px-1 mb-4 mt-4 leading-relaxed">
@@ -7200,7 +7212,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   );
 
   if(sub==='premium') return (
-    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
+    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto lg:max-w-none lg:w-full lg:[&>*:not(.fixed)]:max-w-[1000px] lg:[&>*:not(.fixed)]:mx-auto lg:[&>*:not(.fixed)]:w-full">
       {subHeader('PRO')}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
         <div className="mt-6 mb-4 text-center">
@@ -7279,7 +7291,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   );
 
   if(sub==='privacy') return (
-    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
+    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto lg:max-w-none lg:w-full lg:[&>*:not(.fixed)]:max-w-[1000px] lg:[&>*:not(.fixed)]:mx-auto lg:[&>*:not(.fixed)]:w-full">
       {subHeader(tr('rowPrivacyTitle'))}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
         <p className="text-xs text-gray-400 mt-4 mb-3 px-1">{tr('legalLastUpdated')}</p>
@@ -7301,7 +7313,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   );
 
   if(sub==='terms') return (
-    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
+    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto lg:max-w-none lg:w-full lg:[&>*:not(.fixed)]:max-w-[1000px] lg:[&>*:not(.fixed)]:mx-auto lg:[&>*:not(.fixed)]:w-full">
       {subHeader(tr('rowTermsTitle'))}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
         <p className="text-xs text-gray-400 mt-4 mb-3 px-1">{tr('legalLastUpdated')}</p>
@@ -7323,7 +7335,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   );
 
   if(sub==='support') return (
-    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
+    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto lg:max-w-none lg:w-full lg:[&>*:not(.fixed)]:max-w-[1000px] lg:[&>*:not(.fixed)]:mx-auto lg:[&>*:not(.fixed)]:w-full">
       {subHeader(tr('rowFaqTitle'))}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
         <div className="mt-4 bg-white rounded-2xl overflow-hidden shadow-sm">
@@ -7348,7 +7360,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   );
 
   if(sub==='contact') return (
-    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
+    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto lg:max-w-none lg:w-full lg:[&>*:not(.fixed)]:max-w-[1000px] lg:[&>*:not(.fixed)]:mx-auto lg:[&>*:not(.fixed)]:w-full">
       {subHeader(tr('rowContactTitle'))}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
         <div className="mt-4 rounded-2xl shadow-sm px-4 py-5" style={{background:'#06C755'}}>
@@ -7378,7 +7390,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   );
 
   if(sub==='faq') return (
-    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
+    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto lg:max-w-none lg:w-full lg:[&>*:not(.fixed)]:max-w-[1000px] lg:[&>*:not(.fixed)]:mx-auto lg:[&>*:not(.fixed)]:w-full">
       {subHeader(tr('rowFaqTitle'))}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
         <div className="mt-4 bg-white rounded-2xl overflow-hidden shadow-sm">
@@ -7402,8 +7414,111 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
     </div>
   );
 
+  const catBasic = (
+    <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
+      <SettingsRow icon={<AppIcons.wake size={18}/>} iconBg="bg-gray-100" title={tr('rowWakeSleepTitle')} desc={tr('rowWakeSleepDesc')} onClick={()=>setSub('wakeSleep')}/>
+      <SettingsRow icon={<AppIcons.repeat size={18}/>} iconBg="bg-gray-100" title={tr('rowRecurringTitle')} desc={tr('rowRecurringDesc')} onClick={()=>setSub('recurring')}/>
+      <SettingsRow icon={<AppIcons.calendar size={18}/>} iconBg="bg-gray-100" title={tr('rowLifePatternsTitle')} desc={tr('rowLifePatternsDesc')} onClick={()=>setSub('lifePatterns')}/>
+      <SettingsRow icon={<AppIcons.tag/>} iconBg="bg-gray-100" title={tr('rowTagsTitle')} desc={tr('rowTagsDesc')} onClick={()=>setSub('tags')}/>
+      <SettingsRow icon={<AppIcons.caretRight/>} iconBg="bg-gray-100" title={tr('rowTabsTitle')} desc={tr('rowTabsDesc')} onClick={()=>setSub('tabs')}/>
+      <SettingsRow icon={<AppIcons.pencil size={18}/>} iconBg="bg-gray-100" title={tr('rowBulkInputTitle')} desc={tr('rowBulkInputDesc')} onClick={()=>setSub('bulkInput')} isLast/>
+    </div>
+  );
+  const catNotifications = (
+    <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
+      <SettingsRow icon={<AppIcons.bell/>} iconBg="bg-gray-100" title={tr('rowNotificationsTitle')} desc={tr('rowNotificationsDesc')} onClick={()=>setSub('notifications')}/>
+      <SettingsRow icon={<AppIcons.shopping size={18}/>} iconBg="bg-gray-100" title={tr('rowShopNotifTitle')}
+        desc={tr('rowShopNotifDesc')}
+        onClick={()=>setSub('notifications-shop')}/>
+      <SettingsRow icon={<AppIcons.postponed size={18}/>} iconBg="bg-gray-100" title={tr('rowLaterAlertTitle')}
+        desc={tr('rowLaterAlertDesc')}
+        onClick={()=>setSub('notifications-later')}/>
+      <SettingsRow icon={<AppIcons.backpack size={18}/>} iconBg="bg-gray-100" title={tr('rowForgetAlertTitle')}
+        desc={tr('rowForgetAlertDesc')}
+        onClick={()=>setSub('forgetAlerts')} isLast/>
+    </div>
+  );
+  const catGeneral = (
+    <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
+      <SettingsRow icon={<AppIcons.palette/>} iconBg="bg-gray-100" title={tr('rowDisplayTitle')} desc={tr('rowDisplayDesc')} onClick={()=>setSub('display')} isLast/>
+    </div>
+  );
+  const catIntegration = (
+    <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
+      <SettingsRow icon={<AppIcons.link size={18}/>} iconBg="bg-gray-100" title={tr('rowAccountTitle')} desc={tr('rowAccountDesc')} onClick={()=>setSub('account')} isLast/>
+    </div>
+  );
+  const catSubscription = (
+    <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
+      <SettingsRow icon={<AppIcons.star/>} iconBg="bg-gray-100" title={tr('rowProTitle')} desc={isPremium?tr('rowProActive'):tr('rowProPrice').replace('{price}',()=>priceString??'¥200')} onClick={()=>setSub('premium')} isLast/>
+    </div>
+  );
+  const catInfo = (
+    <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
+      <SettingsRow icon={<AppIcons.tag size={18}/>} iconBg="bg-gray-100" title={tr('rowPrivacyTitle')} onClick={()=>setSub('privacy')}/>
+      <SettingsRow icon={<AppIcons.book size={18}/>} iconBg="bg-gray-100" title={tr('rowTermsTitle')} onClick={()=>setSub('terms')}/>
+      <SettingsRow icon={<AppIcons.question size={18}/>} iconBg="bg-gray-100" title={tr('rowFaqTitle')} onClick={()=>setSub('support')}/>
+      <SettingsRow icon={<AppIcons.mail size={18}/>} iconBg="bg-gray-100" title={tr('rowContactTitle')} onClick={()=>setSub('contact')}/>
+      <button onClick={handleVersionTap} className="w-full flex items-center gap-3 px-4 py-3.5 text-left active:bg-gray-50">
+        <div className="w-[30px] h-[30px] rounded-[8px] flex items-center justify-center shrink-0"
+          style={{background:'color-mix(in srgb, var(--c-primary) 15%, white)', color:'var(--c-primary)'}}>
+          <AppIcons.sparkle size={18}/>
+        </div>
+        <p className="flex-1 text-[15px] font-medium text-gray-900">{tr('rowAppVersionTitle')}</p>
+        <span className="text-sm text-gray-400">{appVersion??'—'}</span>
+      </button>
+    </div>
+  );
+  const catDeveloper = devModeUnlocked ? (
+    <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
+      <SettingsRow icon={<AppIcons.settings size={18}/>} iconBg="bg-gray-100" title={tr('rowDevModeTitle')} desc={tr('rowDevModeDesc')} onClick={()=>setSub('devMode')} isLast/>
+    </div>
+  ) : null;
+
+  // PC版: 独立ページ＋左カテゴリナビ／右コンテンツの2カラムレイアウト
+  if(isDesktop) {
+    const settingsCats:{id:typeof activeSettingsCat;label:string;icon:React.ReactNode;content:React.ReactNode}[] = [
+      {id:'basic',label:tr('sectionFeatures'),icon:<AppIcons.wake size={17}/>,content:catBasic},
+      {id:'notifications',label:tr('sectionNotifications'),icon:<AppIcons.bell size={17}/>,content:catNotifications},
+      {id:'general',label:tr('sectionGeneral'),icon:<AppIcons.palette size={17}/>,content:catGeneral},
+      {id:'integration',label:tr('sectionIntegration'),icon:<AppIcons.link size={17}/>,content:catIntegration},
+      {id:'subscription',label:tr('sectionSubscription'),icon:<AppIcons.star size={17}/>,content:catSubscription},
+      {id:'info',label:tr('sectionInfo'),icon:<AppIcons.question size={17}/>,content:<div className="flex flex-col gap-6">{catInfo}{catDeveloper&&(<div><p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2">{tr('sectionDeveloper')}</p>{catDeveloper}</div>)}</div>},
+    ];
+    const active = settingsCats.find(c=>c.id===activeSettingsCat) ?? settingsCats[0];
+    return (
+      <div className="fixed inset-0 z-[80] bg-gray-50 flex flex-col">
+        <div className="bg-white border-b border-gray-200 px-8 py-4 flex items-center shrink-0">
+          <button onClick={onClose} className="flex items-center gap-1" style={{color:'var(--c-primary)'}}>
+            <AppIcons.caretLeft size={20}/>
+            <span className="text-[15px] font-medium">{tr('backButton')}</span>
+          </button>
+          <h1 className="flex-1 text-center text-[24px] font-bold text-gray-900">{tr('settingsTitle')}</h1>
+          <div style={{width:'70px'}}/>
+        </div>
+        <div className="flex-1 min-h-0 flex justify-center">
+          <div className="w-full flex" style={{maxWidth:'1000px'}}>
+            <nav className="w-[200px] shrink-0 py-6 pr-4 overflow-y-auto">
+              {settingsCats.map(c=>(
+                <button key={c.id} onClick={()=>setActiveSettingsCat(c.id)}
+                  className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl mb-0.5 text-left transition-colors"
+                  style={c.id===activeSettingsCat?{background:'color-mix(in srgb, var(--c-primary) 14%, white)'}:undefined}>
+                  <span style={{color:c.id===activeSettingsCat?'var(--c-primary)':'#9CA3AF'}}>{c.icon}</span>
+                  <span className={`text-sm ${c.id===activeSettingsCat?'font-semibold text-gray-900':'font-medium text-gray-600'}`}>{c.label}</span>
+                </button>
+              ))}
+            </nav>
+            <div className="flex-1 min-w-0 py-6 pl-4 overflow-y-auto">
+              {active.content}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto">
+    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto lg:max-w-none lg:w-full lg:[&>*:not(.fixed)]:max-w-[1000px] lg:[&>*:not(.fixed)]:mx-auto lg:[&>*:not(.fixed)]:w-full">
       <div className="bg-[#F2F2F7] px-4 pb-2 shrink-0 relative flex items-center justify-center" style={{paddingTop:'calc(1rem + env(safe-area-inset-top))'}}>
 
         <button onClick={onClose} className="absolute left-4 flex items-center" style={{color:'var(--c-primary)'}}>
@@ -7415,66 +7530,27 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
 
 
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">{tr('sectionFeatures')}</p>
-        <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
-          <SettingsRow icon={<AppIcons.wake size={18}/>} iconBg="bg-gray-100" title={tr('rowWakeSleepTitle')} desc={tr('rowWakeSleepDesc')} onClick={()=>setSub('wakeSleep')}/>
-          <SettingsRow icon={<AppIcons.repeat size={18}/>} iconBg="bg-gray-100" title={tr('rowRecurringTitle')} desc={tr('rowRecurringDesc')} onClick={()=>setSub('recurring')}/>
-          <SettingsRow icon={<AppIcons.calendar size={18}/>} iconBg="bg-gray-100" title={tr('rowLifePatternsTitle')} desc={tr('rowLifePatternsDesc')} onClick={()=>setSub('lifePatterns')}/>
-          <SettingsRow icon={<AppIcons.tag/>} iconBg="bg-gray-100" title={tr('rowTagsTitle')} desc={tr('rowTagsDesc')} onClick={()=>setSub('tags')}/>
-          <SettingsRow icon={<AppIcons.caretRight/>} iconBg="bg-gray-100" title={tr('rowTabsTitle')} desc={tr('rowTabsDesc')} onClick={()=>setSub('tabs')}/>
-          <SettingsRow icon={<AppIcons.pencil size={18}/>} iconBg="bg-gray-100" title={tr('rowBulkInputTitle')} desc={tr('rowBulkInputDesc')} onClick={()=>setSub('bulkInput')} isLast/>
-        </div>
+        {catBasic}
 
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">{tr('sectionNotifications')}</p>
-        <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
-          <SettingsRow icon={<AppIcons.bell/>} iconBg="bg-gray-100" title={tr('rowNotificationsTitle')} desc={tr('rowNotificationsDesc')} onClick={()=>setSub('notifications')}/>
-          <SettingsRow icon={<AppIcons.shopping size={18}/>} iconBg="bg-gray-100" title={tr('rowShopNotifTitle')}
-            desc={tr('rowShopNotifDesc')}
-            onClick={()=>setSub('notifications-shop')}/>
-          <SettingsRow icon={<AppIcons.postponed size={18}/>} iconBg="bg-gray-100" title={tr('rowLaterAlertTitle')}
-            desc={tr('rowLaterAlertDesc')}
-            onClick={()=>setSub('notifications-later')}/>
-          <SettingsRow icon={<AppIcons.backpack size={18}/>} iconBg="bg-gray-100" title={tr('rowForgetAlertTitle')}
-            desc={tr('rowForgetAlertDesc')}
-            onClick={()=>setSub('forgetAlerts')} isLast/>
-        </div>
+        {catNotifications}
 
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">{tr('sectionGeneral')}</p>
-        <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
-          <SettingsRow icon={<AppIcons.palette/>} iconBg="bg-gray-100" title={tr('rowDisplayTitle')} desc={tr('rowDisplayDesc')} onClick={()=>setSub('display')} isLast/>
-        </div>
+        {catGeneral}
 
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">{tr('sectionIntegration')}</p>
-        <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
-          <SettingsRow icon={<AppIcons.link size={18}/>} iconBg="bg-gray-100" title={tr('rowAccountTitle')} desc={tr('rowAccountDesc')} onClick={()=>setSub('account')} isLast/>
-        </div>
+        {catIntegration}
 
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">{tr('sectionSubscription')}</p>
-        <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
-          <SettingsRow icon={<AppIcons.star/>} iconBg="bg-gray-100" title={tr('rowProTitle')} desc={isPremium?tr('rowProActive'):tr('rowProPrice').replace('{price}',()=>priceString??'¥200')} onClick={()=>setSub('premium')} isLast/>
-        </div>
+        {catSubscription}
 
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">{tr('sectionInfo')}</p>
-        <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
-          <SettingsRow icon={<AppIcons.tag size={18}/>} iconBg="bg-gray-100" title={tr('rowPrivacyTitle')} onClick={()=>setSub('privacy')}/>
-          <SettingsRow icon={<AppIcons.book size={18}/>} iconBg="bg-gray-100" title={tr('rowTermsTitle')} onClick={()=>setSub('terms')}/>
-          <SettingsRow icon={<AppIcons.question size={18}/>} iconBg="bg-gray-100" title={tr('rowFaqTitle')} onClick={()=>setSub('support')}/>
-          <SettingsRow icon={<AppIcons.mail size={18}/>} iconBg="bg-gray-100" title={tr('rowContactTitle')} onClick={()=>setSub('contact')}/>
-          <button onClick={handleVersionTap} className="w-full flex items-center gap-3 px-4 py-3.5 text-left active:bg-gray-50">
-            <div className="w-[30px] h-[30px] rounded-[8px] flex items-center justify-center shrink-0"
-              style={{background:'color-mix(in srgb, var(--c-primary) 15%, white)', color:'var(--c-primary)'}}>
-              <AppIcons.sparkle size={18}/>
-            </div>
-            <p className="flex-1 text-[15px] font-medium text-gray-900">{tr('rowAppVersionTitle')}</p>
-            <span className="text-sm text-gray-400">{appVersion??'—'}</span>
-          </button>
-        </div>
+        {catInfo}
 
-        {devModeUnlocked&&(
+        {catDeveloper&&(
           <>
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">{tr('sectionDeveloper')}</p>
-            <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
-              <SettingsRow icon={<AppIcons.settings size={18}/>} iconBg="bg-gray-100" title={tr('rowDevModeTitle')} desc={tr('rowDevModeDesc')} onClick={()=>setSub('devMode')} isLast/>
-            </div>
+            {catDeveloper}
           </>
         )}
 
@@ -9542,7 +9618,7 @@ export default function App() {
 
       {/* ── Settings Screen ── */}
       {settingsOpen&&(
-        <SettingsScreen settings={settings} onSettings={setSettings} onClose={()=>setSOp(false)} globalTags={globalTags} onGlobalTags={setGlobalTags} customTabs={customTabs} onCustomTabs={setCustomTabs} onDeleteTabTasks={(tabId)=>setTasks(prev=>prev.filter(t=>t.category!==tabId))} onDeleteTag={(tagName)=>{setGlobalTags(prev=>prev.filter(t=>t.name!==tagName));setTasks(prev=>prev.map(t=>({...t,tags:(t.tags??[]).filter(n=>n!==tagName)})));}} onRenameTag={(oldName,newName,newColor)=>{setGlobalTags(prev=>prev.map(t=>t.name===oldName?{name:newName,color:newColor}:t));setTasks(prev=>prev.map(t=>({...t,tags:(t.tags??[]).map(n=>n===oldName?newName:n)})));}} shopNotifSettings={shopNotifSettings} onShopNotifSettings={setShopNotifSettings} shopLocations={shopLocations} onShopLocations={setShopLocations} forgetAlerts={forgetAlerts} onForgetAlerts={setForgetAlerts} cloudUser={cloudUser} migrationStatus={migrationStatus} isPremium={isPremium} onGoogleSignIn={handleGoogleSignIn} onAppleSignIn={handleAppleSignIn} onSignOut={handleSignOut} onBulkAdd={bulkAddTasks} bulkHistory={bulkHistory} onBulkHistoryDelete={bulkHistoryDelete} onBulkHistoryEdit={bulkHistoryEdit} lifePatterns={lifePatterns} onLifePatterns={setLifePatterns} patternOverrides={patternOverrides} onApplyPattern={applyPattern} initialSub={settingsInitSub} tasks={tasks} onEditTask={(t)=>{setSOp(false);openEdit(t);}}/>
+        <SettingsScreen settings={settings} onSettings={setSettings} onClose={()=>setSOp(false)} globalTags={globalTags} onGlobalTags={setGlobalTags} customTabs={customTabs} onCustomTabs={setCustomTabs} onDeleteTabTasks={(tabId)=>setTasks(prev=>prev.filter(t=>t.category!==tabId))} onDeleteTag={(tagName)=>{setGlobalTags(prev=>prev.filter(t=>t.name!==tagName));setTasks(prev=>prev.map(t=>({...t,tags:(t.tags??[]).filter(n=>n!==tagName)})));}} onRenameTag={(oldName,newName,newColor)=>{setGlobalTags(prev=>prev.map(t=>t.name===oldName?{name:newName,color:newColor}:t));setTasks(prev=>prev.map(t=>({...t,tags:(t.tags??[]).map(n=>n===oldName?newName:n)})));}} shopNotifSettings={shopNotifSettings} onShopNotifSettings={setShopNotifSettings} shopLocations={shopLocations} onShopLocations={setShopLocations} forgetAlerts={forgetAlerts} onForgetAlerts={setForgetAlerts} cloudUser={cloudUser} migrationStatus={migrationStatus} isPremium={isPremium} onGoogleSignIn={handleGoogleSignIn} onAppleSignIn={handleAppleSignIn} onSignOut={handleSignOut} onBulkAdd={bulkAddTasks} bulkHistory={bulkHistory} onBulkHistoryDelete={bulkHistoryDelete} onBulkHistoryEdit={bulkHistoryEdit} lifePatterns={lifePatterns} onLifePatterns={setLifePatterns} patternOverrides={patternOverrides} onApplyPattern={applyPattern} initialSub={settingsInitSub} tasks={tasks} onEditTask={(t)=>{setSOp(false);openEdit(t);}} isDesktop={isDesktop}/>
       )}
 
       {/* ── Tab filter bottom sheet ── */}
