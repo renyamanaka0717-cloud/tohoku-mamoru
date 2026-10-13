@@ -98,6 +98,7 @@ import {
   ClockClockwise,
   ClockCounterClockwise,
   Microphone,
+  Stack,
 } from '@phosphor-icons/react';
 
 type PhosphorComp = React.ComponentType<{
@@ -216,4 +217,5 @@ export const AppIcons = {
   sortAsc:     make(ClockCounterClockwise, 16),
   sortDesc:    make(ClockClockwise, 16),
   mic:         make(Microphone, 18),
+  group:       make(Stack, 18),
 };

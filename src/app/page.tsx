@@ -4975,7 +4975,7 @@ function ForgetAlertsPanel({alerts,onChange,isPremium,onProPrompt}:{
 function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,shopPending,
   onToggle,onEdit,onAddShop,onToggleShop,onDeleteShop,onEditShop,onReorderLater,shopNotifSettings,onShopNotifSettings,
   shopLocations,onShopLocations,isPremium,onOpenPro,
-  notificationsEnabled,onEnableNotifications,isDesktop
+  notificationsEnabled,onEnableNotifications,isDesktop,customTabs
 }:{
   activeTab:'later'|'shop'; onSwitchTab:(t:'later'|'shop')=>void; onClose:()=>void;
   tasks:Task[]; shopItems:ShopItem[]; pendingCount:number; shopPending:number;
@@ -4986,11 +4986,15 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
   shopLocations:ShopLocation[]; onShopLocations:(l:ShopLocation[])=>void;
   isPremium:boolean; onOpenPro:()=>void;
   notificationsEnabled?:boolean; onEnableNotifications?:()=>void;
-  isDesktop?:boolean;
+  isDesktop?:boolean; customTabs?:CustomTab[];
 }) {
   const {tr,language} = useI18n();
   const [shopInput,setShopInput] = useState('');
   const [sortDir,setSortDir]     = useState<null|'asc'|'desc'>(null);
+  // 「あとでやる」のファイルタブ別グループ分け（PC版のみ）。既存のヘッダーファイルタブで既に
+  // activeCategoryによる絞り込みが行われている（filteredTasks経由）ため、ここでのグループ分けは
+  // 「すべて」選択時に複数カテゴリが混在するケースでのみ意味を持つ
+  const [groupByCategory,setGroupByCategory] = useState(false);
   const [shopSortDir,setShopSortDir] = useState<null|'asc'|'desc'>(null);
   const [showShopNotif,setShowShopNotif] = useState(false);
   const [locProPrompt,setLocProPrompt] = useState<string|null>(null);
@@ -5030,6 +5034,18 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
   })();
   const pinnedLater    = normalLater.filter(t=>t.pinned);
   const nonPinnedLater = normalLater.filter(t=>!t.pinned);
+
+  // ファイルタブ順にグループ化し、どのタブにも属さないタスクは最後に「未分類」としてまとめる
+  const laterGroups = !groupByCategory ? null : (()=>{
+    const groups:{id:string|null;name:string;tasks:Task[]}[] = [];
+    (customTabs??[]).forEach(tab=>{
+      const ts=nonPinnedLater.filter(t=>t.category===tab.id);
+      if(ts.length>0) groups.push({id:tab.id,name:tab.name,tasks:ts});
+    });
+    const uncategorized=nonPinnedLater.filter(t=>!t.category||!(customTabs??[]).find(ct=>ct.id===t.category));
+    if(uncategorized.length>0) groups.push({id:null,name:tr('uncategorizedGroupLabel'),tasks:uncategorized});
+    return groups;
+  })();
 
   const laterRecDateLabel=(d:string):string=>{
     const dt=new Date(d+'T12:00:00');
@@ -5131,6 +5147,12 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
                 {pendingCount>0&&<span className="ml-1.5 text-gray-400 font-normal">{pendingCount}</span>}
               </h3>
               <div className="flex items-center gap-1.5">
+                {isDesktop&&(customTabs??[]).length>0&&(
+                  <button onClick={()=>setGroupByCategory(v=>!v)}
+                    className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors ${groupByCategory?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-500 active:bg-gray-200'}`}>
+                    <AppIcons.group size={15}/>
+                  </button>
+                )}
                 {nonPinnedLater.length>1&&(
                   <button onClick={()=>setShowReorderPopup(true)}
                     className="w-8 h-8 rounded-xl flex items-center justify-center bg-gray-100 text-gray-500 active:bg-gray-200">
@@ -5157,12 +5179,24 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
                       {renderLaterRowContent(t)}
                     </div>
                   ))}
-                  {nonPinnedLater.map(t=>(
+                  {!laterGroups&&nonPinnedLater.map(t=>(
                     <div key={t.id} className="flex items-center gap-2.5 bg-white border border-gray-100 rounded-2xl shadow-sm px-3 py-3">
                       {renderLaterRowContent(t)}
                     </div>
                   ))}
                 </div>
+                {laterGroups&&laterGroups.map(g=>(
+                  <div key={g.id??'__uncategorized__'} className="mt-3">
+                    <p className="text-[11px] text-gray-400 font-semibold mb-1.5 px-0.5">{g.name}</p>
+                    <div className="space-y-2">
+                      {g.tasks.map(t=>(
+                        <div key={t.id} className="flex items-center gap-2.5 bg-white border border-gray-100 rounded-2xl shadow-sm px-3 py-3">
+                          {renderLaterRowContent(t)}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
 
@@ -9055,7 +9089,7 @@ export default function App() {
           isPremium={isPremium} onOpenPro={()=>{setActiveTab(null);setSettingsInitSub('premium');setSOp(true);}}
           notificationsEnabled={settings.notificationsEnabled??true}
           onEnableNotifications={()=>setSettings(s=>({...s,notificationsEnabled:true}))}
-          isDesktop={isDesktop}/>
+          isDesktop={isDesktop} customTabs={customTabs}/>
       )}
 
       {/* ── 右パネルの開閉トグル（PC版のみ） ── */}
