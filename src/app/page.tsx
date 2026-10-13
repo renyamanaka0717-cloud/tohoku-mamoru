@@ -5114,6 +5114,8 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
   // activeCategoryによる絞り込みが行われている（filteredTasks経由）ため、ここでのグループ分けは
   // 「すべて」選択時に複数カテゴリが混在するケースでのみ意味を持つ
   const [groupByCategory,setGroupByCategory] = useState(false);
+  const [collapsedGroups,setCollapsedGroups] = useState<Set<string>>(new Set());
+  const toggleGroupCollapse=(key:string)=>setCollapsedGroups(prev=>{const next=new Set(prev); if(next.has(key)) next.delete(key); else next.add(key); return next;});
   const [shopSortDir,setShopSortDir] = useState<null|'asc'|'desc'>(null);
   const [showShopNotif,setShowShopNotif] = useState(false);
   const [locProPrompt,setLocProPrompt] = useState<string|null>(null);
@@ -5304,18 +5306,27 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
                     </div>
                   ))}
                 </div>
-                {laterGroups&&laterGroups.map(g=>(
-                  <div key={g.id??'__uncategorized__'} className="mt-3">
-                    <p className="text-[11px] text-gray-400 font-semibold mb-1.5 px-0.5">{g.name}</p>
-                    <div className="space-y-2">
-                      {g.tasks.map(t=>(
-                        <div key={t.id} className="flex items-center gap-2.5 bg-white border border-gray-100 rounded-2xl shadow-sm px-3 py-3">
-                          {renderLaterRowContent(t)}
+                {laterGroups&&laterGroups.map(g=>{
+                  const gKey=g.id??'__uncategorized__';
+                  const collapsed=collapsedGroups.has(gKey);
+                  return (
+                    <div key={gKey} className="mt-3">
+                      <button onClick={()=>toggleGroupCollapse(gKey)} className="w-full flex items-center justify-between px-0.5 mb-1.5">
+                        <p className="text-[11px] text-gray-400 font-semibold">{g.name}<span className="ml-1.5 text-gray-300">{g.tasks.length}</span></p>
+                        <AppIcons.caretDown size={11} className={`text-gray-300 transition-transform ${collapsed?'-rotate-90':''}`}/>
+                      </button>
+                      {!collapsed&&(
+                        <div className="space-y-2">
+                          {g.tasks.map(t=>(
+                            <div key={t.id} className="flex items-center gap-2.5 bg-white border border-gray-100 rounded-2xl shadow-sm px-3 py-3">
+                              {renderLaterRowContent(t)}
+                            </div>
+                          ))}
                         </div>
-                      ))}
+                      )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
 
