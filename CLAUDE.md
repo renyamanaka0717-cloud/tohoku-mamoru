@@ -1626,6 +1626,30 @@ After:  fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-
 - `catBasic`等のカテゴリ内容をモバイル分岐・デスクトップ分岐でそれぞれ別に書かない（同じローカル変数を両方から参照する設計を崩すと、新しい設定項目を追加した時にどちらか片方に追記し忘れる不具合の元になる）
 - 新しい設定カテゴリ・新しい個別設定画面を追加する時も、カテゴリの中身は`cat*`変数へ追記し、個別画面は既存の`subHeader()`＋`fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto lg:max-w-none lg:w-full lg:[&>*:not(.fixed)]:max-w-[1000px] lg:[&>*:not(.fixed)]:mx-auto lg:[&>*:not(.fixed)]:w-full`という定型のラッパークラスをそのままコピーすること（独自の幅調整を新しく考案しない）
 
+### 右パネル「あとでやる」タブへのTaskModalドッキング表示（実装済み）
+
+PC版の右パネル「あとでやる」タブを上下に分割し、上半分は従来通りのタスク一覧、下半分には**ポップアップではなく常設のタスク作成フォーム**（あとで／時間指定／繰り返しのモードタブ付き、既存のTaskModalそのもの）を埋め込んだ。ユーザーから実際の画面（FABで開いたTaskModalのスクリーンショット）を示され「この画面をそのまま入れたい感じ」という明確な指示があり、新しい簡易フォームを作るのではなく既存のTaskModalを流用する方針にした。
+
+**`TaskModal`に`docked?:boolean`propを追加し、1つのコンポーネントをポップアップ表示・ドッキング表示の両方で共用している。** 新しい専用コンポーネントは作らず、以下の3箇所だけを`docked`で分岐させた:
+- 外枠2重divのpositioning: 通常は`fixed inset-0 ... lg:flex lg:items-center lg:justify-center`＋`absolute bottom-0 ... lg:static`（ポップアップ中央表示の節を参照）。`docked`時はどちらも`h-full w-full min-w-0 flex flex-col`——`fixed`/`absolute`を一切使わず、ドッキング先の親要素（右パネルの下半分）の中に普通のブロック要素として収まる
+- ×（閉じる）ボタン: `docked`時は非表示（`!docked&&<button onClick={handleClose}>×</button>`）。常設フォームには「閉じる」という概念が無いため
+- 白コンテンツ領域の高さ: 通常はwindow高さベースのJS計算（`contentMaxH`、キーボード表示時のAndroid不具合対策）を`style`で固定指定しているが、`docked`時はこの計算が無意味（ドッキング先コンテナの高さはwindowではなく親のflexレイアウトで決まる）なので`flex-1`に差し替え、親の残り高さに自然に追従させる
+
+**`data-tour`属性（プロダクトツアー用）はすべて`!docked`を条件に追加した。** 右パネルのドッキングフォームはPC版で常時マウントされているため、`!task`だけで判定すると`modal-card`/`save-button`/`name-input-row`/`tab-later`のセレクタがドッキング版とポップアップ版の2箇所にヒットしてしまい、`ProductTour`の`querySelector`がどちらを拾うか不定になる不具合になる。**新しくTaskModal内に`data-tour`を追加する時は、必ず`!docked`も条件に含めること**（ツアーはポップアップ版のTaskModalだけを対象にする設計のため）。
+
+**保存後のフォームリセットは、TaskModal自身に手を入れず`key`での強制再マウントで実現している。** `docked`時の`task`は常に`null`（新規作成専用、既存タスクの編集はドッキング版では行わない）。`App`に`dockedFormKey`（number）stateを持たせ、ドッキング版`TaskModal`に`key={dockedFormKey}`を渡す。保存用コールバック`saveDockedLaterTask`（`App`、ポップアップ版の`saveTasks`と同じタスク生成ロジックだが`closeModal()`を呼ばない）が保存の最後に`setDockedFormKey(k=>k+1)`する。keyが変わるとReactはコンポーネントを丸ごとアンマウント→再マウントし、`name`/`icon`/`tags`/`subtasks`等の全useStateが初期値に戻る。**TaskModal内部の数十個のstateを個別にリセットする実装は避けた**（リセット漏れが起きやすく、新しいstateを追加するたびにリセット処理への追記が必要になるため）。新しく似たような「保存後に空の状態へ戻る常設フォーム」を作る時も、個々のstateリセットではなくこの`key`再マウント方式を検討すること。
+
+**`BottomTabs`に6つの新規propを追加した**（`currentDate`・`globalTags`・`onOpenTagSettings`・`atLocationLimit`・`onOpenBulkInput`・`onSaveDockedTask`・`dockedFormKey`）。ドッキング版TaskModalが必要とする値のうち、`customTabs`/`isPremium`/`onOpenPro`/`notificationsEnabled`/`onEnableNotifications`は既存のpropをそのまま流用できた。`onOpenTagSettings`/`onOpenBulkInput`は、ポップアップ版の同名コールバックが内部で`closeModal()`を呼んでから設定画面へ遷移するのに対し、ドッキング版は「閉じるモーダル」自体が存在しないため`closeModal()`を呼ばず`setSettingsInitSub(...);setSOp(true);`だけを行う、という薄いラッパーにしている。
+
+**レイアウトの罠（実装中に実際に発生、幅が右パネルからはみ出す不具合）:** `docked`時の外枠2重divを単に`fixed`/`absolute`を外しただけ（`w-full`等の明示指定なし）にしたところ、ヘッダー内の要素（モードタブ・ファイルタブ行など）が持つ横幅要求にdivが引っ張られ、右パネル（380px）を大きくはみ出して画面右端から見切れる不具合が発生した。**`flex`コンテナの子要素はデフォルトで`min-width:auto`（＝内容の最小幅より縮まない）ため、内容が横に広いとその祖先ごと意図せず広がってしまう典型的な罠。** 修正: 外枠2重divに明示的に`w-full min-w-0`を追加し、`BottomTabs`側のドッキングコンテナ（`flex-[1_1_50%] ...`）・その外側の「あとでやる」タブラッパー（`flex flex-col ...`、CSS Gridのgrid-areaを共有するgrid item）にも`min-w-0`を追加した。**新しくflexやgridの入れ子の中に固定幅コンテナ（ここでは380pxの右パネル）へ収めたいコンポーネントを配置する時は、祖先チェーンの各段に`min-w-0`が必要かどうかを疑うこと**（`w-full`だけでは祖先が`min-width:auto`で広がる場合に効果が無い）。
+
+**避けるパターン:**
+- `docked`用に新しい簡易フォームコンポーネントを作らない。既存の`TaskModal`を`docked` propで流用すること（ユーザーが「既存のTaskModal画面そのまま」を明示的に要望したため）
+- ドッキング版TaskModalの`data-tour`属性を`!docked`の条件なしで有効化しない（プロダクトツアーが常設フォームとポップアップのどちらを拾うか不定になる）
+- 保存後のフォームリセットを、TaskModal内部の各useStateを手動でクリアする実装にしない（`key`での再マウント方式を使うこと。stateが増えるたびにリセット処理への追記が必要になる設計は避ける）
+- ドッキング時の外枠divの横幅制御を`w-full`だけで済ませない。祖先チェーン（`BottomTabs`のドッキングコンテナ・later-tabのflex-colラッパー）にも`min-w-0`が必要か確認すること
+- FAB（＋ボタン）はドッキングフォーム追加に合わせて変更していない（仕様未確定のため現状維持。将来「あとでやるタブ表示中はFABを隠す」等の変更を検討する時は、プロダクトツアーの`data-tour="fab-add"`スポットライトが機能し続けるか確認すること）
+
 ### 避けるパターン（PC版全体）
 
 - `isDesktop`の判定基準（`window.innerWidth>=1024`）とTailwindの`lg:`ブレークポイントをズラさない。ズレるとJS側の分岐とCSS側の分岐が別々のタイミングで切り替わり、中間幅で見た目が破綻する
