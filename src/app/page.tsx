@@ -2288,8 +2288,8 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
   const contentMaxH = Math.max(120, Math.min(availH*0.55, availH-headerH-8));
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60" onClick={handleClose}>
-      <div className="absolute bottom-0 left-0 right-0 max-w-md mx-auto" onClick={e=>e.stopPropagation()} data-tour={!task?'modal-card':undefined}>
+    <div className="fixed inset-0 z-50 bg-black/60 lg:flex lg:items-center lg:justify-center" onClick={handleClose}>
+      <div className="absolute bottom-0 left-0 right-0 max-w-md mx-auto lg:static lg:max-h-[85vh]" onClick={e=>e.stopPropagation()} data-tour={!task?'modal-card':undefined}>
         {/* ── Dark header ── */}
         <div ref={headerRef} className="rounded-t-3xl px-4 pt-4" style={{background:headerBg}}>
         <div>
@@ -2385,7 +2385,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
         {/* ── White content ── */}
         {/* heightで固定する（maxHeightだと「あとで」のように項目が少ないモードだけ
             シートが短くなり、モード切替のたびに高さがガタつくため、常に同じ高さで統一する） */}
-        <div className="bg-gray-50 overflow-y-auto" style={{height:contentMaxH}}>
+        <div className="bg-gray-50 overflow-y-auto lg:rounded-b-3xl" style={{height:contentMaxH}}>
           {/* Recurring settings */}
           {mode==='recurring'&&(
             <>
@@ -2984,8 +2984,8 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
       </div>
       {/* Icon & Color bottom sheet */}
       {iconSheetOpen&&(
-        <div className="fixed inset-0 z-[100] bg-black/40 flex flex-col justify-end" onClick={()=>setIconSheetOpen(false)}>
-          <div className="bg-white rounded-t-3xl max-h-[78vh] flex flex-col w-full max-w-md mx-auto" onClick={e=>e.stopPropagation()}>
+        <div className="fixed inset-0 z-[100] bg-black/40 flex flex-col justify-end lg:justify-center" onClick={()=>setIconSheetOpen(false)}>
+          <div className="bg-white rounded-t-3xl lg:rounded-b-3xl max-h-[78vh] flex flex-col w-full max-w-md mx-auto" onClick={e=>e.stopPropagation()}>
             <div className="flex justify-center pt-3 shrink-0"><div className="w-10 h-1 bg-gray-200 rounded-full"/></div>
             <div className="flex items-center justify-between px-5 pt-3 pb-2 shrink-0">
               <span className="text-base font-bold text-gray-900">{tr('iconColorSheetTitle')}</span>
@@ -5620,9 +5620,9 @@ function ReorderLaterPopup({tasks,onSave,onClose}:{tasks:Task[];onSave:(orderedI
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex flex-col bg-black/30" onClick={onClose}>
-      <div className="flex-1"/>
-      <div className="bg-white w-full max-w-md mx-auto rounded-t-3xl max-h-[80vh] flex flex-col shadow-2xl" onClick={e=>e.stopPropagation()}>
+    <div className="fixed inset-0 z-[100] flex flex-col bg-black/30 lg:items-center lg:justify-center" onClick={onClose}>
+      <div className="flex-1 lg:hidden"/>
+      <div className="bg-white w-full max-w-md mx-auto rounded-t-3xl lg:rounded-b-3xl max-h-[80vh] flex flex-col shadow-2xl" onClick={e=>e.stopPropagation()}>
         <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-gray-100 shrink-0">
           <h3 className="text-base font-bold text-gray-900">{tr('reorderPopupTitle')}</h3>
           <button onClick={()=>onSave(order)} className="text-sm font-bold text-[var(--c-primary)] px-2 py-1">{tr('taskModalDone')}</button>
@@ -6011,8 +6011,8 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           </div>
         </div>
         {bulkIconSheet&&(
-          <div className="fixed inset-0 z-[90] bg-black/40 flex flex-col justify-end" onClick={()=>setBulkIconSheet(false)}>
-            <div className="bg-white rounded-t-3xl max-h-[78vh] flex flex-col w-full max-w-md mx-auto" onClick={e=>e.stopPropagation()}>
+          <div className="fixed inset-0 z-[90] bg-black/40 flex flex-col justify-end lg:justify-center" onClick={()=>setBulkIconSheet(false)}>
+            <div className="bg-white rounded-t-3xl lg:rounded-b-3xl max-h-[78vh] flex flex-col w-full max-w-md mx-auto" onClick={e=>e.stopPropagation()}>
               <div className="flex justify-center pt-3 shrink-0"><div className="w-10 h-1 bg-gray-200 rounded-full"/></div>
               <div className="flex items-center justify-between px-5 pt-3 pb-2 shrink-0">
                 <span className="text-base font-bold text-gray-900">{tr('iconColorSheetTitle')}</span>
@@ -6103,8 +6103,8 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           const entry=bulkHistory.find(e=>e.id===bulkEditId);
           if(!entry) return null;
           return (
-            <div className="fixed inset-0 z-[90] bg-black/40 flex flex-col justify-end" onClick={()=>setBulkEditId(null)}>
-              <div className="bg-white rounded-t-3xl flex flex-col w-full max-w-md mx-auto" onClick={e=>e.stopPropagation()}>
+            <div className="fixed inset-0 z-[90] bg-black/40 flex flex-col justify-end lg:justify-center" onClick={()=>setBulkEditId(null)}>
+              <div className="bg-white rounded-t-3xl lg:rounded-b-3xl flex flex-col w-full max-w-md mx-auto" onClick={e=>e.stopPropagation()}>
                 <div className="flex justify-center pt-3 shrink-0"><div className="w-10 h-1 bg-gray-200 rounded-full"/></div>
                 <div className="flex items-center justify-between px-5 pt-3 pb-2 shrink-0">
                   <button onClick={()=>setBulkEditId(null)} className="text-sm text-gray-400 font-medium">{tr('cancelButton')}</button>
@@ -6162,8 +6162,8 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           );
         })()}
         {histIconSheet&&(
-          <div className="fixed inset-0 z-[95] bg-black/40 flex flex-col justify-end" onClick={()=>setHIconSh(false)}>
-            <div className="bg-white rounded-t-3xl max-h-[78vh] flex flex-col w-full max-w-md mx-auto" onClick={e=>e.stopPropagation()}>
+          <div className="fixed inset-0 z-[95] bg-black/40 flex flex-col justify-end lg:justify-center" onClick={()=>setHIconSh(false)}>
+            <div className="bg-white rounded-t-3xl lg:rounded-b-3xl max-h-[78vh] flex flex-col w-full max-w-md mx-auto" onClick={e=>e.stopPropagation()}>
               <div className="flex justify-center pt-3 shrink-0"><div className="w-10 h-1 bg-gray-200 rounded-full"/></div>
               <div className="flex items-center justify-between px-5 pt-3 pb-2 shrink-0">
                 <span className="text-base font-bold text-gray-900">{tr('iconSheetTitleShort')}</span>
@@ -9019,48 +9019,7 @@ export default function App() {
 
   return (
     <div className={isDesktop?"bg-white font-sans flex flex-col":"max-w-md mx-auto bg-white font-sans flex flex-col"}
-      style={{height:'100%',...(isDesktop?{paddingRight:panelCollapsed?'0px':'380px',paddingLeft:'220px'}:{})}}>
-      {/* ── 左サイドバー（PC版のみ） ── */}
-      {isDesktop&&(
-        <nav className="fixed left-0 top-0 bottom-0 z-40 w-[220px] border-r border-gray-200 bg-gray-50 flex flex-col">
-          <div className="flex items-center gap-2 px-5" style={{height:'64px'}}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/app-icons/mint.png" alt="" className="w-7 h-7 rounded-lg shrink-0"/>
-            <span className="text-[15px] font-bold text-gray-900">BrainBox</span>
-          </div>
-          <div className="flex-1 overflow-y-auto px-3 pb-3">
-            {([
-              ['today',tr('todayButton'),AppIcons.home,()=>{const d=todayStr();setDate(d);setWeekAnchor(d);setActiveCat(null);}],
-              ['later',tr('laterTabLabel'),AppIcons.postponed,()=>setActiveTab('later')],
-              ['shop',tr('shopTabLabel'),AppIcons.shopping,()=>setActiveTab('shop')],
-              ['search',tr('searchLabel'),AppIcons.search,()=>setSearchOpen(true)],
-              ['stats',tr('statsNavLabel'),AppIcons.stats,()=>setStatsOpen(true)],
-            ] as const).map(([key,label,Icon,onClick])=>{
-              const effectiveTab=activeTab??'later';
-              const active=(key==='today'&&date===todayStr())||(key==='later'&&effectiveTab==='later')||(key==='shop'&&effectiveTab==='shop')||(key==='stats'&&statsOpen);
-              return (
-                <button key={key} onClick={onClick}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl mb-0.5 transition-colors ${active?'bg-white shadow-sm':'hover:bg-gray-100'}`}>
-                  <Icon size={19} className={active?'text-[var(--c-primary)]':'text-gray-400'}/>
-                  <span className={`text-sm ${active?'font-semibold text-gray-900':'font-medium text-gray-600'}`}>{label}</span>
-                </button>
-              );
-            })}
-          </div>
-          <div className="px-3 pb-4 border-t border-gray-200 pt-3">
-            <button onClick={()=>setShowShortcutsHelp(true)}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-100 transition-colors">
-              <AppIcons.question size={19} className="text-gray-400"/>
-              <span className="text-sm font-medium text-gray-600">{tr('shortcutsHelpTitle')}</span>
-            </button>
-            <button onClick={()=>{setSettingsInitSub(undefined);setSOp(true);}}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-100 transition-colors">
-              <AppIcons.settings size={19} className="text-gray-400"/>
-              <span className="text-sm font-medium text-gray-600">{tr('settingsTitle')}</span>
-            </button>
-          </div>
-        </nav>
-      )}
+      style={{height:'100%',...(isDesktop?{paddingRight:panelCollapsed?'0px':'380px'}:{})}}>
       {/* ── Header ── */}
       <header className="z-30 bg-gray-50 flex-shrink-0" style={{paddingTop:'env(safe-area-inset-top)'}}>
         <div className="px-4 pt-1 pb-0">
@@ -9096,6 +9055,18 @@ export default function App() {
                 {tr('headerFreeTimeToggle')}
                 <span className="absolute top-1.5 w-4 h-4 bg-white rounded-full" style={{boxShadow:'0 1px 3px rgba(0,0,0,0.2)',transition:'left 0.2s',left:(settings.showFreeCard??true)?'calc(100% - 22px)':'6px'}}/>
               </button>
+              {isDesktop&&(
+                <button onClick={()=>{const d=todayStr();setDate(d);setWeekAnchor(d);setActiveCat(null);}}
+                  className="px-2.5 h-8 rounded-lg text-xs font-semibold text-gray-500 hover:bg-gray-100">
+                  {tr('todayButton')}
+                </button>
+              )}
+              {isDesktop&&(
+                <button onClick={()=>setStatsOpen(true)} className="w-8 h-8 flex items-center justify-center text-gray-400"><AppIcons.stats size={20}/></button>
+              )}
+              {isDesktop&&(
+                <button onClick={()=>setShowShortcutsHelp(true)} className="w-8 h-8 flex items-center justify-center text-gray-400"><AppIcons.question size={20}/></button>
+              )}
               <button onClick={()=>setCalOp(true)} className="w-8 h-8 flex items-center justify-center text-gray-400"><AppIcons.calendar size={24}/></button>
               <button onClick={()=>setSearchOpen(true)} className="w-8 h-8 flex items-center justify-center text-gray-400"><AppIcons.search size={24}/></button>
               <button onClick={()=>{setSettingsInitSub(undefined);setSOp(true);}} className="w-8 h-8 flex items-center justify-center text-gray-400"><AppIcons.settings size={24}/></button>

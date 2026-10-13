@@ -1335,7 +1335,9 @@ BrainBoxのWeb版（ブラウザ）は従来スマホ幅（`max-w-md mx-auto`）
 - **第2段階**: 3日・7日表示（複数日表示）／タスクの複数選択・一括操作／「あとでやる」のグループ分け
 - **第3段階**: タスクの所要時間設定・空き時間への自動配置・振り返り分析
 
-**現時点で実装済みなのは第1段階（レイアウト基盤・マウスドラッグ＆ドロップ・キーボードショートカット・ポップアップの中央表示・左サイドバーナビ・サイドパネルの開閉トグル）、第2段階全体（複数日表示・日付をまたぐドラッグ&ドロップ・タスクの複数選択/一括完了/一括削除・「あとでやる」のファイルタブ別グループ分け）、第3段階全体（タスクの所要時間クイック設定・空き時間への自動配置・振り返り分析）。** これでユーザーと共有していた当初のPC版ロードマップは全段階完了。残るのはiOS/Androidネイティブログイン等、ロードマップ外の別件（CLAUDE.mdの「保留中のタスク」節を参照）。新しいセッションでPC版の続きを求められたら、ここに書かれていない項目はゼロから設計すること（下記の既存実装を壊さないよう、特に`isDesktop`分岐の既存パターンに倣う）。
+**現時点で実装済みなのは第1段階（レイアウト基盤・マウスドラッグ＆ドロップ・キーボードショートカット・ポップアップの中央表示・サイドパネルの開閉トグル）、第2段階全体（複数日表示・日付をまたぐドラッグ&ドロップ・タスクの複数選択/一括完了/一括削除・「あとでやる」のファイルタブ別グループ分け）、第3段階全体（タスクの所要時間クイック設定・空き時間への自動配置・振り返り分析）。** これでユーザーと共有していた当初のPC版ロードマップは全段階完了。残るのはiOS/Androidネイティブログイン等、ロードマップ外の別件（CLAUDE.mdの「保留中のタスク」節を参照）。新しいセッションでPC版の続きを求められたら、ここに書かれていない項目はゼロから設計すること（下記の既存実装を壊さないよう、特に`isDesktop`分岐の既存パターンに倣う）。
+
+**左サイドバー（ロゴ＋今日/あとでやる/買い物リスト/検索/統計/設定のナビ）は、ユーザーからの明示的な指示により撤去済み。** 「今日」「統計」「キーボードショートカット」のナビ機能は、ヘッダー右側のアイコン行（`calendar`/`search`/`settings`アイコンと同列、`isDesktop`時のみ表示）に移設した。「あとでやる」「買い物リスト」への導線は右パネル自体のタブ（`BottomTabs`の`Later`/`Shopping list`タブ、常時表示）がすでに兼ねているため、専用のナビ項目は持たせていない。**新しいセッションで左サイドバーを復活させないこと。**
 
 参考デザイン: ユーザーが提示したモックアップは「左サイドバー（ロゴ＋今日/週間/あとでやる/買い物リスト/検索/統計/設定）＋中央タイムライン（日付ナビ＋1日/3日/7日表示切替＋空き時間カードへのインライン追加ボタン＋画面下部に"+タスクを追加"ボタン）＋右パネル（検索バー・通知ベル・アバター、あとでやる/買い物リスト/今日の進捗）」という構成。**ただし「見た目だけ参考にし、被っている機能や不要なデザインは取り入れなくてよい」という指示**のため、週間表示・統計・通知ベル・アバター・今日の進捗カードなどモックアップに写っている要素でもまだ実装していないものが多数ある（既存機能にマッピングできる項目だけを先に実装した）。
 
@@ -1352,15 +1354,14 @@ useEffect(()=>{
 },[]);
 ```
 
-`1024px`はTailwindの`lg:`ブレークポイントと完全に一致する値にしてある。**JS側の`isDesktop` stateが必要なのは、サブコンポーネントへのprop分岐（左サイドバー自体の表示・右パネルの常時表示化・マウスイベントの付与等、構造そのものを変える必要がある箇所）に限定し、見た目の微調整（中央寄せ・角丸の付け方など）は極力CSSの`lg:`バリアントで完結させる。** 理由: `isDesktop`をprop経由で子コンポーネント（`SettingsScreen`・`BottomTabs`内の各種確認ポップアップ等）に渡すには呼び出し階層をまたいで追加する必要があるが、`lg:`はどのコンポーネントからでもクラス名だけで効くため、後述の「確認ポップアップの中央表示」のような横断的な調整にはこちらが圧倒的に低コスト。**新しくデスクトップ専用の見た目調整を追加する時は、まず`lg:`バリアントで足りないか検討してから、足りない場合のみ`isDesktop` stateのprop渡しを検討すること。**
+`1024px`はTailwindの`lg:`ブレークポイントと完全に一致する値にしてある。**JS側の`isDesktop` stateが必要なのは、サブコンポーネントへのprop分岐（右パネルの常時表示化・マウスイベントの付与等、構造そのものを変える必要がある箇所）に限定し、見た目の微調整（中央寄せ・角丸の付け方など）は極力CSSの`lg:`バリアントで完結させる。** 理由: `isDesktop`をprop経由で子コンポーネント（`SettingsScreen`・`BottomTabs`内の各種確認ポップアップ等）に渡すには呼び出し階層をまたいで追加する必要があるが、`lg:`はどのコンポーネントからでもクラス名だけで効くため、後述の「確認ポップアップの中央表示」のような横断的な調整にはこちらが圧倒的に低コスト。**新しくデスクトップ専用の見た目調整を追加する時は、まず`lg:`バリアントで足りないか検討してから、足りない場合のみ`isDesktop` stateのprop渡しを検討すること。**
 
 ### ルートコンテナ・全体構造
 
 ```typescript
 <div className={isDesktop?"bg-white font-sans flex flex-col":"max-w-md mx-auto bg-white font-sans flex flex-col"}
-  style={{height:'100%',...(isDesktop?{paddingRight:'380px',paddingLeft:'220px'}:{})}}>
-  {isDesktop&&<nav className="fixed left-0 top-0 bottom-0 z-40 w-[220px] ...">{/* 左サイドバー */}</nav>}
-  <header>...</header>{/* 中央タイムラインの日付ナビ・週カレンダー・ファイルタブはモバイルと共通のまま */}
+  style={{height:'100%',...(isDesktop?{paddingRight:panelCollapsed?'0px':'380px'}:{})}}>
+  <header>...</header>{/* 中央タイムラインの日付ナビ・週カレンダー・ファイルタブはモバイルと共通のまま。isDesktop時のみ今日/統計/ショートカットのアイコンボタンを追加 */}
   <main>...</main>{/* Timeline、モバイルと共通 */}
   {!isDesktop&&<div>{/* Bottom Bar、モバイルのみ */}</div>}
   <div className="fixed z-50" style={{right:isDesktop?'calc(380px + 1rem)':'1rem'}}>{/* FAB */}</div>
@@ -1369,24 +1370,20 @@ useEffect(()=>{
 ```
 
 - 中央タイムライン（`<header>`の日付ナビ・週カレンダー・ファイルタブ、`<main>`のTimeline）は**モバイルと完全に共通のコードパス**。幅・余白の専用調整は特に行っていない（`max-w-md`を外して可変幅にしているだけ）
-- 左サイドバー（220px）・右パネル（380px、`BottomTabs`の`isDesktop`時のスタイル）はどちらも`fixed`配置で、中央カラムはルートの`paddingLeft`/`paddingRight`で両脇を避ける
+- 右パネル（380px、`BottomTabs`の`isDesktop`時のスタイル）は`fixed`配置で、中央カラムはルートの`paddingRight`で避ける（左側の`paddingLeft`は左サイドバー撤去により不要になった）
 - FAB・BottomTabsの`isDesktop`対応は前セッションで実装済み（既存のPhase 1〜3、マウスドラッグ＆ドロップは`FreeTimeCard`・`Timeline`双方に`onMouseDown`/`mouseStart`/`mouseArmed`パターンで追加、キーボードショートカットは`isDesktop`時のみ有効化する`keydown`リスナーで実装）。詳細はコード参照（コメントに「PCレイアウト向け」と明記してある）
 
-### 左サイドバーナビゲーション（新規）
+### ヘッダーのPC専用アイコン（左サイドバー撤去後の移設先）
 
-`App`コンポーネントのルート直下、`isDesktop`時のみ`<nav>`としてレンダリングする独立ブロック。ロゴ（`public/app-icons/mint.png`）＋「BrainBox」ワードマークのヘッダー、ナビ項目リスト、最下部に設定ボタン、という3段構成。
+左サイドバーのナビ項目のうち、ヘッダーの既存アイコン（calendar/search/settings）に対応が無かった「今日」「統計」「キーボードショートカット」の3つを、ヘッダー右側のアイコン行に`isDesktop`限定で追加した（既存の`calendar`アイコンの左隣）。「あとでやる」「買い物リスト」は右パネル自体のタブがすでに導線を兼ねるため、ヘッダーには追加していない。
 
-**ナビ項目は「既存機能にマッピングできるものだけ」に絞ってある**（今日・あとでやる・買い物リスト・検索・統計・設定の6つ。**「統計」は振り返り分析の実装と同時に追記済み**）。参考モックアップには「週間」も含まれていたが、複数日表示の実装後もサイドバー自体には追加していない（「1日/3日/7日」のビュー切り替えピルがヘッダー側にすでにあり、サイドバーに別途導線を置く必要が無かったため）。
-
-```typescript
-const active=(key==='today'&&date===todayStr())||(key==='later'&&effectiveTab==='later')||(key==='shop'&&effectiveTab==='shop')||(key==='stats'&&statsOpen);
+```tsx
+{isDesktop&&<button onClick={()=>{const d=todayStr();setDate(d);setWeekAnchor(d);setActiveCat(null);}}>{tr('todayButton')}</button>}
+{isDesktop&&<button onClick={()=>setStatsOpen(true)}><AppIcons.stats size={20}/></button>}
+{isDesktop&&<button onClick={()=>setShowShortcutsHelp(true)}><AppIcons.question size={20}/></button>}
 ```
 
-`effectiveTab=activeTab??'later'`——`BottomTabs`の`activeTab={activeTab??'later'}`と同じフォールバックを使い、`activeTab`stateがnull（初期状態）でも実際に表示されている「あとでやる」タブをハイライトする。**「今日」と「あとでやる」が同時にアクティブ表示されることがある**（デスクトップでは中央タイムラインと右パネルが同時に見えているため、モバイルの「1画面1ビュー」という排他的な選択状態の概念がそのまま当てはまらない。これは意図的な割り切りで、不具合ではない）。
-
-「設定」ボタンは左サイドバー最下部に独立配置（ナビ項目リストとは`border-t`で区切る）。`setSettingsInitSub(undefined);setSOp(true);`で開く、モバイルのヘッダー歯車アイコンと同じ呼び出し。
-
-**避けるパターン:** 左サイドバーに、まだ実装していない機能への導線を先行して置かない。既存機能にマッピングできないナビ項目は、その機能自体を実装するタイミングで一緒に追加すること。
+**避けるパターン:** ヘッダーのPC専用アイコン行に、まだ実装していない機能への導線を先行して置かない。既存機能にマッピングできない項目は、その機能自体を実装するタイミングで一緒に追加すること。左サイドバーを復活させてナビを移し直さない。
 
 ### 確認ポップアップ・ピッカーの中央表示（`lg:`バリアント）
 
@@ -1407,9 +1404,33 @@ const active=(key==='today'&&date===todayStr())||(key==='later'&&effectiveTab===
 
 このパターンを、ウェイク/スリーププロンプト・色/時刻ピッカー・各種削除確認・タグ削除確認・空き時間マップピッカー・ドラッグ確認ポップアップなど、`fixed inset-0 ... flex items-end justify-center`型のポップアップ全箇所（`SettingsScreen`・`BottomTabs`内の子コンポーネントも含む）に一括適用済み。`isDesktop` propをこれらのサブコンポーネントに新規で渡す必要が無かった（`lg:`バリアントがどこからでも効くため）のが、上記「`isDesktop`判定とブレークポイント」節の設計方針通りの実例。
 
-**例外（別対応が必要な構造）:** `TaskModal`内のアイコン/色ピッカーのような`flex flex-col justify-end`型（`items-end justify-center`とは異なるクラス構成）のサブシートは、この一括修正の対象に含めていない。中央寄せにしたくなった場合は同じ発想（`lg:justify-center`等）で個別に対応すること。
+**`flex flex-col justify-end`型（`items-end justify-center`とは異なるクラス構成）のサブシートも、ユーザーからの「ポップアップは全部中央に出してほしい」という明示的な指示を受けて対応済み。** `TaskModal`のアイコン/色ピッカー・一括入力のアイコンシート・一括入力履歴の編集シート・履歴編集のアイコンシート・`ReorderLaterPopup`がこの型だった。`justify-end`は`flex-col`の主軸（＝縦方向）の配置なので、`lg:justify-center`を追記するだけで中央寄せになる（横方向は子要素の`mx-auto`がすでに効いているため追加不要）。中身のカードには同じ`lg:rounded-b-*`を追加する。`<div className="flex-1"/>`のような下寄せ用スペーサーがある場合は`lg:hidden`を付けて無効化すること（`flex-1`が残っているとそのスペーサーが余白を食い尽くし、`justify-center`が効かなくなる）。
 
-**避けるパターン:** ポップアップの中央寄せに`isDesktop` stateをpropとして新しいサブコンポーネントへ渡さない。既存のポップアップと同じ`fixed inset-0 ... flex items-end justify-center`パターンなら、`lg:items-center`（＋カードに`lg:rounded-b-*`）を追記するだけで済む。
+```jsx
+// Before
+<div className="fixed inset-0 z-[90] bg-black/40 flex flex-col justify-end" onClick={onClose}>
+  <div className="bg-white rounded-t-3xl ..." onClick={e=>e.stopPropagation()}>...</div>
+</div>
+// After
+<div className="fixed inset-0 z-[90] bg-black/40 flex flex-col justify-end lg:justify-center" onClick={onClose}>
+  <div className="bg-white rounded-t-3xl lg:rounded-b-3xl ..." onClick={e=>e.stopPropagation()}>...</div>
+</div>
+```
+
+**`TaskModal`自体の外枠はさらに別の構造（`absolute bottom-0 left-0 right-0`による絶対配置、flexを一切使わない）だったため、同じ`lg:justify-center`の発想が通用しなかった。** 代わりに、外側の`fixed inset-0`コンテナに`lg:flex lg:items-center lg:justify-center`を追加し、カード自身には`lg:static`（`position`を`static`に戻すことで、`bottom-0 left-0 right-0`の絶対配置オフセットを無効化し、外側のflexセンタリングに委ねる）＋`lg:max-h-[85vh]`を追加した。白背景のコンテンツ領域（`bg-gray-50 overflow-y-auto`、高さはJS計算の`contentMaxH`）にも`lg:rounded-b-3xl`を追加している。
+
+```jsx
+// Before
+<div className="fixed inset-0 z-50 bg-black/60" onClick={handleClose}>
+  <div className="absolute bottom-0 left-0 right-0 max-w-md mx-auto" onClick={e=>e.stopPropagation()}>...</div>
+</div>
+// After
+<div className="fixed inset-0 z-50 bg-black/60 lg:flex lg:items-center lg:justify-center" onClick={handleClose}>
+  <div className="absolute bottom-0 left-0 right-0 max-w-md mx-auto lg:static lg:max-h-[85vh]" onClick={e=>e.stopPropagation()}>...</div>
+</div>
+```
+
+**避けるパターン:** ポップアップの中央寄せに`isDesktop` stateをpropとして新しいサブコンポーネントへ渡さない。3パターンのどれに当てはまるか（`items-end justify-center`型／`flex-col justify-end`型／`absolute`配置型）を見極め、対応する`lg:`バリアントの追記だけで済ませること。新しいポップアップを「中央に出ていない」という理由で今後直す時も、まずこの3パターンのどれかに当てはまらないか確認してから個別対応を検討する。
 
 ### ウェルカム画面（`Welcome.tsx`）のデスクトップ対応
 
@@ -1542,14 +1563,14 @@ const multiDayDates = useMemo(()=>{
 
 ### 振り返り分析（`StatsPage`、第3段階・着手済み）
 
-左サイドバーの「統計」から開くPC専用のフルスクリーン画面（`SearchPage`/`CalendarPage`と同じ`fixed inset-0 z-[90] bg-white`パターン）。**これでユーザーと共有していたPC版ロードマップ（第1〜3段階）が全段階完了した。**
+ヘッダーの「統計」アイコンから開くPC専用のフルスクリーン画面（`SearchPage`/`CalendarPage`と同じ`fixed inset-0 z-[90] bg-white`パターン）。**これでユーザーと共有していたPC版ロードマップ（第1〜3段階）が全段階完了した。**
 
 - 概要タイル3枚（今週の完了率・今週完了したタスク数・連続達成日数）＋直近7日間の完了率バー＋ファイルタブ別（直近30日）の完了率バー、という3ブロック構成
 - **新しいチャートライブラリは導入していない。** 単一指標（完了率）の大小を表す横棒だけなので、`bg-gray-100`のトラック＋`bg-[var(--c-primary)]`（単色固定）の塗りを`width:${rate}%`で伸縮させるだけのプレーンなTailwind実装にした（複数系列の識別が必要な場面ではないため、カテゴリ別の配色は導入していない）。値は棒の右に直接ラベル表示（`完了数/合計（率%）`）するため、ホバーツールチップは実装していない
 - **完了率の集計対象は`!t.isLater&&t.startTime`のタスクのみ**（`calcFreeSlots`と同じフィルタ条件）。「あとでやる」のまま未着手のタスクは分母に含めない——「振り返り」は実際にスケジュールした予定の消化率を見る機能という位置づけのため
 - **「今日」は連続達成日数の判定から特別扱いする。** 今日分はまだ進行中とみなし、未完了・タスク無しのいずれでも連続記録を途切れさせない（前日以前のみ「その日の予定が全件完了しているか」を判定し、途切れた時点で打ち切る）。今日何もしていない時点でストリークが0にリセットされて見える、という体験を避けるための配慮
 - ファイルタブ別の集計は直近30日分のみに絞っている（全期間を対象にすると「振り返り」として意味を持つ範囲を超えて古いデータに引っ張られるため）。対象タスクが0件のタブはリストから除外する（`byTab`の`filter(x=>x.total>0)`）
-- `Escape`キー・サイドバーの他ナビ・プロダクトツアー・おすすめ機能カードの表示条件に`statsOpen`を追加済み（`SearchPage`/`CalendarPage`/`SettingsScreen`と同列の「全画面オーバーレイ」として扱う既存パターンに倣った）
+- `Escape`キー・プロダクトツアー・おすすめ機能カードの表示条件に`statsOpen`を追加済み（`SearchPage`/`CalendarPage`/`SettingsScreen`と同列の「全画面オーバーレイ」として扱う既存パターンに倣った）
 
 **避けるパターン（振り返り分析）:**
 - 単一指標の横棒グラフに新しいチャートライブラリを追加しない。既存のTailwind幅ベースの単色バー（`width:${rate}%`のinline style）で十分間に合う
@@ -1574,7 +1595,7 @@ const multiDayDates = useMemo(()=>{
 | `Esc` | 開いているモーダル・パネルを閉じる（優先順位あり、後述） |
 | `?` | このショートカット一覧を表示 |
 
-- `showShortcutsHelp` state（`App`）。左サイドバー最下部、既存の「設定」ボタンの**上**に新しい「キーボードショートカット」ボタンを追加し、クリックで同じポップアップを開く（`?`キーと同じ入口を2つ持つだけで、新しいロジックは増やしていない）
+- `showShortcutsHelp` state（`App`）。ヘッダー右側のアイコン行（`isDesktop`限定）に`AppIcons.question`ボタンを置き、クリックで同じポップアップを開く（`?`キーと同じ入口を2つ持つだけで、新しいロジックは増やしていない。左サイドバー撤去後にこのボタンの置き場所もヘッダーへ移設した）
 - ヘルプポップアップは`fixed inset-0 z-[200] bg-black/40 flex items-center justify-center`の中央ダイアログ（既存の確認ポップアップと同じ`lg:items-center`相当だが、PC専用機能のため最初から中央寄せのみで作ってよいと判断した）。各行は`<kbd>`要素（`bg-gray-100 text-gray-700 text-xs font-semibold px-2 py-1 rounded-lg`）でキー表記を統一する
 - **既存のキーボードハンドラ（単一の`useEffect`、大きめの依存配列で再登録する方式）をそのまま拡張した。** マウスドラッグ系（`mdDragTask`等）で使っている「depsなしの`useEffect`＋ref経由で最新値を読む」stale-closure回避パターンはここでは採用していない——`keydown`は低頻度イベントのため、依存配列が変わるたびにリスナーを再登録するコストは無視できるほど小さく、素直に依存配列へ必要なstate（`modal.open`/`colorPickTarget`/`timePickerTarget`/`durationPickerFor`/`showShortcutsHelp`/`searchOpen`/`statsOpen`/`calendarOpen`/`settingsOpen`/`bulkDeleteConfirm`/`selectMode`/`selectedIds`/`viewMode`/`visibleMultiDayTaskIds`/`date`）を並べるだけで十分だった。新しくショートカットを追加する時もこのパターン（ref新設ではなく依存配列に追記）を踏襲すること
 - **`Escape`は「今何が開いているか」に応じて閉じる対象を切り替える優先順位チェーンを持つ。** 上から順に最初に該当したものだけを閉じて`return`する: ショートカットヘルプ→タスクモーダル→カラーピッカー→時刻ピッカー→所要時間ピッカー→検索→統計→カレンダー→設定→一括削除確認→選択モード。**一括削除確認ポップアップが開いている間は、選択モード自体はまだ閉じない**（`bulkDeleteConfirm`を`selectMode`より先にチェックする）——1回目のEscで確認ダイアログだけを閉じ、2回目のEscで選択モードを抜ける、という2段階の体験にするための順序。この順序を変えると「確認ダイアログを閉じたら選択していたタスクの選択状態も一緒に消える」という意図しない挙動になる
@@ -1591,7 +1612,7 @@ const multiDayDates = useMemo(()=>{
 
 - `isDesktop`の判定基準（`window.innerWidth>=1024`）とTailwindの`lg:`ブレークポイントをズラさない。ズレるとJS側の分岐とCSS側の分岐が別々のタイミングで切り替わり、中間幅で見た目が破綻する
 - 見た目だけの微調整（中央寄せ・角丸・余白等）に`isDesktop` stateをpropで新規に配線しない。まず`lg:`バリアントで実現できないか検討すること（構造自体を変える必要がある場合のみ`isDesktop` propを使う）
-- 左サイドバー・右パネルに、まだ実装していない機能への導線（動かないボタン）を先行して置かない
+- ヘッダー・右パネルに、まだ実装していない機能への導線（動かないボタン）を先行して置かない
 - ネイティブ（iOS/Android）向けのコードパスに`isDesktop`分岐を持ち込まない（`window.innerWidth`はWKWebView/WebViewでも技術的には取得できるが、ネイティブは常にスマホ幅の設計のため、`isDesktop`はWeb版専用の概念として扱うこと）
 - モックアップ（ユーザー共有の参考デザイン）の見た目を未実装機能ごと丸ごと再現しようとしない。「見た目だけ参考にし、不要な機能・重複する機能は取り入れない」という明示的な指示が出ているため、既存機能にマッピングできる要素から段階的に実装すること
 
