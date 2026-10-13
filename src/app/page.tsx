@@ -1257,6 +1257,115 @@ function SearchPage({tasks,onClose,onSelect}:{tasks:Task[];onClose:()=>void;onSe
   );
 }
 
+// ── StatsPage（振り返り分析、PC版・第3段階） ─────────────────────────────────────
+// 新しいチャートライブラリは導入せず、既存のTailwind幅ベースの単色バー（例: VoiceWaveform）と
+// 同じ発想のCSS幅バーで実装する。単一指標（完了率）の大小を表すだけなので配色は単色
+// （var(--c-primary)）固定で十分——複数系列の識別が要る場面ではないため、カテゴリ別配色は導入しない
+function StatsPage({tasks,customTabs,onClose}:{tasks:Task[];customTabs:CustomTab[];onClose:()=>void;}) {
+  const {tr,language} = useI18n();
+
+  const dayLabel=(d:string)=>{
+    const {month,day}=getDateInfo(d);
+    const dow=new Date(d+'T12:00:00').getDay();
+    return `${month}/${day}(${dayNameFor(language,dow)})`;
+  };
+
+  const {weekRate,weekCompleted,weekTotal,streak,last7,byTab} = useMemo(()=>{
+    const today = todayStr();
+    const days = Array.from({length:7},(_,i)=>shiftDate(today,i-6));
+    const last7 = days.map(d=>{
+      const dayTasks = tasks.filter(t=>t.date===d&&!t.isLater&&t.startTime);
+      const completed = dayTasks.filter(t=>t.completed).length;
+      return {date:d,total:dayTasks.length,completed};
+    });
+    const weekTotal = last7.reduce((s,d)=>s+d.total,0);
+    const weekCompleted = last7.reduce((s,d)=>s+d.completed,0);
+    const weekRate = weekTotal>0 ? Math.round(weekCompleted/weekTotal*100) : null;
+
+    // 連続達成日数: 前日から遡って「その日の予定がすべて完了している」日が何日続いているか数える。
+    // 当日分はまだ進行中とみなし、空/未完了でも連続記録を途切れさせない（前日以前のみ判定対象にする）
+    let streak=0;
+    let cursor=today;
+    for(let i=0;i<365;i++){
+      const dayTasks = tasks.filter(t=>t.date===cursor&&!t.isLater&&t.startTime);
+      const allDone = dayTasks.length>0 && dayTasks.every(t=>t.completed);
+      if(!allDone){
+        if(cursor===today){ cursor=shiftDate(cursor,-1); continue; }
+        break;
+      }
+      streak++;
+      cursor=shiftDate(cursor,-1);
+    }
+
+    // ファイルタブ別は直近30日分のみ対象（振り返りとして意味のある範囲に絞る）
+    const since=shiftDate(today,-29);
+    const byTab = customTabs.map(tab=>{
+      const tabTasks = tasks.filter(t=>t.category===tab.id&&!t.isLater&&t.startTime&&t.date>=since&&t.date<=today);
+      const completed = tabTasks.filter(t=>t.completed).length;
+      return {tab,total:tabTasks.length,completed,rate:tabTasks.length>0?Math.round(completed/tabTasks.length*100):null};
+    }).filter(x=>x.total>0);
+
+    return {weekRate,weekCompleted,weekTotal,streak,last7,byTab};
+  },[tasks,customTabs]);
+
+  const Bar=({label,completed,total,rate}:{label:string;completed:number;total:number;rate:number|null})=>(
+    <div className="flex items-center gap-3">
+      <span className="w-20 text-xs text-gray-500 shrink-0 truncate">{label}</span>
+      <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+        <div className="h-full bg-[var(--c-primary)] rounded-full transition-all" style={{width:`${rate??0}%`}}/>
+      </div>
+      <span className="w-20 text-xs text-gray-400 text-right shrink-0">{total>0?`${completed}/${total}（${rate}%）`:'—'}</span>
+    </div>
+  );
+
+  return (
+    <div className="fixed inset-0 z-[90] bg-white flex flex-col">
+      <div className="flex items-center gap-3 px-4 pb-3 border-b border-gray-100" style={{paddingTop:'calc(1rem + env(safe-area-inset-top))'}}>
+        <button onClick={onClose} className="text-sm font-semibold text-gray-600 shrink-0">{tr('cancelButton')}</button>
+        <span className="text-base font-bold text-gray-900">{tr('statsNavLabel')}</span>
+      </div>
+      <div className="flex-1 overflow-y-auto px-4 py-4">
+        {/* 概要タイル */}
+        <div className="grid grid-cols-3 gap-3 mb-6">
+          <div className="bg-gray-50 rounded-2xl px-3 py-3.5">
+            <p className="text-[11px] text-gray-400 mb-1">{tr('statsWeekRateLabel')}</p>
+            <p className="text-xl font-bold text-gray-900">{weekRate===null?'—':`${weekRate}%`}</p>
+          </div>
+          <div className="bg-gray-50 rounded-2xl px-3 py-3.5">
+            <p className="text-[11px] text-gray-400 mb-1">{tr('statsWeekCompletedLabel')}</p>
+            <p className="text-xl font-bold text-gray-900">{weekCompleted}<span className="text-xs font-medium text-gray-400">/{weekTotal}</span></p>
+          </div>
+          <div className="bg-gray-50 rounded-2xl px-3 py-3.5">
+            <p className="text-[11px] text-gray-400 mb-1">{tr('statsStreakLabel')}</p>
+            <p className="text-xl font-bold text-gray-900">{streak}<span className="text-xs font-medium text-gray-400">{tr('statsStreakUnit')}</span></p>
+          </div>
+        </div>
+
+        {/* 直近7日間 */}
+        <p className="text-sm font-bold text-gray-800 mb-3">{tr('statsLast7DaysLabel')}</p>
+        <div className="space-y-2.5 mb-6">
+          {last7.map(d=>(
+            <Bar key={d.date} label={dayLabel(d.date)} completed={d.completed} total={d.total}
+              rate={d.total>0?Math.round(d.completed/d.total*100):0}/>
+          ))}
+        </div>
+
+        {/* ファイルタブ別（直近30日） */}
+        {byTab.length>0&&(
+          <>
+            <p className="text-sm font-bold text-gray-800 mb-3">{tr('statsByTabLabel')}</p>
+            <div className="space-y-2.5">
+              {byTab.map(x=>(
+                <Bar key={x.tab.id} label={x.tab.name} completed={x.completed} total={x.total} rate={x.rate??0}/>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function autoIcon(name: string): string {
   const n = name;
   if (/食|飯|昼|夕|朝|ご飯|食事|弁当|外食|レストラン|カフェ|ランチ|ディナー/.test(n)) return '🍽️';
@@ -7540,6 +7649,7 @@ export default function App() {
   const [colorPickTarget,setColorPickTarget] = useState<'wake'|'sleep'|null>(null);
   const [calendarOpen,setCalOp]  = useState(false);
   const [searchOpen,setSearchOpen] = useState(false);
+  const [statsOpen,setStatsOpen] = useState(false);
   const [activeTab,setActiveTab] = useState<'later'|'shop'|null>(null);
   const [loaded,setLoaded]       = useState(false);
   // PCレイアウト判定（デスクトップ幅のブラウザ向け、1024px以上）。モバイル版の挙動は一切変えず、
@@ -8654,12 +8764,13 @@ export default function App() {
         if(colorPickTarget){setColorPickTarget(null);return;}
         if(timePickerTarget){setTimePickerTarget(null);return;}
         if(searchOpen){setSearchOpen(false);return;}
+        if(statsOpen){setStatsOpen(false);return;}
         if(calendarOpen){setCalOp(false);return;}
         if(settingsOpen){setSOp(false);return;}
         return;
       }
       if(isTyping) return;
-      if(modal.open||searchOpen||calendarOpen||settingsOpen) return;
+      if(modal.open||searchOpen||statsOpen||calendarOpen||settingsOpen) return;
       if(e.key==='n'||e.key==='N'){e.preventDefault();openAdd();return;}
       if(e.key==='/'){e.preventDefault();setSearchOpen(true);return;}
       if(e.key==='t'||e.key==='T'){const nd=todayStr();setDate(nd);setWeekAnchor(nd);return;}
@@ -8668,7 +8779,7 @@ export default function App() {
     };
     document.addEventListener('keydown',onKey);
     return ()=>document.removeEventListener('keydown',onKey);
-  },[isDesktop,modal.open,colorPickTarget,timePickerTarget,searchOpen,calendarOpen,settingsOpen,date]);
+  },[isDesktop,modal.open,colorPickTarget,timePickerTarget,searchOpen,statsOpen,calendarOpen,settingsOpen,date]);
 
   const bulkAddTasks = (newTasks:Omit<Task,'id'>[], endTime:string) => {
     const withIds=newTasks.map(t=>({...t,id:uid()}));
@@ -8840,9 +8951,10 @@ export default function App() {
               ['later',tr('laterTabLabel'),AppIcons.postponed,()=>setActiveTab('later')],
               ['shop',tr('shopTabLabel'),AppIcons.shopping,()=>setActiveTab('shop')],
               ['search',tr('searchLabel'),AppIcons.search,()=>setSearchOpen(true)],
+              ['stats',tr('statsNavLabel'),AppIcons.stats,()=>setStatsOpen(true)],
             ] as const).map(([key,label,Icon,onClick])=>{
               const effectiveTab=activeTab??'later';
-              const active=(key==='today'&&date===todayStr())||(key==='later'&&effectiveTab==='later')||(key==='shop'&&effectiveTab==='shop');
+              const active=(key==='today'&&date===todayStr())||(key==='later'&&effectiveTab==='later')||(key==='shop'&&effectiveTab==='shop')||(key==='stats'&&statsOpen);
               return (
                 <button key={key} onClick={onClick}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl mb-0.5 transition-colors ${active?'bg-white shadow-sm':'hover:bg-gray-100'}`}>
@@ -9309,6 +9421,9 @@ export default function App() {
         <SearchPage tasks={tasks} onClose={()=>setSearchOpen(false)}
           onSelect={(t)=>{if(!t.isLater){setDate(t.date);setWeekAnchor(t.date);}setSearchOpen(false);}}/>
       )}
+      {statsOpen&&(
+        <StatsPage tasks={tasks} customTabs={customTabs} onClose={()=>setStatsOpen(false)}/>
+      )}
 
       {/* ── Task Modal ── */}
       {modal.open&&(
@@ -9485,7 +9600,7 @@ export default function App() {
       )}
 
       {/* ── プロダクトツアー ── */}
-      {showTour&&!settingsOpen&&!calendarOpen&&!searchOpen&&(
+      {showTour&&!settingsOpen&&!calendarOpen&&!searchOpen&&!statsOpen&&(
         <ProductTour gestureSignal={tourDragSignal} modalOpen={modal.open} taskSavedSignal={tourTaskSavedSignal}
           isDragging={!!dragTask}
           onEnterLaterNameStep={onEnterLaterNameStep}
@@ -9499,7 +9614,7 @@ export default function App() {
       )}
 
       {/* ── おすすめ機能カード ── */}
-      {activeRecommendation&&!showTour&&!modal.open&&!settingsOpen&&!calendarOpen&&!searchOpen&&(()=>{
+      {activeRecommendation&&!showTour&&!modal.open&&!settingsOpen&&!calendarOpen&&!searchOpen&&!statsOpen&&(()=>{
         const def=RECOMMENDATION_DEFS.find(d=>d.id===activeRecommendation);
         if(!def) return null;
         return (
