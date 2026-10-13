@@ -8637,46 +8637,6 @@ export default function App() {
     setDurationPickerFor(null);
   };
 
-  // 空き時間への自動配置（PC版・複数日表示限定、第3段階）。所要時間を設定した「あとでやる」タスクを、
-  // 表示中の複数日分の空き時間（calcFreeSlots、既存のFreeTimeCard計算と同じ関数）へ順に詰めていく。
-  // 繰り返しタスクは対象外（単一インスタンス操作が前提の既存の一括操作群と同じ理由でスコープ外にした）。
-  // 所要時間が未設定のタスクはどれだけの枠が必要か判断できないため対象外（直前に実装した「所要時間
-  // クイック設定」と組み合わせて使う想定）
-  const [autoPlaceToast,setAutoPlaceToast] = useState<string|null>(null);
-  const autoPlaceFreeTime = () => {
-    const candidates = tasks.filter(t=>t.isLater&&!t.completed&&!t.recurrence&&(t.duration??0)>0);
-    const showToast=(msg:string)=>{ setAutoPlaceToast(msg); setTimeout(()=>setAutoPlaceToast(null),3000); };
-    if(candidates.length===0){ showToast(tr('autoPlaceResultNoCandidates')); return; }
-    const slotQueues = new Map<string,{cursor:number;remaining:number}[]>();
-    for(const d of multiDayDates){
-      const daySlots = calcFreeSlots(tasks,d,settingsForDate(d));
-      slotQueues.set(d, daySlots.map(s=>({cursor:toMin(s.start),remaining:s.min})));
-    }
-    const updates = new Map<string,{date:string;startTime:string}>();
-    for(const t of candidates){
-      const dur=t.duration!;
-      for(const d of multiDayDates){
-        const queue=slotQueues.get(d)!;
-        const slot=queue.find(s=>s.remaining>=dur);
-        if(slot){
-          updates.set(t.id,{date:d,startTime:fromMin(slot.cursor)});
-          slot.cursor+=dur; slot.remaining-=dur;
-          break;
-        }
-      }
-    }
-    if(updates.size>0){
-      setTasks(prev=>prev.map(tk=>{
-        const u=updates.get(tk.id);
-        if(!u) return tk;
-        return {...tk,isLater:false,date:u.date,startTime:u.startTime,laterSince:undefined,notifications:tk.notifications?.length?tk.notifications:[0]};
-      }));
-    }
-    if(updates.size===0) showToast(tr('autoPlaceResultNone'));
-    else if(updates.size<candidates.length) showToast(tr('autoPlaceResultPartial').replace('{n}',String(updates.size)).replace('{m}',String(candidates.length-updates.size)));
-    else showToast(tr('autoPlaceResultAll').replace('{n}',String(updates.size)));
-  };
-
   // Drag task from あとでやる to timeline
   const startDrag=(task:Task,x:number,y:number)=>{
     setDragTask(task);
@@ -9119,12 +9079,6 @@ export default function App() {
                   {selectMode?tr('multiSelectExitButton'):tr('multiSelectButton')}
                 </button>
               )}
-              {isDesktop&&viewMode!=='1day'&&(
-                <button onClick={autoPlaceFreeTime} disabled={selectMode}
-                  className="px-3 py-1 rounded-full text-xs font-semibold transition-colors mr-2 bg-gray-200 text-gray-500 disabled:opacity-40">
-                  {tr('autoPlaceButton')}
-                </button>
-              )}
               <button onClick={()=>setSettings(s=>({...s,showFreeCard:!(s.showFreeCard??true)}))}
                 className={`relative h-7 rounded-full font-medium whitespace-nowrap transition-colors duration-200 mr-1 ${(settings.showFreeCard??true)?'bg-[var(--c-primary)] text-white':'bg-gray-200 text-gray-500'}`}
                 style={{fontSize:'12px',paddingLeft:(settings.showFreeCard??true)?'10px':'26px',paddingRight:(settings.showFreeCard??true)?'26px':'10px',transition:'padding 0.2s, background-color 0.2s'}}>
@@ -9335,12 +9289,6 @@ export default function App() {
               </button>
             ))}
           </div>
-        </div>
-      )}
-      {autoPlaceToast&&(
-        <div className="fixed bottom-6 z-50 bg-gray-900 text-white text-xs font-semibold px-4 py-2.5 rounded-full shadow-2xl whitespace-nowrap"
-          style={{left:'calc(220px + (100% - 220px - 380px) / 2)',transform:'translateX(-50%)'}}>
-          {autoPlaceToast}
         </div>
       )}
       {showShortcutsHelp&&(
