@@ -275,6 +275,7 @@ const NOTIF_OPTS_PT= [{v:0,l:'No início'},{v:5,l:'5 min antes'},{v:10,l:'10 min
 const NOTIF_OPTS_VI= [{v:0,l:'Khi bắt đầu'},{v:5,l:'trước 5 phút'},{v:10,l:'trước 10 phút'},{v:15,l:'trước 15 phút'},{v:30,l:'trước 30 phút'},{v:60,l:'trước 1 giờ'},{v:1440,l:'trước 1 ngày'}];
 const NOTIF_OPTS_TH= [{v:0,l:'เมื่อเริ่ม'},{v:5,l:'ก่อน 5 นาที'},{v:10,l:'ก่อน 10 นาที'},{v:15,l:'ก่อน 15 นาที'},{v:30,l:'ก่อน 30 นาที'},{v:60,l:'ก่อน 1 ชม.'},{v:1440,l:'ก่อน 1 วัน'}];
 const NOTIF_OPTS_ID= [{v:0,l:'Saat mulai'},{v:5,l:'5 mnt sebelum'},{v:10,l:'10 mnt sebelum'},{v:15,l:'15 mnt sebelum'},{v:30,l:'30 mnt sebelum'},{v:60,l:'1 jam sebelum'},{v:1440,l:'1 hari sebelum'}];
+const durOptsFor = (language:Language) => language==='ja'?DUR_OPTS:language==='ko'?DUR_OPTS_KO:language==='zh-TW'?DUR_OPTS_ZH_TW:language==='es'?DUR_OPTS_ES:language==='pt'?DUR_OPTS_PT:language==='vi'?DUR_OPTS_VI:language==='th'?DUR_OPTS_TH:language==='id'?DUR_OPTS_ID:DUR_OPTS_EN;
 
 const taskAlertBody = (startTime: string, offset: number, tr:(key:StringKey)=>string): string => {
   if(offset===0) return tr('notifTaskStartingSoon').replace('{time}',()=>startTime);
@@ -3339,12 +3340,13 @@ function CompactTaskCard({task,onToggle,onEdit}:{task:Task;onToggle:()=>void;onE
 // 日またぎドラッグ&ドロップ（行をmousedown→別カラムへドロップで日付を変更）のみ対応。
 // 時刻は変更しない（startTimeは維持したままdateだけ差し替える、単一インスタンス操作）。
 // 複数選択（selectMode）中は行クリックが編集ではなく選択トグルになり、誤操作防止のためドラッグも無効化する
-function MultiDayColumn({date,label,isToday,tasks,wakeTime,sleepTime,onEdit,onAdd,onDragStart,dragTaskId,isDragOver,selectMode,selectedIds,onToggleSelect}:{
+function MultiDayColumn({date,label,isToday,tasks,wakeTime,sleepTime,onEdit,onAdd,onDragStart,dragTaskId,isDragOver,selectMode,selectedIds,onToggleSelect,onSetDuration}:{
   date:string;label:string;isToday:boolean;tasks:Task[];wakeTime:string;sleepTime:string;
   onEdit:(t:Task)=>void;onAdd:()=>void;onDragStart:(t:Task,e:React.MouseEvent)=>void;dragTaskId?:string;isDragOver?:boolean;
   selectMode?:boolean;selectedIds?:Set<string>;onToggleSelect?:(id:string)=>void;
+  onSetDuration?:(t:Task,e:React.MouseEvent)=>void;
 }){
-  const {tr} = useI18n();
+  const {tr,language} = useI18n();
   const dayTasks = tasks.filter(t=>!t.isLater&&t.date===date&&t.startTime)
     .sort((a,b)=>toMin(a.startTime!)-toMin(b.startTime!));
   return (
@@ -3381,7 +3383,15 @@ function MultiDayColumn({date,label,isToday,tasks,wakeTime,sleepTime,onEdit,onAd
                 {isSelected&&<span className="w-1.5 h-1.5 rounded-full bg-white"/>}
               </span>
             )}
-            <span className="text-xs text-gray-400 w-10 shrink-0">{t.startTime}</span>
+            {selectMode?(
+              <span className="text-xs text-gray-400 w-12 shrink-0 leading-tight">{t.startTime}</span>
+            ):(
+              <span className="text-xs text-gray-400 w-12 shrink-0 leading-tight hover:text-[var(--c-primary)] hover:underline"
+                onClick={e=>{e.stopPropagation();onSetDuration?.(t,e);}}>
+                {t.startTime}
+                {(t.duration??0)>0&&<><br/>{durLabel(t.duration??0,language)}</>}
+              </span>
+            )}
             <Icon size={14} className="text-gray-400 shrink-0"/>
             <span className={`flex-1 text-sm truncate ${t.completed?'text-gray-400 line-through':'text-gray-800'}`}>{t.name}</span>
           </button>
@@ -8410,6 +8420,16 @@ export default function App() {
     if(!isDesktop||viewMode==='1day'){ setSelectMode(false); setSelectedIds(new Set()); }
   },[isDesktop,viewMode]);
 
+  // タスクの所要時間クイック設定（PC版、複数日表示限定）。MultiDayColumnの時刻ラベルをクリックすると、
+  // TaskModalを開かずその場でDUR_OPTSのピッカーを出す（「まとめて整理」というPC版の方針に合わせ、
+  // 複数日表示から時間だけ素早く調整できるようにした。所要時間自体は元々TaskModalから設定可能）
+  const [durationPickerFor,setDurationPickerFor] = useState<{task:Task;x:number;y:number}|null>(null);
+  const openDurationPicker=(t:Task,e:React.MouseEvent)=>setDurationPickerFor({task:t,x:e.clientX,y:e.clientY});
+  const setTaskDuration=(id:string,v:number)=>{
+    setTasks(prev=>prev.map(t=>t.id===id?{...t,duration:v}:t));
+    setDurationPickerFor(null);
+  };
+
   // Drag task from あとでやる to timeline
   const startDrag=(task:Task,x:number,y:number)=>{
     setDragTask(task);
@@ -8965,7 +8985,8 @@ export default function App() {
               onEdit={openEdit}
               onAdd={()=>{setDate(d);setWeekAnchor(d);openAdd('09:00');}}
               onDragStart={armMdDrag} dragTaskId={mdDragTask?.id} isDragOver={mdDragOverDate===d}
-              selectMode={selectMode} selectedIds={selectedIds} onToggleSelect={toggleSelectId}/>
+              selectMode={selectMode} selectedIds={selectedIds} onToggleSelect={toggleSelectId}
+              onSetDuration={openDurationPicker}/>
           );
         })}
       </main>
@@ -9002,6 +9023,24 @@ export default function App() {
               <button onClick={()=>setBulkDeleteConfirm(false)}
                 className="w-full py-2.5 text-sm text-gray-400 font-semibold">{tr('cancelButton')}</button>
             </div>
+          </div>
+        </div>
+      )}
+      {durationPickerFor&&(
+        <div className="fixed inset-0 z-[150]" onClick={()=>setDurationPickerFor(null)}>
+          <div className="absolute bg-white rounded-2xl shadow-2xl border border-gray-100 p-2 flex flex-wrap gap-1.5"
+            style={{
+              left:Math.min(durationPickerFor.x,window.innerWidth-232),
+              top:Math.min(durationPickerFor.y,window.innerHeight-220),
+              width:'216px',
+            }}
+            onClick={e=>e.stopPropagation()}>
+            {durOptsFor(language).map(({v,l})=>(
+              <button key={v} onClick={()=>setTaskDuration(durationPickerFor.task.id,v)}
+                className={`shrink-0 px-2.5 py-1 rounded-full text-xs font-semibold ${(durationPickerFor.task.duration??0)===v?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-600'}`}>
+                {l}
+              </button>
+            ))}
           </div>
         </div>
       )}
