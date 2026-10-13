@@ -7650,6 +7650,7 @@ export default function App() {
   const [calendarOpen,setCalOp]  = useState(false);
   const [searchOpen,setSearchOpen] = useState(false);
   const [statsOpen,setStatsOpen] = useState(false);
+  const [showShortcutsHelp,setShowShortcutsHelp] = useState(false);
   const [activeTab,setActiveTab] = useState<'later'|'shop'|null>(null);
   const [loaded,setLoaded]       = useState(false);
   // PCレイアウト判定（デスクトップ幅のブラウザ向け、1024px以上）。モバイル版の挙動は一切変えず、
@@ -8799,33 +8800,58 @@ export default function App() {
   const closeModal = () => setModal({open:false,task:null});
 
   // PCレイアウト向けキーボードショートカット（isDesktop時のみ・モバイルのタッチ操作には影響しない）。
-  // 入力欄にフォーカスがある間は文字入力を優先し、ショートカットとして横取りしない
+  // 入力欄にフォーカスがある間は文字入力を優先し、ショートカットとして横取りしない。
+  // この effect は mdDrag系（マウント時に一度だけ登録・refでstale closure回避）とは違い、
+  // 依存配列に使用するstateをすべて並べて毎回再登録する方式——キー入力は低頻度なので
+  // 再登録コストを気にする必要が無く、refを増やさず済むシンプルな実装を優先した
   useEffect(()=>{
     if(!isDesktop) return;
     const onKey=(e:KeyboardEvent)=>{
       const el=e.target as HTMLElement|null;
       const isTyping=el&&(el.tagName==='INPUT'||el.tagName==='TEXTAREA'||el.isContentEditable);
       if(e.key==='Escape'){
+        if(showShortcutsHelp){setShowShortcutsHelp(false);return;}
         if(modal.open){closeModal();return;}
         if(colorPickTarget){setColorPickTarget(null);return;}
         if(timePickerTarget){setTimePickerTarget(null);return;}
+        if(durationPickerFor){setDurationPickerFor(null);return;}
         if(searchOpen){setSearchOpen(false);return;}
         if(statsOpen){setStatsOpen(false);return;}
         if(calendarOpen){setCalOp(false);return;}
         if(settingsOpen){setSOp(false);return;}
+        if(bulkDeleteConfirm){setBulkDeleteConfirm(false);return;}
+        if(selectMode){setSelectMode(false);setSelectedIds(new Set());return;}
         return;
       }
       if(isTyping) return;
-      if(modal.open||searchOpen||statsOpen||calendarOpen||settingsOpen) return;
+      if(modal.open||searchOpen||statsOpen||calendarOpen||settingsOpen||durationPickerFor||showShortcutsHelp) return;
       if(e.key==='n'||e.key==='N'){e.preventDefault();openAdd();return;}
       if(e.key==='/'){e.preventDefault();setSearchOpen(true);return;}
+      if(e.key==='?'){e.preventDefault();setShowShortcutsHelp(true);return;}
       if(e.key==='t'||e.key==='T'){const nd=todayStr();setDate(nd);setWeekAnchor(nd);return;}
       if(e.key==='ArrowLeft'){const nd=shiftDate(date,-1);setDate(nd);setWeekAnchor(nd);return;}
       if(e.key==='ArrowRight'){const nd=shiftDate(date,1);setDate(nd);setWeekAnchor(nd);return;}
+      if(e.key==='1'){setViewMode('1day');return;}
+      if(e.key==='3'){setViewMode('3day');return;}
+      if(e.key==='7'){setViewMode('7day');return;}
+      if((e.key==='s'||e.key==='S')&&viewMode!=='1day'){
+        setSelectMode(m=>{ if(m) setSelectedIds(new Set()); return !m; });
+        return;
+      }
+      if((e.key==='a'||e.key==='A')&&selectMode){
+        e.preventDefault();
+        setSelectedIds(new Set(visibleMultiDayTaskIds));
+        return;
+      }
+      if((e.key==='Delete'||e.key==='Backspace')&&selectMode&&selectedIds.size>0){
+        e.preventDefault();
+        setBulkDeleteConfirm(true);
+        return;
+      }
     };
     document.addEventListener('keydown',onKey);
     return ()=>document.removeEventListener('keydown',onKey);
-  },[isDesktop,modal.open,colorPickTarget,timePickerTarget,searchOpen,statsOpen,calendarOpen,settingsOpen,date]);
+  },[isDesktop,modal.open,colorPickTarget,timePickerTarget,durationPickerFor,showShortcutsHelp,searchOpen,statsOpen,calendarOpen,settingsOpen,bulkDeleteConfirm,selectMode,selectedIds,viewMode,visibleMultiDayTaskIds,date]);
 
   const bulkAddTasks = (newTasks:Omit<Task,'id'>[], endTime:string) => {
     const withIds=newTasks.map(t=>({...t,id:uid()}));
@@ -9011,6 +9037,11 @@ export default function App() {
             })}
           </div>
           <div className="px-3 pb-4 border-t border-gray-200 pt-3">
+            <button onClick={()=>setShowShortcutsHelp(true)}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-100 transition-colors">
+              <AppIcons.question size={19} className="text-gray-400"/>
+              <span className="text-sm font-medium text-gray-600">{tr('shortcutsHelpTitle')}</span>
+            </button>
             <button onClick={()=>{setSettingsInitSub(undefined);setSOp(true);}}
               className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-100 transition-colors">
               <AppIcons.settings size={19} className="text-gray-400"/>
@@ -9252,6 +9283,34 @@ export default function App() {
         <div className="fixed bottom-6 z-50 bg-gray-900 text-white text-xs font-semibold px-4 py-2.5 rounded-full shadow-2xl whitespace-nowrap"
           style={{left:'calc(220px + (100% - 220px - 380px) / 2)',transform:'translateX(-50%)'}}>
           {autoPlaceToast}
+        </div>
+      )}
+      {showShortcutsHelp&&(
+        <div className="fixed inset-0 z-[200] bg-black/40 flex items-center justify-center" onClick={()=>setShowShortcutsHelp(false)}>
+          <div className="bg-white w-full max-w-sm rounded-3xl px-5 pt-5 pb-6 shadow-2xl" onClick={e=>e.stopPropagation()}>
+            <p className="text-base font-bold text-gray-900 mb-4">{tr('shortcutsHelpTitle')}</p>
+            <div className="space-y-2.5">
+              {([
+                ['N',tr('shortcutNewTask')],
+                ['/',tr('shortcutSearch')],
+                ['T',tr('shortcutToday')],
+                ['← →',tr('shortcutDateNav')],
+                ['1 / 3 / 7',tr('shortcutViewMode')],
+                ['S',tr('shortcutSelectMode')],
+                ['A',tr('shortcutSelectAll')],
+                ['Delete',tr('shortcutDeleteSelected')],
+                ['Esc',tr('shortcutEscape')],
+                ['?',tr('shortcutHelp')],
+              ] as const).map(([key,label])=>(
+                <div key={key} className="flex items-center justify-between gap-3">
+                  <span className="text-sm text-gray-600">{label}</span>
+                  <kbd className="shrink-0 bg-gray-100 text-gray-700 text-xs font-semibold px-2 py-1 rounded-lg whitespace-nowrap">{key}</kbd>
+                </div>
+              ))}
+            </div>
+            <button onClick={()=>setShowShortcutsHelp(false)}
+              className="w-full mt-5 py-2.5 bg-gray-100 text-gray-900 rounded-xl text-sm font-semibold">{tr('closeButton')}</button>
+          </div>
         </div>
       )}
 
@@ -9648,7 +9707,7 @@ export default function App() {
       )}
 
       {/* ── プロダクトツアー ── */}
-      {showTour&&!settingsOpen&&!calendarOpen&&!searchOpen&&!statsOpen&&(
+      {showTour&&!settingsOpen&&!calendarOpen&&!searchOpen&&!statsOpen&&!showShortcutsHelp&&(
         <ProductTour gestureSignal={tourDragSignal} modalOpen={modal.open} taskSavedSignal={tourTaskSavedSignal}
           isDragging={!!dragTask}
           onEnterLaterNameStep={onEnterLaterNameStep}
@@ -9662,7 +9721,7 @@ export default function App() {
       )}
 
       {/* ── おすすめ機能カード ── */}
-      {activeRecommendation&&!showTour&&!modal.open&&!settingsOpen&&!calendarOpen&&!searchOpen&&!statsOpen&&(()=>{
+      {activeRecommendation&&!showTour&&!modal.open&&!settingsOpen&&!calendarOpen&&!searchOpen&&!statsOpen&&!showShortcutsHelp&&(()=>{
         const def=RECOMMENDATION_DEFS.find(d=>d.id===activeRecommendation);
         if(!def) return null;
         return (
