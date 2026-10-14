@@ -3555,8 +3555,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
   // measuredH/freeChromeRefのキーは日付を含めること（重要・過去の不具合）: Timelineはdateが変わっても
   // 再マウントされない（<Timeline>にkeyを付けていない）ため、キーが単なる時刻文字列（"09:30"等）だと
   // 別の日の同じ時刻のタスク/空き時間カードの実測値を誤って使い回してしまい、日によって内容の高さが
-  // 違う場合にカードの重なりが発生する。必ずこの2つのヘルパー経由で日付付きキーを使うこと
-  const gkTime=(t:string)=>`${date}-${t}`;
+  // 違う場合にカードの重なりが発生する。必ずこのヘルパー経由で日付付きキーを使うこと（空き時間カード用）
   const gkFree=(t:string)=>`${date}-free-${t}`;
   // 空き時間カードの外枠(padding+border)の高さ。measuredH['free-*']は内側のcontentのみの高さなので、
   // 積み上げ計算で外枠込みの実際の高さに戻すために使う。フォントサイズやborder幅の環境差（実機WebKit等）
@@ -3648,7 +3647,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
   };
 
   const groupStackH=(g:{tasks:Task[];h:number;startTime:string}):number=>{
-    if(g.tasks.length===1) return Math.max(measuredH[gkTime(g.startTime)]??g.h,56);
+    if(g.tasks.length===1) return Math.max(measuredH[g.tasks[0].id]??g.h,56);
     const CAPSULE_H=56,GAP=16;
     const heights=g.tasks.map(t=>Math.max(measuredH[t.id]??estimateTaskH(t),CAPSULE_H));
     return heights.reduce((a,h)=>a+h,0)+(g.tasks.length-1)*GAP;
@@ -3666,7 +3665,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
     .map(([startTime,tasks])=>{
       const rows=Math.ceil(tasks.length/COLS);
       const h=tasks.length===1
-        ?(measuredH[gkTime(startTime)]??estimateTaskH(tasks[0]))
+        ?(measuredH[tasks[0].id]??estimateTaskH(tasks[0]))
         :tasks.reduce((sum,t)=>sum+Math.max(measuredH[t.id]??estimateTaskH(t),56),0)+(tasks.length-1)*16+DUP_LABEL_H;
       return {startTime,tasks,rows,h};
     });
@@ -4041,14 +4040,14 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
           const CapsuleIc=getTaskIcon(task.icon||defaultIconKey(task.name));
           return [
             <div key={`cap-${g.startTime}`} className="absolute z-10 cursor-pointer"
-              style={{top:`${top}px`,left:`${AXIS_X-28}px`,width:'56px',height:`${Math.max(measuredH[gkTime(g.startTime)]??g.h,56)}px`}}
+              style={{top:`${top}px`,left:`${AXIS_X-28}px`,width:'56px',height:`${Math.max(measuredH[task.id]??g.h,56)}px`}}
               onClick={e=>{e.stopPropagation();onEditIconSheet(task);}}>
               <div className="w-full h-full flex items-center justify-center active:opacity-70 transition-opacity" style={{borderRadius:'28px',background:task.color||'var(--c-primary)'}}>
                 <CapsuleIc size={24} className={task.color?'text-white':'text-white'}/>
               </div>
             </div>,
             <div key={g.startTime} className={`absolute z-10 transition-transform select-none ${isPressing?'scale-95':''}`}
-              ref={el=>{if(el){el.dataset.gk=gkTime(g.startTime);roRef.current?.observe(el);}}}
+              ref={el=>{if(el){el.dataset.gk=task.id;roRef.current?.observe(el);}}}
               style={{top:`${top}px`,left:`${CARD_LEFT}px`,right:'0px',
                 opacity:isDragging?0.25:1,pointerEvents:isDragging?'none':'auto'}}
               onTouchStart={e=>startLP(task,e)}
@@ -4107,6 +4106,16 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
             })}
           </div>,
           <div key={g.startTime} className="absolute z-10"
+            ref={el=>{
+              // 単一タスクグループ⇔重複グループの切り替えで同じReact key(g.startTime)の
+              // DOMノードが再利用されるため、以前このノードが単一タスクグループとして
+              // data-gk=task.idで観測されていた場合、そのまま残り続けてしまう
+              // （refコールバックはnullで呼ばれてもクリーンアップできないReactの制約のため）。
+              // 放置すると、このラッパー全体（複数カードぶんの高さ）が子カードと同じ
+              // task.idキーで誤って測定され、measuredHが汚染されてカードの重なり・隙間の
+              // 原因になる。古いdata-gkが残っていたら明示的に解除する。
+              if(el&&el.dataset.gk){roRef.current?.unobserve(el);delete el.dataset.gk;}
+            }}
             style={{top:`${stackTop}px`,left:`${CARD_LEFT}px`,right:'0px'}}>
             <div style={{display:'flex',flexDirection:'column',gap:`${GAP}px`}}>
               {g.tasks.map(task=>{
