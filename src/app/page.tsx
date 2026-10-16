@@ -3475,33 +3475,38 @@ function CompactTaskCard({task,onToggle,onEdit}:{task:Task;onToggle:()=>void;onE
 // 日またぎドラッグ&ドロップ（行をmousedown→別カラムへドロップで日付を変更）のみ対応。
 // 時刻は変更しない（startTimeは維持したままdateだけ差し替える、単一インスタンス操作）。
 // 複数選択（selectMode）中は行クリックが編集ではなく選択トグルになり、誤操作防止のためドラッグも無効化する
-function MultiDayColumn({date,label,isToday,tasks,wakeTime,sleepTime,onEdit,onAdd,onDragStart,dragTaskId,isDragOver,selectMode,selectedIds,onToggleSelect,onSetDuration}:{
+function MultiDayColumn({date,label,isToday,tasks,wakeTime,sleepTime,onEdit,onAdd,onDragStart,dragTaskId,isDragOver,selectMode,selectedIds,onToggleSelect,onSetDuration,compact=false}:{
   date:string;label:string;isToday:boolean;tasks:Task[];wakeTime:string;sleepTime:string;
   onEdit:(t:Task)=>void;onAdd:()=>void;onDragStart:(t:Task,e:React.MouseEvent)=>void;dragTaskId?:string;isDragOver?:boolean;
   selectMode?:boolean;selectedIds?:Set<string>;onToggleSelect?:(id:string)=>void;
   onSetDuration?:(t:Task,e:React.MouseEvent)=>void;
+  compact?:boolean;
 }){
   const {tr,language} = useI18n();
   const dayTasks = tasks.filter(t=>!t.isLater&&t.date===date&&t.startTime)
     .sort((a,b)=>toMin(a.startTime!)-toMin(b.startTime!));
+  // compact(7日表示)は3日表示より列幅を狭め・アイコン/余白を切り詰めて装飾を減らし、
+  // 横スクロールが起きにくくする。タスク名の文字サイズ(text-sm)だけは縮めない
+  // （「文字の読みやすさ優先、横スクロールは許容してよい」という既存の優先順位に従う）
+  const iconSize=compact?12:14;
   return (
     // isDragOver時の背景は`bg-[var(--c-primary)]/5`のようなTailwindの不透明度修飾子では効かない
     // （--c-primaryが単なるhex文字列のため、Tailwindがアルファチャンネルを合成できず透明なまま
     // になる不具合を実機確認済み）。globals.cssの他箇所と同じcolor-mix()をinline styleで使う
     <div data-mdcol={date}
-      className="flex-[1_0_240px] border-r border-gray-100 last:border-r-0 flex flex-col h-full transition-colors"
+      className={`${compact?'flex-[1_0_170px]':'flex-[1_0_240px]'} border-r border-gray-100 last:border-r-0 flex flex-col h-full transition-colors`}
       style={isDragOver?{background:'color-mix(in srgb, var(--c-primary) 6%, white)'}:undefined}>
-      <div className="flex items-center justify-between px-3 py-2.5 border-b border-gray-100 shrink-0">
+      <div className={`flex items-center justify-between border-b border-gray-100 shrink-0 ${compact?'px-2 py-1.5':'px-3 py-2.5'}`}>
         <span className={`text-sm font-bold ${isToday?'text-[var(--c-primary)]':'text-gray-900'}`}>{label}</span>
         <button onClick={onAdd} className="w-6 h-6 flex items-center justify-center text-gray-400 active:text-gray-600">
-          <AppIcons.plus size={16}/>
+          <AppIcons.plus size={compact?14:16}/>
         </button>
       </div>
-      <div className="flex-1 overflow-y-auto px-2 py-2">
-        <div className="flex items-center gap-2 py-1.5 px-2">
-          <AppIcons.wake size={14} className="text-gray-400 shrink-0"/>
+      <div className={`flex-1 overflow-y-auto ${compact?'px-1.5 py-1.5':'px-2 py-2'}`}>
+        <div className={`flex items-center gap-2 px-2 ${compact?'py-1':'py-1.5'}`}>
+          <AppIcons.wake size={iconSize} className="text-gray-400 shrink-0"/>
           <span className="text-xs text-gray-400 w-10 shrink-0">{wakeTime}</span>
-          <span className="text-xs font-medium text-gray-600 truncate">{tr('timelineWake')}</span>
+          {!compact&&<span className="text-xs font-medium text-gray-600 truncate">{tr('timelineWake')}</span>}
         </div>
         {dayTasks.map(t=>{
           const Icon=getTaskIcon(t.icon);
@@ -3511,7 +3516,7 @@ function MultiDayColumn({date,label,isToday,tasks,wakeTime,sleepTime,onEdit,onAd
           <button key={t.id} data-mdrow={t.id}
             onClick={()=>selectMode?onToggleSelect?.(t.id):onEdit(t)}
             onMouseDown={selectMode?undefined:e=>onDragStart(t,e)}
-            className={`w-full flex items-center gap-2 py-2 px-2 rounded-lg text-left select-none ${selectMode?'':'hover:bg-gray-50 cursor-grab'}`}
+            className={`w-full flex items-center gap-2 px-2 rounded-lg text-left select-none ${compact?'py-1.5':'py-2'} ${selectMode?'':'hover:bg-gray-50 cursor-grab'}`}
             style={{opacity:isDragging?0.3:1,background:isSelected?'color-mix(in srgb, var(--c-primary) 10%, white)':undefined}}>
             {selectMode&&(
               <span className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${isSelected?'border-[var(--c-primary)] bg-[var(--c-primary)]':'border-gray-300'}`}>
@@ -3524,10 +3529,10 @@ function MultiDayColumn({date,label,isToday,tasks,wakeTime,sleepTime,onEdit,onAd
               <span className="text-xs text-gray-400 w-12 shrink-0 leading-tight hover:text-[var(--c-primary)] hover:underline"
                 onClick={e=>{e.stopPropagation();onSetDuration?.(t,e);}}>
                 {t.startTime}
-                {(t.duration??0)>0&&<><br/>{durLabel(t.duration??0,language)}</>}
+                {!compact&&(t.duration??0)>0&&<><br/>{durLabel(t.duration??0,language)}</>}
               </span>
             )}
-            <Icon size={14} className="text-gray-400 shrink-0"/>
+            <Icon size={iconSize} className="text-gray-400 shrink-0"/>
             <span className={`flex-1 text-sm truncate ${t.completed?'text-gray-400 line-through':'text-gray-800'}`}>{t.name}</span>
           </button>
           );
@@ -3535,10 +3540,10 @@ function MultiDayColumn({date,label,isToday,tasks,wakeTime,sleepTime,onEdit,onAd
         {dayTasks.length===0&&(
           <p className="text-xs text-gray-300 text-center py-6">—</p>
         )}
-        <div className="flex items-center gap-2 py-1.5 px-2">
-          <AppIcons.sleep size={14} className="text-gray-400 shrink-0"/>
+        <div className={`flex items-center gap-2 px-2 ${compact?'py-1':'py-1.5'}`}>
+          <AppIcons.sleep size={iconSize} className="text-gray-400 shrink-0"/>
           <span className="text-xs text-gray-400 w-10 shrink-0">{sleepTime}</span>
-          <span className="text-xs font-medium text-gray-600 truncate">{tr('timelineSleep')}</span>
+          {!compact&&<span className="text-xs font-medium text-gray-600 truncate">{tr('timelineSleep')}</span>}
         </div>
       </div>
     </div>
@@ -8688,6 +8693,12 @@ export default function App() {
   useEffect(()=>{
     if(!isDesktop||viewMode==='1day'){ setSelectMode(false); setSelectedIds(new Set()); }
   },[isDesktop,viewMode]);
+  // 7日表示に入った時だけ右パネルをデフォルトで畳む（7列がパネル分の幅を奪われると
+  // 横スクロールが発生しやすいため）。viewModeが変化した時にしか発火しないので、
+  // 7日表示のまま手動で開き直した状態はこのeffectに上書きされない
+  useEffect(()=>{
+    if(viewMode==='7day') setPanelCollapsed(true);
+  },[viewMode]);
 
   // タスクの所要時間クイック設定（PC版、複数日表示限定）。MultiDayColumnの時刻ラベルをクリックすると、
   // TaskModalを開かずその場でDUR_OPTSのピッカーを出す（「まとめて整理」というPC版の方針に合わせ、
@@ -9318,7 +9329,7 @@ export default function App() {
               onAdd={()=>{setDate(d);setWeekAnchor(d);openAdd('09:00');}}
               onDragStart={armMdDrag} dragTaskId={mdDragTask?.id} isDragOver={mdDragOverDate===d}
               selectMode={selectMode} selectedIds={selectedIds} onToggleSelect={toggleSelectId}
-              onSetDuration={openDurationPicker}/>
+              onSetDuration={openDurationPicker} compact={viewMode==='7day'}/>
           );
         })}
       </main>
