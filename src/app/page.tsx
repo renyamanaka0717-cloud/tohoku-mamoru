@@ -9258,7 +9258,7 @@ export default function App() {
 
       {/* ── Timeline ── */}
       {(!isDesktop||viewMode==='1day')?(
-      <main ref={mainRef} className="px-3 pt-3 flex-1 overflow-y-auto" style={{paddingBottom:'calc(3.5rem + env(safe-area-inset-bottom))'}}
+      <main ref={mainRef} className="px-3 pt-3 flex-1 overflow-y-auto lg:max-w-[640px] lg:mx-auto lg:w-full" style={{paddingBottom:'calc(3.5rem + env(safe-area-inset-bottom))'}}
         onTouchStart={e=>{mainSwX.current=e.touches[0].clientX;mainSwY.current=e.touches[0].clientY;}}
         onTouchEnd={e=>{
           if(dragTask) return;
