@@ -1345,7 +1345,7 @@ BrainBoxのWeb版（ブラウザ）は従来スマホ幅（`max-w-md mx-auto`）
 
 1. **配色・ヘッダー刷新（完了）** — 後述
 2. **タイムラインの視覚的階層・空き時間カードのコンパクト化（完了）** — 後述
-3. **右パネル・タスク入力/編集UIの刷新（未着手）。`TaskModal`の`docked`表示（右パネル常設フォーム）は撤去し、コンパクトな追加ダイアログ＋専用の編集パネル（450〜500px）に置き換える方針がユーザーから明示的に確定している。**着手時は「右パネル「あとでやる」タブへのTaskModalドッキング表示」節の実装一式（`docked` prop・`dockedFormKey`・`saveDockedLaterTask`・`BottomTabs`の関連6 props）を撤去対象として扱うこと（このCLAUDE.mdの当該節・「避けるパターン」もその時点で書き換える）。**
+3. **右パネル・タスク入力/編集UIの刷新（完了）** — 後述
 4. **1日/3日/7日表示それぞれの個別最適化（未着手）**
 
 **フェーズ1（配色・ヘッダー）の実装内容:**
@@ -1383,7 +1383,7 @@ BrainBoxのWeb版（ブラウザ）は従来スマホ幅（`max-w-md mx-auto`）
 - Tailwindのクラス名（`.text-gray-800`等）を要素セレクタや別クラスで上書きする時、`!important`を付け忘れない（特に`body`のような、Tailwindのクラスが既に効いている要素をCSS側だけで上書きする場合は必須）
 - `Timeline`コンポーネント内のアイコン・カードの見た目を変える時、`AXIS_X`/`CARD_LEFT`/`ICON_HALF`/`CAPSULE_H`等のレイアウト定数や`measuredH`が参照する要素の実高さを変更しない。サイズ変更は`transform:scale()`、表示/非表示の切り替えは横幅の開閉または`absolute`配置に限定し、縦方向のflowに影響する変更（`display`切り替え・`max-h`開閉・paddingの縦方向増減をmeasureRef配下で行う等）は避ける
 - `FreeTimeCard`/`TaskCard`に新しいホバー要素を追加する時、それが`measureRef`/ResizeObserverの実測対象の内側にあるか確認し、内側にある場合は`absolute`配置にするか、高さに影響しない横方向の変化に限定すること
-- フェーズ3着手前に、現在の「右パネル「あとでやる」タブへのTaskModalドッキング表示」節の内容をそのまま正として扱わない（この節は近く置き換えられる予定である旨、本サブセクションの冒頭に明記済み）
+- 新規タスク作成（`modal.task===null`）の経路に、編集パネル用の`docked`表示を巻き込まない（`ProductTour`の`data-tour`セレクタが機能しなくなる。詳細は「右パネル・タスク入力/編集UI」節を参照）
 
 **左サイドバー（ロゴ＋今日/あとでやる/買い物リスト/検索/統計/設定のナビ）は、ユーザーからの明示的な指示により撤去済み。** 「今日」「統計」「キーボードショートカット」のナビ機能は、ヘッダー右側のアイコン行（`calendar`/`search`/`settings`アイコンと同列、`isDesktop`時のみ表示）に移設した。「あとでやる」「買い物リスト」への導線は右パネル自体のタブ（`BottomTabs`の`Later`/`Shopping list`タブ、常時表示）がすでに兼ねているため、専用のナビ項目は持たせていない。**新しいセッションで左サイドバーを復活させないこと。**
 
@@ -1686,29 +1686,28 @@ After:  fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-
 - `catBasic`等のカテゴリ内容をモバイル分岐・デスクトップ分岐でそれぞれ別に書かない（同じローカル変数を両方から参照する設計を崩すと、新しい設定項目を追加した時にどちらか片方に追記し忘れる不具合の元になる）
 - 新しい設定カテゴリ・新しい個別設定画面を追加する時も、カテゴリの中身は`cat*`変数へ追記し、個別画面は既存の`subHeader()`＋`fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto lg:max-w-none lg:w-full lg:[&>*:not(.fixed)]:max-w-[1000px] lg:[&>*:not(.fixed)]:mx-auto lg:[&>*:not(.fixed)]:w-full`という定型のラッパークラスをそのままコピーすること（独自の幅調整を新しく考案しない）
 
-### 右パネル「あとでやる」タブへのTaskModalドッキング表示（実装済み）
+### 右パネル・タスク入力/編集UI（フェーズ3、実装済み）
 
-PC版の右パネル「あとでやる」タブを上下に分割し、上半分は従来通りのタスク一覧、下半分には**ポップアップではなく常設のタスク作成フォーム**（あとで／時間指定／繰り返しのモードタブ付き、既存のTaskModalそのもの）を埋め込んだ。ユーザーから実際の画面（FABで開いたTaskModalのスクリーンショット）を示され「この画面をそのまま入れたい感じ」という明確な指示があり、新しい簡易フォームを作るのではなく既存のTaskModalを流用する方針にした。
+**旧実装（右パネル下半分へのTaskModal常設ドッキング表示）は「PC版UI/UX刷新（第2ラウンド）」フェーズ3で撤去し、以下の新デザインに置き換えた。** ユーザーから「右パネルにフォーム全体を常設するのは画面が大きすぎる」という指摘を受け、(1) 右パネルには名前だけですぐ追加できるコンパクトな追加バー、(2) 既存タスクの編集は画面右に専用の480pxパネルがスライドインする、という2つの軽量な形に分離した。
 
-**`TaskModal`に`docked?:boolean`propを追加し、1つのコンポーネントをポップアップ表示・ドッキング表示の両方で共用している。** 新しい専用コンポーネントは作らず、以下の3箇所だけを`docked`で分岐させた:
-- 外枠2重divのpositioning: 通常は`fixed inset-0 ... lg:flex lg:items-center lg:justify-center`＋`absolute bottom-0 ... lg:static`（ポップアップ中央表示の節を参照）。`docked`時はどちらも`h-full w-full min-w-0 flex flex-col`——`fixed`/`absolute`を一切使わず、ドッキング先の親要素（右パネルの下半分）の中に普通のブロック要素として収まる
-- ×（閉じる）ボタン: `docked`時は非表示（`!docked&&<button onClick={handleClose}>×</button>`）。常設フォームには「閉じる」という概念が無いため
-- 白コンテンツ領域の高さ: 通常はwindow高さベースのJS計算（`contentMaxH`、キーボード表示時のAndroid不具合対策）を`style`で固定指定しているが、`docked`時はこの計算が無意味（ドッキング先コンテナの高さはwindowではなく親のflexレイアウトで決まる）なので`flex-1`に差し替え、親の残り高さに自然に追従させる
+**新規タスク作成の経路は意図的に変更していない。** FAB・キーボードショートカット`N`・空き時間カードのホバー「＋」ボタン（フェーズ2で追加）・複数日表示カラムの「＋」ボタンは、すべて従来通り`openAdd()`で中央ポップアップ（PC版はフェーズ1の`lg:flex lg:items-center lg:justify-center`で中央表示）を開く——`ProductTour`の`data-tour`属性（`modal-card`/`save-button`/`name-input-row`/`tab-later`/`start-time-row`、いずれも`!task`条件）はすべて「新規作成（`task===null`）」の時だけ有効になる設計のため、新規作成の見た目・経路を変えなければツアーに一切影響しないという安全な境界線がある。右パネルのコンパクト追加バーの「詳しく追加」ボタンも、新しい経路を作らず同じ`openAdd()`を呼ぶだけにしてこの安全な境界を保っている。
 
-**`data-tour`属性（プロダクトツアー用）はすべて`!docked`を条件に追加した。** 右パネルのドッキングフォームはPC版で常時マウントされているため、`!task`だけで判定すると`modal-card`/`save-button`/`name-input-row`/`tab-later`のセレクタがドッキング版とポップアップ版の2箇所にヒットしてしまい、`ProductTour`の`querySelector`がどちらを拾うか不定になる不具合になる。**新しくTaskModal内に`data-tour`を追加する時は、必ず`!docked`も条件に含めること**（ツアーはポップアップ版のTaskModalだけを対象にする設計のため）。
+**①右パネルのコンパクト追加バー（`BottomTabs`の「あとでやる」タブ最下部、`isDesktop`限定）:** 旧ドッキングフォームの代わりに、名前入力1行＋送信ボタン（即座に「あとでやる」タスクとして追加）＋「詳しく追加」ボタン（展開の代わりに中央ポップアップを開く）という3要素だけの薄いバーにした。送信は新しいロジックを作らず、既存の`addVoiceLaterTask(text)`（Watch/ウィジェット音声入力が使っている、最小構成の「あとでやる」タスクをその場で作る関数）をそのまま`onQuickAdd`として渡して再利用している——`defaultIconKey()`によるアイコン自動判定やAnalyticsイベント発火も含めて無改修で流用できた。`BottomTabs`から旧ドッキングフォーム専用だった6個のprop（`currentDate`・`globalTags`・`onOpenTagSettings`・`atLocationLimit`・`onOpenBulkInput`・`onSaveDockedTask`・`dockedFormKey`）は使用箇所ごと削除し、代わりに`onQuickAdd`・`onOpenAdd`の2個だけを追加した。`App`側も不要になった`dockedFormKey` state・`saveDockedLaterTask`関数を削除済み（過剰設計を避ける方針に沿って、使われなくなったコードをその場で片付けた）。
 
-**保存後のフォームリセットは、TaskModal自身に手を入れず`key`での強制再マウントで実現している。** `docked`時の`task`は常に`null`（新規作成専用、既存タスクの編集はドッキング版では行わない）。`App`に`dockedFormKey`（number）stateを持たせ、ドッキング版`TaskModal`に`key={dockedFormKey}`を渡す。保存用コールバック`saveDockedLaterTask`（`App`、ポップアップ版の`saveTasks`と同じタスク生成ロジックだが`closeModal()`を呼ばない）が保存の最後に`setDockedFormKey(k=>k+1)`する。keyが変わるとReactはコンポーネントを丸ごとアンマウント→再マウントし、`name`/`icon`/`tags`/`subtasks`等の全useStateが初期値に戻る。**TaskModal内部の数十個のstateを個別にリセットする実装は避けた**（リセット漏れが起きやすく、新しいstateを追加するたびにリセット処理への追記が必要になるため）。新しく似たような「保存後に空の状態へ戻る常設フォーム」を作る時も、個々のstateリセットではなくこの`key`再マウント方式を検討すること。
+**②既存タスクの編集パネル（`TaskModal`の`docked` propを再利用、意味を作り替えた）:** 旧`docked`は「右パネルに常設・閉じるボタン無し・親要素に合わせてfill」という意味だったが、常設フォーム自体を撤去したため同じprop名を**「画面右端に480pxでスライドインする、閉じられる編集パネル」**という新しい意味に作り替えた（新しいprop名を増やさず、同じ`TaskModal`コンポーネントを流用する設計は維持）。
+- 外枠: `docked`時は`fixed inset-0 z-[180] bg-black/20`（薄い背景ディム、クリックで閉じる）＋`absolute right-0 top-0 bottom-0 w-full sm:w-[480px] bg-white shadow-2xl flex flex-col`（右端固定、全高）。ポップアップ版の`fixed inset-0 z-50 bg-black/60 lg:flex lg:items-center lg:justify-center`とは完全に別のクラス文字列（共通化しようとしない——中央ポップアップと右スライドインパネルは配置の根本が異なる）
+- ×ボタン: 常に表示する（旧実装は`!docked`で非表示にしていたが、今は「閉じられるパネル」なので常時必要）
+- 白コンテンツ領域: `docked`時は`flex-1`のまま（変更なし、親要素=480pxパネルのflex-colの残り高さに追従）、角丸だけ`rounded-b-2xl`を外した（画面端に張り付くパネルに角丸は不要なため）
+- `data-tour`属性の`!docked`条件はそのまま残してある（削除しても実害は無いが、`docked`は常に`task`有り=`!task`が偽になる組み合わせでしか使われないため、残しておく方が安全側）
+- `App`の呼び出し側は、ポップアップ用`<TaskModal>`の1箇所だけに`docked={isDesktop&&!!modal.task}`を追加しただけ（新しいstate・新しい別レンダー呼び出しは増やしていない）。`modal.task`が`null`（新規作成）なら`isDesktop`でも常にポップアップのまま、既存タスクを編集中（`modal.task`が存在）かつ`isDesktop`の時だけ自動的に右パネルへ切り替わる
 
-**`BottomTabs`に6つの新規propを追加した**（`currentDate`・`globalTags`・`onOpenTagSettings`・`atLocationLimit`・`onOpenBulkInput`・`onSaveDockedTask`・`dockedFormKey`）。ドッキング版TaskModalが必要とする値のうち、`customTabs`/`isPremium`/`onOpenPro`/`notificationsEnabled`/`onEnableNotifications`は既存のpropをそのまま流用できた。`onOpenTagSettings`/`onOpenBulkInput`は、ポップアップ版の同名コールバックが内部で`closeModal()`を呼んでから設定画面へ遷移するのに対し、ドッキング版は「閉じるモーダル」自体が存在しないため`closeModal()`を呼ばず`setSettingsInitSub(...);setSOp(true);`だけを行う、という薄いラッパーにしている。
-
-**レイアウトの罠（実装中に実際に発生、幅が右パネルからはみ出す不具合）:** `docked`時の外枠2重divを単に`fixed`/`absolute`を外しただけ（`w-full`等の明示指定なし）にしたところ、ヘッダー内の要素（モードタブ・ファイルタブ行など）が持つ横幅要求にdivが引っ張られ、右パネル（380px）を大きくはみ出して画面右端から見切れる不具合が発生した。**`flex`コンテナの子要素はデフォルトで`min-width:auto`（＝内容の最小幅より縮まない）ため、内容が横に広いとその祖先ごと意図せず広がってしまう典型的な罠。** 修正: 外枠2重divに明示的に`w-full min-w-0`を追加し、`BottomTabs`側のドッキングコンテナ（`flex-[1_1_50%] ...`）・その外側の「あとでやる」タブラッパー（`flex flex-col ...`、CSS Gridのgrid-areaを共有するgrid item）にも`min-w-0`を追加した。**新しくflexやgridの入れ子の中に固定幅コンテナ（ここでは380pxの右パネル）へ収めたいコンポーネントを配置する時は、祖先チェーンの各段に`min-w-0`が必要かどうかを疑うこと**（`w-full`だけでは祖先が`min-width:auto`で広がる場合に効果が無い）。
+**z-indexの衝突確認:** 右パネル本体（`BottomTabs`のデスクトップサイドバー）は`z-40`、右パネル内の各種確認ポップアップ（地図ピッカー・削除確認等）は`z-[100]`〜`z-[110]`を使っているため、編集パネルの`z-[180]`はこれらより確実に上に重なる（Playwrightで実際に編集パネルが右パネルを覆って表示されることを確認済み）。
 
 **避けるパターン:**
-- `docked`用に新しい簡易フォームコンポーネントを作らない。既存の`TaskModal`を`docked` propで流用すること（ユーザーが「既存のTaskModal画面そのまま」を明示的に要望したため）
-- ドッキング版TaskModalの`data-tour`属性を`!docked`の条件なしで有効化しない（プロダクトツアーが常設フォームとポップアップのどちらを拾うか不定になる）
-- 保存後のフォームリセットを、TaskModal内部の各useStateを手動でクリアする実装にしない（`key`での再マウント方式を使うこと。stateが増えるたびにリセット処理への追記が必要になる設計は避ける）
-- ドッキング時の外枠divの横幅制御を`w-full`だけで済ませない。祖先チェーン（`BottomTabs`のドッキングコンテナ・later-tabのflex-colラッパー）にも`min-w-0`が必要か確認すること
-- FAB（＋ボタン）はドッキングフォーム追加に合わせて変更していない（仕様未確定のため現状維持。将来「あとでやるタブ表示中はFABを隠す」等の変更を検討する時は、プロダクトツアーの`data-tour="fab-add"`スポットライトが機能し続けるか確認すること）
+- 右パネルのコンパクト追加バーに、`addVoiceLaterTask`を再利用せず新しいタスク生成ロジックを書かない（アイコン自動判定・Analyticsイベントまで含めて同一の関数で足りる）
+- 新規タスク作成の経路（FAB・ショートカット・空き時間カード＋・複数日カラム＋・右パネルの「詳しく追加」）を、編集パネル用に作り替えた`docked`セマンティクスに巻き込まない。新規作成は`modal.task===null`の間は常にポップアップのまま——これが崩れると`ProductTour`の`data-tour`セレクタが機能しなくなる
+- `docked` propに「編集パネル」以外の新しい意味を追加で持たせない（1つのbooleanに複数の見た目を詰め込むと分岐が読みにくくなる。新しい表示モードが要るなら新しいpropを検討すること）
+- 編集パネルの外枠クラスをポップアップ版と共通化しようとしない（中央寄せ`lg:flex lg:items-center lg:justify-center`と右端固定`absolute right-0 top-0 bottom-0`は構造が別物）
 
 ### 避けるパターン（PC版全体）
 

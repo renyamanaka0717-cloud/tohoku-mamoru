@@ -2293,15 +2293,15 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
   const contentMaxH = Math.max(120, Math.min(availH*0.55, availH-headerH-8));
 
   return (
-    <div className={docked?"h-full w-full min-w-0 flex flex-col":"fixed inset-0 z-50 bg-black/60 lg:flex lg:items-center lg:justify-center"} onClick={docked?undefined:handleClose}>
-      <div className={docked?"h-full w-full min-w-0 flex flex-col":"absolute bottom-0 left-0 right-0 max-w-md mx-auto lg:static lg:max-h-[85vh]"} onClick={docked?undefined:(e=>e.stopPropagation())} data-tour={!task&&!docked?'modal-card':undefined}>
+    <div className={docked?"fixed inset-0 z-[180] bg-black/20":"fixed inset-0 z-50 bg-black/60 lg:flex lg:items-center lg:justify-center"} onClick={handleClose}>
+      <div className={docked?"absolute right-0 top-0 bottom-0 w-full sm:w-[480px] max-w-full bg-white shadow-2xl flex flex-col":"absolute bottom-0 left-0 right-0 max-w-md mx-auto lg:static lg:max-h-[85vh]"} onClick={e=>e.stopPropagation()} data-tour={!task&&!docked?'modal-card':undefined}>
         {/* ── Dark header ── */}
-        <div ref={headerRef} className="rounded-t-3xl px-4 pt-4" style={{background:headerBg}}>
+        <div ref={headerRef} className={docked?"px-4 pt-4":"rounded-t-3xl px-4 pt-4"} style={{background:headerBg}}>
         <div>
           {/* Buttons row */}
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              {!docked&&<button onClick={handleClose} className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center text-white">×</button>}
+              <button onClick={handleClose} className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center text-white">×</button>
               {!task&&onBulkInput&&<button onClick={onBulkInput} className="px-3 py-1.5 text-sm font-semibold rounded-full bg-white/20 text-white flex items-center gap-1">{tr('taskModalBulkInput')}<AppIcons.caretRight size={12}/></button>}
             </div>
             <div className="flex items-center gap-3">
@@ -2390,9 +2390,10 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
         {/* ── White content ── */}
         {/* heightで固定する（maxHeightだと「あとで」のように項目が少ないモードだけ
             シートが短くなり、モード切替のたびに高さがガタつくため、常に同じ高さで統一する）。
-            dockedの時はポップアップ用のwindow基準の高さ計算(contentMaxH)が無意味なため、
-            flex-1で親（ドッキング先のコンテナ）の残り高さに自然に合わせる */}
-        <div className={`bg-gray-50 overflow-y-auto ${docked?'flex-1 rounded-b-2xl':'lg:rounded-b-3xl'}`} style={docked?undefined:{height:contentMaxH}}>
+            dockedの時は画面右端に張り付くパネルなので、ポップアップ用のwindow基準の高さ計算
+            (contentMaxH)も角丸(rounded-b-*)も無意味。flex-1で親(fixed、画面の残り高さ)に
+            自然に合わせ、角丸は付けない */}
+        <div className={`bg-gray-50 overflow-y-auto ${docked?'flex-1':'lg:rounded-b-3xl'}`} style={docked?undefined:{height:contentMaxH}}>
           {/* Recurring settings */}
           {mode==='recurring'&&(
             <>
@@ -5129,7 +5130,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
   onToggle,onEdit,onAddShop,onToggleShop,onDeleteShop,onEditShop,onReorderLater,shopNotifSettings,onShopNotifSettings,
   shopLocations,onShopLocations,isPremium,onOpenPro,
   notificationsEnabled,onEnableNotifications,isDesktop,customTabs,
-  currentDate,globalTags,onOpenTagSettings,atLocationLimit,onOpenBulkInput,onSaveDockedTask,dockedFormKey
+  onQuickAdd,onOpenAdd
 }:{
   activeTab:'later'|'shop'; onSwitchTab:(t:'later'|'shop')=>void; onClose:()=>void;
   tasks:Task[]; shopItems:ShopItem[]; pendingCount:number; shopPending:number;
@@ -5141,11 +5142,11 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
   isPremium:boolean; onOpenPro:()=>void;
   notificationsEnabled?:boolean; onEnableNotifications?:()=>void;
   isDesktop?:boolean; customTabs?:CustomTab[];
-  currentDate?:string; globalTags?:TagDef[]; onOpenTagSettings?:()=>void; atLocationLimit?:boolean;
-  onOpenBulkInput?:()=>void; onSaveDockedTask?:(data:Omit<Task,'id'>[])=>void; dockedFormKey?:number;
+  onQuickAdd?:(name:string)=>void; onOpenAdd?:()=>void;
 }) {
   const {tr,language} = useI18n();
   const [shopInput,setShopInput] = useState('');
+  const [quickAddName,setQuickAddName] = useState('');
   const [sortDir,setSortDir]     = useState<null|'asc'|'desc'>(null);
   // 「あとでやる」のファイルタブ別グループ分け（PC版のみ）。既存のヘッダーファイルタブで既に
   // activeCategoryによる絞り込みが行われている（filteredTasks経由）ため、ここでのグループ分けは
@@ -5299,7 +5300,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
         <div className="flex-1 overflow-hidden" style={{display:'grid',gridTemplateColumns:'1fr',gridTemplateRows:'1fr'}}>
         {/* ── あとでやる tab ── */}
           <div className={`flex flex-col min-w-0 ${activeTab==='later'?'':'invisible pointer-events-none'}`} style={{gridArea:'1/1'}}>
-          <div className={`overflow-y-auto px-4 ${isDesktop?'flex-[1_1_50%]':'flex-1'}`} style={{paddingBottom:isDesktop?'1rem':'calc(5.5rem + env(safe-area-inset-bottom))'}}>
+          <div className="overflow-y-auto px-4 flex-1" style={{paddingBottom:isDesktop?'1rem':'calc(5.5rem + env(safe-area-inset-bottom))'}}>
             <div className="flex items-center justify-between pt-3 pb-2">
               <h3 className="text-sm font-bold text-gray-900">
                 {tr('laterTabLabel')}
@@ -5448,14 +5449,25 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
               </div>
             )}
           </div>
+          {/* PC版: 右パネル常設のコンパクトな追加バー（名前だけですぐ「あとでやる」に追加）。
+              以前はTaskModal全体をここに常設ドッキング表示していたが「右パネルに入れるには
+              画面が大きすぎる」という指摘を受け撤去し、この1行バー+詳細は別パネルで編集、という
+              構成に置き換えた（CLAUDE.mdの「右パネル・タスク入力/編集UIの刷新」節を参照） */}
           {isDesktop&&(
-            <div className="flex-[1_1_50%] min-w-0 border-t border-gray-100 overflow-hidden">
-              <TaskModal key={dockedFormKey} docked task={null} currentDate={currentDate??todayStr()}
-                onSave={onSaveDockedTask??(()=>{})} onClose={()=>{}} onBulkInput={onOpenBulkInput}
-                globalTags={globalTags??[]} customTabs={customTabs??[]}
-                notificationsEnabled={notificationsEnabled} onEnableNotifications={onEnableNotifications}
-                isPremium={isPremium} onOpenTagSettings={onOpenTagSettings} onOpenPro={onOpenPro}
-                atLocationLimit={atLocationLimit??false}/>
+            <div className="shrink-0 border-t border-gray-100 bg-white px-3 py-2.5 flex items-center gap-2">
+              <input value={quickAddName} onChange={e=>setQuickAddName(e.target.value)}
+                onKeyDown={e=>{if(e.key==='Enter'&&quickAddName.trim()){onQuickAdd?.(quickAddName.trim());setQuickAddName('');}}}
+                placeholder={tr('laterQuickAddPlaceholder')}
+                className="flex-1 min-w-0 bg-gray-100 rounded-full px-4 py-2.5 text-sm outline-none"/>
+              <button onClick={()=>{if(quickAddName.trim()){onQuickAdd?.(quickAddName.trim());setQuickAddName('');}}}
+                disabled={!quickAddName.trim()}
+                className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 bg-[var(--c-primary)] text-white disabled:opacity-40 transition-opacity">
+                <AppIcons.plus size={16}/>
+              </button>
+              <button onClick={onOpenAdd}
+                className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 bg-gray-100 text-gray-500 active:bg-gray-200">
+                <AppIcons.caretRight size={14}/>
+              </button>
             </div>
           )}
           </div>
@@ -7787,8 +7799,6 @@ export default function App() {
   const [searchOpen,setSearchOpen] = useState(false);
   const [statsOpen,setStatsOpen] = useState(false);
   const [showShortcutsHelp,setShowShortcutsHelp] = useState(false);
-  // PC版右パネルに常設ドッキング表示するTaskModalを、保存のたびに作り直してリセットするためのkey
-  const [dockedFormKey,setDockedFormKey] = useState(0);
   const [activeTab,setActiveTab] = useState<'later'|'shop'|null>(null);
   const [loaded,setLoaded]       = useState(false);
   // PCレイアウト判定（デスクトップ幅のブラウザ向け、1024px以上）。モバイル版の挙動は一切変えず、
@@ -9000,21 +9010,6 @@ export default function App() {
     if(!wasLocNotify&&newTasks[0].locationNotify) logAnalyticsEvent('location_notification_created');
     closeModal();
   };
-  // PC版右パネルの「あとでやる」タブ下半分に常設ドッキング表示しているTaskModal専用の保存処理。
-  // ポップアップ版のsaveTasksと違い、閉じるモーダル自体が存在しないのでcloseModal()は呼ばない。
-  // 代わりにdockedFormKeyをインクリメントし、ドッキング先のTaskModalにkey propとして渡すことで
-  // Reactにコンポーネントを丸ごと作り直させ（全useStateが初期値に戻る）、次の入力に備えて
-  // フォームを空の状態にリセットする
-  const saveDockedLaterTask = (data:Omit<Task,'id'>[]) => {
-    const newTasks=data.map(d=>({...d,id:uid()}));
-    setTasks(prev=>[...prev,...newTasks]);
-    logAnalyticsEvent('task_created',{mode:newTasks[0].isLater?'later':newTasks[0].recurrence?'recurring':'scheduled'});
-    if(newTasks[0].isLater) logAnalyticsEvent('later_task_created');
-    else if(newTasks[0].startTime) logAnalyticsEvent('timeline_task_added');
-    if(newTasks[0].notifications?.length??0) logAnalyticsEvent('time_notification_created');
-    if(newTasks[0].locationNotify) logAnalyticsEvent('location_notification_created');
-    setDockedFormKey(k=>k+1);
-  };
   // 繰り返しタスク編集の「完了」確認ポップアップ（recConfirm）から呼ばれる。
   // 'one': 編集中のインスタンス1件のみ更新し、新しいseriesIdを発行してシリーズから切り離す
   // （以後「すべての予定を変更/削除」等の対象から外れる。所要時間やメモ等、名前・繰り返し設定・
@@ -9494,11 +9489,7 @@ export default function App() {
           notificationsEnabled={settings.notificationsEnabled??true}
           onEnableNotifications={()=>setSettings(s=>({...s,notificationsEnabled:true}))}
           isDesktop={isDesktop} customTabs={customTabs}
-          currentDate={date} globalTags={globalTags}
-          onOpenTagSettings={()=>{setSettingsInitSub('tags');setSOp(true);}}
-          atLocationLimit={activeLocationRegionCount>=MAX_MONITORED_REGIONS}
-          onOpenBulkInput={()=>{setSettingsInitSub('bulkInput');setSOp(true);}}
-          onSaveDockedTask={saveDockedLaterTask} dockedFormKey={dockedFormKey}/>
+          onQuickAdd={addVoiceLaterTask} onOpenAdd={()=>openAdd()}/>
       )}
 
       {/* ── 右パネルの開閉トグル（PC版のみ） ── */}
@@ -9648,7 +9639,8 @@ export default function App() {
           isPremium={isPremium} atLocationLimit={activeLocationRegionCount>=MAX_MONITORED_REGIONS}
           suppressAutoFocus={showTour&&!modal.task}
           focusNameSignal={showTour&&!modal.task?tourFocusNameSignal:undefined}
-          fillTestNameSignal={showTour&&!modal.task?tourFillTestNameSignal:undefined}/>
+          fillTestNameSignal={showTour&&!modal.task?tourFillTestNameSignal:undefined}
+          docked={isDesktop&&!!modal.task}/>
       )}
       {showVoicePopup&&(
         <VoiceCapturePopup isPremium={isPremium} language={language}
