@@ -3235,13 +3235,13 @@ function TaskCard({task,onToggle,onEdit,globalTags,onSubtaskToggle,tabName,iconD
   const hasIcons = subtasks.length>0;
   const firstTagColor = (task.tags??[]).map(n=>globalTags.find(t=>t.name===n)?.color).find(Boolean);
   return (
-    <div className={`relative bg-white rounded-2xl border border-gray-100 px-3 py-2.5 overflow-hidden ${task.completed?'opacity-50':''}`} style={{boxShadow:'0 4px 12px rgba(0,0,0,0.06)'}}
+    <div className={`group relative bg-white rounded-2xl border border-gray-100 px-3 py-2.5 lg:px-4 lg:py-3 overflow-hidden lg:transition-shadow lg:hover:shadow-md lg:hover:border-gray-200 ${task.completed?'opacity-50':''}`} style={{boxShadow:'0 4px 12px rgba(0,0,0,0.06)'}}
       onClick={onEdit}>
       {firstTagColor&&<div className="absolute left-0 top-0 bottom-0 w-1.5" style={{background:firstTagColor}}/>}
       <div className="flex items-center gap-2.5">
         <div className="flex-1 min-w-0">
           {task.startTime&&(
-            <p className="text-[11px] text-gray-400 leading-none mb-0.5 flex items-center gap-1.5">
+            <p className="text-[11px] lg:text-xs text-gray-400 lg:text-gray-500 lg:font-medium leading-none mb-0.5 flex items-center gap-1.5">
               <span>{task.startTime}{endTime?`〜${endTime}`:''}{task.recurrence&&<AppIcons.repeat size={11} className="ml-1 inline-block align-middle"/>}</span>
               {tabName&&<span className="bg-gray-100 text-gray-500 rounded px-1 py-px text-[10px] font-medium leading-none">{tabName}</span>}
             </p>
@@ -3295,6 +3295,14 @@ function TaskCard({task,onToggle,onEdit,globalTags,onSubtaskToggle,tabName,iconD
             </div>
           )}
         </div>
+        {/* PC版: ホバーで編集アイコンを表示（カード全体のonClickと同じonEditを呼ぶだけの
+            視覚的な手がかり）。横幅だけを0⇔7で開閉するため、measuredHが見る縦の高さには
+            一切影響しない（FreeTimeCardの追加ボタンと違い、こちらは行の中の通常要素として
+            置けるので、絶対配置にする必要がない） */}
+        <button onClick={e=>{e.stopPropagation();onEdit();}}
+          className="hidden lg:flex items-center justify-center shrink-0 w-0 opacity-0 overflow-hidden group-hover:w-7 group-hover:opacity-100 transition-all duration-150 text-gray-300 hover:!text-gray-500">
+          <AppIcons.pencil size={14}/>
+        </button>
         {task.noComplete ? (
           <div className="w-9 h-9 -m-1.5 shrink-0 flex items-center justify-center">
             <span className="w-2.5 h-2.5 rounded-full bg-gray-300"/>
@@ -3302,7 +3310,7 @@ function TaskCard({task,onToggle,onEdit,globalTags,onSubtaskToggle,tabName,iconD
         ) : (
           <button onClick={e=>{e.stopPropagation();onToggle();}}
             className="w-9 h-9 -m-1.5 shrink-0 flex items-center justify-center">
-            <span className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${task.completed?'border-[var(--c-primary)] bg-[var(--c-primary)]':'border-gray-300'}`}>
+            <span className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors lg:hover:border-gray-400 ${task.completed?'border-[var(--c-primary)] bg-[var(--c-primary)]':'border-gray-300'}`}>
               {task.completed&&<span className="text-white text-[10px] font-bold leading-none">✓</span>}
             </span>
           </button>
@@ -3327,10 +3335,11 @@ function TaskCard({task,onToggle,onEdit,globalTags,onSubtaskToggle,tabName,iconD
 
 // ── FreeTimeCard ──────────────────────────────────────────────────────────────
 
-function FreeTimeCard({slot,fits,moreCount=0,height,onDragStart,onMoreClick,measureRef,outerRef,iconDelta=0}:{
+function FreeTimeCard({slot,fits,moreCount=0,height,onDragStart,onMoreClick,onAdd,measureRef,outerRef,iconDelta=0}:{
   slot:FreeSlot;fits:Task[];moreCount?:number;height:number;
   onDragStart:(t:Task,x:number,y:number)=>void;
   onMoreClick?:()=>void;
+  onAdd?:(time:string)=>void;
   measureRef?:(el:HTMLDivElement|null)=>void;
   outerRef?:(el:HTMLDivElement|null)=>void;
   iconDelta?:number;
@@ -3385,7 +3394,16 @@ function FreeTimeCard({slot,fits,moreCount=0,height,onDragStart,onMoreClick,meas
 
   const h=Math.floor(slot.min/60), m=slot.min%60;
   return (
-    <div ref={outerRef} className="bg-gray-50 rounded-2xl px-3 pt-3 pb-3 flex flex-col border border-gray-100" style={{minHeight:`${height}px`}} data-tour="free-time-card">
+    <div ref={outerRef} className="relative group bg-gray-50 rounded-2xl px-3 pt-3 pb-3 flex flex-col border border-gray-100" style={{minHeight:`${height}px`}} data-tour="free-time-card">
+      {/* PC版: ホバーで右上に「このスロットに追加」ボタンを表示する。absolute配置なので
+          測定対象(measureRef)の内側コンテンツの高さには一切影響しない（非hover時は
+          opacity:0で見えないだけでレイアウトは動かない） */}
+      {onAdd&&(
+        <button onClick={e=>{e.stopPropagation();onAdd(slot.start);}}
+          className="hidden lg:flex absolute top-2 right-2 items-center justify-center w-6 h-6 rounded-full bg-white border border-gray-200 text-gray-400 opacity-0 group-hover:opacity-100 hover:!text-[var(--c-primary)] hover:border-[var(--c-primary)] transition-opacity shadow-sm">
+          <AppIcons.plus size={14}/>
+        </button>
+      )}
       {/* 実測はこの内側のcontentRefで行う（外側のminHeightに引きずられると、一度でも見積りが
           過大になった時に測定値がその過大なサイズで固定されてしまい、あとで縮まなくなる不具合が
           あったため。ここは中身の自然な高さだけを反映する） */}
@@ -3890,21 +3908,21 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
 
       {/* wake/sleep axis labels */}
       <div className="absolute flex items-center" style={{top:`${wakeCardTop+WAKE_CARD_H/2}px`,transform:'translateY(-50%)',left:0}}>
-        <span className="text-xs w-10 text-right pr-1 leading-none text-gray-300">{settings.wakeTime}</span>
+        <span className="text-xs w-10 text-right pr-1 leading-none text-gray-300 lg:text-gray-500">{settings.wakeTime}</span>
       </div>
       <div className="absolute z-10 cursor-pointer active:opacity-70" style={{top:`${wakeCardTop}px`,left:`${AXIS_X-28}px`,width:'56px',height:'56px'}}
         onClick={()=>onPickColor?.('wake')}>
         <div className="w-full h-full flex items-center justify-center" style={{borderRadius:'28px',background:settings.wakeColor||'var(--c-primary)'}}>
-          <AppIcons.wake size={24} className="text-white"/>
+          <AppIcons.wake size={24} className="text-white lg:scale-[0.85]"/>
         </div>
       </div>
       <div className="absolute flex items-center" style={{top:`${sleepCardTop+SLEEP_CARD_H/2}px`,transform:'translateY(-50%)',left:0}}>
-        <span className="text-xs w-10 text-right pr-1 leading-none text-gray-300">{settings.sleepTime}</span>
+        <span className="text-xs w-10 text-right pr-1 leading-none text-gray-300 lg:text-gray-500">{settings.sleepTime}</span>
       </div>
       <div className="absolute z-10 cursor-pointer active:opacity-70" style={{top:`${sleepCardTop}px`,left:`${AXIS_X-28}px`,width:'56px',height:'56px'}}
         onClick={()=>onPickColor?.('sleep')}>
         <div className="w-full h-full flex items-center justify-center" style={{borderRadius:'28px',background:settings.sleepColor||'var(--c-primary)'}}>
-          <AppIcons.sleep size={24} className="text-white"/>
+          <AppIcons.sleep size={24} className="text-white lg:scale-[0.85]"/>
         </div>
       </div>
 
@@ -3924,7 +3942,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
         }
         return visible.map(({y,text})=>(
           <div key={`al-${text}`} className="absolute flex items-center" style={{top:`${y}px`,transform:'translateY(-50%)',left:0}}>
-            <span className="text-xs w-10 text-right pr-1 leading-none text-gray-300 font-medium">{text}</span>
+            <span className="text-xs w-10 text-right pr-1 leading-none text-gray-300 lg:text-gray-500 font-medium">{text}</span>
           </div>
         ));
       })()}
@@ -4043,7 +4061,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
               style={{top:`${top}px`,left:`${AXIS_X-28}px`,width:'56px',height:`${Math.max(measuredH[task.id]??g.h,56)}px`}}
               onClick={e=>{e.stopPropagation();onEditIconSheet(task);}}>
               <div className="w-full h-full flex items-center justify-center active:opacity-70 transition-opacity" style={{borderRadius:'28px',background:task.color||'var(--c-primary)'}}>
-                <CapsuleIc size={24} className={task.color?'text-white':'text-white'}/>
+                <CapsuleIc size={24} className={`lg:scale-[0.85] ${task.color?'text-white':'text-white'}`}/>
               </div>
             </div>,
             <div key={g.startTime} className={`absolute z-10 transition-transform select-none ${isPressing?'scale-95':''}`}
@@ -4100,7 +4118,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
               const Ic=getTaskIcon(task.icon||defaultIconKey(task.name||''));
               return(
                 <div key={`ic-${task.id}`} className="absolute flex items-center justify-center" style={{top:`${centers[i]-12}px`,left:0,width:'56px',height:'24px'}}>
-                  <Ic size={24} className="text-white"/>
+                  <Ic size={24} className="text-white lg:scale-[0.85]"/>
                 </div>
               );
             })}
@@ -4144,7 +4162,7 @@ function Timeline({date,tasks,later,settings,now,onToggle,onEdit,onEditIconSheet
         const fits=laterPoolVisible;
         return (
           <div key={i} className="absolute z-10" style={{top:`${freeY}px`,left:`${CARD_LEFT}px`,right:'0px'}}>
-            <FreeTimeCard slot={slot} fits={fits} moreCount={laterPoolMoreCount} height={finalH} onDragStart={onDragStart} onMoreClick={onOpenLater} iconDelta={iconDelta}
+            <FreeTimeCard slot={slot} fits={fits} moreCount={laterPoolMoreCount} height={finalH} onDragStart={onDragStart} onMoreClick={onOpenLater} onAdd={onAddAtTime} iconDelta={iconDelta}
               measureRef={el=>{if(el){el.dataset.gk=gkFree(slot.start);roRef.current?.observe(el);}}}
               outerRef={el=>{
                 if(!el) return;
