@@ -1373,7 +1373,7 @@ BrainBoxのWeb版（ブラウザ）は従来スマホ幅（`max-w-md mx-auto`）
 - **タスクカード（`TaskCard`）**: `lg:px-4 lg:py-3`で余白をやや広げ、`lg:hover:shadow-md lg:hover:border-gray-200`でホバー時に軽く浮き上がらせる（クリックでonEditが開くことの視覚的な手がかり）。時刻ラベルは`lg:text-xs lg:text-gray-500 lg:font-medium`にして可読性を上げた（Phase 1で`text-gray-400`自体もPCでは`#718096`に上書き済みなので、タスク名側の`text-gray-900`との明度差は従来通り維持しつつ、時刻側だけさらに一段濃くした）。**編集アイコンのホバー表示**は、カード右側（チェックボックスの左）に`AppIcons.pencil`ボタンを新設し、`lg:hidden group-hover:lg:flex`ではなく`w-0 opacity-0 group-hover:w-7 group-hover:opacity-100`という「横幅だけを0⇔28pxで開閉する」方式にした——`TaskCard`の高さは`measuredH[task.id]`に直結するため、縦方向に影響する変化（`display:none⇔block`や`max-h`の開閉）は使わず、横方向の開閉（フレックス行の中で幅が変わるだけ、行の高さ`items-center`は不変）に限定することで、タイムラインの高さ計算に一切波及しないようにしてある。チェックボックスにも`lg:hover:border-gray-400`のホバーフィードバックを追加した。
 - **タイムライン軸上のアイコン（起床・就寝・タスクアイコンの56pxカプセル）**: 「タスク名に対してアイコンが目立ちすぎる」という指摘に対し、**カプセル自体の直径（56px）・位置（`AXIS_X-28`基準）は一切変更せず**、カプセル内部のアイコングリフ（`AppIcons.wake`/`AppIcons.sleep`/`CapsuleIc`/`Ic`、いずれも`size={24}`）のclassNameに`lg:scale-[0.85]`を追加しただけ。`transform:scale()`はレイアウトのジオメトリ計算（`ICON_HALF`等の定数）に一切関与しないため、ジオメトリを壊すリスクがゼロ。**新しくこのカプセル内アイコンのサイズを調整したくなった時は、`size`propの数値や`ICON_HALF`/`CAPSULE_H`等のレイアウト定数を直接変更せず、この`lg:scale-*`パターンを踏襲すること**（レイアウト定数を触ると即座にCLAUDE.md記載の過去の重なり不具合群を再発させるリスクがある）。
 - **左軸の時刻ラベル**（起床・就寝・各タスクグループの開始時刻、`text-gray-300`）: PC限定で`lg:text-gray-500`に濃くした（Phase 1のグローバル上書き対象に`text-gray-300`を含めなかったため、個別に`lg:`クラスを追加する形にした）。
-- **空き時間カード（`FreeTimeCard`）のホバー追加ボタン**: 右上に`lg:`限定（`hidden lg:flex`）で絶対配置（`absolute top-2 right-2`）した小さな「＋」ボタンを新設し、`opacity-0 group-hover:opacity-100`でホバー時のみ表示する。**絶対配置にしている理由（重要）**: このボタンを`measureRef`で実測される内側コンテンツの通常のdocument flowに置くと、非表示時でも`opacity:0`はレイアウトサイズを消さない（`display:none`とは違う）ため、常にその分の高さが`calcFreeContentH`の見積りとズレる形で消費され続けてしまう。絶対配置にすることでこの要素を完全にflowの外に出し、`measuredH`/`calcFreeContentH`のどちらにも一切影響させていない。クリックすると、元々`Timeline`に渡されていたが本文内で一度も呼ばれていなかった`onAddAtTime`（=`App`の`openAdd`）をようやく実際に配線し、`onAddAtTime(slot.start)`でその空き時間の開始時刻をプリフィルした`TaskModal`（Scheduledモード）を開く（Playwrightで実際にクリック→モーダルが`Start time: 07:00`で開くことを確認済み）。`FreeTimeCard`に新規`onAdd?:(time:string)=>void` propを追加し、`Timeline`内の呼び出し箇所から配線した。
+- **空き時間カード（`FreeTimeCard`）のホバー追加ボタンは撤去済み（一度実装したが、ユーザーの指示で削除した）。** フェーズ2実装時は右上に絶対配置の「＋」ボタンをホバー表示し、`onAddAtTime`（`App`の`openAdd`）を配線してその場でプリフィルした`TaskModal`を開けるようにしていたが、「空き時間カードのプラスボタンいらない」という明示的なフィードバックを受けて`FreeTimeCard`の`onAdd` prop・ボタンJSX・`Timeline`からの配線をすべて削除した。`FreeTimeCard`は元の「あとでやる」チップの表示・ドラッグのみのシンプルな構成に戻っている。**新しいセッションでこのホバー追加ボタンを再実装しないこと。**
 - **背景色による軽量化**: `FreeTimeCard`の`bg-gray-50`自体は変更していないが、Phase 1で導入したPC限定の`body`背景`#F8FAF9`が`#F9FAFB`に極めて近いため、デスクトップではタスクカード（白・影付き）との対比で空き時間カードが自然と背景に溶け込みやすくなっている（意図的な追加CSSではなく、Phase 1の副次効果）。
 
 **フェーズ4（1日/3日/7日表示それぞれの個別最適化）の実装内容:**
@@ -1700,26 +1700,34 @@ After:  fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-
 
 ### 右パネル・タスク入力/編集UI（フェーズ3、実装済み）
 
-**旧実装（右パネル下半分へのTaskModal常設ドッキング表示）は「PC版UI/UX刷新（第2ラウンド）」フェーズ3で撤去し、以下の新デザインに置き換えた。** ユーザーから「右パネルにフォーム全体を常設するのは画面が大きすぎる」という指摘を受け、(1) 右パネルには名前だけですぐ追加できるコンパクトな追加バー、(2) 既存タスクの編集は画面右に専用の480pxパネルがスライドインする、という2つの軽量な形に分離した。
+**この節は1往復の試行錯誤を経て現在の形に落ち着いている。** 当初は「右パネルに常設フォームは大きすぎる」という想定のもとコンパクトな1行追加バー＋別パネル編集という設計にしたが、実装後にユーザーから「右には入力フォームを常設しておきたい、あとで/時間指定/繰り返しをiOSと同じく切り替えられるようにしたい」という明確な差し戻し指示があり、**右パネルの常設フォーム自体はドッキング表示（モードタブ付きの完全なTaskModal）に戻し、既存タスクの編集だけを新しい右スライドパネルにする**という最終形になった。新しいセッションで「右パネルを再度コンパクト化する」ような提案はせず、この節の内容を正として扱うこと。
 
-**新規タスク作成の経路は意図的に変更していない。** FAB・キーボードショートカット`N`・空き時間カードのホバー「＋」ボタン（フェーズ2で追加）・複数日表示カラムの「＋」ボタンは、すべて従来通り`openAdd()`で中央ポップアップ（PC版はフェーズ1の`lg:flex lg:items-center lg:justify-center`で中央表示）を開く——`ProductTour`の`data-tour`属性（`modal-card`/`save-button`/`name-input-row`/`tab-later`/`start-time-row`、いずれも`!task`条件）はすべて「新規作成（`task===null`）」の時だけ有効になる設計のため、新規作成の見た目・経路を変えなければツアーに一切影響しないという安全な境界線がある。右パネルのコンパクト追加バーの「詳しく追加」ボタンも、新しい経路を作らず同じ`openAdd()`を呼ぶだけにしてこの安全な境界を保っている。
+**TaskModalは3つの表示形態を1つのコンポーネントで共用している**（`docked`/`editPanel`という独立した2つのbooleanで区別。両方falseなら通常のポップアップ）。
 
-**①右パネルのコンパクト追加バー（`BottomTabs`の「あとでやる」タブ最下部、`isDesktop`限定）:** 旧ドッキングフォームの代わりに、名前入力1行＋送信ボタン（即座に「あとでやる」タスクとして追加）＋「詳しく追加」ボタン（展開の代わりに中央ポップアップを開く）という3要素だけの薄いバーにした。送信は新しいロジックを作らず、既存の`addVoiceLaterTask(text)`（Watch/ウィジェット音声入力が使っている、最小構成の「あとでやる」タスクをその場で作る関数）をそのまま`onQuickAdd`として渡して再利用している——`defaultIconKey()`によるアイコン自動判定やAnalyticsイベント発火も含めて無改修で流用できた。`BottomTabs`から旧ドッキングフォーム専用だった6個のprop（`currentDate`・`globalTags`・`onOpenTagSettings`・`atLocationLimit`・`onOpenBulkInput`・`onSaveDockedTask`・`dockedFormKey`）は使用箇所ごと削除し、代わりに`onQuickAdd`・`onOpenAdd`の2個だけを追加した。`App`側も不要になった`dockedFormKey` state・`saveDockedLaterTask`関数を削除済み（過剰設計を避ける方針に沿って、使われなくなったコードをその場で片付けた）。
+**①右パネル常設の追加フォーム（`docked=true`）:** `BottomTabs`の「あとでやる」タブ下半分に、`TaskModal`そのもの（あとで／時間指定／繰り返しのモードタブ付き）を`isDesktop`限定で常設ドッキング表示する。
+- 外枠2重div: `h-full w-full min-w-0 flex flex-col`——`fixed`/`absolute`を一切使わず、ドッキング先の親要素（右パネルの下半分）の中に普通のブロック要素として収まる
+- ×（閉じる）ボタン: 非表示（`{!docked&&<button>...`）。常設フォームには「閉じる」という概念が無いため
+- 白コンテンツ領域: `flex-1 rounded-b-2xl`で親の残り高さに自然に追従する。ヘッダーの角丸（`rounded-t-3xl`）は維持し、常設フォームでも embedded カードらしい見た目にする
+- `data-tour`属性（プロダクトツアー用）は`!task&&!docked`を条件にする。右パネルの常設フォームと中央ポップアップが両方マウントされうる（`task===null`の状態が2箇所に存在しうる）ため、`!task`だけで判定すると`ProductTour`の`querySelector`がどちらを拾うか不定になる——このロジックは旧実装からそのまま維持している
+- 保存後のフォームリセットは`key`での強制再マウントで実現: `App`の`dockedFormKey`（number）stateを`key={dockedFormKey}`としてドッキング版`TaskModal`に渡し、保存用コールバック`saveDockedLaterTask`（`App`、ポップアップ版の`saveTasks`と同じタスク生成ロジックだが`closeModal()`を呼ばない）が保存の最後に`setDockedFormKey(k=>k+1)`する。keyが変わるとReactはコンポーネントを丸ごとアンマウント→再マウントし、`name`/`icon`/`tags`/`subtasks`等の全useStateが初期値に戻る。**TaskModal内部の数十個のstateを個別にリセットする実装は避けている**（リセット漏れが起きやすく、新しいstateを追加するたびにリセット処理への追記が必要になるため）
+- `BottomTabs`に6個のprop（`currentDate`・`globalTags`・`onOpenTagSettings`・`atLocationLimit`・`onOpenBulkInput`・`onSaveDockedTask`・`dockedFormKey`）を持たせ、ドッキング版`TaskModal`に橋渡しする。`onOpenTagSettings`/`onOpenBulkInput`は、ポップアップ版の同名コールバックが内部で`closeModal()`を呼んでから設定画面へ遷移するのに対し、ドッキング版は「閉じるモーダル」自体が存在しないため`closeModal()`を呼ばず`setSettingsInitSub(...);setSOp(true);`だけを行う薄いラッパーにしている
+- **レイアウトの罠（実装中に実際に発生、幅が右パネルからはみ出す不具合）:** `docked`時の外枠2重divを単に`fixed`/`absolute`を外しただけ（`w-full`等の明示指定なし）にすると、ヘッダー内の要素（モードタブ・ファイルタブ行など）が持つ横幅要求にdivが引っ張られ、右パネル（380px）を大きくはみ出して画面右端から見切れる。**`flex`コンテナの子要素はデフォルトで`min-width:auto`（＝内容の最小幅より縮まない）ため、内容が横に広いとその祖先ごと意図せず広がってしまう典型的な罠。** 外枠2重divに明示的に`w-full min-w-0`を付け、`BottomTabs`側のドッキングコンテナ（`flex-[1_1_50%] ...`）・その外側の「あとでやる」タブラッパー（`flex flex-col ...`、CSS Gridのgrid-areaを共有するgrid item）にも`min-w-0`が必要
 
-**②既存タスクの編集パネル（`TaskModal`の`docked` propを再利用、意味を作り替えた）:** 旧`docked`は「右パネルに常設・閉じるボタン無し・親要素に合わせてfill」という意味だったが、常設フォーム自体を撤去したため同じprop名を**「画面右端に480pxでスライドインする、閉じられる編集パネル」**という新しい意味に作り替えた（新しいprop名を増やさず、同じ`TaskModal`コンポーネントを流用する設計は維持）。
-- 外枠: `docked`時は`fixed inset-0 z-[180] bg-black/20`（薄い背景ディム、クリックで閉じる）＋`absolute right-0 top-0 bottom-0 w-full sm:w-[480px] bg-white shadow-2xl flex flex-col`（右端固定、全高）。ポップアップ版の`fixed inset-0 z-50 bg-black/60 lg:flex lg:items-center lg:justify-center`とは完全に別のクラス文字列（共通化しようとしない——中央ポップアップと右スライドインパネルは配置の根本が異なる）
-- ×ボタン: 常に表示する（旧実装は`!docked`で非表示にしていたが、今は「閉じられるパネル」なので常時必要）
-- 白コンテンツ領域: `docked`時は`flex-1`のまま（変更なし、親要素=480pxパネルのflex-colの残り高さに追従）、角丸だけ`rounded-b-2xl`を外した（画面端に張り付くパネルに角丸は不要なため）
-- `data-tour`属性の`!docked`条件はそのまま残してある（削除しても実害は無いが、`docked`は常に`task`有り=`!task`が偽になる組み合わせでしか使われないため、残しておく方が安全側）
-- `App`の呼び出し側は、ポップアップ用`<TaskModal>`の1箇所だけに`docked={isDesktop&&!!modal.task}`を追加しただけ（新しいstate・新しい別レンダー呼び出しは増やしていない）。`modal.task`が`null`（新規作成）なら`isDesktop`でも常にポップアップのまま、既存タスクを編集中（`modal.task`が存在）かつ`isDesktop`の時だけ自動的に右パネルへ切り替わる
+**②既存タスクの編集パネル（`editPanel=true`）:** 既存タスクをPC版で編集する時、中央ポップアップの代わりに画面右端から480pxでスライドインする専用パネルとして表示する。`docked`とは完全に別のbooleanで、`docked`（常設の新規追加フォーム）と同時にtrueになることは無い。
+- 外枠: `fixed inset-0 z-[180] bg-black/20`（薄い背景ディム、クリックで閉じる）＋`absolute right-0 top-0 bottom-0 w-full sm:w-[480px] bg-white shadow-2xl flex flex-col`（右端固定、全高）。ポップアップ版の`fixed inset-0 z-50 bg-black/60 lg:flex lg:items-center lg:justify-center`とは完全に別のクラス文字列（共通化しようとしない——中央ポップアップと右スライドインパネルは配置の根本が異なる）
+- ×ボタン: 表示する（`!docked`条件なので`editPanel`時は表示される）
+- 白コンテンツ領域: `flex-1`（角丸無し、画面端に張り付くパネルに角丸は不要なため）
+- `App`の呼び出し側は、ポップアップ用`<TaskModal>`の1箇所だけに`editPanel={isDesktop&&!!modal.task}`を渡している（新しいstate・新しい別レンダー呼び出しは増やしていない）。`modal.task`が`null`（新規作成）なら`isDesktop`でも常にポップアップのまま、既存タスクを編集中（`modal.task`が存在）かつ`isDesktop`の時だけ自動的に右パネルへ切り替わる
 
 **z-indexの衝突確認:** 右パネル本体（`BottomTabs`のデスクトップサイドバー）は`z-40`、右パネル内の各種確認ポップアップ（地図ピッカー・削除確認等）は`z-[100]`〜`z-[110]`を使っているため、編集パネルの`z-[180]`はこれらより確実に上に重なる（Playwrightで実際に編集パネルが右パネルを覆って表示されることを確認済み）。
 
 **避けるパターン:**
-- 右パネルのコンパクト追加バーに、`addVoiceLaterTask`を再利用せず新しいタスク生成ロジックを書かない（アイコン自動判定・Analyticsイベントまで含めて同一の関数で足りる）
-- 新規タスク作成の経路（FAB・ショートカット・空き時間カード＋・複数日カラム＋・右パネルの「詳しく追加」）を、編集パネル用に作り替えた`docked`セマンティクスに巻き込まない。新規作成は`modal.task===null`の間は常にポップアップのまま——これが崩れると`ProductTour`の`data-tour`セレクタが機能しなくなる
-- `docked` propに「編集パネル」以外の新しい意味を追加で持たせない（1つのbooleanに複数の見た目を詰め込むと分岐が読みにくくなる。新しい表示モードが要るなら新しいpropを検討すること）
-- 編集パネルの外枠クラスをポップアップ版と共通化しようとしない（中央寄せ`lg:flex lg:items-center lg:justify-center`と右端固定`absolute right-0 top-0 bottom-0`は構造が別物）
+- 右パネルの常設フォームを再びコンパクトな1行バーに置き換えない（一度試して差し戻された設計。ユーザーが「あとで/時間指定/繰り返しをiOSと同じく切り替えたい」と明確に指定している）
+- `docked`用に新しい簡易フォームコンポーネントを作らない。既存の`TaskModal`を`docked` propで流用すること
+- 保存後のフォームリセットを、TaskModal内部の各useStateを手動でクリアする実装にしない（`key`での再マウント方式を使うこと）
+- 新規タスク作成の経路（FAB・ショートカット・複数日カラム＋）を、編集パネル用の`editPanel`セマンティクスに巻き込まない。新規作成は`modal.task===null`の間は常にポップアップのまま——これが崩れると`ProductTour`の`data-tour`セレクタが機能しなくなる
+- `docked`と`editPanel`を1つのbooleanに統合しない（常設フォームとスライドイン編集パネルは閉じるボタンの有無・角丸・リセット方式が異なるため、別々のpropのまま保つこと）
+- 編集パネルの外枠クラスをポップアップ版や`docked`版と共通化しようとしない（中央ポップアップ・右パネル常設フォーム・右スライド編集パネルは配置の根本が3者とも異なる）
 
 ### 避けるパターン（PC版全体）
 
