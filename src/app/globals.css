@@ -54,6 +54,21 @@ body {
 .text-\[17px\] { font-size: calc(17px + var(--text-delta)) !important; }
 .text-\[20px\] { font-size: calc(20px + var(--text-delta)) !important; }
 
+/* PC版（デスクトップレイアウト）専用カラートークン。isDesktop判定（window.innerWidth>=1024）と
+   一致させるため@media(min-width:1024px)で統一する。モバイル（Capacitor WKWebView/WebViewは
+   常にこの幅未満）には一切影響しない。CLAUDE.mdのカラーシステム表が元々定めている役割
+   （text-gray-800=プライマリテキスト・text-gray-400=セカンダリテキスト・border-gray-100=
+   カード境界）はそのまま維持し、PCではその配色だけを新トークンに差し替える。カード背景
+   （bg-white）・メインアクセント（--c-primary）は変更しない */
+@media (min-width: 1024px) {
+  /* layout.tsxの<body className="bg-gray-50">がクラスセレクタ（詳細度0,1,0）で勝つため、
+     要素セレクタのbody{}だけでは上書きできない。!importantで確実に上書きする */
+  html, body { background-color: #F8FAF9 !important; }
+  .text-gray-800 { color: #253438 !important; }
+  .text-gray-400 { color: #718096 !important; }
+  .border-gray-100 { border-color: #E5EAE8 !important; }
+}
+
 /* 入力欄だけはテキスト選択・長押しメニューを許可する（タスク名・メモの編集に必要） */
 input, textarea, [contenteditable="true"] {
   -webkit-touch-callout: default;

@@ -8597,6 +8597,7 @@ export default function App() {
   const taskDateSet   = useMemo(()=>new Set(filteredTasks.filter(t=>!t.isLater&&t.startTime).map(t=>t.date)),[filteredTasks]);
   const {day,month,year} = useMemo(()=>getDateInfo(date),[date]);
   const today = todayStr();
+  const headerDateTitle = useMemo(()=>language==='ja'?`${year}年${month}月`:language==='ko'?`${year}년 ${month}월`:language==='zh-TW'?`${year}年${month}月`:language==='es'?`${MONTH_NAMES_ES[month-1].slice(0,3).replace(/^./,c=>c.toUpperCase())} ${year}`:language==='pt'?`${MONTH_NAMES_PT[month-1].slice(0,3).replace(/^./,c=>c.toUpperCase())} ${year}`:language==='vi'?`T${month} ${year}`:language==='th'?`${MONTH_NAMES_TH_SHORT[month-1]} ${year}`:language==='id'?`${MONTH_NAMES_ID[month-1].slice(0,3)} ${year}`:`${MONTH_NAMES_EN[month-1].slice(0,3)} ${year}`,[language,year,month]);
 
   const effectiveSettings = useMemo(()=>{
     const patId=patternOverrides[date];
@@ -9107,27 +9108,32 @@ export default function App() {
       {/* ── Header ── */}
       <header className="z-30 bg-gray-50 flex-shrink-0" style={{paddingTop:'env(safe-area-inset-top)'}}>
         <div className="px-4 pt-1 pb-0">
-          {/* Date + nav */}
-          <div className="flex items-center justify-between mb-1 gap-2">
-            <div className="flex items-center gap-2 min-w-0">
-              {isDesktop&&(
-                /* eslint-disable-next-line @next/next/no-img-element */
-                <img src="/app-icons/mint.png" alt="" className="w-7 h-7 rounded-lg shrink-0"/>
-              )}
-            <span className="text-2xl font-bold text-gray-900 truncate min-w-0">{language==='ja'?`${year}年${month}月`:language==='ko'?`${year}년 ${month}월`:language==='zh-TW'?`${year}年${month}月`:language==='es'?`${MONTH_NAMES_ES[month-1].slice(0,3).replace(/^./,c=>c.toUpperCase())} ${year}`:language==='pt'?`${MONTH_NAMES_PT[month-1].slice(0,3).replace(/^./,c=>c.toUpperCase())} ${year}`:language==='vi'?`T${month} ${year}`:language==='th'?`${MONTH_NAMES_TH_SHORT[month-1]} ${year}`:language==='id'?`${MONTH_NAMES_ID[month-1].slice(0,3)} ${year}`:`${MONTH_NAMES_EN[month-1].slice(0,3)} ${year}`}</span>
+          {/* Date + nav（PC版はロゴ/ワードマーク・中央日付ナビ・右アイコン列の3分割、モバイルは既存のまま） */}
+          {isDesktop?(
+          <div className="flex items-center justify-between mb-1 gap-3">
+            <button onClick={()=>{const d=todayStr();setDate(d);setWeekAnchor(d);setActiveCat(null);}}
+              className="flex items-center gap-2 shrink-0">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/app-icons/mint.png" alt="" className="w-7 h-7 rounded-lg shrink-0"/>
+              <span className="text-[15px] font-bold text-gray-800 whitespace-nowrap">BrainBox</span>
+            </button>
+            <div className="flex items-center gap-1 min-w-0">
+              <button onClick={()=>{const nd=shiftDate(date,-1);setDate(nd);setWeekAnchor(nd);}}
+                className="w-7 h-7 flex items-center justify-center text-gray-400 shrink-0"><AppIcons.caretLeft size={16}/></button>
+              <span className="text-base font-bold text-gray-800 truncate min-w-0 whitespace-nowrap">{headerDateTitle}</span>
+              <button onClick={()=>{const nd=shiftDate(date,1);setDate(nd);setWeekAnchor(nd);}}
+                className="w-7 h-7 flex items-center justify-center text-gray-400 shrink-0"><AppIcons.caretRight size={16}/></button>
             </div>
             <div className="flex items-center gap-1 shrink-0">
-              {isDesktop&&(
-                <div className="flex items-center bg-gray-200 rounded-full p-0.5 mr-2">
-                  {([['1day',tr('viewMode1Day')],['3day',tr('viewMode3Day')],['7day',tr('viewMode7Day')]] as const).map(([vm,label])=>(
-                    <button key={vm} onClick={()=>setViewMode(vm)}
-                      className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${viewMode===vm?'bg-[var(--c-primary)] text-white':'text-gray-500'}`}>
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              )}
-              {isDesktop&&viewMode!=='1day'&&(
+              <div className="flex items-center bg-gray-200 rounded-full p-0.5 mr-2">
+                {([['1day',tr('viewMode1Day')],['3day',tr('viewMode3Day')],['7day',tr('viewMode7Day')]] as const).map(([vm,label])=>(
+                  <button key={vm} onClick={()=>setViewMode(vm)}
+                    className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${viewMode===vm?'bg-[var(--c-primary)] text-white':'text-gray-500'}`}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {viewMode!=='1day'&&(
                 <button onClick={()=>{setSelectMode(m=>!m);setSelectedIds(new Set());}}
                   className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors mr-2 ${selectMode?'bg-[var(--c-primary)] text-white':'bg-gray-200 text-gray-500'}`}>
                   {selectMode?tr('multiSelectExitButton'):tr('multiSelectButton')}
@@ -9139,26 +9145,38 @@ export default function App() {
                 {tr('headerFreeTimeToggle')}
                 <span className="absolute top-1.5 w-4 h-4 bg-white rounded-full" style={{boxShadow:'0 1px 3px rgba(0,0,0,0.2)',transition:'left 0.2s',left:(settings.showFreeCard??true)?'calc(100% - 22px)':'6px'}}/>
               </button>
-              {isDesktop&&(
-                <button onClick={()=>{const d=todayStr();setDate(d);setWeekAnchor(d);setActiveCat(null);}}
-                  className="px-2.5 h-8 rounded-lg text-xs font-semibold text-gray-500 hover:bg-gray-100">
-                  {tr('todayButton')}
-                </button>
-              )}
-              {isDesktop&&(
-                <button onClick={()=>setStatsOpen(true)} className="w-8 h-8 flex items-center justify-center text-gray-400"><AppIcons.stats size={20}/></button>
-              )}
-              {isDesktop&&(
-                <button onClick={()=>setShowShortcutsHelp(true)} className="w-8 h-8 flex items-center justify-center text-gray-400"><AppIcons.question size={20}/></button>
-              )}
+              <button onClick={()=>{const d=todayStr();setDate(d);setWeekAnchor(d);setActiveCat(null);}}
+                className="px-2.5 h-8 rounded-lg text-xs font-semibold text-gray-500 hover:bg-gray-100">
+                {tr('todayButton')}
+              </button>
+              <button onClick={()=>setStatsOpen(true)} className="w-8 h-8 flex items-center justify-center text-gray-400"><AppIcons.stats size={20}/></button>
+              <button onClick={()=>setShowShortcutsHelp(true)} className="w-8 h-8 flex items-center justify-center text-gray-400"><AppIcons.question size={20}/></button>
+              <button onClick={()=>setCalOp(true)} className="w-8 h-8 flex items-center justify-center text-gray-400"><AppIcons.calendar size={20}/></button>
+              <button onClick={()=>setSearchOpen(true)} className="w-8 h-8 flex items-center justify-center text-gray-400"><AppIcons.search size={20}/></button>
+              <button onClick={()=>{setSettingsInitSub(undefined);setSOp(true);}} className="w-8 h-8 flex items-center justify-center text-gray-400"><AppIcons.settings size={20}/></button>
+            </div>
+          </div>
+          ):(
+          <div className="flex items-center justify-between mb-1 gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+            <span className="text-2xl font-bold text-gray-900 truncate min-w-0">{headerDateTitle}</span>
+            </div>
+            <div className="flex items-center gap-1 shrink-0">
+              <button onClick={()=>setSettings(s=>({...s,showFreeCard:!(s.showFreeCard??true)}))}
+                className={`relative h-7 rounded-full font-medium whitespace-nowrap transition-colors duration-200 mr-1 ${(settings.showFreeCard??true)?'bg-[var(--c-primary)] text-white':'bg-gray-200 text-gray-500'}`}
+                style={{fontSize:'12px',paddingLeft:(settings.showFreeCard??true)?'10px':'26px',paddingRight:(settings.showFreeCard??true)?'26px':'10px',transition:'padding 0.2s, background-color 0.2s'}}>
+                {tr('headerFreeTimeToggle')}
+                <span className="absolute top-1.5 w-4 h-4 bg-white rounded-full" style={{boxShadow:'0 1px 3px rgba(0,0,0,0.2)',transition:'left 0.2s',left:(settings.showFreeCard??true)?'calc(100% - 22px)':'6px'}}/>
+              </button>
               <button onClick={()=>setCalOp(true)} className="w-8 h-8 flex items-center justify-center text-gray-400"><AppIcons.calendar size={24}/></button>
               <button onClick={()=>setSearchOpen(true)} className="w-8 h-8 flex items-center justify-center text-gray-400"><AppIcons.search size={24}/></button>
               <button onClick={()=>{setSettingsInitSub(undefined);setSOp(true);}} className="w-8 h-8 flex items-center justify-center text-gray-400"><AppIcons.settings size={24}/></button>
             </div>
           </div>
+          )}
 
           {/* Week calendar */}
-          <div className="grid grid-cols-7 pt-1 pb-0.5"
+          <div className={`grid grid-cols-7 pt-1 pb-0.5 ${isDesktop?'border-t border-gray-100 mt-1 pt-2':''}`}
             onTouchStart={e=>{weekSwX.current=e.touches[0].clientX;weekSwY.current=e.touches[0].clientY;}}
             onTouchEnd={e=>{
               const dx=e.changedTouches[0].clientX-weekSwX.current;
