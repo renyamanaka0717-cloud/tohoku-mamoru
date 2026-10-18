@@ -7900,9 +7900,21 @@ export default function App() {
       const sh=localStorage.getItem(SHOP_KEY);
       const tg=localStorage.getItem(TAGS_KEY);
       if(t){
-        const now=Date.now();
-        const parsedTasks=(JSON.parse(t) as Task[]).map(tk=>({...tk,recurrence:tk.recurrence??null,customRec:tk.customRec,pinned:tk.pinned??false,tags:tk.tags??[],notifications:tk.notifications??[],incompleteReminder:tk.incompleteReminder??false,category:tk.category,postponedCount:tk.postponedCount??0,lastPostponedDate:tk.lastPostponedDate}));
-        setTasks(parsedTasks.filter(tk=>!(tk.isLater&&tk.completed&&tk.completedAt&&now-new Date(tk.completedAt).getTime()>=7*24*60*60*1000)));
+        // tasksのJSON.parseだけ個別にtry/catchする（過去の不具合: 外側の1つのtry/catchに
+        // 含めていたため、tasks側が何らかの理由で破損JSONになっていると例外がcatchに飛び、
+        // settings/shop/tags等の他のキーまで読み込まれずloaded=trueになってしまっていた。
+        // さらに致命的なのは、読み込み失敗時もtasks stateは初期値[]のままloaded=trueになり、
+        // 直後の自動保存useEffectがTASKS_KEYを空配列で即座に上書きしてしまうこと——
+        // 一時的な破損（容量不足での書き込み中断等）が「アプリを開いただけで全データ消失」
+        // という不可逆な結果になる。壊れたJSONは別キーにバックアップしてから諦めることで、
+        // 復旧の可能性を残す）
+        try{
+          const now=Date.now();
+          const parsedTasks=(JSON.parse(t) as Task[]).map(tk=>({...tk,recurrence:tk.recurrence??null,customRec:tk.customRec,pinned:tk.pinned??false,tags:tk.tags??[],notifications:tk.notifications??[],incompleteReminder:tk.incompleteReminder??false,category:tk.category,postponedCount:tk.postponedCount??0,lastPostponedDate:tk.lastPostponedDate}));
+          setTasks(parsedTasks.filter(tk=>!(tk.isLater&&tk.completed&&tk.completedAt&&now-new Date(tk.completedAt).getTime()>=7*24*60*60*1000)));
+        }catch{
+          try{ localStorage.setItem(TASKS_KEY+'-corrupt-backup',t); }catch{}
+        }
       }
       if(s) setSettings(JSON.parse(s));
       if(sh){
