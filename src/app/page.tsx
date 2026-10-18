@@ -8064,13 +8064,21 @@ export default function App() {
         if(settings.notificationsEnabled??true){
           // 就寝中に設定時間が経過してしまう場合、起床時刻ちょうどに即通知するのではなく、
           // 起床時刻を起点として改めて設定時間分カウントし直す（就寝中はカウントが止まるイメージ）。
-          // 以降の再通知（STALE_REPEAT_HOURSごと）はこの基準時刻からの固定間隔で予約する
+          // 過去の不具合: 以前は最初の1回（i=0）だけadjustFireForSleepで就寝回避し、以降の再通知
+          // （STALE_REPEAT_HOURSごと）はそこからの固定間隔で予約するだけだったため、「しばらく開いて
+          // いない」場合に再通知が積み重なると必ずどこかの回が次の就寝時間帯に入り込み、睡眠中に
+          // プッシュが届いてしまっていた（laterReminderHours側のsyncLaterStaleAlertsは毎回再調整して
+          // おり対称性が崩れていた）。各回それぞれadjustFireForSleepで就寝回避するよう修正し、
+          // 就寝回避で複数回が同じ時刻に重なった場合は重複登録しないようにする
           const nowMs=Date.now();
           const rawBaseMs=nowMs+hours*3600*1000;
-          const baseFireMs=adjustFireForSleep(rawBaseMs,hours,settings.wakeTime,settings.sleepTime);
           const hoursList:number[]=[];
+          let lastFireMs=-1;
           for(let i=0;i<STALE_MAX_REPEATS;i++){
-            const fireMs=baseFireMs+i*STALE_REPEAT_HOURS*3600000;
+            const rawFireMs=rawBaseMs+i*STALE_REPEAT_HOURS*3600000;
+            const fireMs=adjustFireForSleep(rawFireMs,hours,settings.wakeTime,settings.sleepTime);
+            if(fireMs===lastFireMs) continue;
+            lastFireMs=fireMs;
             hoursList.push((fireMs-nowMs)/3600000);
           }
           scheduleInactivityReminder(hoursList);
