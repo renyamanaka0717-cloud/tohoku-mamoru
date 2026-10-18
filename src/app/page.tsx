@@ -5727,6 +5727,149 @@ function ReorderLaterPopup({tasks,onSave,onClose}:{tasks:Task[];onSave:(orderedI
   );
 }
 
+// ── ReorderTagsPopup ──────────────────────────────────────────────────────────
+// タグ一覧の並び替え専用ポップアップ。ReorderLaterPopupと同じ「一覧内で直接ドラッグ
+// せず、常時ドラッグ可能な専用ハンドルを持つ独立ポップアップに切り出す」設計を踏襲する
+// （スクロールとの競合・タップ編集との判定分岐が実機で不安定になりやすいという既存の教訓）。
+// globalTagsはidを持たないが、タグ名は重複登録できない制約（addTag/commitEdit）が
+// 既にあるため、name をキーとして安全に使える
+function ReorderTagsPopup({tags,onSave,onClose}:{tags:TagDef[];onSave:(ordered:TagDef[])=>void;onClose:()=>void;}) {
+  const {tr} = useI18n();
+  const [order,setOrder] = useState<string[]>(tags.map(t=>t.name));
+  const byName = new Map(tags.map(t=>[t.name,t]));
+  const [dragId,setDragId] = useState<string|null>(null);
+  const [dragDy,setDragDy] = useState(0);
+  const [targetIdx,setTargetIdx] = useState<number|null>(null);
+  const draggedIdxRef = useRef(-1);
+  const targetIdxRef = useRef(-1);
+  const startY = useRef(0);
+  const slots = useRef<{top:number;height:number}[]>([]);
+  const rowRefs = useRef<Record<string,HTMLDivElement|null>>({});
+  const rafRef = useRef<number|null>(null);
+  const pendingDy = useRef(0);
+
+  const startDrag=(id:string,e:React.TouchEvent)=>{
+    e.stopPropagation();
+    const touch=e.touches[0];
+    startY.current=touch.clientY;
+    const idx=order.indexOf(id);
+    draggedIdxRef.current=idx;
+    targetIdxRef.current=idx;
+    slots.current=order.map(oid=>{
+      const r=rowRefs.current[oid]?.getBoundingClientRect();
+      return {top:r?.top??0, height:r?.height??56};
+    });
+    setTargetIdx(idx);
+    setDragId(id);
+  };
+
+  useEffect(()=>{
+    if(!dragId) return;
+    const applyMove=()=>{
+      rafRef.current=null;
+      const dy=pendingDy.current;
+      setDragDy(dy);
+      const s=slots.current;
+      const D=draggedIdxRef.current;
+      if(D===-1||!s[D]) return;
+      const draggedCenter=s[D].top+s[D].height/2+dy;
+      let newTarget=D;
+      for(let i=0;i<s.length;i++){
+        if(draggedCenter>=s[i].top&&draggedCenter<=s[i].top+s[i].height){newTarget=i;break;}
+      }
+      if(newTarget!==targetIdxRef.current){
+        targetIdxRef.current=newTarget;
+        setTargetIdx(newTarget);
+      }
+    };
+    const onMove=(e:TouchEvent)=>{
+      e.preventDefault();
+      const touch=e.touches[0];
+      pendingDy.current=touch.clientY-startY.current;
+      if(rafRef.current==null) rafRef.current=requestAnimationFrame(applyMove);
+    };
+    const onEnd=()=>{
+      if(rafRef.current!=null){cancelAnimationFrame(rafRef.current);rafRef.current=null;}
+      const D=draggedIdxRef.current, T=targetIdxRef.current;
+      if(D!==-1&&T!==-1&&D!==T){
+        setOrder(prev=>{
+          const next=[...prev];
+          const [moved]=next.splice(D,1);
+          next.splice(T,0,moved);
+          return next;
+        });
+      }
+      setDragId(null);
+      setDragDy(0);
+      setTargetIdx(null);
+      draggedIdxRef.current=-1;
+      targetIdxRef.current=-1;
+      slots.current=[];
+    };
+    document.addEventListener('touchmove',onMove,{passive:false});
+    document.addEventListener('touchend',onEnd);
+    document.addEventListener('touchcancel',onEnd);
+    return ()=>{
+      if(rafRef.current!=null) cancelAnimationFrame(rafRef.current);
+      document.removeEventListener('touchmove',onMove);
+      document.removeEventListener('touchend',onEnd);
+      document.removeEventListener('touchcancel',onEnd);
+    };
+  },[dragId]);
+
+  const shiftedIndex=(i:number,D:number,T:number):number=>{
+    if(i===D) return T;
+    if(D<T) return (i>D&&i<=T) ? i-1 : i;
+    return (i>=T&&i<D) ? i+1 : i;
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100] flex flex-col bg-black/30 lg:items-center lg:justify-center" onClick={onClose}>
+      <div className="flex-1 lg:hidden"/>
+      <div className="bg-white w-full max-w-md mx-auto rounded-t-3xl lg:rounded-b-3xl max-h-[80vh] flex flex-col shadow-2xl" onClick={e=>e.stopPropagation()}>
+        <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-gray-100 shrink-0">
+          <h3 className="text-base font-bold text-gray-900">{tr('reorderPopupTitle')}</h3>
+          <button onClick={()=>onSave(order.map(n=>byName.get(n)!).filter(Boolean))} className="text-sm font-bold text-[var(--c-primary)] px-2 py-1">{tr('taskModalDone')}</button>
+        </div>
+        <p className="text-xs text-gray-400 px-4 pt-3 pb-1">{tr('reorderPopupHint')}</p>
+        <div className="overflow-y-auto px-4 pb-4 pt-2 space-y-2" style={{paddingBottom:'calc(1rem + env(safe-area-inset-bottom))'}}>
+          {order.map((name,i)=>{
+            const t=byName.get(name);
+            if(!t) return null;
+            const dragging=dragId===name;
+            let translateY=0;
+            if(dragId){
+              if(dragging){
+                translateY=dragDy;
+              } else if(slots.current[i]){
+                const D=draggedIdxRef.current, T=targetIdx??D;
+                const newIdx=shiftedIndex(i,D,T);
+                translateY=(slots.current[newIdx]?.top??slots.current[i].top)-slots.current[i].top;
+              }
+            }
+            return (
+              <div key={name}
+                ref={el=>{rowRefs.current[name]=el;}}
+                className={`flex items-center gap-2.5 bg-white border rounded-2xl px-3 py-3 select-none ${dragging?'relative z-10 shadow-lg border-[var(--c-primary)] opacity-70':'shadow-sm border-gray-100'}`}
+                style={{
+                  transform: translateY?`translateY(${translateY}px)`:undefined,
+                  transition: dragging?'none':'transform 200ms cubic-bezier(0.2,0,0,1)',
+                }}>
+                <span style={{backgroundColor:t.color}} className="w-4 h-4 rounded-full shrink-0"/>
+                <p className="flex-1 text-sm font-semibold text-gray-900 truncate">{t.name}</p>
+                <button onTouchStart={e=>startDrag(name,e)}
+                  className="w-9 h-9 -mr-1.5 rounded-lg flex items-center justify-center text-gray-300 active:bg-gray-100 shrink-0" style={{touchAction:'none'}}>
+                  <AppIcons.dragHandle size={20}/>
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Settings Screen ──────────────────────────────────────────────────────────
 
 function ProGateSheet({onClose,onView,feature}:{onClose:()=>void;onView?:()=>void;feature?:string}) {
@@ -5869,6 +6012,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   };
   const [tagInput,setTagInput] = useState('');
   const [newTagColor,setNewTagColor] = useState(TAG_COLORS[0].bg);
+  const [showTagReorderPopup,setShowTagReorderPopup] = useState(false);
   const [editIdx,setEditIdx]   = useState<number|null>(null);
   const [editVal,setEditVal]   = useState('');
   const [editColor,setEditColor]   = useState(TAG_COLORS[0].bg);
@@ -6420,7 +6564,15 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
         {/* Tag list */}
         {globalTags.length>0&&(
           <>
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1 mb-2 mt-6">{tr('tagListSectionLabel')}</p>
+            <div className="flex items-center justify-between px-1 mb-2 mt-6">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">{tr('tagListSectionLabel')}</p>
+              {globalTags.length>1&&(
+                <button onClick={()=>setShowTagReorderPopup(true)}
+                  className="w-7 h-7 rounded-lg flex items-center justify-center bg-gray-100 text-gray-500 active:bg-gray-200">
+                  <AppIcons.reorder size={14}/>
+                </button>
+              )}
+            </div>
             <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
               {globalTags.map((tag,i)=>(
                 <div key={i} className={`px-4 py-3 flex items-center gap-3${i<globalTags.length-1?' border-b border-gray-100':''}`}>
@@ -6488,6 +6640,9 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             </div>
           </div>
         );})()}
+        {showTagReorderPopup&&(
+          <ReorderTagsPopup tags={globalTags} onSave={ordered=>{onGlobalTags(ordered);setShowTagReorderPopup(false);}} onClose={()=>setShowTagReorderPopup(false)}/>
+        )}
       </div>
     </div>
   );
