@@ -19,5 +19,7 @@ class BridgeViewController: CAPBridgeViewController {
         bridge?.registerPluginInstance(AnalyticsPlugin())
         bridge?.registerPluginInstance(VoiceInputPlugin())
         bridge?.registerPluginInstance(WatchBridgePlugin())
+        bridge?.registerPluginInstance(GoogleAuthPlugin())
+        bridge?.registerPluginInstance(AppleAuthPlugin())
     }
 }

@@ -32,11 +32,10 @@
 1. アプリを開いて0.4秒後に自動でダイクテーション画面が開くか（開かずフォールバックのTextFieldになる場合は遅延不足の可能性がある。この時点ではまだ未検証）
 2. マイクアイコンの色がiPhone側のテーマカラー（未受信時はミント`#94CFC8`にフォールバック）に追従するか（`WatchBridgePlugin.swift`の`updateThemeColor`・`WatchConnector.swift`の`didReceiveApplicationContext`）
 
-**ログイン・クラウド同期（後述の「## ログイン・クラウド同期」節）はPhase A（Google/Appleログイン＋ローカルデータの初回クラウド移行）のみ実装・push済み。** ユーザーから「これはあとでやる、覚えといて」と明示的に次回以降へ保留する指示があった残りの作業:
+**ログイン・クラウド同期（後述の「## ログイン・クラウド同期」節）はPhase A（Google/Appleログイン＋ローカルデータの初回クラウド移行）のみ実装・push済み。** ネイティブのGoogle/Appleログイン（iOS: Google+Apple両方／Android: Googleのみ）はソースコードを実装・push済みだが、**Xcode/Android Studio側の手動セットアップ・Firebase Console/Google Cloud Console/Apple Developer側の設定がまだ未実施のため、実機での動作確認はまだ行えていない。** 次回セッションで実機確認すること（詳細は「## ログイン・クラウド同期」節の「ネイティブログイン」小節を参照）。ユーザーから「これはあとでやる、覚えといて」と明示的に次回以降へ保留する指示があった残りの作業:
 
 1. **複数端末の継続的なリアルタイム同期（未実装）。** 現在は「ログイン時に1回だけローカル→クラウドへアップロードする」移行のみで、クラウド側の変更を他端末が取り込む仕組み（Firestoreのリアルタイムリスナー、ローカルとの差分解決）は無い。次に着手する時は、既存の「id付き配列は1件1ドキュメントのサブコレクション」という安全なマージ設計を崩さないこと（配列全体を1フィールドとして上書き保存する方式に戻すと、複数端末間の統合が壊れる）。
-2. **iOSネイティブのGoogle/Appleログイン（未実装）。** 現在のログインはWeb版（ブラウザのFirebase JS SDK、`signInWithPopup`/`signInWithRedirect`）のみ対応。iOSネイティブでは別途Capacitorカスタムプラグイン（ネイティブGoogleSignIn SDK・`AuthenticationServices`のSign in with Apple）でネイティブの認証情報を取得し、Firebase Authのcredentialとして交換する実装が必要（他のCapacitorプラグインと同じ「JS薄いラッパー→ネイティブプラグイン」構成に倣うこと）。
-3. **Androidネイティブの同等実装も未着手。**
+2. **Androidネイティブの Sign in with Apple（未実装）。** AppleがAndroid向けの公式サインインSDKを提供していないため、iOS版（`AppleAuthPlugin`、`AuthenticationServices`→idToken取得→JS側でFirebase credential交換）と同じ設計をそのまま移植できない。実現するには、Firebase Authの`OAuthProvider`+`startActivityForSignInWithProvider`（ネイティブ側で完結するが、JS SDK側のauthセッションとは別になるため今のCloud.tsの設計とは相容れない）か、Chrome Custom Tabs等でAppleのOAuth認可エンドポイントを自前で叩きidTokenを取得する自前実装（未検証・要調査）のどちらかを選ぶ必要がある。設定画面側は`isAndroid()`判定でAppleボタン自体を非表示にして対応済み（押しても何も起きないボタンを出さないための暫定対応）。
 
 ユーザー側の作業として、Firebase ConsoleでAuthentication（Google/Appleプロバイダ）とFirestore Database・セキュリティルールの設定がまだ済んでいない（済ませないと、すでに実装済みのWeb版ログインUIも実際には動作しない）。詳細は「## ログイン・クラウド同期」節を参照。
 
@@ -2560,7 +2559,7 @@ DEV_PREMIUM_CHANGED_EVENT  // プラン上書きの変更をPremiumProviderに�
 
 ## ログイン・クラウド同期（Google/Apple ＋ Cloud Firestore、設定 → アカウント）
 
-**現在のスコープ: ログイン ＋ ローカルデータの初回クラウド移行まで（Phase A）。** ログイン後にクラウド側の変更をリアルタイムで取り込む「複数端末での継続的な同期」自体はまだ未実装（次フェーズ）。iOS/Androidのネイティブログイン（Googleネイティブサインイン・Sign in with Apple）も未実装で、現状はWeb版（ブラウザ）でのみ動作する。
+**現在のスコープ: ログイン ＋ ローカルデータの初回クラウド移行まで（Phase A）。** ログイン後にクラウド側の変更をリアルタイムで取り込む「複数端末での継続的な同期」自体はまだ未実装（次フェーズ）。ネイティブログインはiOS（Google・Apple両方）・Android（Googleのみ、AppleはAndroid公式SDKが存在しないため未対応）をソースコードとして実装済みだが、Xcode/Android Studio側の手動セットアップとFirebase Console等の設定が済むまで実機検証できていない（詳細は後述の「ネイティブログイン」節）。
 
 ### 設計方針
 
@@ -2599,6 +2598,45 @@ users/{uid}/patternOverrides/{key}   … 生活パターンの日別上書き（
 
 `App`コンポーネントの`onCloudAuthChange`の購読は`useEffect(...,[])`でマウント時に1回だけ登録されるクロージャのため、コールバック内で`tasks`等のstateを直接参照すると登録時点の値のまま固定される（`TaskModal`の`autoIconRef`・Watch連携の`todayStr()`と同じ罠）。これを避けるため、`migrationDataRef`という「毎レンダーで最新のローカルデータ一式を書き込むref」を用意し、実際の移行処理（`runMigrationIfNeeded`）はこのrefを経由して読む。新しく「ログイン・起動時コールバックの中で現在のstateを使いたい」処理を追加する時は、この`migrationDataRef`と同じパターン（depsなしの`useEffect`で毎レンダーrefを更新）に倣うこと。
 
+### ネイティブログイン（`GoogleAuthPlugin`・`AppleAuthPlugin`、実装済み・実機未検証）
+
+Web版の`signInWithPopup`はネイティブのWKWebView/WebView（`capacitor://localhost`等のカスタムオリジン）では機能しないため、iOS/Androidネイティブでは専用のCapacitorプラグインでOSネイティブのサインインUIを呼び出し、得られた認証情報（idToken等）をJS側でFirebaseの`credential`に変換して`signInWithCredential(auth, credential)`する。
+
+**ネイティブ側はidToken（Google: +accessToken）を取得して返すだけに留め、Firebase Authへのサインイン自体は必ずJS側（`Cloud.ts`）の`signInWithCredential()`で行う。** ネイティブのFirebaseAuth SDKを直接使って完結させてしまうと、JS SDK側の`auth`インスタンスとは別の独立したセッションになり、このファイル以下のFirestore読み書き（すべてJS SDK経由）が未認証のまま扱われてしまう。他のCapacitorプラグインと同じ「ネイティブは最小限、ロジックはJS側」という設計方針をここでも踏襲している。
+
+**対応状況:**
+
+| プラットフォーム | Google | Apple |
+|---|---|---|
+| iOS | `native-ios/GoogleAuthPlugin.swift`（GoogleSignIn-iOS SDK、SPM） | `native-ios/AppleAuthPlugin.swift`（`AuthenticationServices`、追加SDK不要） |
+| Android | `native-android/GoogleAuthPlugin.kt`（`com.google.android.gms:play-services-auth`、classic GoogleSignInClient） | **未実装**（Appleが公式Android SDKを提供していないため。設定画面はAndroidでボタン自体を非表示にして対応——`isAndroid()`で`accountSignInApple`ボタンを出し分けている） |
+
+**Sign in with Appleのnonce処理（重要）:** Firebaseの要件で、Apple側のネイティブリクエストにはnonceのSHA256ハッシュを、Firebaseの`credential`生成には同じnonceの生の値（`rawNonce`）を渡す必要がある。`Cloud.ts`の`randomNonce()`/`sha256Hex()`（Web Crypto APIの`crypto.getRandomValues`/`crypto.subtle.digest`、WKWebView/WebViewでも標準で使える）がこれを担い、ハッシュ化した値だけをネイティブプラグインの`signIn({nonce})`に渡す。ネイティブ側（`AppleAuthPlugin.swift`）はこの値をそのまま`ASAuthorizationAppleIDProvider`のリクエストにセットするだけで、ハッシュ化処理自体はネイティブ側に持たせていない。
+
+**Google Sign-InのiOS実装（`GoogleAuthPlugin.swift`）:** クライアントIDは別途Info.plistに書かず、Analytics用に既に導入済みの`GoogleService-Info.plist`から`FirebaseApp.app()?.options.clientID`経由で取得する（新しい設定ファイルを増やさない）。認証完了後のURLコールバックは`AppDelegate.swift`を編集せず、Capacitorが発行する`CAPPluginURLOpen`通知を`load()`内で購読して`GIDSignIn.sharedInstance.handle(url)`に渡す（他のプラグインと同じ「AppDelegateは触らない」方針）。
+
+**Google Sign-InのAndroid実装（`GoogleAuthPlugin.kt`）:** `requestIdToken()`に渡す`R.string.default_web_client_id`は、Firebase Console側でGoogleプロバイダを有効化した時に`google-services.json`へ自動的に含まれ、`google-services` Gradleプラグインが生成する。**この設定がまだ済んでいない環境でアプリがクラッシュしないよう、クライアント生成を`load()`ではなく`signIn()`呼び出し時まで遅延し、リソースが存在しなければ`call.reject()`で静かに失敗するようにしてある**（`load()`はCapacitor起動時に全プラグインぶん呼ばれるため、ここで未解決の参照に起因する例外を投げるとアプリ全体がクラッシュする）。**Google公式は現在このclassic API（`com.google.android.gms:play-services-auth`の`GoogleSignInClient`）から新しい`Credential Manager`（`androidx.credentials`）への移行を推奨しているが、実装当時は追加依存関係・minSdk要件の確認が実機なしでは難しかったため、まず実績のあるclassic API側で実装した。** 将来的な移行候補として認識しておくこと。
+
+**Apple Sign-InのAndroid未実装（意図的なスコープ外）:** Appleは公式のAndroid向けサインインSDKを提供していない。実現するにはFirebase Authの`OAuthProvider`+`startActivityForSignInWithProvider`（ネイティブ側で完結するOAuthフロー一式を提供するが、結果がネイティブFirebaseAuthのセッションになりJS SDK側のセッションと分離してしまうため、今の「ネイティブは認証情報取得のみ、サインインはJS側」という設計とは根本的に相容れない）か、Chrome Custom Tabs等を使った自前のOAuth実装（Appleの認可エンドポイントを直接叩きidTokenを取得する、`@capacitor-firebase/authentication`等のコミュニティプラグインが採用している方式）のどちらかを選ぶ必要がある、アーキテクチャ上の検討が必要な領域のため今回は見送った。**新しいセッションでこの機能を求められたら、まずこの2つの選択肢のどちらを取るか（JS SDKとのセッション統一を諦めてネイティブ側で完結させるか、自前でOAuthフローを実装するか）をユーザーに確認すること。**
+
+**Xcodeでの手動セットアップ（`ios/`はgitignore対象なので毎回必要）:**
+
+1. Xcode → File → Add Package Dependencies → `https://github.com/google/GoogleSignIn-iOS` を追加（製品: `GoogleSignIn`、Target: App）
+2. `native-ios/GoogleAuthPlugin.swift`/`.m`・`native-ios/AppleAuthPlugin.swift`/`.m`を`ios/App/App/`に追加（Target Membership: App）
+3. `native-ios/BridgeViewController.swift`の`capacitorDidLoad()`に`bridge?.registerPluginInstance(GoogleAuthPlugin())`・`bridge?.registerPluginInstance(AppleAuthPlugin())`があることを確認（無ければ追記。既存の`ios/App/App/BridgeViewController.swift`は`git pull`で自動反映されないので**Xcode上で直接編集**）
+4. `native-ios/GoogleAuthInfo.plist.snippet.xml`の内容を`ios/App/App/Info.plist`に追加する（`GoogleService-Info.plist`のREVERSED_CLIENT_ID値を使う。**`CFBundleURLTypes`キーは既にウィジェットの`brainbox://`スキームで使われているため、キーごと追加せず既存の`<array>`に`<dict>`を1つ足す**こと。Xcodeの TARGETS → App → Info → URL Types から「+」で追加する方がこの重複の心配をせずに済む）
+5. 「Signing & Capabilities」→「+ Capability」→「Sign in with Apple」を有効化する（Apple Developer側の証明書/App ID設定にも自動反映される）
+6. Firebase Console → Authentication → Sign-in method → Google・Appleをそれぞれ有効化しておく（後述の「Firebase Consoleでの手動セットアップ」参照。Appleは別途Apple Developer側でのServices ID作成も必要）
+
+**Android Studioでの手動セットアップ（`android/`はgitignore対象なので毎回必要）:**
+
+1. `android/app/build.gradle`の`dependencies`に`implementation "com.google.android.gms:play-services-auth:21.2.0"`を追加する
+2. `native-android/GoogleAuthPlugin.kt`を`android/app/src/main/java/jp/brainbox/app/`にコピーする
+3. `native-android/MainActivity.java`の内容で既存の`MainActivity.java`を上書きする（`registerPlugin(GoogleAuthPlugin.class)`の行が追加されている）
+4. Firebase Console → Authentication → Sign-in method → Googleを有効化し、**その後**最新の`google-services.json`を再ダウンロードして`android/app/`に上書きする（有効化前にダウンロード済みのファイルには`default_web_client_id`の元になるOAuthクライアント情報が含まれていないため、有効化の順序が重要）
+5. Android Studioで「Sync Now」→ビルドが通ることを確認する
+6. これらのファイルを編集した場合、`android/`内の既存ファイルは`git pull`しても自動更新されない（`native-android/`の最新内容を都度コピーし直すこと。他プラグインの節と同じ注意事項）
+
 ### Firebase Consoleでの手動セットアップ（ユーザー側の作業、未実施）
 
 1. 既存のFirebaseプロジェクト（Analyticsで使っているもの）で、左メニュー「Authentication」→「Sign-in method」を開く
@@ -2627,6 +2665,10 @@ users/{uid}/patternOverrides/{key}   … 生活パターンの日別上書き（
 - `onCloudAuthChange`等のマウント時コールバック内でtasks等のstateを直接参照しない（stale closureになる。`migrationDataRef`経由で読むこと）
 - 生の`AppleID` JS SDK（`window.AppleID`）を新たに使わない（Firebase Authが`OAuthProvider('apple.com')`としてApple自体を標準サポートしているため不要。旧実装はこの置き換えで撤去済み）
 - プライバシーポリシー・FAQ（`faqA1`）の「データはすべてローカルに保存される」という説明を、ログイン機能追加後もそのままにしない（ログインした場合はFirestoreにも保存される旨を明記すること。実際に`faqA1`は本機能追加時に更新済み）
+- ネイティブ側（`GoogleAuthPlugin`/`AppleAuthPlugin`）で直接Firebaseにサインインしない（ネイティブFirebaseAuth SDKとJS SDKのセッションが分離し、JS SDK経由のFirestoreアクセスが未認証になる。ネイティブ側はidToken等の認証情報を取得して返すだけに留め、`signInWithCredential()`は必ずJS側＝`Cloud.ts`で行うこと）
+- AndroidのGoogle Sign-In用`GoogleAuthPlugin.kt`で、`default_web_client_id`リソースへの参照を`load()`内に置かない（Firebase Console側のGoogle有効化が未済だとリソースが存在せず、`load()`はCapacitor起動時に全プラグインぶん呼ばれるためアプリ全体がクラッシュする。`signIn()`呼び出し時まで遅延し、存在しなければ`call.reject()`で静かに失敗させること）
+- Androidネイティブに「Sign in with Apple」を安易に自前実装しない（公式SDKが無いため、Firebase `OAuthProvider`+`startActivityForSignInWithProvider`かChrome Custom Tabsでの自前OAuth実装かという設計判断が必要。実装前に必ずユーザーに確認すること）
+- iOS/Androidどちらのネイティブログインも、Xcode/Android Studio側の手動セットアップとFirebase Console/Apple Developer側の設定が揃うまで実機で動作しない。「ソースコードをpushしたのでネイティブログインが使える」と早合点して報告しない
 
 ---
 

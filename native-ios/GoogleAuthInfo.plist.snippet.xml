@@ -1,0 +1,28 @@
+<!--
+Google Sign-In（GoogleAuthPlugin）のコールバック用URLスキーム。
+
+GoogleService-Info.plist（Analytics用に既に追加済みのもの）を開き、REVERSED_CLIENT_ID
+キーの値（"com.googleusercontent.apps.XXXXXXXX" のような文字列）をコピーして下のCFBundleURLSchemes
+に入れること。
+
+ios/App/App/Info.plistには既にCFBundleURLTypesキーが存在している（native-ios/UrlSchemeInfo.plist.snippet.xml
+のbrainbox://スキーム用）。plistにCFBundleURLTypesキーを2つ持つことはできないため、新しくこのキーごと
+追加するのではなく、既存のCFBundleURLTypesの<array>の中に<dict>を1つ追加すること
+（Xcodeの TARGETS → App → Info → URL Types からだと「+」ボタンで追加するだけでよく、
+この重複の心配をせずに済む）。
+-->
+<key>CFBundleURLTypes</key>
+<array>
+  <dict>
+    <key>CFBundleURLSchemes</key>
+    <array>
+      <string>brainbox</string>
+    </array>
+  </dict>
+  <dict>
+    <key>CFBundleURLSchemes</key>
+    <array>
+      <string>com.googleusercontent.apps.XXXXXXXX</string>
+    </array>
+  </dict>
+</array>

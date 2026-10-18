@@ -31,6 +31,57 @@ function isNative(): boolean {
   return !!(window as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor?.isNativePlatform?.();
 }
 
+// Sign in with AppleはAppleが公式Android SDKを提供していないため、ネイティブ実装は
+// 現状iOSのみ（AppleAuthPlugin）。Androidではこの判定でネイティブ分岐を避け、
+// 他のisNative()判定と同じくファイルごとに判定ヘルパーを持つ既存の規約に倣う
+function isAndroidNative(): boolean {
+  if (typeof window === 'undefined') return false;
+  return (window as { Capacitor?: { getPlatform?: () => string } }).Capacitor?.getPlatform?.() === 'android';
+}
+
+// ネイティブのGoogle/Apple認証情報（idToken等）を取得するだけの薄いCapacitorプラグイン。
+// Firebase Authへのサインイン自体はこのファイルがsignInWithCredential()で行う
+// （ネイティブ側で直接FirebaseAuthにサインインすると、このJS SDKのauthセッションとは
+// 別の独立したセッションになり、Firestoreアクセス等このファイル以下のJS SDK依存コードが
+// 認証済み扱いにならないため。他のCapacitorプラグインと同じ「ネイティブは最小限、
+// ロジックはJS側」という設計方針をここでも踏襲する）
+interface GoogleAuthPluginType {
+  signIn(): Promise<{ idToken: string; accessToken?: string }>;
+}
+interface AppleAuthPluginType {
+  signIn(options: { nonce: string }): Promise<{ idToken: string }>;
+}
+let googleAuthPluginPromise: Promise<GoogleAuthPluginType> | null = null;
+async function getGoogleAuthPlugin(): Promise<GoogleAuthPluginType> {
+  if (!googleAuthPluginPromise) {
+    googleAuthPluginPromise = import('@capacitor/core').then(({ registerPlugin }) =>
+      registerPlugin<GoogleAuthPluginType>('GoogleAuthPlugin'));
+  }
+  return googleAuthPluginPromise;
+}
+let appleAuthPluginPromise: Promise<AppleAuthPluginType> | null = null;
+async function getAppleAuthPlugin(): Promise<AppleAuthPluginType> {
+  if (!appleAuthPluginPromise) {
+    appleAuthPluginPromise = import('@capacitor/core').then(({ registerPlugin }) =>
+      registerPlugin<AppleAuthPluginType>('AppleAuthPlugin'));
+  }
+  return appleAuthPluginPromise;
+}
+
+// Sign in with Appleのnonce（リプレイ攻撃対策、Firebase側の要件）。生のnonceはFirebaseの
+// credentialに渡し、そのSHA256ハッシュをApple側のネイティブリクエストに渡す
+function randomNonce(length = 32): string {
+  const charset = '0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._';
+  const bytes = new Uint8Array(length);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => charset[b % charset.length]).join('');
+}
+async function sha256Hex(input: string): Promise<string> {
+  const data = new TextEncoder().encode(input);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(hashBuffer)).map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
 function firebaseConfig() {
   return {
     apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -76,10 +127,17 @@ async function getDb() {
 export async function signInWithGoogle(): Promise<CloudUser | null> {
   const auth = await getAuthInstance();
   if (!auth) return null;
-  const { GoogleAuthProvider, signInWithPopup, signInWithRedirect } = await import('firebase/auth');
-  const provider = new GoogleAuthProvider();
+  const { GoogleAuthProvider, signInWithCredential, signInWithPopup, signInWithRedirect } = await import('firebase/auth');
   try {
-    const cred = isNative() ? null : await signInWithPopup(auth, provider).catch(() => null);
+    if (isNative()) {
+      const plugin = await getGoogleAuthPlugin();
+      const { idToken, accessToken } = await plugin.signIn();
+      const credential = GoogleAuthProvider.credential(idToken, accessToken);
+      const cred = await signInWithCredential(auth, credential);
+      return toCloudUser(cred.user);
+    }
+    const provider = new GoogleAuthProvider();
+    const cred = await signInWithPopup(auth, provider).catch(() => null);
     if (cred) return toCloudUser(cred.user);
     // ポップアップがブロックされた環境（一部モバイルブラウザ等）はリダイレクト方式にフォールバック
     await signInWithRedirect(auth, provider);
@@ -93,12 +151,29 @@ export async function signInWithGoogle(): Promise<CloudUser | null> {
 export async function signInWithApple(): Promise<CloudUser | null> {
   const auth = await getAuthInstance();
   if (!auth) return null;
-  const { OAuthProvider, signInWithPopup, signInWithRedirect } = await import('firebase/auth');
-  const provider = new OAuthProvider('apple.com');
-  provider.addScope('email');
-  provider.addScope('name');
+  const { OAuthProvider, signInWithCredential, signInWithPopup, signInWithRedirect } = await import('firebase/auth');
   try {
-    const cred = isNative() ? null : await signInWithPopup(auth, provider).catch(() => null);
+    if (isNative()) {
+      // AndroidにはAppleの公式サインインSDKが存在しないため、ネイティブSign in with Appleは
+      // 現状iOSのみ対応。Android側は呼び出し元（page.tsx）でisNative()&&!isAndroidで
+      // ボタン自体を出し分ける想定で、ここでは安全側としてnullを返すだけに留める
+      if (isAndroidNative()) {
+        console.error('Apple sign-in is not yet supported on Android native');
+        return null;
+      }
+      const rawNonce = randomNonce();
+      const hashedNonce = await sha256Hex(rawNonce);
+      const plugin = await getAppleAuthPlugin();
+      const { idToken } = await plugin.signIn({ nonce: hashedNonce });
+      const provider = new OAuthProvider('apple.com');
+      const credential = provider.credential({ idToken, rawNonce });
+      const cred = await signInWithCredential(auth, credential);
+      return toCloudUser(cred.user);
+    }
+    const provider = new OAuthProvider('apple.com');
+    provider.addScope('email');
+    provider.addScope('name');
+    const cred = await signInWithPopup(auth, provider).catch(() => null);
     if (cred) return toCloudUser(cred.user);
     await signInWithRedirect(auth, provider);
     return null;
