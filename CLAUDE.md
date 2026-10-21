@@ -2300,6 +2300,8 @@ native-ios/BridgeViewController.swift … capacitorDidLoad() 内で FirebaseApp.
 
 ### Firebase側のセットアップ手順（ユーザー側の作業）
 
+**Firebaseプロジェクトは`remiremi11221122@gmail.com`のGoogleアカウントで作成・管理している。** Firebase Console（`console.firebase.google.com`）での作業が必要な時はこのアカウントでログインすること。
+
 1. [Firebase console](https://console.firebase.google.com)で新規プロジェクトを作成（Google Analyticsの有効化を選ぶ）
 2. プロジェクトに **iOSアプリ** を追加。バンドルIDはXcodeプロジェクトのバンドルID（`jp.brainbox.app`）と一致させる
 3. ダウンロードした `GoogleService-Info.plist` は消さずに保管しておく（Xcodeでの手動セットアップで使う）
