@@ -912,8 +912,10 @@ const recLabel=(t:Task,lang:Language='ja'):string=>{
   return '';
 };
 
-const generateCustomDates=(base:string,r:CustomRec):string[]=>{
-  const dates:string[]=[],maxN=r.endType==='count'?(r.endCount??20):52;
+const generateCustomDates=(base:string,r:CustomRec,extendTo?:number):string[]=>{
+  // extendToは繰り返しタスクの自動延長（extendRecurringSeriesIfNeeded）専用のオプション引数。
+  // 省略時（通常のタスク作成時）は従来通り52件が上限
+  const dates:string[]=[],maxN=r.endType==='count'?(r.endCount??20):(extendTo??52);
   const endD=r.endType==='date'?r.endDate??'':'';
   const push=(d:string)=>{ if(d>=base&&dates.length<maxN&&(!endD||d<=endD)) dates.push(d); };
   if(r.frequency==='day'){
@@ -967,6 +969,73 @@ const generateCustomDates=(base:string,r:CustomRec):string[]=>{
   }
   return dates;
 };
+
+// 繰り返しタスクは作成時に固定件数（毎日14日/毎週8週/毎月12ヶ月/毎年5年/カスタム終了未指定は
+// 最大52件）だけ先の日付をまとめて生成し、その後自動延長されない設計だった。長期間アプリを
+// 開かないと生成済みの未来インスタンスが尽き、ある日を境に繰り返しタスクが一切表示されなく
+// なる不具合（実際のユーザー報告で発覚）があったため、アプリ起動時・フォアグラウンド復帰時に
+// 残り日数が少なくなったシリーズへ次のバッチを追加する。
+// 終了日・終了回数が明示されているシリーズ（customRec.endType!=='never'）は対象外（ユーザーが
+// 意図的に設定した終了を尊重する）。カスタム時間間隔（frequency:'hour'）は、時刻を跨いだ
+// 継続計算が複雑なためスコープ外（現時点では未対応）
+const RECURRING_EXTEND_THRESHOLD_DAYS = 30;
+function extendRecurringSeriesIfNeeded(tasks: Task[]): Task[] {
+  const groups = new Map<string,Task[]>();
+  for(const t of tasks){
+    if(!t.recurrence) continue;
+    // seriesIdが無いレガシーデータはsameRecurringSeriesと同じ代替キー（名前+繰り返し設定+開始時刻）でグループ化する
+    const key = t.seriesId ?? `legacy:${t.name}|${t.recurrence}|${t.startTime}`;
+    const arr = groups.get(key); if(arr) arr.push(t); else groups.set(key,[t]);
+  }
+  const threshold = shiftDate(todayStr(), RECURRING_EXTEND_THRESHOLD_DAYS);
+  const additions: Task[] = [];
+  for(const series of groups.values()){
+    const first = series[0];
+    if(first.recurrence==='custom'){
+      if(!first.customRec || first.customRec.endType!=='never' || first.customRec.frequency==='hour') continue;
+    }
+    const dates = series.map(t=>t.date).sort();
+    const minDate = dates[0], maxDate = dates[dates.length-1];
+    if(maxDate >= threshold) continue; // まだ十分先まで生成済み
+    const existingDates = new Set(dates);
+    let newDates: string[] = [];
+    if(first.recurrence==='custom' && first.customRec){
+      // generateCustomDatesを長めのextendToで呼び直し、maxDateより後かつ未生成の分だけ採用する。
+      // 長期間アプリを開いていなかった場合でも閾値を超えるまで確実に埋まるよう、
+      // 1回のバッチで足りなければextendToを伸ばしながらリトライする
+      for(let extendTo=100; extendTo<=5000; extendTo+=100){
+        const all = generateCustomDates(minDate, first.customRec, extendTo);
+        newDates = all.filter(d=>d>maxDate && !existingDates.has(d));
+        const lastAll = all[all.length-1];
+        if((lastAll && lastAll>=threshold) || all.length<extendTo) break;
+      }
+    } else if(first.recurrence){
+      const step =
+        first.recurrence==='daily'  ? (i:number)=>shiftDate(minDate,i) :
+        first.recurrence==='weekly' ? (i:number)=>shiftDate(minDate,i*7) :
+        first.recurrence==='monthly'? (i:number)=>shiftMonthBy(minDate,i) :
+        first.recurrence==='yearly' ? (i:number)=>shiftYearBy(minDate,i) : null;
+      // 固定バッチ件数ではなく、しきい値（今日+30日）を超える日付が出るまで生成し続ける。
+      // 長期間アプリを開いていなかった場合、1バッチぶんの追加だけでは今日にすら追いつかない
+      // ことがあるため（実際にこの固定バッチ方式で検証中に発覚した不具合）
+      if(step){
+        for(let i=0;i<5000;i++){
+          const d=step(i);
+          if(d>maxDate && !existingDates.has(d)){
+            newDates.push(d);
+            if(d>=threshold) break;
+          }
+        }
+      }
+    }
+    if(newDates.length===0) continue;
+    const template = series.find(t=>t.date===maxDate) ?? first;
+    for(const d of newDates){
+      additions.push({...template,id:uid(),date:d,completed:false,completedAt:undefined,postponedCount:0,lastPostponedDate:undefined});
+    }
+  }
+  return additions.length>0 ? [...tasks,...additions] : tasks;
+}
 
 // ── Free slots ────────────────────────────────────────────────────────────────
 
@@ -8185,7 +8254,15 @@ export default function App() {
       }
     };
     applyPending();
-    const onVisible=()=>{ if(document.visibilityState==='visible') applyPending(); };
+    // 繰り返しタスクの自動延長（しばらくアプリを開かず生成済みインスタンスが尽きていた場合の救済）。
+    // 起動時・フォアグラウンド復帰時の両方でチェックする
+    setTasks(prev=>extendRecurringSeriesIfNeeded(prev));
+    const onVisible=()=>{
+      if(document.visibilityState==='visible'){
+        applyPending();
+        setTasks(prev=>extendRecurringSeriesIfNeeded(prev));
+      }
+    };
     document.addEventListener('visibilitychange',onVisible);
     return ()=>document.removeEventListener('visibilitychange',onVisible);
   },[loaded]);
