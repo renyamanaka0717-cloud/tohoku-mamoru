@@ -1951,6 +1951,11 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
   },[focusNameSignal]);
 
   const [mode,setMode]        = useState<TaskMode>(initMode());
+  // 終日トグルで一時的にallDayへ切り替わる前のモード（「あとで」「時間指定」「繰り返し」）を
+  // 覚えておく。終日を解除した時にscheduledへ決め打ちで戻すと、繰り返しを選んでいた場合に
+  // その設定ごと失われてしまうため、トグルのたびにここへ退避・復元する
+  const prevModeRef = useRef<TaskMode>(mode==='allday'?'scheduled':mode);
+  useEffect(()=>{ if(mode!=='allday') prevModeRef.current=mode; },[mode]);
   const [name,setName]        = useState(task?.name??'');
   const fillTestNameBaseline = useRef(fillTestNameSignal);
   useEffect(()=>{
@@ -2235,16 +2240,25 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
 
   const toggleTag=(name:string)=>setTags(prev=>prev.includes(name)?prev.filter(x=>x!==name):[...prev,name]);
 
+  // 新規作成、または既存の非繰り返しタスクを編集して「繰り返し」に切り替えた場合に
+  // 真になる。どちらも「このタイミングで新しい繰り返しシリーズを始める」という点で
+  // 同じ扱いにできるため、save()内の分岐・seriesIdの発行を1つの条件にまとめている
+  const becomingRecurring = mode==='recurring' && !task?.recurrence;
   const savedOnceRef=useRef(false);
   const save=()=>{
     if(!name.trim()) return;
     if(savedOnceRef.current) return;
     savedOnceRef.current=true;
     const dur=duration;
-    // 新規の繰り返しシリーズには、生成する全インスタンス共通のseriesIdを1つだけ発行する
-    // （baseに含めてspreadすれば各インスタンスに自動的に引き継がれる）。既存タスクの
-    // 編集（非新規）ではtaskが持つseriesIdをそのまま維持する
-    const seriesId=(mode==='recurring'&&!task)?uid():task?.seriesId;
+    // 新規の繰り返しシリーズ（新規作成・既存タスクを繰り返しに切り替えた場合の両方）には、
+    // 生成する全インスタンス共通のseriesIdを1つだけ発行する（baseに含めてspreadすれば
+    // 各インスタンスに自動的に引き継がれる）。既に繰り返しだったタスクの編集
+    // （recConfirm経由、save()は呼ばれない）ではtaskが持つseriesIdをそのまま維持する
+    const seriesId=becomingRecurring?uid():task?.seriesId;
+    // 既存タスクを繰り返しに切り替えた場合は、現在タイムラインに表示中の日付ではなく
+    // そのタスク自身の日付を起点にインスタンスを生成する（新規作成時はtask?.dateが
+    // 無いため従来通りcurrentDateにフォールバックする）
+    const genBaseDate = task?.date ?? currentDate;
     const base:Omit<Task,'id'>={
       name:name.trim(),
       startTime:(mode==='later'||mode==='allday')?null:(startTime||null),
@@ -2272,16 +2286,16 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
       seriesId,
       noComplete:mode!=='later'?noComplete:false,
     };
-    if(mode==='recurring'&&!task){
+    if(becomingRecurring){
       const instances:Omit<Task,'id'>[]=[];
       if(recur==='daily'){
-        for(let i=0;i<14;i++) instances.push({...base,date:shiftDate(currentDate,i)});
+        for(let i=0;i<14;i++) instances.push({...base,date:shiftDate(genBaseDate,i)});
       } else if(recur==='weekly'){
-        for(let i=0;i<8;i++) instances.push({...base,date:shiftDate(currentDate,i*7)});
+        for(let i=0;i<8;i++) instances.push({...base,date:shiftDate(genBaseDate,i*7)});
       } else if(recur==='monthly'){
-        for(let i=0;i<12;i++) instances.push({...base,date:shiftMonthBy(currentDate,i)});
+        for(let i=0;i<12;i++) instances.push({...base,date:shiftMonthBy(genBaseDate,i)});
       } else if(recur==='yearly'){
-        for(let i=0;i<5;i++) instances.push({...base,date:shiftYearBy(currentDate,i)});
+        for(let i=0;i<5;i++) instances.push({...base,date:shiftYearBy(genBaseDate,i)});
       } else if(recur==='custom'){
         if(customRec.frequency==='hour'){
           const baseMin=base.startTime?toMin(base.startTime):8*60;
@@ -2289,12 +2303,12 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
           for(let i=0;i<maxN;i++){
             const totalMin=baseMin+i*customRec.interval*60;
             const dayOff=Math.floor(totalMin/(24*60));
-            const d=shiftDate(currentDate,dayOff);
+            const d=shiftDate(genBaseDate,dayOff);
             if(customRec.endType==='date'&&customRec.endDate&&d>customRec.endDate) break;
             instances.push({...base,date:d,startTime:fromMin(totalMin%(24*60))});
           }
         } else {
-          generateCustomDates(currentDate,customRec).forEach(d=>instances.push({...base,date:d}));
+          generateCustomDates(genBaseDate,customRec).forEach(d=>instances.push({...base,date:d}));
         }
       }
       if(!task&&(notificationsEnabled===false)){
@@ -2324,7 +2338,10 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
     locationNotify!==(task?.locationNotify??false);
 
   const handleClose=()=>{
-    if(task){flushAndClose();}
+    // 既存タスクを編集中に「繰り返し」へ切り替えた直後に×で閉じた場合、通常の
+    // flushAndClose（単一フィールドの自動保存）だとシリーズが生成されずrecurrenceだけ
+    // 付いた1件のタスクになってしまうため、save()経由でシリーズを生成させる
+    if(task){ if(becomingRecurring){save();return;} flushAndClose(); }
     else if(hasChanges){setShowDiscard(true);}
     else{onClose();}
   };
@@ -2386,7 +2403,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                       {saveStatus==='saving'?tr('taskModalSaving'):saveStatus==='saved'?tr('taskModalSaved'):tr('taskModalSaveFailed')}
                     </span>
                   )}
-                  <button onClick={recurringDataChanged?()=>onRequestRecurringSave?.(buildData()):flushAndClose}
+                  <button onClick={becomingRecurring?save:(recurringDataChanged?()=>onRequestRecurringSave?.(buildData()):flushAndClose)}
                     className="px-4 py-1.5 text-sm font-semibold rounded-full bg-white/90 text-gray-800">{tr('taskModalDone')}</button>
                 </>
               ) : (
@@ -2695,7 +2712,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
               <div className="w-full flex items-center gap-3 px-4 py-3.5" data-tour={!task&&!docked?'start-time-row':undefined}>
                 <AppIcons.clock size={18} className="text-gray-400 shrink-0"/>
                 <span className="text-sm font-medium text-gray-800 shrink-0">{tr('fieldStartTime')}</span>
-                <button onClick={()=>setMode(m=>m==='allday'?'scheduled':'allday')}
+                <button onClick={()=>setMode(m=>m==='allday'?prevModeRef.current:'allday')}
                   className={`w-10 h-5 rounded-full transition-colors relative shrink-0 ${mode==='allday'?'bg-[var(--c-primary)]':'bg-gray-200'}`}>
                   <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${mode==='allday'?'left-[22px]':'left-0.5'}`}/>
                 </button>
@@ -9252,10 +9269,13 @@ export default function App() {
 
   const saveTasks = (data:Omit<Task,'id'>[]) => {
     const newTasks=data.map(d=>({...d,id:uid()}));
-    setTasks(prev=>modal.task
-      ?prev.map(t=>t.id===modal.task!.id?{...newTasks[0],id:t.id}:t)
-      :[...prev,...newTasks]
-    );
+    setTasks(prev=>{
+      if(!modal.task) return [...prev,...newTasks];
+      // 編集中の既存タスクを「繰り返し」に切り替えた場合、dataは複数インスタンスになる。
+      // 元のタスク1件を取り除いた上で、生成されたシリーズ全体を追加する
+      if(newTasks.length>1) return [...prev.filter(t=>t.id!==modal.task!.id),...newTasks];
+      return prev.map(t=>t.id===modal.task!.id?{...newTasks[0],id:t.id}:t);
+    });
     if(showTour&&!modal.task) setTourTaskSavedSignal(n=>n+1);
     if(!modal.task){
       logAnalyticsEvent('task_created',{mode:newTasks[0].isLater?'later':newTasks[0].recurrence?'recurring':'scheduled'});
