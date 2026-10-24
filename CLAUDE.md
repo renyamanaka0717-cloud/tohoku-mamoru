@@ -32,7 +32,27 @@
 1. アプリを開いて0.4秒後に自動でダイクテーション画面が開くか（開かずフォールバックのTextFieldになる場合は遅延不足の可能性がある。この時点ではまだ未検証）
 2. マイクアイコンの色がiPhone側のテーマカラー（未受信時はミント`#94CFC8`にフォールバック）に追従するか（`WatchBridgePlugin.swift`の`updateThemeColor`・`WatchConnector.swift`の`didReceiveApplicationContext`）
 
-**ログイン・クラウド同期（後述の「## ログイン・クラウド同期」節）はPhase A（Google/Appleログイン＋ローカルデータの初回クラウド移行）のみ実装・push済み。** ネイティブのGoogle/Appleログイン（iOS: Google+Apple両方／Android: Googleのみ）はソースコードを実装・push済みだが、**Xcode/Android Studio側の手動セットアップ・Firebase Console/Google Cloud Console/Apple Developer側の設定がまだ未実施のため、実機での動作確認はまだ行えていない。** 次回セッションで実機確認すること（詳細は「## ログイン・クラウド同期」節の「ネイティブログイン」小節を参照）。ユーザーから「これはあとでやる、覚えといて」と明示的に次回以降へ保留する指示があった残りの作業:
+**ログイン・クラウド同期（後述の「## ログイン・クラウド同期」節）はPhase A（Google/Appleログイン＋ローカルデータの初回クラウド移行）のみ実装・push済み。** ネイティブのGoogle/Appleログイン（iOS: Google+Apple両方／Android: Googleのみ）はソースコードを実装・push済み。
+
+**iOS側のXcode手動セットアップは今回のセッションで完了させた（ユーザーと一緒にターミナル・Xcodeを操作しながら進めた）:**
+- GoogleSignIn-iOS（SPM）をAppターゲットに追加し、「Frameworks, Libraries, and Embedded Content」にも`GoogleSignIn`をリンク済み（パッケージを追加しただけではリンクされておらず`Unable to resolve module dependency: 'GoogleSignIn'`でビルド失敗した実績あり。パッケージ追加とターゲットへのリンクは別作業だと気づいていないと同じ不具合を踏む）
+- `native-ios/GoogleAuthPlugin.swift`/`.m`・`AppleAuthPlugin.swift`/`.m`をXcodeに追加し、`BridgeViewController.swift`の`capacitorDidLoad()`に`registerPluginInstance(GoogleAuthPlugin())`/`registerPluginInstance(AppleAuthPlugin())`を追記済み
+- Firebase ConsoleでGoogleプロバイダ有効化後に再ダウンロードした`GoogleService-Info.plist`に差し替え済み
+- Info.plistの「URL Types」に`REVERSED_CLIENT_ID`（`com.googleusercontent.apps.845153316377-if01rrclu2aqfqr52abuqef8bdtlfggf`）を追加済み
+- 「Signing & Capabilities」に「Sign In with Apple」を追加済み
+- 実機ビルド（Build Succeeded）まで到達済み
+
+**この過程で、過去から繰り返し起きていた「`ios/`配下の`.swift`ファイルが消える」不具合の根本原因も特定した。** iCloud「デスクトップと書類フォルダ」同期はOFFだったため無関係。ゴミ箱を確認したところ消えたはずのファイル（`ContentView.swift`・`BrainBoxWatchComplication.swift`等）が実際に入っており、**Xcodeでファイル参照を削除する時に「Remove Reference」ではなく「Move to Trash」を誤って選んでいたことが原因**と判明した。今後Xcodeでファイルを削除する操作をする時は必ず「Remove Reference」を選ぶこと。同じ現象が再発したら、まずゴミ箱を確認すれば復元できる（Macのゴミ箱はデフォルト30日保持）。
+
+**現在地（次回セッションはここから再開すること）:** 実機で設定→アカウント画面の「Googleでログイン」をタップすると、Safari Web Inspector（Develop→端末名→BrainBoxのWebView）で接続してコンソールを確認したところ、ネイティブの`GoogleAuthPlugin.signIn()`自体は呼ばれているが **`Error: sign_in_failed`** で失敗することを確認済み（エラーオブジェクトの詳細展開はまだ未確認——次回、エラー行の▶を展開してエラーコード等の詳細を見るところから再開する）。`sign_in_failed`はGoogle Sign-In SDK側の汎用エラーのため、原因の切り分けが必要（OAuth同意画面の設定・クライアントIDの不一致・Firebase ConsoleでのGoogleプロバイダ設定内容など）。**Appleでのログインはまだ実機テストしていない。** Androidの「Googleでログイン」ボタンの実機テストも、このiOS調査より前の段階でまだ済んでいない。
+
+**Web Inspector（Safari）での動作確認のコツ（次回同じ作業をする時のため）:** コンソールへの直接入力は、フィルターが「エラー」等に絞られていると実行結果が見えないことがある（実際には実行されているのに「何も起きない」ように見えて何度も入力し直す、という無駄が発生した）。「すべて」フィルターで確認するか、「評価」フィルターも含めて見ること。またアプリをXcodeから再起動すると接続が切れるので、その都度「開発」メニュー→端末名→対象のWebViewを選び直す必要がある。
+
+次回セッションで実機確認すること（上記Googleログインのエラー切り分けに加えて）:
+1. アプリを開いて0.4秒後に自動でダイクテーション画面が開くか（開かずフォールバックのTextFieldになる場合は遅延不足の可能性がある。この時点ではまだ未検証）
+2. マイクアイコンの色がiPhone側のテーマカラー（未受信時はミント`#94CFC8`にフォールバック）に追従するか（`WatchBridgePlugin.swift`の`updateThemeColor`・`WatchConnector.swift`の`didReceiveApplicationContext`）
+
+ユーザーから「これはあとでやる、覚えといて」と明示的に次回以降へ保留する指示があった残りの作業:
 
 1. **複数端末の継続的なリアルタイム同期（未実装）。** 現在は「ログイン時に1回だけローカル→クラウドへアップロードする」移行のみで、クラウド側の変更を他端末が取り込む仕組み（Firestoreのリアルタイムリスナー、ローカルとの差分解決）は無い。次に着手する時は、既存の「id付き配列は1件1ドキュメントのサブコレクション」という安全なマージ設計を崩さないこと（配列全体を1フィールドとして上書き保存する方式に戻すと、複数端末間の統合が壊れる）。
 2. **Androidネイティブの Sign in with Apple（未実装）。** AppleがAndroid向けの公式サインインSDKを提供していないため、iOS版（`AppleAuthPlugin`、`AuthenticationServices`→idToken取得→JS側でFirebase credential交換）と同じ設計をそのまま移植できない。実現するには、Firebase Authの`OAuthProvider`+`startActivityForSignInWithProvider`（ネイティブ側で完結するが、JS SDK側のauthセッションとは別になるため今のCloud.tsの設計とは相容れない）か、Chrome Custom Tabs等でAppleのOAuth認可エンドポイントを自前で叩きidTokenを取得する自前実装（未検証・要調査）のどちらかを選ぶ必要がある。設定画面側は`isAndroid()`判定でAppleボタン自体を非表示にして対応済み（押しても何も起きないボタンを出さないための暫定対応）。
