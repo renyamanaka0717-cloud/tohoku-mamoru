@@ -8638,6 +8638,43 @@ export default function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[cloudUser?.uid]);
 
+  // tasks/shopItems/customTabsと全く同じpush/pullパターンをshopNotifSettingsにも適用する（5つ目の対象コレクション）
+  const cloudShopNotifIdsRef=useRef<Set<string>|null>(null);
+  const skipNextShopNotifPushRef=useRef(false);
+
+  useEffect(()=>{
+    if(!cloudUser) return;
+    if(skipNextShopNotifPushRef.current){ skipNextShopNotifPushRef.current=false; return; }
+    const timer=setTimeout(()=>{
+      const prevIds=cloudShopNotifIdsRef.current ?? new Set(shopNotifSettings.map(s=>s.id));
+      pushIdCollectionDiff(cloudUser.uid,'shopNotifSettings',shopNotifSettings,prevIds).then(newIds=>{
+        if(newIds) cloudShopNotifIdsRef.current=newIds;
+      });
+    },1500);
+    return ()=>clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[shopNotifSettings,cloudUser?.uid]);
+
+  useEffect(()=>{
+    if(!cloudUser) return;
+    let unsub:(()=>void)|null=null;
+    let active=true;
+    subscribeIdCollection<ShopNotifSetting>(cloudUser.uid,'shopNotifSettings',(added,modified,removedIds)=>{
+      skipNextShopNotifPushRef.current=true;
+      setShopNotifSettings(prev=>{
+        const removedSet=new Set(removedIds);
+        const byId=new Map(prev.map(s=>[s.id,s]));
+        for(const s of [...added,...modified]) byId.set(s.id,s);
+        for(const id of removedSet) byId.delete(id);
+        const merged=[...byId.values()];
+        cloudShopNotifIdsRef.current=new Set(merged.map(s=>s.id));
+        return merged;
+      });
+    }).then(u=>{ if(active) unsub=u; else u(); });
+    return ()=>{ active=false; unsub?.(); cloudShopNotifIdsRef.current=null; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[cloudUser?.uid]);
+
   const maybeShowProductTour=()=>{
     if(localStorage.getItem(TOUR_COMPLETED_KEY)){ maybeShowNotifPrompt(); return; }
     setTimeout(()=>setShowWelcome(true),600);
