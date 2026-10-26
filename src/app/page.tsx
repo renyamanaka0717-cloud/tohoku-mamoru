@@ -8597,6 +8597,47 @@ export default function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[cloudUser?.uid]);
 
+  // tags（globalTags）はidを持たずnameがキーのため、pushIdCollectionDiff/subscribeIdCollection
+  // （T extends {id:string}が必須）を呼ぶ箇所でだけid:nameを合成する。ドキュメントIDがname
+  // そのものなので、タグ名を変更すると旧名のdeleteと新名のcreateが自動的に発生する（prevIds差分の仕組みが
+  // そのまま効く）
+  type CloudTagDef = TagDef & { id: string };
+  const cloudTagIdsRef=useRef<Set<string>|null>(null);
+  const skipNextTagPushRef=useRef(false);
+
+  useEffect(()=>{
+    if(!cloudUser) return;
+    if(skipNextTagPushRef.current){ skipNextTagPushRef.current=false; return; }
+    const timer=setTimeout(()=>{
+      const withId:CloudTagDef[]=globalTags.map(t=>({...t,id:t.name}));
+      const prevIds=cloudTagIdsRef.current ?? new Set(globalTags.map(t=>t.name));
+      pushIdCollectionDiff(cloudUser.uid,'tags',withId,prevIds).then(newIds=>{
+        if(newIds) cloudTagIdsRef.current=newIds;
+      });
+    },1500);
+    return ()=>clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[globalTags,cloudUser?.uid]);
+
+  useEffect(()=>{
+    if(!cloudUser) return;
+    let unsub:(()=>void)|null=null;
+    let active=true;
+    subscribeIdCollection<CloudTagDef>(cloudUser.uid,'tags',(added,modified,removedIds)=>{
+      skipNextTagPushRef.current=true;
+      setGlobalTags(prev=>{
+        const removedSet=new Set(removedIds);
+        const byName=new Map<string,CloudTagDef>(prev.map(t=>[t.name,{...t,id:t.name}]));
+        for(const t of [...added,...modified]) byName.set(t.name,t);
+        for(const name of removedSet) byName.delete(name);
+        cloudTagIdsRef.current=new Set(byName.keys());
+        return [...byName.values()].map(({name,color})=>({name,color}));
+      });
+    }).then(u=>{ if(active) unsub=u; else u(); });
+    return ()=>{ active=false; unsub?.(); cloudTagIdsRef.current=null; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[cloudUser?.uid]);
+
   const maybeShowProductTour=()=>{
     if(localStorage.getItem(TOUR_COMPLETED_KEY)){ maybeShowNotifPrompt(); return; }
     setTimeout(()=>setShowWelcome(true),600);
