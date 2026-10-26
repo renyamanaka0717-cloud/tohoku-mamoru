@@ -3,9 +3,12 @@
 // Google/Apple ログイン ＋ Cloud Firestoreへのデータ移行・保存を担う窓口。
 //
 // 【スコープ】Phase A（ログイン＋初回クラウド移行）に加え、Phase B（継続的な
-// リアルタイム同期）にも対応を開始した。Phase Bは現時点では`tasks`コレクションのみ
-// 対応（pushIdCollectionDiff/subscribeIdCollection）。他のコレクション（shopItems・
-// customTabs・tags等）はまだPhase Aの初回移行のみで、継続同期には未対応。
+// リアルタイム同期）も全コレクション対応済み。id付き配列（tasks・shopItems・customTabs・
+// shopNotifSettings・shopLocations・forgetAlerts・lifePatterns・moveHistory・bulkHistory）は
+// pushIdCollectionDiff/subscribeIdCollectionを使う。idを持たずキー文字列がドキュメントIDに
+// なるもの（tags・dayOverrides・patternOverrides）は、呼び出し側（page.tsx）でid:キーを
+// 合成してから同じ2関数を呼ぶ「合成idパターン」を使う。settings（単一オブジェクト）だけは
+// pushSettings/subscribeSettingsという専用の別実装（最後に書いた方が勝つ方式）を使う。
 //
 // 【無料版は常にlocalStorage完結】ログインは任意の操作（設定画面からいつでも可能）で、
 // 課金のゲートではない。Web版には元々課金の仕組みが無く常にisPremium=trueのため。
@@ -409,5 +412,34 @@ export async function subscribeIdCollection<T extends { id: string }>(
       (change.type === 'added' ? added : modified).push(data);
     });
     if (added.length || modified.length || removedIds.length) onChange(added, modified, removedIds);
+  });
+}
+
+// 設定（Settings）は単一オブジェクトのため、id付き配列向けのpushIdCollectionDiff/
+// subscribeIdCollectionは使えない。Phase A（writeSettingsIfAbsent）は「クラウドにまだ
+// 設定が無ければ書く」という初回移行専用の安全策だったが、継続同期（Phase B）はログイン中の
+// 端末がその後も設定を変更するケースを想定するため、変更のたびに素直に上書き（最後に
+// 書いた方が勝つ）する設計にする。複数端末を同時に設定変更するケースは稀なため、
+// id付き配列のような「安全な統合」の仕組みは不要と判断した。
+export async function pushSettings(uid: string, settings: object): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  const { doc, setDoc } = await import('firebase/firestore');
+  await setDoc(doc(db, 'users', uid), { settings: stripUndefined(settings) }, { merge: true });
+}
+
+// users/{uid}ドキュメントのsettingsフィールドをリアルタイム購読する。hasPendingWritesの
+// チェックはsubscribeIdCollectionと同じ理由（自分自身のpushSettingsによる楽観的echoを
+// 無視し、サーバーから確定した変更だけを反映対象にする）。
+export async function subscribeSettings<T>(
+  uid: string, onChange: (settings: T) => void
+): Promise<() => void> {
+  const db = await getDb();
+  if (!db) return () => {};
+  const { doc, onSnapshot } = await import('firebase/firestore');
+  return onSnapshot(doc(db, 'users', uid), (snap) => {
+    if (snap.metadata.hasPendingWrites) return;
+    const data = snap.data();
+    if (data && data.settings) onChange(data.settings as T);
   });
 }

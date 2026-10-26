@@ -13,7 +13,7 @@ import { voiceInputSupported, ensureVoiceInputPermission, startVoiceInput, stopV
 import { getAppVersion } from './components/AppVersion';
 import { logAnalyticsEvent } from './components/Analytics';
 import { isDevModeUnlocked, DEV_MODE_UNLOCKED_KEY, getDevPremiumOverride, setDevPremiumOverride, isDevDenied, DEV_LOCATION_DENIED_KEY, DEV_NOTIF_DENIED_KEY } from './components/DevMode';
-import { signInWithGoogle, signInWithApple, signOutCloud, onCloudAuthChange, consumeRedirectResult, migrateLocalDataToCloud, hasMigratedThisDevice, pushIdCollectionDiff, subscribeIdCollection, type CloudUser, type LocalDataForMigration } from './components/Cloud';
+import { signInWithGoogle, signInWithApple, signOutCloud, onCloudAuthChange, consumeRedirectResult, migrateLocalDataToCloud, hasMigratedThisDevice, pushIdCollectionDiff, subscribeIdCollection, pushSettings, subscribeSettings, type CloudUser, type LocalDataForMigration } from './components/Cloud';
 import { App as CapApp } from '@capacitor/app';
 import ProductTour from './components/ProductTour';
 import Welcome from './components/Welcome';
@@ -8937,6 +8937,31 @@ export default function App() {
       });
     }).then(u=>{ if(active) unsub=u; else u(); });
     return ()=>{ active=false; unsub?.(); cloudPatternOverrideIdsRef.current=null; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[cloudUser?.uid]);
+
+  // settingsは単一オブジェクトのため、id付き配列向けのpushIdCollectionDiff/subscribeIdCollection
+  // ではなくpushSettings/subscribeSettings（最後に書いた方が勝つ方式）を使う。これで
+  // クラウド同期対象の全コレクション（Phase B）が完了する
+  const skipNextSettingsPushRef=useRef(false);
+
+  useEffect(()=>{
+    if(!cloudUser) return;
+    if(skipNextSettingsPushRef.current){ skipNextSettingsPushRef.current=false; return; }
+    const timer=setTimeout(()=>{ pushSettings(cloudUser.uid,settings); },1500);
+    return ()=>clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[settings,cloudUser?.uid]);
+
+  useEffect(()=>{
+    if(!cloudUser) return;
+    let unsub:(()=>void)|null=null;
+    let active=true;
+    subscribeSettings<Settings>(cloudUser.uid,(cloudSettings)=>{
+      skipNextSettingsPushRef.current=true;
+      setSettings(cloudSettings);
+    }).then(u=>{ if(active) unsub=u; else u(); });
+    return ()=>{ active=false; unsub?.(); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[cloudUser?.uid]);
 
