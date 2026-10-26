@@ -220,6 +220,22 @@ function toCloudUser(u: FirebaseUserLike): CloudUser {
 
 // ── 移行（ローカル→クラウド、安全な統合書き込み） ──────────────────────
 
+// FirestoreのWriteBatch.set()はフィールド値にundefinedを許容せず例外を投げる
+// （nullは可）。Task.customRec等の任意フィールドがJS側でundefinedのまま保持されている
+// ケースがあるため、書き込み直前に再帰的にundefinedのキーを除去する
+function stripUndefined<T>(value: T): T {
+  if (Array.isArray(value)) return value.map((v) => stripUndefined(v)) as unknown as T;
+  if (value !== null && typeof value === 'object') {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      if (v === undefined) continue;
+      out[k] = stripUndefined(v);
+    }
+    return out as T;
+  }
+  return value;
+}
+
 // id付き配列をサブコレクションへ1件1ドキュメントで書き込む。端末ごとに生成されるidは
 // 衝突がほぼ起こらないため、複数端末分を同じサブコレクションへ書き込むだけで自然に
 // 重複なしの統合（union）になる。上書き・削除は行わない
@@ -232,7 +248,7 @@ async function writeIdCollection<T extends { id: string }>(uid: string, name: st
   for (let i = 0; i < items.length; i += 400) {
     const batch = writeBatch(db);
     for (const item of items.slice(i, i + 400)) {
-      batch.set(doc(collection(db, 'users', uid, name), item.id), item as Record<string, unknown>);
+      batch.set(doc(collection(db, 'users', uid, name), item.id), stripUndefined(item) as Record<string, unknown>);
     }
     await batch.commit();
   }
@@ -253,7 +269,7 @@ async function writeKeyedRecord(uid: string, name: string, record: object): Prom
     const batch = writeBatch(db);
     for (const k of keys.slice(i, i + 400)) {
       const v = rec[k];
-      batch.set(doc(collection(db, 'users', uid, name), k), (v && typeof v === 'object') ? v as Record<string, unknown> : { value: v });
+      batch.set(doc(collection(db, 'users', uid, name), k), stripUndefined((v && typeof v === 'object') ? v as Record<string, unknown> : { value: v }));
     }
     await batch.commit();
   }
@@ -265,7 +281,7 @@ async function writeTagDefs(uid: string, tags: { name: string; color: string }[]
   if (!db) return;
   const { collection, doc, writeBatch } = await import('firebase/firestore');
   const batch = writeBatch(db);
-  for (const t of tags) batch.set(doc(collection(db, 'users', uid, 'tags'), t.name), t);
+  for (const t of tags) batch.set(doc(collection(db, 'users', uid, 'tags'), t.name), stripUndefined(t));
   await batch.commit();
 }
 
@@ -278,7 +294,7 @@ async function writeSettingsIfAbsent(uid: string, settings: object): Promise<voi
   const ref = doc(db, 'users', uid);
   const snap = await getDoc(ref);
   if (snap.exists() && snap.data()?.settings) return;
-  await setDoc(ref, { settings }, { merge: true });
+  await setDoc(ref, { settings: stripUndefined(settings) }, { merge: true });
 }
 
 export interface LocalDataForMigration {
@@ -359,7 +375,7 @@ export async function pushIdCollectionDiff<T extends { id: string }>(
   for (let i = 0; i < ops.length; i += 400) {
     const batch = writeBatch(db);
     for (const op of ops.slice(i, i + 400)) {
-      if (op.type === 'set') batch.set(doc(col, op.id), op.data as Record<string, unknown>);
+      if (op.type === 'set') batch.set(doc(col, op.id), stripUndefined(op.data) as Record<string, unknown>);
       else batch.delete(doc(col, op.id));
     }
     await batch.commit();
