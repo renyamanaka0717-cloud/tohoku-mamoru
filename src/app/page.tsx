@@ -8901,6 +8901,45 @@ export default function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[cloudUser?.uid]);
 
+  // patternOverridesもdayOverridesと同じ「合成id」パターンだが、値が文字列（patternId）のため
+  // Cloud.tsのwriteKeyedRecordが移行時に行う{value:string}ラップと同じ形で保存する
+  interface CloudPatternOverride { id:string; value:string; }
+  const cloudPatternOverrideIdsRef=useRef<Set<string>|null>(null);
+  const skipNextPatternOverridePushRef=useRef(false);
+
+  useEffect(()=>{
+    if(!cloudUser) return;
+    if(skipNextPatternOverridePushRef.current){ skipNextPatternOverridePushRef.current=false; return; }
+    const timer=setTimeout(()=>{
+      const withId:CloudPatternOverride[]=Object.entries(patternOverrides).map(([date,patId])=>({id:date,value:patId}));
+      const prevIds=cloudPatternOverrideIdsRef.current ?? new Set(Object.keys(patternOverrides));
+      pushIdCollectionDiff(cloudUser.uid,'patternOverrides',withId,prevIds).then(newIds=>{
+        if(newIds) cloudPatternOverrideIdsRef.current=newIds;
+      });
+    },1500);
+    return ()=>clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[patternOverrides,cloudUser?.uid]);
+
+  useEffect(()=>{
+    if(!cloudUser) return;
+    let unsub:(()=>void)|null=null;
+    let active=true;
+    subscribeIdCollection<CloudPatternOverride>(cloudUser.uid,'patternOverrides',(added,modified,removedIds)=>{
+      skipNextPatternOverridePushRef.current=true;
+      setPatternOverrides(prev=>{
+        const removedSet=new Set(removedIds);
+        const byDate=new Map<string,string>(Object.entries(prev));
+        for(const o of [...added,...modified]) byDate.set(o.id,o.value);
+        for(const date of removedSet) byDate.delete(date);
+        cloudPatternOverrideIdsRef.current=new Set(byDate.keys());
+        return Object.fromEntries(byDate);
+      });
+    }).then(u=>{ if(active) unsub=u; else u(); });
+    return ()=>{ active=false; unsub?.(); cloudPatternOverrideIdsRef.current=null; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[cloudUser?.uid]);
+
   const maybeShowProductTour=()=>{
     if(localStorage.getItem(TOUR_COMPLETED_KEY)){ maybeShowNotifPrompt(); return; }
     setTimeout(()=>setShowWelcome(true),600);
