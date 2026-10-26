@@ -8823,6 +8823,43 @@ export default function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[cloudUser?.uid]);
 
+  // tasks/shopItems/customTabs/shopNotifSettings/shopLocations/forgetAlerts/lifePatterns/moveHistoryと全く同じpush/pullパターンをbulkHistoryにも適用する（10つ目の対象コレクション）
+  const cloudBulkHistoryIdsRef=useRef<Set<string>|null>(null);
+  const skipNextBulkHistoryPushRef=useRef(false);
+
+  useEffect(()=>{
+    if(!cloudUser) return;
+    if(skipNextBulkHistoryPushRef.current){ skipNextBulkHistoryPushRef.current=false; return; }
+    const timer=setTimeout(()=>{
+      const prevIds=cloudBulkHistoryIdsRef.current ?? new Set(bulkHistory.map(h=>h.id));
+      pushIdCollectionDiff(cloudUser.uid,'bulkHistory',bulkHistory,prevIds).then(newIds=>{
+        if(newIds) cloudBulkHistoryIdsRef.current=newIds;
+      });
+    },1500);
+    return ()=>clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[bulkHistory,cloudUser?.uid]);
+
+  useEffect(()=>{
+    if(!cloudUser) return;
+    let unsub:(()=>void)|null=null;
+    let active=true;
+    subscribeIdCollection<BulkHistoryEntry>(cloudUser.uid,'bulkHistory',(added,modified,removedIds)=>{
+      skipNextBulkHistoryPushRef.current=true;
+      setBulkHistory(prev=>{
+        const removedSet=new Set(removedIds);
+        const byId=new Map(prev.map(h=>[h.id,h]));
+        for(const h of [...added,...modified]) byId.set(h.id,h);
+        for(const id of removedSet) byId.delete(id);
+        const merged=[...byId.values()];
+        cloudBulkHistoryIdsRef.current=new Set(merged.map(h=>h.id));
+        return merged;
+      });
+    }).then(u=>{ if(active) unsub=u; else u(); });
+    return ()=>{ active=false; unsub?.(); cloudBulkHistoryIdsRef.current=null; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[cloudUser?.uid]);
+
   const maybeShowProductTour=()=>{
     if(localStorage.getItem(TOUR_COMPLETED_KEY)){ maybeShowNotifPrompt(); return; }
     setTimeout(()=>setShowWelcome(true),600);
