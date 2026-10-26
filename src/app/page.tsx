@@ -8523,6 +8523,43 @@ export default function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[cloudUser?.uid]);
 
+  // tasksと全く同じpush/pullパターンをshopItemsにも適用する（2つ目の対象コレクション）
+  const cloudShopItemIdsRef=useRef<Set<string>|null>(null);
+  const skipNextShopItemPushRef=useRef(false);
+
+  useEffect(()=>{
+    if(!cloudUser) return;
+    if(skipNextShopItemPushRef.current){ skipNextShopItemPushRef.current=false; return; }
+    const timer=setTimeout(()=>{
+      const prevIds=cloudShopItemIdsRef.current ?? new Set(shopItems.map(s=>s.id));
+      pushIdCollectionDiff(cloudUser.uid,'shopItems',shopItems,prevIds).then(newIds=>{
+        if(newIds) cloudShopItemIdsRef.current=newIds;
+      });
+    },1500);
+    return ()=>clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[shopItems,cloudUser?.uid]);
+
+  useEffect(()=>{
+    if(!cloudUser) return;
+    let unsub:(()=>void)|null=null;
+    let active=true;
+    subscribeIdCollection<ShopItem>(cloudUser.uid,'shopItems',(added,modified,removedIds)=>{
+      skipNextShopItemPushRef.current=true;
+      setShopItems(prev=>{
+        const removedSet=new Set(removedIds);
+        const byId=new Map(prev.map(s=>[s.id,s]));
+        for(const s of [...added,...modified]) byId.set(s.id,s);
+        for(const id of removedSet) byId.delete(id);
+        const merged=[...byId.values()];
+        cloudShopItemIdsRef.current=new Set(merged.map(s=>s.id));
+        return merged;
+      });
+    }).then(u=>{ if(active) unsub=u; else u(); });
+    return ()=>{ active=false; unsub?.(); cloudShopItemIdsRef.current=null; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[cloudUser?.uid]);
+
   const maybeShowProductTour=()=>{
     if(localStorage.getItem(TOUR_COMPLETED_KEY)){ maybeShowNotifPrompt(); return; }
     setTimeout(()=>setShowWelcome(true),600);

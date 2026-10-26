@@ -54,7 +54,7 @@
 
 ユーザーから「これはあとでやる、覚えといて」と明示的に次回以降へ保留する指示があった残りの作業:
 
-1. **複数端末の継続的なリアルタイム同期（`tasks`のみ実装済み・他コレクションは未着手）。** ユーザーに範囲を確認したところ「まずtasksのみ」との回答だったため、`tasks`コレクションだけPhase B（継続同期）を実装した。詳細は後述の「## ログイン・クラウド同期」節の「継続的なリアルタイム同期（Phase B）」小節を参照。**`shopItems`/`customTabs`/`tags`/`shopNotifSettings`/`shopLocations`/`forgetAlerts`/`lifePatterns`/`moveHistory`/`bulkHistory`/`dayOverrides`/`patternOverrides`/`settings`はまだPhase A（初回移行のみ）のまま**——これらに同期を広げる時は、`tasks`で実装した`pushIdCollectionDiff`/`subscribeIdCollection`（`Cloud.ts`、id付き配列向けの汎用関数として最初から用意してある）をそのまま再利用できる。**Firebase Console・Vercel環境変数の設定を終え、iPhone（Safari）とPC（Mac Safari）の実機2台でGoogleログイン→タスクの追加・編集が双方向に同期されることを確認済み。**
+1. **複数端末の継続的なリアルタイム同期（`tasks`/`shopItems`実装済み・他コレクションは未着手）。** ユーザーに範囲を確認したところ「まずtasksのみ」との回答だったため、まず`tasks`だけPhase B（継続同期）を実装し実機確認した。その後「タスク以外も広げたい、負担にならないよう一つずつ進めてほしい」との指示を受け、`shopItems`（買い物リスト）にも同じパターンを適用済み（`App`コンポーネント内、`tasks`のpush/pull effectのすぐ下に`cloudShopItemIdsRef`/`skipNextShopItemPushRef`という対になるrefで実装、ロジックはtasks版を丸ごと踏襲しているだけで新しい設計判断はない）。**`customTabs`/`tags`/`shopNotifSettings`/`shopLocations`/`forgetAlerts`/`lifePatterns`/`moveHistory`/`bulkHistory`/`dayOverrides`/`patternOverrides`/`settings`はまだPhase A（初回移行のみ）のまま**——これらに同期を広げる時は、`pushIdCollectionDiff`/`subscribeIdCollection`（`Cloud.ts`、id付き配列向けの汎用関数として最初から用意してある）をそのまま再利用できる（`tags`は`id`ではなく`name`がキーのため、他と全く同じ関数は使えず一工夫が必要な点に注意。`dayOverrides`/`patternOverrides`はキー付きレコード・`settings`は単一オブジェクトのため、どちらもid配列向けのこの2関数はそのままでは使えない）。**次に同期範囲を広げる時は、ユーザーから「一つずつ・負担にならないように」という明示的な指示があるため、複数コレクションをまとめて実装せず1つずつ実装→ビルド確認→デプロイ→実機確認のサイクルを回すこと。** Firebase Console・Vercel環境変数の設定を終え、iPhone（Safari）とPC（Mac Safari）の実機2台でGoogleログイン→タスクの追加・編集が双方向に同期されることを確認済み。
 2. **Androidネイティブの Sign in with Apple（未実装）。** AppleがAndroid向けの公式サインインSDKを提供していないため、iOS版（`AppleAuthPlugin`、`AuthenticationServices`→idToken取得→JS側でFirebase credential交換）と同じ設計をそのまま移植できない。実現するには、Firebase Authの`OAuthProvider`+`startActivityForSignInWithProvider`（ネイティブ側で完結するが、JS SDK側のauthセッションとは別になるため今のCloud.tsの設計とは相容れない）か、Chrome Custom Tabs等でAppleのOAuth認可エンドポイントを自前で叩きidTokenを取得する自前実装（未検証・要調査）のどちらかを選ぶ必要がある。設定画面側は`isAndroid()`判定でAppleボタン自体を非表示にして対応済み（押しても何も起きないボタンを出さないための暫定対応）。
 
 **Firebase Console・Vercelの設定は完了済み。** Firestore Database（`asia-northeast1`、本番環境モード）を作成し、セキュリティルールを`match /users/{uid}/{document=**} { allow read, write: if request.auth != null && request.auth.uid == uid; }`に設定済み。Authentication → 承認済みドメインに`getbrainbox.app`・`brainbox-app.vercel.app`を追加済み。Firebase Consoleにウェブアプリ「BrainBox Web」を新規登録し、そこで発行された`apiKey`等をVercelのEnvironment Variables（Production/Preview/Development全て）に`NEXT_PUBLIC_FIREBASE_*`として設定済み。
@@ -2636,30 +2636,31 @@ users/{uid}/patternOverrides/{key}   … 生活パターンの日別上書き（
 
 `App`コンポーネントの`onCloudAuthChange`の購読は`useEffect(...,[])`でマウント時に1回だけ登録されるクロージャのため、コールバック内で`tasks`等のstateを直接参照すると登録時点の値のまま固定される（`TaskModal`の`autoIconRef`・Watch連携の`todayStr()`と同じ罠）。これを避けるため、`migrationDataRef`という「毎レンダーで最新のローカルデータ一式を書き込むref」を用意し、実際の移行処理（`runMigrationIfNeeded`）はこのrefを経由して読む。新しく「ログイン・起動時コールバックの中で現在のstateを使いたい」処理を追加する時は、この`migrationDataRef`と同じパターン（depsなしの`useEffect`で毎レンダーrefを更新）に倣うこと。
 
-### 継続的なリアルタイム同期（Phase B、現時点では`tasks`のみ実装済み）
+### 継続的なリアルタイム同期（Phase B、現時点では`tasks`・`shopItems`が実装済み）
 
-Phase A（ログイン時1回だけのローカル→クラウド移行）に続き、ログイン中は他端末での変更もリアルタイムで取り込む仕組み。**ユーザーに「13種類ある同期対象データのうち、どこまで一度に対応するか」を確認したところ「まずtasksのみ」との回答だったため、現時点では`tasks`コレクションだけに限定して実装している。** 他のコレクション（`shopItems`/`customTabs`/`tags`等）はまだPhase A（初回移行のみ、以後の変更はクラウドに反映されない）のまま。
+Phase A（ログイン時1回だけのローカル→クラウド移行）に続き、ログイン中は他端末での変更もリアルタイムで取り込む仕組み。**ユーザーに「13種類ある同期対象データのうち、どこまで一度に対応するか」を確認したところ「まずtasksのみ」との回答だったため、最初は`tasks`コレクションだけに限定して実装・実機確認した。** その後「タスク以外も広げたい、ただし負担にならないよう一つずつ進めてほしい」という指示を受け、`shopItems`にも同じパターンを追加した。他のコレクション（`customTabs`/`tags`/`shopNotifSettings`/`shopLocations`/`forgetAlerts`/`lifePatterns`/`moveHistory`/`bulkHistory`/`dayOverrides`/`patternOverrides`/`settings`）はまだPhase A（初回移行のみ、以後の変更はクラウドに反映されない）のまま。**「一つずつ」という指示がある以上、次に広げる時も複数コレクションを一度に実装しないこと。**
 
 **移行専用の`writeIdCollection`（全件set・削除は扱わない）とは別に、継続同期専用の2関数を`Cloud.ts`に追加した（idを持つ配列なら`tasks`以外にもそのまま使える汎用設計）:**
 
 - `pushIdCollectionDiff<T extends {id:string}>(uid, name, items, prevIds)` — 現在の全件を`set`しつつ、`prevIds`（前回push時点のid集合）と比較して無くなったものだけ個別に`delete`する。戻り値は新しいid集合（呼び出し側は次回呼び出し用に保持する）。移行用`writeIdCollection`が全件setのみで削除を扱わないのは「初回移行は追加だけで安全」という前提だったが、継続同期ではローカル削除をクラウド側にも反映する必要があるため、この差分計算が必須になる
 - `subscribeIdCollection<T extends {id:string}>(uid, name, onChange)` — Firestoreの`onSnapshot`でサブコレクションをリアルタイム購読し、`docChanges()`の追加/更新/削除を`onChange(added, modified, removedIds)`としてコールバックに渡す。**`change.doc.metadata.hasPendingWrites`がtrueの変更イベントは無視する**（自分自身が`pushIdCollectionDiff`で書き込んだ直後に、サーバー確定前の楽観的ローカルechoとして即座に発火するイベントのため。ここで素通りさせるとローカルstateへの不要な再マージ→pushの再発火、という無限ループの原因になる）
 
-**`App`コンポーネント側の配線（`tasks`専用、`page.tsx`の`onCloudAuthChange`購読のすぐ下）:**
+**`App`コンポーネント側の配線（`page.tsx`の`onCloudAuthChange`購読のすぐ下に`tasks`用、その直後に`shopItems`用が並んでいる。完全に同型のコードが2組）:**
 
-- `cloudTaskIdsRef`（`Set<string>|null`）— 前回push時点でFirestoreに存在すると分かっているtaskIdの集合。pull側でマージした時もその時点のidで更新しておく（pushとpullの両方が「今Firestoreはこの状態のはず」という共通の台帳を更新する設計）
-- `skipNextTaskPushRef`（boolean）— pull（他端末からの変更の取り込み）で`tasks`を更新した直後、その変更をそのままpushし返すと無駄な書き込みになるため、次の1回だけpushをスキップするフラグ
-- **Push effect**: `[tasks, cloudUser?.uid]`に依存し、1.5秒デバウンスしてから`pushIdCollectionDiff`を呼ぶ（`TaskModal`の自動保存と同じ`setTimeout`+クリーンアップ`clearTimeout`のデバウンスパターン）。`skipNextTaskPushRef`が立っていれば何もせず消費するだけで終わる
-- **Pull effect**: `[cloudUser?.uid]`に依存し、ログイン中は`subscribeIdCollection`で`tasks`サブコレクションを購読し続ける。届いた変更を`Map`経由でマージ（`added`/`modified`は`set`、`removedIds`は`delete`）してから`setTasks`する。ログアウト・アンマウント時は購読解除＋`cloudTaskIdsRef`をリセットする
+- `cloudTaskIdsRef`/`cloudShopItemIdsRef`（`Set<string>|null`）— 前回push時点でFirestoreに存在すると分かっているidの集合。pull側でマージした時もその時点のidで更新しておく（pushとpullの両方が「今Firestoreはこの状態のはず」という共通の台帳を更新する設計）
+- `skipNextTaskPushRef`/`skipNextShopItemPushRef`（boolean）— pull（他端末からの変更の取り込み）で該当stateを更新した直後、その変更をそのままpushし返すと無駄な書き込みになるため、次の1回だけpushをスキップするフラグ
+- **Push effect**: `[対象state, cloudUser?.uid]`に依存し、1.5秒デバウンスしてから`pushIdCollectionDiff`を呼ぶ（`TaskModal`の自動保存と同じ`setTimeout`+クリーンアップ`clearTimeout`のデバウンスパターン）。`skipNext*PushRef`が立っていれば何もせず消費するだけで終わる
+- **Pull effect**: `[cloudUser?.uid]`に依存し、ログイン中は`subscribeIdCollection`で対象サブコレクションを購読し続ける。届いた変更を`Map`経由でマージ（`added`/`modified`は`set`、`removedIds`は`delete`）してからsetterを呼ぶ。ログアウト・アンマウント時は購読解除＋idRefのリセットを行う
+- **新しいコレクションを追加する時はこの`tasks`/`shopItems`の2組をそのままコピーし、型・コレクション名・state名・2つのref名を機械的に置き換えるだけでよい。** 新しい設計判断は不要（`shopItems`追加時もこの方式でコピーしただけ）
 
 **データ損失を避けるための設計上のポイント（新しくコレクションを追加する時も踏襲すること）:**
 
 - `removed`（delete対象）は常に「前回自分がpushした時点のid集合」と「現在のローカルid」の差分からのみ計算する。**リモートにしか存在しない（＝このセッションでまだ取り込んでいない）idは`prevIds`に含まれないため、誤って削除される心配が無い**——ログイン直後の競合（push効果が先に走ってしまいpull効果がまだ初回スナップショットを取り込んでいない等のタイミング）でも、他端末のデータを巻き込んで消すことは起きない設計になっている
 - pushは「変更があった項目だけ」ではなく「現在の全件」を毎回setし直す簡易実装（`migrateLocalDataToCloud`の既存方式と同じ）。個人利用規模のタスク数を前提に、細かいフィールド単位の差分検知は行わず、シンプルさを優先した
-- **この実装はクラウド開発セッション（`NEXT_PUBLIC_FIREBASE_*`環境変数が無い）では実際のFirestore往復を確認できていない。** `getDb()`がnullを返す環境では push/pull とも静かに何もしない（既存の`migrateLocalDataToCloud`等と同じフォールバック）ため、未ログイン・Firebase未設定どちらの状態でも既存のタスクCRUD機能に影響しないことはPlaywrightで確認済みだが、複数端末間で実際に同期されるかはFirebase設定済みの環境での確認が必要
+- `getDb()`がnullを返す環境（`NEXT_PUBLIC_FIREBASE_*`未設定）では push/pull とも静かに何もしない（既存の`migrateLocalDataToCloud`等と同じフォールバック）ため、未ログイン・Firebase未設定どちらの状態でも既存のCRUD機能に影響しない。`tasks`はiPhone/PC実機2台での双方向同期を確認済み。`shopItems`も同じコードパスのため同様に動作する見込みだが、追加後の実機確認はまだ行っていない（次回確認すること）
 
 **避けるパターン:**
-- `tasks`以外のコレクション（`shopItems`等）に継続同期を広げる時、`pushIdCollectionDiff`/`subscribeIdCollection`を複製しない（id付き配列向けの汎用関数として最初から用意してあるので、そのまま呼び出すだけでよい）
+- `tasks`/`shopItems`以外のコレクションに継続同期を広げる時、`pushIdCollectionDiff`/`subscribeIdCollection`を複製しない（id付き配列向けの汎用関数として最初から用意してあるので、そのまま呼び出すだけでよい）
 - `subscribeIdCollection`のコールバックで`hasPendingWrites`のチェックを外さない（自分自身の書き込みを無限ループで取り込み直すことになる）
 - push effectのデバウンスを無くして`tasks`が変わるたびに即座に書き込まない（タスクの連続編集・ドラッグ操作のたびにFirestore書き込みが発生し無駄が多い）
 
