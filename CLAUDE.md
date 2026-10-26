@@ -54,10 +54,17 @@
 
 ユーザーから「これはあとでやる、覚えといて」と明示的に次回以降へ保留する指示があった残りの作業:
 
-1. **複数端末の継続的なリアルタイム同期（`tasks`のみ実装済み・他コレクションは未着手）。** ユーザーに範囲を確認したところ「まずtasksのみ」との回答だったため、`tasks`コレクションだけPhase B（継続同期）を実装した。詳細は後述の「## ログイン・クラウド同期」節の「継続的なリアルタイム同期（Phase B）」小節を参照。**`shopItems`/`customTabs`/`tags`/`shopNotifSettings`/`shopLocations`/`forgetAlerts`/`lifePatterns`/`moveHistory`/`bulkHistory`/`dayOverrides`/`patternOverrides`/`settings`はまだPhase A（初回移行のみ）のまま**——これらに同期を広げる時は、`tasks`で実装した`pushIdCollectionDiff`/`subscribeIdCollection`（`Cloud.ts`、id付き配列向けの汎用関数として最初から用意してある）をそのまま再利用できる。**この実装はFirebaseプロジェクトの環境変数（`NEXT_PUBLIC_FIREBASE_*`）が無いクラウド開発セッションでは実際のFirestore往復を確認できていない。** 次回、Firebase設定済みの実機/ブラウザで、複数端末間での追加・編集・削除の同期が実際に反映されるか確認すること。
+1. **複数端末の継続的なリアルタイム同期（`tasks`のみ実装済み・他コレクションは未着手）。** ユーザーに範囲を確認したところ「まずtasksのみ」との回答だったため、`tasks`コレクションだけPhase B（継続同期）を実装した。詳細は後述の「## ログイン・クラウド同期」節の「継続的なリアルタイム同期（Phase B）」小節を参照。**`shopItems`/`customTabs`/`tags`/`shopNotifSettings`/`shopLocations`/`forgetAlerts`/`lifePatterns`/`moveHistory`/`bulkHistory`/`dayOverrides`/`patternOverrides`/`settings`はまだPhase A（初回移行のみ）のまま**——これらに同期を広げる時は、`tasks`で実装した`pushIdCollectionDiff`/`subscribeIdCollection`（`Cloud.ts`、id付き配列向けの汎用関数として最初から用意してある）をそのまま再利用できる。**Firebase Console・Vercel環境変数の設定を終え、iPhone（Safari）とPC（Mac Safari）の実機2台でGoogleログイン→タスクの追加・編集が双方向に同期されることを確認済み。**
 2. **Androidネイティブの Sign in with Apple（未実装）。** AppleがAndroid向けの公式サインインSDKを提供していないため、iOS版（`AppleAuthPlugin`、`AuthenticationServices`→idToken取得→JS側でFirebase credential交換）と同じ設計をそのまま移植できない。実現するには、Firebase Authの`OAuthProvider`+`startActivityForSignInWithProvider`（ネイティブ側で完結するが、JS SDK側のauthセッションとは別になるため今のCloud.tsの設計とは相容れない）か、Chrome Custom Tabs等でAppleのOAuth認可エンドポイントを自前で叩きidTokenを取得する自前実装（未検証・要調査）のどちらかを選ぶ必要がある。設定画面側は`isAndroid()`判定でAppleボタン自体を非表示にして対応済み（押しても何も起きないボタンを出さないための暫定対応）。
 
-ユーザー側の作業として、Firebase ConsoleでAuthentication（Google/Appleプロバイダ）とFirestore Database・セキュリティルールの設定がまだ済んでいない（済ませないと、すでに実装済みのWeb版ログインUIも実際には動作しない）。詳細は「## ログイン・クラウド同期」節を参照。
+**Firebase Console・Vercelの設定は完了済み。** Firestore Database（`asia-northeast1`、本番環境モード）を作成し、セキュリティルールを`match /users/{uid}/{document=**} { allow read, write: if request.auth != null && request.auth.uid == uid; }`に設定済み。Authentication → 承認済みドメインに`getbrainbox.app`・`brainbox-app.vercel.app`を追加済み。Firebase Consoleにウェブアプリ「BrainBox Web」を新規登録し、そこで発行された`apiKey`等をVercelのEnvironment Variables（Production/Preview/Development全て）に`NEXT_PUBLIC_FIREBASE_*`として設定済み。
+
+**この設定作業で踏んだ罠（次回似た作業をする時のため）:**
+- VercelのEnvironment Variable入力欄はデフォルトで「Secret」タイプ（パスワード的にマスクされた入力欄）になっており、ここにAPIキーを貼り付けるとSafariのiCloudキーチェーン自動入力機能が介入し、値が壊れた文字列（例:`AIzaSyAD`の後に`†`が大量に続く等）に置き換えられてしまう不具合が実際に発生した（Mac・iPhone両方のSafariで同じ壊れた値が再現した——iCloudキーチェーン経由で同期されていたとみられる）。`NEXT_PUBLIC_`接頭辞の値は元々クライアントに公開される前提のため、入力時に必ず「Config」タイプ（プレーンテキスト入力）を選んでから値を入力すること。既に壊れた変数がある場合は一度削除してから作り直すのが確実（上書き編集だと同じ自動入力が再度介入するリスクがある）。
+- 環境変数を追加・編集しただけでは本番環境に反映されない。Vercel側の「Redeploy」（またはGitHubへのpush）で再ビルドする必要がある。
+- `NEXT_PUBLIC_FIREBASE_*`をVercelに設定し忘れると、`signInWithGoogle()`は`getAuthInstance()`内で静かに`null`を返すだけでエラーも出さず、ユーザーからは「ボタンを押しても何も起きない」としか見えない（`Cloud.ts`の`getApp()`が`apiKey`等が無ければ即`null`を返す設計のため）。この症状が出たら、コンソールにエラーが一切出ていないかをまず確認し、出ていなければVercelの環境変数未設定を疑うこと。
+
+**別の不具合（修正済み）: クラウド移行時に`FirebaseError: Function WriteBatch.set() called with invalid data. Unsupported field value: undefined`で失敗していた。** `Task.customRec`等の任意フィールドがJS側で`undefined`のまま保持されているタスクがあり、Firestoreの`WriteBatch.set()`はフィールド値に`undefined`を許容しない（`null`は可）ため書き込みごと失敗していた。`Cloud.ts`に`stripUndefined()`（再帰的に`undefined`のキーを除去するヘルパー）を追加し、`writeIdCollection`/`pushIdCollectionDiff`/`writeKeyedRecord`/`writeTagDefs`/`writeSettingsIfAbsent`のすべての書き込み直前に適用するよう修正済み。**新しくFirestoreへの書き込み処理を追加する時は、書き込み直前に必ず`stripUndefined()`を通すこと**（TypeScriptの型定義上はオプショナルフィールドでも、実行時に値が`undefined`のまま残っているケースがあるため）。
 
 ---
 
