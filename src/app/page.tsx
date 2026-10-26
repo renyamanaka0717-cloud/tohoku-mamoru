@@ -8860,6 +8860,47 @@ export default function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[cloudUser?.uid]);
 
+  // dayOverridesはidを持たず日付文字列がキーのため、tagsと同じ「合成id」パターン
+  // （pushIdCollectionDiff/subscribeIdCollection呼び出し時だけid:dateを合成する）を適用する
+  type CloudDayOverride = {wakeTime?:string;sleepTime?:string} & {id:string};
+  const cloudDayOverrideIdsRef=useRef<Set<string>|null>(null);
+  const skipNextDayOverridePushRef=useRef(false);
+
+  useEffect(()=>{
+    if(!cloudUser) return;
+    if(skipNextDayOverridePushRef.current){ skipNextDayOverridePushRef.current=false; return; }
+    const timer=setTimeout(()=>{
+      const withId:CloudDayOverride[]=Object.entries(dayOverrides).map(([date,ov])=>({...ov,id:date}));
+      const prevIds=cloudDayOverrideIdsRef.current ?? new Set(Object.keys(dayOverrides));
+      pushIdCollectionDiff(cloudUser.uid,'dayOverrides',withId,prevIds).then(newIds=>{
+        if(newIds) cloudDayOverrideIdsRef.current=newIds;
+      });
+    },1500);
+    return ()=>clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[dayOverrides,cloudUser?.uid]);
+
+  useEffect(()=>{
+    if(!cloudUser) return;
+    let unsub:(()=>void)|null=null;
+    let active=true;
+    subscribeIdCollection<CloudDayOverride>(cloudUser.uid,'dayOverrides',(added,modified,removedIds)=>{
+      skipNextDayOverridePushRef.current=true;
+      setDayOverrides(prev=>{
+        const removedSet=new Set(removedIds);
+        const byDate=new Map<string,CloudDayOverride>(Object.entries(prev).map(([date,ov])=>[date,{...ov,id:date}]));
+        for(const o of [...added,...modified]) byDate.set(o.id,o);
+        for(const date of removedSet) byDate.delete(date);
+        cloudDayOverrideIdsRef.current=new Set(byDate.keys());
+        const result:Record<string,{wakeTime?:string;sleepTime?:string}>={};
+        for(const [date,ov] of byDate) result[date]={wakeTime:ov.wakeTime,sleepTime:ov.sleepTime};
+        return result;
+      });
+    }).then(u=>{ if(active) unsub=u; else u(); });
+    return ()=>{ active=false; unsub?.(); cloudDayOverrideIdsRef.current=null; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[cloudUser?.uid]);
+
   const maybeShowProductTour=()=>{
     if(localStorage.getItem(TOUR_COMPLETED_KEY)){ maybeShowNotifPrompt(); return; }
     setTimeout(()=>setShowWelcome(true),600);
