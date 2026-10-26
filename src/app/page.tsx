@@ -8712,6 +8712,43 @@ export default function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[cloudUser?.uid]);
 
+  // tasks/shopItems/customTabs/shopNotifSettings/shopLocationsと全く同じpush/pullパターンをforgetAlertsにも適用する（7つ目の対象コレクション）
+  const cloudForgetAlertIdsRef=useRef<Set<string>|null>(null);
+  const skipNextForgetAlertPushRef=useRef(false);
+
+  useEffect(()=>{
+    if(!cloudUser) return;
+    if(skipNextForgetAlertPushRef.current){ skipNextForgetAlertPushRef.current=false; return; }
+    const timer=setTimeout(()=>{
+      const prevIds=cloudForgetAlertIdsRef.current ?? new Set(forgetAlerts.map(a=>a.id));
+      pushIdCollectionDiff(cloudUser.uid,'forgetAlerts',forgetAlerts,prevIds).then(newIds=>{
+        if(newIds) cloudForgetAlertIdsRef.current=newIds;
+      });
+    },1500);
+    return ()=>clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[forgetAlerts,cloudUser?.uid]);
+
+  useEffect(()=>{
+    if(!cloudUser) return;
+    let unsub:(()=>void)|null=null;
+    let active=true;
+    subscribeIdCollection<ForgetAlert>(cloudUser.uid,'forgetAlerts',(added,modified,removedIds)=>{
+      skipNextForgetAlertPushRef.current=true;
+      setForgetAlerts(prev=>{
+        const removedSet=new Set(removedIds);
+        const byId=new Map(prev.map(a=>[a.id,a]));
+        for(const a of [...added,...modified]) byId.set(a.id,a);
+        for(const id of removedSet) byId.delete(id);
+        const merged=[...byId.values()];
+        cloudForgetAlertIdsRef.current=new Set(merged.map(a=>a.id));
+        return merged;
+      });
+    }).then(u=>{ if(active) unsub=u; else u(); });
+    return ()=>{ active=false; unsub?.(); cloudForgetAlertIdsRef.current=null; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[cloudUser?.uid]);
+
   const maybeShowProductTour=()=>{
     if(localStorage.getItem(TOUR_COMPLETED_KEY)){ maybeShowNotifPrompt(); return; }
     setTimeout(()=>setShowWelcome(true),600);
