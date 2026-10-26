@@ -2,9 +2,10 @@
 
 // Google/Apple ログイン ＋ Cloud Firestoreへのデータ移行・保存を担う窓口。
 //
-// 【現在のスコープ（Phase A）】ログイン ＋ ローカルデータの初回クラウド移行まで。
-// ログイン後にクラウド側の変更をリアルタイムで取り込む「複数端末同期」自体は次フェーズで
-// 実装する（このファイルはその土台となるデータモデル・移行ロジックを提供する）。
+// 【スコープ】Phase A（ログイン＋初回クラウド移行）に加え、Phase B（継続的な
+// リアルタイム同期）にも対応を開始した。Phase Bは現時点では`tasks`コレクションのみ
+// 対応（pushIdCollectionDiff/subscribeIdCollection）。他のコレクション（shopItems・
+// customTabs・tags等）はまだPhase Aの初回移行のみで、継続同期には未対応。
 //
 // 【無料版は常にlocalStorage完結】ログインは任意の操作（設定画面からいつでも可能）で、
 // 課金のゲートではない。Web版には元々課金の仕組みが無く常にisPremium=trueのため。
@@ -328,4 +329,69 @@ export async function migrateLocalDataToCloud(uid: string, data: LocalDataForMig
     console.error('Cloud migration failed, local data is untouched:', e);
     return false;
   }
+}
+
+// ── 継続的なリアルタイム同期（Phase B、idを持つ配列コレクション向け） ──────────────
+//
+// 移行専用のwriteIdCollectionは常に全件setするだけで「ローカルで削除されたもの」を
+// Firestore側から消す処理を持たない（初回移行は追加のみで安全なため、それで十分だった）。
+// 継続同期ではローカルの削除も反映する必要があるため、前回push時点のid集合（prevIds）と
+// 現在のid集合を比較し、無くなったものだけ個別にdeleteする。
+//
+// 呼び出し側（page.tsx）はprevIdsを呼び出しごとのrefに保持し、戻り値の新しいid集合を
+// 次回呼び出し用に保存すること（タスクの編集・完了・削除のたびに全件差分計算し直すのではなく、
+// 前回pushした時点の状態との比較だけで済ませるため）。
+export async function pushIdCollectionDiff<T extends { id: string }>(
+  uid: string, name: string, items: T[], prevIds: Set<string>
+): Promise<Set<string> | null> {
+  const db = await getDb();
+  if (!db) return null;
+  const { collection, doc, writeBatch } = await import('firebase/firestore');
+  const col = collection(db, 'users', uid, name);
+  const currentIds = new Set(items.map((i) => i.id));
+  const removedIds = [...prevIds].filter((id) => !currentIds.has(id));
+  type Op = { type: 'set'; id: string; data: T } | { type: 'delete'; id: string };
+  const ops: Op[] = [
+    ...items.map((item): Op => ({ type: 'set', id: item.id, data: item })),
+    ...removedIds.map((id): Op => ({ type: 'delete', id })),
+  ];
+  // writeBatchは1回最大500件のためチャンクに分ける
+  for (let i = 0; i < ops.length; i += 400) {
+    const batch = writeBatch(db);
+    for (const op of ops.slice(i, i + 400)) {
+      if (op.type === 'set') batch.set(doc(col, op.id), op.data as Record<string, unknown>);
+      else batch.delete(doc(col, op.id));
+    }
+    await batch.commit();
+  }
+  return currentIds;
+}
+
+// Firestoreのサブコレクションをリアルタイム購読し、ドキュメントの追加/更新/削除を
+// コールバックへ渡す。呼び出し側はこれを使ってローカルstateへマージすること。
+//
+// hasPendingWritesがtrueの変更イベントは無視する——これは自分自身がpushIdCollectionDiffで
+// 書き込んだ直後に、サーバー確定前の楽観的ローカルechoとして即座に発火するイベントで、
+// ここで素通りさせるとローカルstateへの不要な再マージ→pushの再発火、という無限ループの
+// 原因になる。サーバーから確定した変更（hasPendingWrites:false）だけを反映対象にする。
+export async function subscribeIdCollection<T extends { id: string }>(
+  uid: string, name: string,
+  onChange: (added: T[], modified: T[], removedIds: string[]) => void
+): Promise<() => void> {
+  const db = await getDb();
+  if (!db) return () => {};
+  const { collection, onSnapshot } = await import('firebase/firestore');
+  const col = collection(db, 'users', uid, name);
+  return onSnapshot(col, (snap) => {
+    const added: T[] = [];
+    const modified: T[] = [];
+    const removedIds: string[] = [];
+    snap.docChanges().forEach((change) => {
+      if (change.doc.metadata.hasPendingWrites) return;
+      if (change.type === 'removed') { removedIds.push(change.doc.id); return; }
+      const data = { ...(change.doc.data() as T), id: change.doc.id };
+      (change.type === 'added' ? added : modified).push(data);
+    });
+    if (added.length || modified.length || removedIds.length) onChange(added, modified, removedIds);
+  });
 }

@@ -13,7 +13,7 @@ import { voiceInputSupported, ensureVoiceInputPermission, startVoiceInput, stopV
 import { getAppVersion } from './components/AppVersion';
 import { logAnalyticsEvent } from './components/Analytics';
 import { isDevModeUnlocked, DEV_MODE_UNLOCKED_KEY, getDevPremiumOverride, setDevPremiumOverride, isDevDenied, DEV_LOCATION_DENIED_KEY, DEV_NOTIF_DENIED_KEY } from './components/DevMode';
-import { signInWithGoogle, signInWithApple, signOutCloud, onCloudAuthChange, consumeRedirectResult, migrateLocalDataToCloud, hasMigratedThisDevice, type CloudUser, type LocalDataForMigration } from './components/Cloud';
+import { signInWithGoogle, signInWithApple, signOutCloud, onCloudAuthChange, consumeRedirectResult, migrateLocalDataToCloud, hasMigratedThisDevice, pushIdCollectionDiff, subscribeIdCollection, type CloudUser, type LocalDataForMigration } from './components/Cloud';
 import { App as CapApp } from '@capacitor/app';
 import ProductTour from './components/ProductTour';
 import Welcome from './components/Welcome';
@@ -8477,6 +8477,51 @@ export default function App() {
     })();
     return ()=>{ unsub?.(); };
   },[]);
+
+  // ── 複数端末のリアルタイム同期（Phase B、現時点ではtasksのみ対応） ──────────────
+  // 前回push時点でFirestoreに存在すると分かっているtaskId集合。ローカル削除をクラウド側にも
+  // 反映するための差分計算に使う（pushIdCollectionDiffのprevIds）。pull側（onSnapshot）で
+  // リモートの変更をローカルへマージした時も、その時点のidでここを更新しておく
+  const cloudTaskIdsRef=useRef<Set<string>|null>(null);
+  // pull（他端末からの変更の取り込み）でtasksを更新した直後は、その変更をそのままpushし
+  // 返すと無駄な書き込み＋pushの確定イベントがpullを再び起動する往復が起きるため、
+  // 次の1回だけpushをスキップする
+  const skipNextTaskPushRef=useRef(false);
+
+  // Push: ログイン中、tasksが変わるたびクラウドへ反映する（1.5秒デバウンスでまとめて送る）
+  useEffect(()=>{
+    if(!cloudUser) return;
+    if(skipNextTaskPushRef.current){ skipNextTaskPushRef.current=false; return; }
+    const timer=setTimeout(()=>{
+      const prevIds=cloudTaskIdsRef.current ?? new Set(tasks.map(t=>t.id));
+      pushIdCollectionDiff(cloudUser.uid,'tasks',tasks,prevIds).then(newIds=>{
+        if(newIds) cloudTaskIdsRef.current=newIds;
+      });
+    },1500);
+    return ()=>clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[tasks,cloudUser?.uid]);
+
+  // Pull: ログイン中は他端末からの変更をリアルタイムで取り込む
+  useEffect(()=>{
+    if(!cloudUser) return;
+    let unsub:(()=>void)|null=null;
+    let active=true;
+    subscribeIdCollection<Task>(cloudUser.uid,'tasks',(added,modified,removedIds)=>{
+      skipNextTaskPushRef.current=true;
+      setTasks(prev=>{
+        const removedSet=new Set(removedIds);
+        const byId=new Map(prev.map(t=>[t.id,t]));
+        for(const t of [...added,...modified]) byId.set(t.id,t);
+        for(const id of removedSet) byId.delete(id);
+        const merged=[...byId.values()];
+        cloudTaskIdsRef.current=new Set(merged.map(t=>t.id));
+        return merged;
+      });
+    }).then(u=>{ if(active) unsub=u; else u(); });
+    return ()=>{ active=false; unsub?.(); cloudTaskIdsRef.current=null; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[cloudUser?.uid]);
 
   const maybeShowProductTour=()=>{
     if(localStorage.getItem(TOUR_COMPLETED_KEY)){ maybeShowNotifPrompt(); return; }
