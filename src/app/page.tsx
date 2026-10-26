@@ -8675,6 +8675,43 @@ export default function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[cloudUser?.uid]);
 
+  // tasks/shopItems/customTabs/shopNotifSettingsと全く同じpush/pullパターンをshopLocationsにも適用する（6つ目の対象コレクション）
+  const cloudShopLocIdsRef=useRef<Set<string>|null>(null);
+  const skipNextShopLocPushRef=useRef(false);
+
+  useEffect(()=>{
+    if(!cloudUser) return;
+    if(skipNextShopLocPushRef.current){ skipNextShopLocPushRef.current=false; return; }
+    const timer=setTimeout(()=>{
+      const prevIds=cloudShopLocIdsRef.current ?? new Set(shopLocations.map(s=>s.id));
+      pushIdCollectionDiff(cloudUser.uid,'shopLocations',shopLocations,prevIds).then(newIds=>{
+        if(newIds) cloudShopLocIdsRef.current=newIds;
+      });
+    },1500);
+    return ()=>clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[shopLocations,cloudUser?.uid]);
+
+  useEffect(()=>{
+    if(!cloudUser) return;
+    let unsub:(()=>void)|null=null;
+    let active=true;
+    subscribeIdCollection<ShopLocation>(cloudUser.uid,'shopLocations',(added,modified,removedIds)=>{
+      skipNextShopLocPushRef.current=true;
+      setShopLocations(prev=>{
+        const removedSet=new Set(removedIds);
+        const byId=new Map(prev.map(s=>[s.id,s]));
+        for(const s of [...added,...modified]) byId.set(s.id,s);
+        for(const id of removedSet) byId.delete(id);
+        const merged=[...byId.values()];
+        cloudShopLocIdsRef.current=new Set(merged.map(s=>s.id));
+        return merged;
+      });
+    }).then(u=>{ if(active) unsub=u; else u(); });
+    return ()=>{ active=false; unsub?.(); cloudShopLocIdsRef.current=null; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[cloudUser?.uid]);
+
   const maybeShowProductTour=()=>{
     if(localStorage.getItem(TOUR_COMPLETED_KEY)){ maybeShowNotifPrompt(); return; }
     setTimeout(()=>setShowWelcome(true),600);
