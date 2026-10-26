@@ -2636,14 +2636,15 @@ users/{uid}/patternOverrides/{key}   … 生活パターンの日別上書き（
 
 `App`コンポーネントの`onCloudAuthChange`の購読は`useEffect(...,[])`でマウント時に1回だけ登録されるクロージャのため、コールバック内で`tasks`等のstateを直接参照すると登録時点の値のまま固定される（`TaskModal`の`autoIconRef`・Watch連携の`todayStr()`と同じ罠）。これを避けるため、`migrationDataRef`という「毎レンダーで最新のローカルデータ一式を書き込むref」を用意し、実際の移行処理（`runMigrationIfNeeded`）はこのrefを経由して読む。新しく「ログイン・起動時コールバックの中で現在のstateを使いたい」処理を追加する時は、この`migrationDataRef`と同じパターン（depsなしの`useEffect`で毎レンダーrefを更新）に倣うこと。
 
-### 継続的なリアルタイム同期（Phase B、現時点では`tasks`・`shopItems`・`customTabs`・`tags`・`shopNotifSettings`が実装済み）
+### 継続的なリアルタイム同期（Phase B、全13種類すべて実装済み）
 
-Phase A（ログイン時1回だけのローカル→クラウド移行）に続き、ログイン中は他端末での変更もリアルタイムで取り込む仕組み。**ユーザーに「13種類ある同期対象データのうち、どこまで一度に対応するか」を確認したところ「まずtasksのみ」との回答だったため、最初は`tasks`コレクションだけに限定して実装・実機確認した。** その後「タスク以外も広げたい、ただし負担にならないよう一つずつ進めてほしい」という指示を受け、`shopItems`・`customTabs`・`tags`・`shopNotifSettings`にも同じパターンを順に追加した。他のコレクション（`shopLocations`/`forgetAlerts`/`lifePatterns`/`moveHistory`/`bulkHistory`/`dayOverrides`/`patternOverrides`/`settings`）はまだPhase A（初回移行のみ、以後の変更はクラウドに反映されない）のまま。**「一つずつ」という指示がある以上、次に広げる時も複数コレクションを一度に実装しないこと。**
+Phase A（ログイン時1回だけのローカル→クラウド移行）に続き、ログイン中は他端末での変更もリアルタイムで取り込む仕組み。**ユーザーに「13種類ある同期対象データのうち、どこまで一度に対応するか」を確認したところ「まずtasksのみ」との回答だったため、最初は`tasks`コレクションだけに限定して実装・実機確認した。** その後「タスク以外も広げたい、ただし負担にならないよう一つずつ進めてほしい」という指示を受け、`shopItems`・`customTabs`・`tags`・`shopNotifSettings`・`shopLocations`・`forgetAlerts`・`lifePatterns`・`moveHistory`・`bulkHistory`・`dayOverrides`・`patternOverrides`・`settings`の順に1つずつ実装→ビルド確認→デプロイのサイクルで追加し、**全13種類が実装完了した。** `id`を持つ配列（`tasks`/`shopItems`/`customTabs`/`shopNotifSettings`/`shopLocations`/`forgetAlerts`/`lifePatterns`/`moveHistory`/`bulkHistory`の9種類）は下記の`pushIdCollectionDiff`/`subscribeIdCollection`をそのままコピーして使う。`tags`/`dayOverrides`/`patternOverrides`はidを持たずキー文字列がドキュメントIDになるため、呼び出し側で`id:キー`を合成する「合成idパターン」を使う（詳細は後述）。`settings`（単一オブジェクト）だけはid付き配列向けの仕組みが使えないため、`pushSettings`/`subscribeSettings`という専用の別実装（最後に書いた方が勝つ方式）を使う。**13種類すべて実機確認はまだ行っていない**（`tasks`のみiPhone/PC実機2台で双方向同期を確認済み。それ以外の12種類はコード上は同じ実績あるパターンの横展開だが、次回PC・スマホ両方が揃った時にまとめて実機確認すること）。
 
-**`tags`は`id`を持たずドキュメントIDに`name`を使う唯一のコレクションのため、以下の「id付き配列向け」という前提から外れる点に注意（新しくこのパターンを他のコレクションに適用する時の参考）:**
-- `pushIdCollectionDiff`/`subscribeIdCollection`は`T extends {id:string}`を要求するため、呼び出し側（`App`コンポーネント）だけで`{...tag,id:tag.name}`という合成オブジェクトに変換してから渡す。`Cloud.ts`側の2関数自体は変更していない
-- ローカルstate（`globalTags: TagDef[]`、`name`/`color`のみ）に合成した`id`フィールドを紛れ込ませないよう、pull側のマージ後に`{name,color}`だけを取り出してから`setGlobalTags`する
-- タグ名のリネームは「ドキュメントIDが変わる」操作にあたるため、特別な分岐を書かずとも`pushIdCollectionDiff`の`prevIds`との差分計算がそのまま「旧名delete＋新名create」として扱ってくれる
+**`tags`/`dayOverrides`/`patternOverrides`は`id`を持たずキー文字列がドキュメントIDになる「合成idパターン」3種（以下の「id付き配列向け」という前提から外れる点に注意、新しくこのパターンを他のコレクションに適用する時の参考）:**
+- `pushIdCollectionDiff`/`subscribeIdCollection`は`T extends {id:string}`を要求するため、呼び出し側（`App`コンポーネント）だけでキーを`id`として合成したオブジェクトに変換してから渡す。`Cloud.ts`側の2関数自体は変更していない
+- `tags`: `TagDef{name,color}`に`id:tag.name`を合成した`CloudTagDef`型。ローカルstate（`globalTags: TagDef[]`）に合成した`id`フィールドを紛れ込ませないよう、pull側のマージ後に`{name,color}`だけを取り出してから`setGlobalTags`する。タグ名のリネームは「ドキュメントIDが変わる」操作にあたるため、特別な分岐を書かずとも`pushIdCollectionDiff`の`prevIds`との差分計算がそのまま「旧名delete＋新名create」として扱ってくれる
+- `dayOverrides`: 値がオブジェクト`{wakeTime?,sleepTime?}`のため`{...ov,id:date}`と合成する`CloudDayOverride`型。pull側は`Map<string,CloudDayOverride>`でマージしてから`Record<string,{wakeTime?,sleepTime?}>`に戻す
+- `patternOverrides`: 値が文字列`patternId`のため、Cloud.tsの`writeKeyedRecord`が移行時に行う`{value:string}`ラップと同じ形で`{id:date,value:patId}`と合成する`CloudPatternOverride`型。`dayOverrides`と同じく合成idパターンだが、値の形だけが異なる
 
 **移行専用の`writeIdCollection`（全件set・削除は扱わない）とは別に、継続同期専用の2関数を`Cloud.ts`に追加した（idを持つ配列なら`tasks`以外にもそのまま使える汎用設計）:**
 
@@ -2662,12 +2663,19 @@ Phase A（ログイン時1回だけのローカル→クラウド移行）に続
 
 - `removed`（delete対象）は常に「前回自分がpushした時点のid集合」と「現在のローカルid」の差分からのみ計算する。**リモートにしか存在しない（＝このセッションでまだ取り込んでいない）idは`prevIds`に含まれないため、誤って削除される心配が無い**——ログイン直後の競合（push効果が先に走ってしまいpull効果がまだ初回スナップショットを取り込んでいない等のタイミング）でも、他端末のデータを巻き込んで消すことは起きない設計になっている
 - pushは「変更があった項目だけ」ではなく「現在の全件」を毎回setし直す簡易実装（`migrateLocalDataToCloud`の既存方式と同じ）。個人利用規模のタスク数を前提に、細かいフィールド単位の差分検知は行わず、シンプルさを優先した
-- `getDb()`がnullを返す環境（`NEXT_PUBLIC_FIREBASE_*`未設定）では push/pull とも静かに何もしない（既存の`migrateLocalDataToCloud`等と同じフォールバック）ため、未ログイン・Firebase未設定どちらの状態でも既存のCRUD機能に影響しない。`tasks`はiPhone/PC実機2台での双方向同期を確認済み。`shopItems`も同じコードパスのため同様に動作する見込みだが、追加後の実機確認はまだ行っていない（次回確認すること）
+- `getDb()`がnullを返す環境（`NEXT_PUBLIC_FIREBASE_*`未設定）では push/pull とも静かに何もしない（既存の`migrateLocalDataToCloud`等と同じフォールバック）ため、未ログイン・Firebase未設定どちらの状態でも既存のCRUD機能に影響しない。`tasks`はiPhone/PC実機2台での双方向同期を確認済み。それ以外の12種類は同じコードパスのため同様に動作する見込みだが、実機確認はまだ行っていない（次回確認すること）
+
+**`settings`（単一オブジェクト）専用の仕組み（`pushSettings`/`subscribeSettings`、`Cloud.ts`）:** id付き配列向けの`pushIdCollectionDiff`/`subscribeIdCollection`は`T extends {id:string}`を要求するため、単一オブジェクトの`settings`には使えない。代わりに`users/{uid}`ドキュメントの`settings`フィールドを対象にした専用の2関数を新設した。
+- `pushSettings(uid,settings)` — `setDoc(doc(db,'users',uid),{settings:stripUndefined(settings)},{merge:true})`で無条件に上書きする「最後に書いた方が勝つ」方式。Phase A（初回移行）の`writeSettingsIfAbsent`（クラウドにまだ無ければ書く、先着優先）とは意図的に異なる挙動——継続同期は「ログイン中の端末が設定を変更し続ける」ことを前提にするため、上書きの方が自然
+- `subscribeSettings<T>(uid,onChange)` — `onSnapshot(doc(db,'users',uid),...)`で購読し、`snap.metadata.hasPendingWrites`がtrueなら無視する（`subscribeIdCollection`と同じ自分自身のechoを除外する理由）
+- `App`側は`skipNextSettingsPushRef`1つだけで足りる（id集合の管理が不要なため、id付き配列向けの`cloudTaskIdsRef`相当のrefは無い）
 
 **避けるパターン:**
-- `tasks`/`shopItems`以外のコレクションに継続同期を広げる時、`pushIdCollectionDiff`/`subscribeIdCollection`を複製しない（id付き配列向けの汎用関数として最初から用意してあるので、そのまま呼び出すだけでよい）
-- `subscribeIdCollection`のコールバックで`hasPendingWrites`のチェックを外さない（自分自身の書き込みを無限ループで取り込み直すことになる）
-- push effectのデバウンスを無くして`tasks`が変わるたびに即座に書き込まない（タスクの連続編集・ドラッグ操作のたびにFirestore書き込みが発生し無駄が多い）
+- id付き配列のコレクションに継続同期を広げる時、`pushIdCollectionDiff`/`subscribeIdCollection`を複製しない（汎用関数として最初から用意してあるので、そのまま呼び出すだけでよい）
+- idを持たずキー文字列がドキュメントIDになるコレクション（`tags`/`dayOverrides`/`patternOverrides`と同種のもの）に、id付き配列向けの2関数をそのまま渡そうとしない（`T extends {id:string}`を満たさずビルドエラーになる。呼び出し側でキーを`id`として合成してから渡すこと）
+- 単一オブジェクトの設定値を同期する時に`pushIdCollectionDiff`等を無理に使おうとしない（`pushSettings`/`subscribeSettings`を使うこと）
+- `subscribeIdCollection`/`subscribeSettings`のコールバックで`hasPendingWrites`のチェックを外さない（自分自身の書き込みを無限ループで取り込み直すことになる）
+- push effectのデバウンスを無くして`tasks`等が変わるたびに即座に書き込まない（タスクの連続編集・ドラッグ操作のたびにFirestore書き込みが発生し無駄が多い）
 
 ### ネイティブログイン（`GoogleAuthPlugin`・`AppleAuthPlugin`、実装済み・実機未検証）
 
