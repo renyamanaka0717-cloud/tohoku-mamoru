@@ -8749,6 +8749,43 @@ export default function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[cloudUser?.uid]);
 
+  // tasks/shopItems/customTabs/shopNotifSettings/shopLocations/forgetAlertsと全く同じpush/pullパターンをlifePatternsにも適用する（8つ目の対象コレクション）
+  const cloudLifePatternIdsRef=useRef<Set<string>|null>(null);
+  const skipNextLifePatternPushRef=useRef(false);
+
+  useEffect(()=>{
+    if(!cloudUser) return;
+    if(skipNextLifePatternPushRef.current){ skipNextLifePatternPushRef.current=false; return; }
+    const timer=setTimeout(()=>{
+      const prevIds=cloudLifePatternIdsRef.current ?? new Set(lifePatterns.map(p=>p.id));
+      pushIdCollectionDiff(cloudUser.uid,'lifePatterns',lifePatterns,prevIds).then(newIds=>{
+        if(newIds) cloudLifePatternIdsRef.current=newIds;
+      });
+    },1500);
+    return ()=>clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[lifePatterns,cloudUser?.uid]);
+
+  useEffect(()=>{
+    if(!cloudUser) return;
+    let unsub:(()=>void)|null=null;
+    let active=true;
+    subscribeIdCollection<LifePattern>(cloudUser.uid,'lifePatterns',(added,modified,removedIds)=>{
+      skipNextLifePatternPushRef.current=true;
+      setLifePatterns(prev=>{
+        const removedSet=new Set(removedIds);
+        const byId=new Map(prev.map(p=>[p.id,p]));
+        for(const p of [...added,...modified]) byId.set(p.id,p);
+        for(const id of removedSet) byId.delete(id);
+        const merged=[...byId.values()];
+        cloudLifePatternIdsRef.current=new Set(merged.map(p=>p.id));
+        return merged;
+      });
+    }).then(u=>{ if(active) unsub=u; else u(); });
+    return ()=>{ active=false; unsub?.(); cloudLifePatternIdsRef.current=null; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[cloudUser?.uid]);
+
   const maybeShowProductTour=()=>{
     if(localStorage.getItem(TOUR_COMPLETED_KEY)){ maybeShowNotifPrompt(); return; }
     setTimeout(()=>setShowWelcome(true),600);
