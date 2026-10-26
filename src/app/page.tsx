@@ -8786,6 +8786,43 @@ export default function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[cloudUser?.uid]);
 
+  // tasks/shopItems/customTabs/shopNotifSettings/shopLocations/forgetAlerts/lifePatternsと全く同じpush/pullパターンをmoveHistoryにも適用する（9つ目の対象コレクション）
+  const cloudMoveHistoryIdsRef=useRef<Set<string>|null>(null);
+  const skipNextMoveHistoryPushRef=useRef(false);
+
+  useEffect(()=>{
+    if(!cloudUser) return;
+    if(skipNextMoveHistoryPushRef.current){ skipNextMoveHistoryPushRef.current=false; return; }
+    const timer=setTimeout(()=>{
+      const prevIds=cloudMoveHistoryIdsRef.current ?? new Set(moveHistory.map(h=>h.id));
+      pushIdCollectionDiff(cloudUser.uid,'moveHistory',moveHistory,prevIds).then(newIds=>{
+        if(newIds) cloudMoveHistoryIdsRef.current=newIds;
+      });
+    },1500);
+    return ()=>clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[moveHistory,cloudUser?.uid]);
+
+  useEffect(()=>{
+    if(!cloudUser) return;
+    let unsub:(()=>void)|null=null;
+    let active=true;
+    subscribeIdCollection<MoveHistory>(cloudUser.uid,'moveHistory',(added,modified,removedIds)=>{
+      skipNextMoveHistoryPushRef.current=true;
+      setMoveHistory(prev=>{
+        const removedSet=new Set(removedIds);
+        const byId=new Map(prev.map(h=>[h.id,h]));
+        for(const h of [...added,...modified]) byId.set(h.id,h);
+        for(const id of removedSet) byId.delete(id);
+        const merged=[...byId.values()];
+        cloudMoveHistoryIdsRef.current=new Set(merged.map(h=>h.id));
+        return merged;
+      });
+    }).then(u=>{ if(active) unsub=u; else u(); });
+    return ()=>{ active=false; unsub?.(); cloudMoveHistoryIdsRef.current=null; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[cloudUser?.uid]);
+
   const maybeShowProductTour=()=>{
     if(localStorage.getItem(TOUR_COMPLETED_KEY)){ maybeShowNotifPrompt(); return; }
     setTimeout(()=>setShowWelcome(true),600);
