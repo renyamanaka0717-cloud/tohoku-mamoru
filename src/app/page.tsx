@@ -8560,6 +8560,43 @@ export default function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[cloudUser?.uid]);
 
+  // tasks/shopItemsと全く同じpush/pullパターンをcustomTabsにも適用する（3つ目の対象コレクション）
+  const cloudCustomTabIdsRef=useRef<Set<string>|null>(null);
+  const skipNextCustomTabPushRef=useRef(false);
+
+  useEffect(()=>{
+    if(!cloudUser) return;
+    if(skipNextCustomTabPushRef.current){ skipNextCustomTabPushRef.current=false; return; }
+    const timer=setTimeout(()=>{
+      const prevIds=cloudCustomTabIdsRef.current ?? new Set(customTabs.map(c=>c.id));
+      pushIdCollectionDiff(cloudUser.uid,'customTabs',customTabs,prevIds).then(newIds=>{
+        if(newIds) cloudCustomTabIdsRef.current=newIds;
+      });
+    },1500);
+    return ()=>clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[customTabs,cloudUser?.uid]);
+
+  useEffect(()=>{
+    if(!cloudUser) return;
+    let unsub:(()=>void)|null=null;
+    let active=true;
+    subscribeIdCollection<CustomTab>(cloudUser.uid,'customTabs',(added,modified,removedIds)=>{
+      skipNextCustomTabPushRef.current=true;
+      setCustomTabs(prev=>{
+        const removedSet=new Set(removedIds);
+        const byId=new Map(prev.map(c=>[c.id,c]));
+        for(const c of [...added,...modified]) byId.set(c.id,c);
+        for(const id of removedSet) byId.delete(id);
+        const merged=[...byId.values()];
+        cloudCustomTabIdsRef.current=new Set(merged.map(c=>c.id));
+        return merged;
+      });
+    }).then(u=>{ if(active) unsub=u; else u(); });
+    return ()=>{ active=false; unsub?.(); cloudCustomTabIdsRef.current=null; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[cloudUser?.uid]);
+
   const maybeShowProductTour=()=>{
     if(localStorage.getItem(TOUR_COMPLETED_KEY)){ maybeShowNotifPrompt(); return; }
     setTimeout(()=>setShowWelcome(true),600);
