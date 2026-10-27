@@ -2346,7 +2346,9 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
     else{onClose();}
   };
 
-  const headerBg=color?(()=>{
+  // 右パネル常設フォーム（docked）は常時画面に出ているため、タスクごとの濃い色ヘッダーは使わず
+  // 常にニュートラルな背景にする（ポップアップ/editPanelは従来通りアイコン色ベースの色付きヘッダー）
+  const headerBg=docked?'#F3F4F6':color?(()=>{
     const hex=color;
     const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
     return `rgb(${Math.round(r*0.82)},${Math.round(g*0.82)},${Math.round(b*0.82)})`;
@@ -2392,7 +2394,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               {!docked&&<button onClick={handleClose} className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center text-white">×</button>}
-              {!task&&onBulkInput&&<button onClick={onBulkInput} className="px-3 py-1.5 text-sm font-semibold rounded-full bg-white/20 text-white flex items-center gap-1">{tr('taskModalBulkInput')}<AppIcons.caretRight size={12}/></button>}
+              {!task&&onBulkInput&&<button onClick={onBulkInput} className={`px-3 py-1.5 text-sm font-semibold rounded-full flex items-center gap-1 ${docked?'bg-gray-100 text-gray-600':'bg-white/20 text-white'}`}>{tr('taskModalBulkInput')}<AppIcons.caretRight size={12}/></button>}
             </div>
             <div className="flex items-center gap-3">
               {task ? (
@@ -2408,7 +2410,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                 </>
               ) : (
                 <button onClick={save} disabled={!name.trim()} data-tour={!task&&!docked?'save-button':undefined}
-                  className={`px-4 py-1.5 text-sm font-semibold rounded-full transition-colors ${name.trim()?'bg-white/90 text-gray-800':'bg-white/20 text-white/40 cursor-not-allowed'}`}>{tr('taskModalSave')}</button>
+                  className={`px-4 py-1.5 text-sm font-semibold rounded-full transition-colors ${docked?(name.trim()?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-300 cursor-not-allowed'):(name.trim()?'bg-white/90 text-gray-800':'bg-white/20 text-white/40 cursor-not-allowed')}`}>{tr('taskModalSave')}</button>
               )}
             </div>
           </div>
@@ -2416,41 +2418,41 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
           {/* Icon + name */}
           <div className="flex items-center gap-3 mb-4" data-tour={!task&&!docked?'name-input-row':undefined}>
             <button onClick={()=>setIconSheetOpen(true)}
-              className="relative w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 text-white bg-white/20 active:bg-white/30 transition-colors"
+              className={`relative w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 transition-colors ${docked&&!color?'bg-gray-100 text-gray-500 active:bg-gray-200':'text-white bg-white/20 active:bg-white/30'}`}
               style={color?{background:color}:{}}>
-              {(()=>{const Ic=getTaskIcon(icon);return <Ic size={32} className={color?'text-white':'text-white'}/>;})()}
+              {(()=>{const Ic=getTaskIcon(icon);return <Ic size={32} className={docked&&!color?'text-gray-500':'text-white'}/>;})()}
               <div className="absolute bottom-0.5 right-0.5 w-5 h-5 bg-white rounded-full flex items-center justify-center shadow-sm">
                 <AppIcons.pencil size={11} className="text-gray-500"/>
               </div>
             </button>
             <div className="flex-1 min-w-0">
               {(mode==='scheduled'||mode==='recurring')&&startTime&&(
-                <p className="text-xs text-white/60 mb-0.5">{startTime}{computedEnd?`〜${computedEnd}`:''}{mode==='recurring'&&` · ${tr('taskModalRecurringSuffix')}`}</p>
+                <p className={`text-xs mb-0.5 ${docked?'text-gray-500':'text-white/60'}`}>{startTime}{computedEnd?`〜${computedEnd}`:''}{mode==='recurring'&&` · ${tr('taskModalRecurringSuffix')}`}</p>
               )}
               {mode==='allday'&&(
-                <p className="text-xs text-white/60 mb-0.5">{tr('taskModalAllDay')}</p>
+                <p className={`text-xs mb-0.5 ${docked?'text-gray-500':'text-white/60'}`}>{tr('taskModalAllDay')}</p>
               )}
-              <div className="flex items-center gap-2 border-b border-white/30 pb-1">
+              <div className={`flex items-center gap-2 border-b pb-1 ${docked?'border-gray-200':'border-white/30'}`}>
                 <input ref={nameInputRef} type="text" value={name} onChange={e=>{const v=e.target.value;setName(v);if(autoIcon)setIcon(defaultIconKey(v));}}
                   placeholder={voiceState==='recording'?tr('voiceInputRecordingLabel'):tr('taskModalNamePlaceholder')}
-                  className="flex-1 min-w-0 bg-transparent text-white text-lg font-medium placeholder-white/40 outline-none"/>
+                  className={`flex-1 min-w-0 bg-transparent text-lg font-medium outline-none ${docked?'text-gray-800 placeholder-gray-400':'text-white placeholder-white/40'}`}/>
                 {voiceInputSupported()&&(
                   <button type="button" onClick={toggleVoiceInput} disabled={voiceState==='processing'}
-                    className={`shrink-0 h-8 rounded-full flex items-center justify-center transition-colors ${voiceState==='recording'?'w-12 bg-white text-[var(--c-primary)]':'w-8 bg-white/20 text-white active:bg-white/30'}`}>
+                    className={`shrink-0 h-8 rounded-full flex items-center justify-center transition-colors ${voiceState==='recording'?'w-12 bg-white text-[var(--c-primary)]':docked?'w-8 bg-gray-100 text-gray-500 active:bg-gray-200':'w-8 bg-white/20 text-white active:bg-white/30'}`}>
                     {voiceState==='recording'?<VoiceWaveform level={voiceLevel} size="small"/>:<AppIcons.mic size={15}/>}
                   </button>
                 )}
               </div>
-              {voiceError&&<p className="text-xs text-red-100 mt-1">{voiceError}</p>}
+              {voiceError&&<p className={`text-xs mt-1 ${docked?'text-[#D97A7A]':'text-red-100'}`}>{voiceError}</p>}
             </div>
           </div>
 
           {/* Tabs */}
-          <div className="flex bg-white/20 rounded-xl p-1 mb-3">
+          <div className={`flex rounded-xl p-1 mb-3 ${docked?'bg-gray-100':'bg-white/20'}`}>
             {([['later',tr('modeLater')],['scheduled',tr('modeScheduled')],['recurring',tr('modeRecurring')]] as [TaskMode,string][]).map(([m,l])=>(
               <button key={m} onClick={()=>setMode(m)}
                 data-tour={!task&&!docked&&m==='later'?'tab-later':undefined}
-                className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-colors ${mode===m?'bg-white/90 text-gray-800':'text-white/70'}`}>
+                className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-colors ${mode===m?(docked?'bg-white text-gray-800 shadow-sm':'bg-white/90 text-gray-800'):(docked?'text-gray-500':'text-white/70')}`}>
                 {l}
               </button>
             ))}
@@ -2466,6 +2468,10 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                   style={active?{
                     width:'76px',padding:'6px 10px 8px',background:'#F9FAFB',color:'#374151',fontWeight:700,fontSize:'0.8125rem',
                     border:'none',borderRadius:'12px 12px 0 0',marginBottom:'-2px',flexShrink:0,
+                    overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',
+                  }:docked?{
+                    width:'76px',padding:'4px 10px 6px',background:'rgba(0,0,0,0.04)',color:'#6B7280',fontWeight:600,fontSize:'0.8125rem',
+                    border:'none',borderRadius:'12px 12px 0 0',marginBottom:'2px',flexShrink:0,
                     overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',
                   }:{
                     width:'76px',padding:'4px 10px 6px',background:'rgba(255,255,255,0.2)',color:'rgba(255,255,255,0.8)',fontWeight:600,fontSize:'0.8125rem',
@@ -10069,7 +10075,7 @@ export default function App() {
 
       {/* ── Timeline ── */}
       {(!isDesktop||viewMode==='1day')?(
-      <main ref={mainRef} className="px-3 pt-3 flex-1 overflow-y-auto lg:max-w-[640px] lg:mx-auto lg:w-full" style={{paddingBottom:'calc(3.5rem + env(safe-area-inset-bottom))'}}
+      <main ref={mainRef} className="px-3 pt-3 flex-1 overflow-y-auto lg:max-w-[760px] lg:mx-auto lg:w-full" style={{paddingBottom:'calc(3.5rem + env(safe-area-inset-bottom))'}}
         onTouchStart={e=>{mainSwX.current=e.touches[0].clientX;mainSwY.current=e.touches[0].clientY;}}
         onTouchEnd={e=>{
           if(dragTask) return;
