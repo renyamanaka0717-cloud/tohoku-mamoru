@@ -1250,6 +1250,68 @@ function CalendarPage({date,tasks,customTabs,onSelect,onClose,weekStartsOn=0}:{d
   );
 }
 
+// ── LeftCalendarPanel（PC版、左サイドのミニ月間カレンダー。Notion Calendar等を参考に、
+// タイムライン本体とは別に「今どのあたりの時期にいるか」を一目で把握・移動できるようにする）
+function LeftCalendarPanel({selected,tasks,weekStartsOn=0,onSelect}:{selected:string;tasks:Task[];weekStartsOn?:0|1;onSelect:(d:string)=>void;}) {
+  const {tr,language} = useI18n();
+  const [vm,setVm] = useState(()=>{const d=new Date(selected+'T12:00:00');return {year:d.getFullYear(),month:d.getMonth()};});
+  const today = todayStr();
+
+  // 選択中の日付が表示中の月をまたいだら、カレンダー側の表示月も追従させる
+  useEffect(()=>{
+    const d=new Date(selected+'T12:00:00');
+    setVm(prev=>(prev.year===d.getFullYear()&&prev.month===d.getMonth())?prev:{year:d.getFullYear(),month:d.getMonth()});
+  },[selected]);
+
+  const datesWithTasks = useMemo(()=>{
+    const set=new Set<string>();
+    tasks.filter(t=>!t.isLater&&t.startTime).forEach(t=>set.add(t.date));
+    return set;
+  },[tasks]);
+
+  const days = useMemo(()=>{
+    const {year,month}=vm;
+    const first=monthFirstOffset(new Date(year,month,1).getDay(),weekStartsOn);
+    const total=new Date(year,month+1,0).getDate();
+    const arr:(string|null)[]=Array(first).fill(null);
+    for(let d=1;d<=total;d++) arr.push(dateToStr(new Date(year,month,d)));
+    return arr;
+  },[vm,weekStartsOn]);
+
+  return (
+    <div className="h-full overflow-y-auto px-3 pt-4 pb-6">
+      <div className="flex items-center justify-between mb-3">
+        <button onClick={()=>setVm(m=>shiftMonth(m.year,m.month,-1))} className="w-7 h-7 flex items-center justify-center text-gray-400"><AppIcons.caretLeft size={15}/></button>
+        <span className="text-[13px] font-bold text-gray-800">{language==='ja'?`${vm.year}年${vm.month+1}月`:language==='ko'?`${vm.year}년 ${vm.month+1}월`:language==='zh-TW'?`${vm.year}年${vm.month+1}月`:language==='es'?`${MONTH_NAMES_ES[vm.month]} de ${vm.year}`:language==='pt'?`${MONTH_NAMES_PT[vm.month]} de ${vm.year}`:language==='vi'?`Tháng ${vm.month+1}, ${vm.year}`:language==='th'?`${MONTH_NAMES_TH[vm.month]} ${vm.year}`:language==='id'?`${MONTH_NAMES_ID[vm.month]} ${vm.year}`:`${MONTH_NAMES_EN[vm.month]} ${vm.year}`}</span>
+        <button onClick={()=>setVm(m=>shiftMonth(m.year,m.month,1))} className="w-7 h-7 flex items-center justify-center text-gray-400"><AppIcons.caretRight size={15}/></button>
+      </div>
+      <div className="grid grid-cols-7 mb-1">
+        {weekDayOrder(weekStartsOn).map(dow=>(
+          <div key={dow} className="text-center text-[10px] font-semibold text-gray-400">{dayNameFor(language,dow)}</div>
+        ))}
+      </div>
+      <div className="grid grid-cols-7 gap-y-1">
+        {days.map((d,i)=>{
+          const isSel=d===selected, isToday=d===today, hasTask=d?datesWithTasks.has(d):false;
+          return (
+            <button key={i} disabled={!d} onClick={()=>{if(d) onSelect(d);}}
+              className="flex flex-col items-center gap-0.5 py-0.5">
+              <span className={`w-7 h-7 rounded-full flex items-center justify-center text-[12.5px] font-medium ${
+                !d?'':isSel?'bg-[var(--c-primary)] text-white':isToday?'bg-gray-100 font-bold text-gray-900':'text-gray-600'
+              }`}>{d?new Date(d+'T12:00:00').getDate():''}</span>
+              <span className={`w-1 h-1 rounded-full ${hasTask&&!isSel?'bg-[var(--c-primary)]':'bg-transparent'}`}/>
+            </button>
+          );
+        })}
+      </div>
+      <button onClick={()=>{const d=new Date();setVm({year:d.getFullYear(),month:d.getMonth()});onSelect(today);}}
+        className="w-full mt-4 py-2 rounded-xl text-[12.5px] font-semibold text-gray-500 bg-gray-50 hover:bg-gray-100">
+        {tr('todayButton')}
+      </button>
+    </div>
+  );
+}
+
 // ── SearchPage ────────────────────────────────────────────────────────────────
 
 function SearchPage({tasks,onClose,onSelect}:{tasks:Task[];onClose:()=>void;onSelect:(t:Task)=>void;}) {
@@ -8053,6 +8115,8 @@ export default function App() {
   },[]);
   // PC版右パネル（あとでやる・買い物リスト）の開閉状態。中央タイムラインを広く使いたい時に畳める
   const [panelCollapsed,setPanelCollapsed] = useState(false);
+  // PC版左パネル（ミニ月間カレンダー）の開閉状態。右パネルと同じ「fixed＋root側padding」方式で浮かせる
+  const [leftCalOpen,setLeftCalOpen] = useState(true);
   const [now,setNow]             = useState(nowStr());
   const [touchY,setTouchY]       = useState(0);
   const [dragTask,setDragTask]   = useState<Task|null>(null);
@@ -9450,6 +9514,11 @@ export default function App() {
   useEffect(()=>{
     if(viewMode==='7day') setPanelCollapsed(true);
   },[viewMode]);
+  // 3日・7日表示に入った時だけ左のミニカレンダーを自動で畳む（複数日カラムの横幅を優先するため）。
+  // 右パネルの自動収納と同じ「viewMode変化時にしか発火しない」パターンなので、手動で開き直した状態は上書きされない
+  useEffect(()=>{
+    if(viewMode==='3day'||viewMode==='7day') setLeftCalOpen(false);
+  },[viewMode]);
 
   // タスクの所要時間クイック設定（PC版、複数日表示限定）。MultiDayColumnの時刻ラベルをクリックすると、
   // TaskModalを開かずその場でDUR_OPTSのピッカーを出す（「まとめて整理」というPC版の方針に合わせ、
@@ -9897,7 +9966,7 @@ export default function App() {
 
   return (
     <div className={isDesktop?"bg-white font-sans flex flex-col":"max-w-md mx-auto bg-white font-sans flex flex-col"}
-      style={{height:'100%',...(isDesktop?{paddingRight:panelCollapsed?'0px':'380px'}:{})}}>
+      style={{height:'100%',...(isDesktop?{paddingRight:panelCollapsed?'0px':'380px',paddingLeft:leftCalOpen?'260px':'0px'}:{})}}>
       {/* ── Header ── */}
       <header className="z-30 bg-gray-50 flex-shrink-0" style={{paddingTop:'env(safe-area-inset-top)'}}>
         <div className="px-4 pt-1 pb-0">
@@ -10282,6 +10351,21 @@ export default function App() {
           className="fixed z-50 w-6 h-12 bg-white border border-gray-200 rounded-l-lg flex items-center justify-center shadow-md active:bg-gray-50"
           style={{top:'calc(50% - 24px)',right:panelCollapsed?'0px':'380px'}}>
           {panelCollapsed?<AppIcons.caretLeft size={14} className="text-gray-400"/>:<AppIcons.caretRight size={14} className="text-gray-400"/>}
+        </button>
+      )}
+
+      {/* ── 左パネル（ミニ月間カレンダー、PC版のみ） ── */}
+      {isDesktop&&leftCalOpen&&(
+        <div className="fixed left-0 top-0 bottom-0 z-40 bg-white border-r border-gray-200" style={{width:'260px'}}>
+          <LeftCalendarPanel selected={date} tasks={filteredTasks} weekStartsOn={weekStartsOn}
+            onSelect={(d)=>{setDate(d);setWeekAnchor(d);}}/>
+        </div>
+      )}
+      {isDesktop&&(
+        <button onClick={()=>setLeftCalOpen(v=>!v)}
+          className="fixed z-50 w-6 h-12 bg-white border border-gray-200 rounded-r-lg flex items-center justify-center shadow-md active:bg-gray-50"
+          style={{top:'calc(50% - 24px)',left:leftCalOpen?'260px':'0px'}}>
+          {leftCalOpen?<AppIcons.caretLeft size={14} className="text-gray-400"/>:<AppIcons.caretRight size={14} className="text-gray-400"/>}
         </button>
       )}
 
