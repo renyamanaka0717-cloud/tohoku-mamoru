@@ -1,5 +1,7 @@
 'use client';
 
+import { registerPlugin } from '@capacitor/core';
+
 // Google/Apple ログイン ＋ Cloud Firestoreへのデータ移行・保存を担う窓口。
 //
 // 【スコープ】Phase A（ログイン＋初回クラウド移行）に加え、Phase B（継続的な
@@ -55,22 +57,18 @@ interface GoogleAuthPluginType {
 interface AppleAuthPluginType {
   signIn(options: { nonce: string }): Promise<{ idToken: string }>;
 }
-let googleAuthPluginPromise: Promise<GoogleAuthPluginType> | null = null;
-async function getGoogleAuthPlugin(): Promise<GoogleAuthPluginType> {
-  if (!googleAuthPluginPromise) {
-    googleAuthPluginPromise = import('@capacitor/core').then(({ registerPlugin }) =>
-      registerPlugin<GoogleAuthPluginType>('GoogleAuthPlugin'));
-  }
-  return googleAuthPluginPromise;
-}
-let appleAuthPluginPromise: Promise<AppleAuthPluginType> | null = null;
-async function getAppleAuthPlugin(): Promise<AppleAuthPluginType> {
-  if (!appleAuthPluginPromise) {
-    appleAuthPluginPromise = import('@capacitor/core').then(({ registerPlugin }) =>
-      registerPlugin<AppleAuthPluginType>('AppleAuthPlugin'));
-  }
-  return appleAuthPluginPromise;
-}
+// 他のCapacitorプラグイン（Geofence.ts・LocalNotify.ts等）と同じく、registerPlugin()は
+// モジュール読み込み時に同期的に呼ぶ。
+// 【過去の不具合】以前は import('@capacitor/core').then(({registerPlugin})=>registerPlugin(...))
+// という動的importの.then()チェーンの中でregisterPlugin()を呼んでいたが、これだと
+// 「.then()コールバックの返り値」としてCapacitorのプラグインProxyオブジェクトがそのまま返り、
+// JS Promiseの仕様（返り値がthenable＝.thenプロパティを持つオブジェクトなら、それ自体を
+// Promiseとして吸収しようとする）により、Capacitor側が`.then`というプロパティアクセスも
+// 「`then`という名前のネイティブメソッド呼び出し」として誤って解釈してしまい、実機で
+// 「"GoogleAuthPlugin.then()" is not implemented on android」という紛らわしいエラーになる
+// 不具合があった。他のプラグインファイルと同じ静的importの直接呼び出しに統一して解消した。
+const GoogleAuthPlugin = registerPlugin<GoogleAuthPluginType>('GoogleAuthPlugin');
+const AppleAuthPlugin = registerPlugin<AppleAuthPluginType>('AppleAuthPlugin');
 
 // Sign in with Appleのnonce（リプレイ攻撃対策、Firebase側の要件）。生のnonceはFirebaseの
 // credentialに渡し、そのSHA256ハッシュをApple側のネイティブリクエストに渡す
@@ -134,8 +132,7 @@ export async function signInWithGoogle(): Promise<CloudUser | null> {
   const { GoogleAuthProvider, signInWithCredential, signInWithPopup, signInWithRedirect } = await import('firebase/auth');
   try {
     if (isNative()) {
-      const plugin = await getGoogleAuthPlugin();
-      const { idToken, accessToken } = await plugin.signIn();
+      const { idToken, accessToken } = await GoogleAuthPlugin.signIn();
       const credential = GoogleAuthProvider.credential(idToken, accessToken);
       const cred = await signInWithCredential(auth, credential);
       return toCloudUser(cred.user);
@@ -167,8 +164,7 @@ export async function signInWithApple(): Promise<CloudUser | null> {
       }
       const rawNonce = randomNonce();
       const hashedNonce = await sha256Hex(rawNonce);
-      const plugin = await getAppleAuthPlugin();
-      const { idToken } = await plugin.signIn({ nonce: hashedNonce });
+      const { idToken } = await AppleAuthPlugin.signIn({ nonce: hashedNonce });
       const provider = new OAuthProvider('apple.com');
       const credential = provider.credential({ idToken, rawNonce });
       const cred = await signInWithCredential(auth, credential);
