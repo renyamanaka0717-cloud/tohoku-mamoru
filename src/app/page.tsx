@@ -7434,13 +7434,15 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           </>
         ) : (
           <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-            <button onClick={onGoogleSignIn} className={`w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50 ${isAndroid()?'':'border-b border-gray-100'}`}>
+            <button onClick={onGoogleSignIn} className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50">
               <AppIcons.link size={18} className="text-gray-400 shrink-0"/>
               <span className="flex-1 text-left text-sm font-semibold text-gray-800">{tr('accountSignInGoogle')}</span>
             </button>
-            {/* AppleはAndroid向けの公式サインインSDKを提供していないため、Androidネイティブでは
-                押しても何も起きないボタンを出さず最初から隠す（Web/iOSでは引き続き表示） */}
-            {!isAndroid()&&(
+            {/* Appleログインは一旦オフにしてGoogleのみに一本化（ユーザー判断、App Store
+                ガイドライン4.8の要件を気にせず様子を見る）。Androidは元々AppleのSDKが
+                無く未対応だった。ネイティブ側のAppleAuthPlugin等のコードは変更していない
+                ので、復活させる時はこの false&& を外すだけでよい */}
+            {false&&(
               <button onClick={onAppleSignIn} className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50">
                 <AppIcons.link size={18} className="text-gray-400 shrink-0"/>
                 <span className="flex-1 text-left text-sm font-semibold text-gray-800">{tr('accountSignInApple')}</span>
