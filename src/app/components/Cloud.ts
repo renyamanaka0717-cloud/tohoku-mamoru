@@ -127,14 +127,20 @@ async function getDb() {
 // ── 認証 ──────────────────────────────────────────────────────────
 
 export async function signInWithGoogle(): Promise<CloudUser | null> {
+  console.log('[DEBUG-GLOGIN] v3 start');
   const auth = await getAuthInstance();
+  console.log('[DEBUG-GLOGIN] auth=', !!auth);
   if (!auth) return null;
   const { GoogleAuthProvider, signInWithCredential, signInWithPopup, signInWithRedirect } = await import('firebase/auth');
   try {
     if (isNative()) {
-      const { idToken, accessToken } = await GoogleAuthPlugin.signIn();
+      console.log('[DEBUG-GLOGIN] calling native signIn, typeof=', typeof GoogleAuthPlugin.signIn);
+      const result = await GoogleAuthPlugin.signIn();
+      console.log('[DEBUG-GLOGIN] native signIn resolved', result);
+      const { idToken, accessToken } = result;
       const credential = GoogleAuthProvider.credential(idToken, accessToken);
       const cred = await signInWithCredential(auth, credential);
+      console.log('[DEBUG-GLOGIN] firebase credential ok');
       return toCloudUser(cred.user);
     }
     const provider = new GoogleAuthProvider();
@@ -144,6 +150,7 @@ export async function signInWithGoogle(): Promise<CloudUser | null> {
     await signInWithRedirect(auth, provider);
     return null;
   } catch (e) {
+    console.log('[DEBUG-GLOGIN] caught error', e);
     console.error('Google sign-in failed:', e);
     return null;
   }
