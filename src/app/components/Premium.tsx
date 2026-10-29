@@ -3,7 +3,12 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { logAnalyticsEvent } from './Analytics';
 import { getDevPremiumOverride, DEV_PREMIUM_CHANGED_EVENT } from './DevMode';
 
-const RC_API_KEY = 'appl_zyfcgKyGHORBKcOppeougWslCRP';
+// RevenueCatのAPIキーはプラットフォームごとに別の値を使う必要がある
+// （iOS: appl_... / Android: goog_...、RevenueCatダッシュボードでそれぞれのストアアプリを
+// 追加した時に発行される）。ENTITLEMENT_IDは両ストアの商品を同じエンタイトルメントに
+// 紐づけてあれば共通でよい。
+const RC_API_KEY_IOS = 'appl_zyfcgKyGHORBKcOppeougWslCRP';
+const RC_API_KEY_ANDROID = process.env.NEXT_PUBLIC_RC_API_KEY_ANDROID ?? '';
 const ENTITLEMENT_ID = 'BrainBox Pro';
 
 interface PremiumContextValue {
@@ -41,6 +46,10 @@ function isAndroidNative(): boolean {
   return (window as {Capacitor?: {getPlatform?: () => string}}).Capacitor?.getPlatform?.() === 'android';
 }
 
+function getRcApiKey(): string {
+  return isAndroidNative() ? RC_API_KEY_ANDROID : RC_API_KEY_IOS;
+}
+
 export function PremiumProvider({ children }: { children: React.ReactNode }) {
   const [isPremium, setIsPremium] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -69,13 +78,21 @@ export function PremiumProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(false);
       return;
     }
+    const apiKey = getRcApiKey();
+    if (!apiKey) {
+      // AndroidのRevenueCat APIキー未設定（Google Play側のセットアップ未完了）。
+      // 購入フローには触れず、無課金状態として静かに終了する
+      setIsPremium(false);
+      setIsLoading(false);
+      return;
+    }
     (async () => {
       try {
         // dynamic import（webpackIgnoreは付けない — 付けるとバンドルされず
         // 実機で「does not resolve to a valid URL」エラーになり購入が失敗する）
         const { Purchases, LOG_LEVEL } = await import('@revenuecat/purchases-capacitor');
         await Purchases.setLogLevel({ level: LOG_LEVEL.DEBUG });
-        await Purchases.configure({ apiKey: RC_API_KEY });
+        await Purchases.configure({ apiKey });
         const { customerInfo } = await Purchases.getCustomerInfo();
         setIsPremium(ENTITLEMENT_ID in customerInfo.entitlements.active);
         // ¥200固定表示だと地域によって実際の請求額と食い違うため、App Storeの
@@ -97,6 +114,7 @@ export function PremiumProvider({ children }: { children: React.ReactNode }) {
   const purchase = useCallback(async () => {
     if (!isNative()) return;
     if (FORCE_PREMIUM_ANDROID && isAndroidNative()) return;
+    if (!getRcApiKey()) return;
     setIsPurchasing(true);
     try {
       const { Purchases } = await import('@revenuecat/purchases-capacitor');
