@@ -7427,6 +7427,15 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
               {migrationStatus==='idle'&&(<><AppIcons.checkSquare size={16} className="text-gray-300 shrink-0"/><p className="text-sm text-gray-400">{tr('accountSyncedStatus')}</p></>)}
             </div>
 
+            {!isPremium&&(
+              <button onClick={()=>setProPrompt(tr('proFeatureRealtimeSync'))}
+                className="w-full bg-white rounded-2xl shadow-sm px-4 py-3.5 mt-3 flex items-center gap-2 text-left active:bg-gray-50">
+                <AppIcons.lock size={16} className="text-gray-300 shrink-0"/>
+                <p className="text-sm text-gray-500 flex-1">{tr('accountRealtimeSyncProNotice')}</p>
+                <AppIcons.caretRight size={14} className="text-gray-300 shrink-0"/>
+              </button>
+            )}
+
             <button onClick={onSignOut}
               className="w-full bg-white rounded-2xl shadow-sm px-4 py-3.5 mt-3 text-sm font-semibold text-[#D97A7A] active:bg-gray-50">
               {tr('accountSignOutButton')}
@@ -7554,6 +7563,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             {label:tr('proFeatureLaterLocationNotify'), free:'×',                 pro:tr('proValSupported')},
             {label:tr('rowForgetAlertTitle'),       free:'×',                     pro:tr('proValSupported')},
             {label:tr('proFeatureVoiceInput'),      free:'×',                     pro:tr('proValSupported')},
+            {label:tr('proFeatureRealtimeSync'),    free:'×',                     pro:tr('proValSupported')},
           ].map(({label,free,pro},i,arr)=>(
             <div key={i} className={`grid items-center px-4 py-3${i<arr.length-1?' border-b border-gray-100':''}`} style={{gridTemplateColumns:'1fr 80px 80px'}}>
               <p className="text-sm text-gray-800">{label}</p>
@@ -8488,6 +8498,9 @@ export default function App() {
   },[]);
 
   // ── 複数端末のリアルタイム同期（Phase B、現時点ではtasksのみ対応） ──────────────
+  // PRO限定機能（無料なのはログイン＋初回バックアップ＝migrateLocalDataToCloudまで）。
+  // Firestoreの継続的な読み書きコストが発生するのはこのリアルタイム同期部分のため、
+  // isPremiumをguardに含めてある。新しいコレクションの同期を追加する時も同様にすること
   // 前回push時点でFirestoreに存在すると分かっているtaskId集合。ローカル削除をクラウド側にも
   // 反映するための差分計算に使う（pushIdCollectionDiffのprevIds）。pull側（onSnapshot）で
   // リモートの変更をローカルへマージした時も、その時点のidでここを更新しておく
@@ -8499,7 +8512,7 @@ export default function App() {
 
   // Push: ログイン中、tasksが変わるたびクラウドへ反映する（1.5秒デバウンスでまとめて送る）
   useEffect(()=>{
-    if(!cloudUser) return;
+    if(!cloudUser||!isPremium) return;
     if(skipNextTaskPushRef.current){ skipNextTaskPushRef.current=false; return; }
     const timer=setTimeout(()=>{
       const prevIds=cloudTaskIdsRef.current ?? new Set(tasks.map(t=>t.id));
@@ -8509,11 +8522,11 @@ export default function App() {
     },1500);
     return ()=>clearTimeout(timer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[tasks,cloudUser?.uid]);
+  },[tasks,cloudUser?.uid,isPremium]);
 
   // Pull: ログイン中は他端末からの変更をリアルタイムで取り込む
   useEffect(()=>{
-    if(!cloudUser) return;
+    if(!cloudUser||!isPremium) return;
     let unsub:(()=>void)|null=null;
     let active=true;
     subscribeIdCollection<Task>(cloudUser.uid,'tasks',(added,modified,removedIds)=>{
@@ -8530,14 +8543,14 @@ export default function App() {
     }).then(u=>{ if(active) unsub=u; else u(); });
     return ()=>{ active=false; unsub?.(); cloudTaskIdsRef.current=null; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[cloudUser?.uid]);
+  },[cloudUser?.uid,isPremium]);
 
   // tasksと全く同じpush/pullパターンをshopItemsにも適用する（2つ目の対象コレクション）
   const cloudShopItemIdsRef=useRef<Set<string>|null>(null);
   const skipNextShopItemPushRef=useRef(false);
 
   useEffect(()=>{
-    if(!cloudUser) return;
+    if(!cloudUser||!isPremium) return;
     if(skipNextShopItemPushRef.current){ skipNextShopItemPushRef.current=false; return; }
     const timer=setTimeout(()=>{
       const prevIds=cloudShopItemIdsRef.current ?? new Set(shopItems.map(s=>s.id));
@@ -8547,10 +8560,10 @@ export default function App() {
     },1500);
     return ()=>clearTimeout(timer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[shopItems,cloudUser?.uid]);
+  },[shopItems,cloudUser?.uid,isPremium]);
 
   useEffect(()=>{
-    if(!cloudUser) return;
+    if(!cloudUser||!isPremium) return;
     let unsub:(()=>void)|null=null;
     let active=true;
     subscribeIdCollection<ShopItem>(cloudUser.uid,'shopItems',(added,modified,removedIds)=>{
@@ -8567,14 +8580,14 @@ export default function App() {
     }).then(u=>{ if(active) unsub=u; else u(); });
     return ()=>{ active=false; unsub?.(); cloudShopItemIdsRef.current=null; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[cloudUser?.uid]);
+  },[cloudUser?.uid,isPremium]);
 
   // tasks/shopItemsと全く同じpush/pullパターンをcustomTabsにも適用する（3つ目の対象コレクション）
   const cloudCustomTabIdsRef=useRef<Set<string>|null>(null);
   const skipNextCustomTabPushRef=useRef(false);
 
   useEffect(()=>{
-    if(!cloudUser) return;
+    if(!cloudUser||!isPremium) return;
     if(skipNextCustomTabPushRef.current){ skipNextCustomTabPushRef.current=false; return; }
     const timer=setTimeout(()=>{
       const prevIds=cloudCustomTabIdsRef.current ?? new Set(customTabs.map(c=>c.id));
@@ -8584,10 +8597,10 @@ export default function App() {
     },1500);
     return ()=>clearTimeout(timer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[customTabs,cloudUser?.uid]);
+  },[customTabs,cloudUser?.uid,isPremium]);
 
   useEffect(()=>{
-    if(!cloudUser) return;
+    if(!cloudUser||!isPremium) return;
     let unsub:(()=>void)|null=null;
     let active=true;
     subscribeIdCollection<CustomTab>(cloudUser.uid,'customTabs',(added,modified,removedIds)=>{
@@ -8604,7 +8617,7 @@ export default function App() {
     }).then(u=>{ if(active) unsub=u; else u(); });
     return ()=>{ active=false; unsub?.(); cloudCustomTabIdsRef.current=null; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[cloudUser?.uid]);
+  },[cloudUser?.uid,isPremium]);
 
   // tags（globalTags）はidを持たずnameがキーのため、pushIdCollectionDiff/subscribeIdCollection
   // （T extends {id:string}が必須）を呼ぶ箇所でだけid:nameを合成する。ドキュメントIDがname
@@ -8615,7 +8628,7 @@ export default function App() {
   const skipNextTagPushRef=useRef(false);
 
   useEffect(()=>{
-    if(!cloudUser) return;
+    if(!cloudUser||!isPremium) return;
     if(skipNextTagPushRef.current){ skipNextTagPushRef.current=false; return; }
     const timer=setTimeout(()=>{
       const withId:CloudTagDef[]=globalTags.map(t=>({...t,id:t.name}));
@@ -8626,10 +8639,10 @@ export default function App() {
     },1500);
     return ()=>clearTimeout(timer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[globalTags,cloudUser?.uid]);
+  },[globalTags,cloudUser?.uid,isPremium]);
 
   useEffect(()=>{
-    if(!cloudUser) return;
+    if(!cloudUser||!isPremium) return;
     let unsub:(()=>void)|null=null;
     let active=true;
     subscribeIdCollection<CloudTagDef>(cloudUser.uid,'tags',(added,modified,removedIds)=>{
@@ -8645,14 +8658,14 @@ export default function App() {
     }).then(u=>{ if(active) unsub=u; else u(); });
     return ()=>{ active=false; unsub?.(); cloudTagIdsRef.current=null; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[cloudUser?.uid]);
+  },[cloudUser?.uid,isPremium]);
 
   // tasks/shopItems/customTabsと全く同じpush/pullパターンをshopNotifSettingsにも適用する（5つ目の対象コレクション）
   const cloudShopNotifIdsRef=useRef<Set<string>|null>(null);
   const skipNextShopNotifPushRef=useRef(false);
 
   useEffect(()=>{
-    if(!cloudUser) return;
+    if(!cloudUser||!isPremium) return;
     if(skipNextShopNotifPushRef.current){ skipNextShopNotifPushRef.current=false; return; }
     const timer=setTimeout(()=>{
       const prevIds=cloudShopNotifIdsRef.current ?? new Set(shopNotifSettings.map(s=>s.id));
@@ -8662,10 +8675,10 @@ export default function App() {
     },1500);
     return ()=>clearTimeout(timer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[shopNotifSettings,cloudUser?.uid]);
+  },[shopNotifSettings,cloudUser?.uid,isPremium]);
 
   useEffect(()=>{
-    if(!cloudUser) return;
+    if(!cloudUser||!isPremium) return;
     let unsub:(()=>void)|null=null;
     let active=true;
     subscribeIdCollection<ShopNotifSetting>(cloudUser.uid,'shopNotifSettings',(added,modified,removedIds)=>{
@@ -8682,14 +8695,14 @@ export default function App() {
     }).then(u=>{ if(active) unsub=u; else u(); });
     return ()=>{ active=false; unsub?.(); cloudShopNotifIdsRef.current=null; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[cloudUser?.uid]);
+  },[cloudUser?.uid,isPremium]);
 
   // tasks/shopItems/customTabs/shopNotifSettingsと全く同じpush/pullパターンをshopLocationsにも適用する（6つ目の対象コレクション）
   const cloudShopLocIdsRef=useRef<Set<string>|null>(null);
   const skipNextShopLocPushRef=useRef(false);
 
   useEffect(()=>{
-    if(!cloudUser) return;
+    if(!cloudUser||!isPremium) return;
     if(skipNextShopLocPushRef.current){ skipNextShopLocPushRef.current=false; return; }
     const timer=setTimeout(()=>{
       const prevIds=cloudShopLocIdsRef.current ?? new Set(shopLocations.map(s=>s.id));
@@ -8699,10 +8712,10 @@ export default function App() {
     },1500);
     return ()=>clearTimeout(timer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[shopLocations,cloudUser?.uid]);
+  },[shopLocations,cloudUser?.uid,isPremium]);
 
   useEffect(()=>{
-    if(!cloudUser) return;
+    if(!cloudUser||!isPremium) return;
     let unsub:(()=>void)|null=null;
     let active=true;
     subscribeIdCollection<ShopLocation>(cloudUser.uid,'shopLocations',(added,modified,removedIds)=>{
@@ -8719,14 +8732,14 @@ export default function App() {
     }).then(u=>{ if(active) unsub=u; else u(); });
     return ()=>{ active=false; unsub?.(); cloudShopLocIdsRef.current=null; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[cloudUser?.uid]);
+  },[cloudUser?.uid,isPremium]);
 
   // tasks/shopItems/customTabs/shopNotifSettings/shopLocationsと全く同じpush/pullパターンをforgetAlertsにも適用する（7つ目の対象コレクション）
   const cloudForgetAlertIdsRef=useRef<Set<string>|null>(null);
   const skipNextForgetAlertPushRef=useRef(false);
 
   useEffect(()=>{
-    if(!cloudUser) return;
+    if(!cloudUser||!isPremium) return;
     if(skipNextForgetAlertPushRef.current){ skipNextForgetAlertPushRef.current=false; return; }
     const timer=setTimeout(()=>{
       const prevIds=cloudForgetAlertIdsRef.current ?? new Set(forgetAlerts.map(a=>a.id));
@@ -8736,10 +8749,10 @@ export default function App() {
     },1500);
     return ()=>clearTimeout(timer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[forgetAlerts,cloudUser?.uid]);
+  },[forgetAlerts,cloudUser?.uid,isPremium]);
 
   useEffect(()=>{
-    if(!cloudUser) return;
+    if(!cloudUser||!isPremium) return;
     let unsub:(()=>void)|null=null;
     let active=true;
     subscribeIdCollection<ForgetAlert>(cloudUser.uid,'forgetAlerts',(added,modified,removedIds)=>{
@@ -8756,14 +8769,14 @@ export default function App() {
     }).then(u=>{ if(active) unsub=u; else u(); });
     return ()=>{ active=false; unsub?.(); cloudForgetAlertIdsRef.current=null; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[cloudUser?.uid]);
+  },[cloudUser?.uid,isPremium]);
 
   // tasks/shopItems/customTabs/shopNotifSettings/shopLocations/forgetAlertsと全く同じpush/pullパターンをlifePatternsにも適用する（8つ目の対象コレクション）
   const cloudLifePatternIdsRef=useRef<Set<string>|null>(null);
   const skipNextLifePatternPushRef=useRef(false);
 
   useEffect(()=>{
-    if(!cloudUser) return;
+    if(!cloudUser||!isPremium) return;
     if(skipNextLifePatternPushRef.current){ skipNextLifePatternPushRef.current=false; return; }
     const timer=setTimeout(()=>{
       const prevIds=cloudLifePatternIdsRef.current ?? new Set(lifePatterns.map(p=>p.id));
@@ -8773,10 +8786,10 @@ export default function App() {
     },1500);
     return ()=>clearTimeout(timer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[lifePatterns,cloudUser?.uid]);
+  },[lifePatterns,cloudUser?.uid,isPremium]);
 
   useEffect(()=>{
-    if(!cloudUser) return;
+    if(!cloudUser||!isPremium) return;
     let unsub:(()=>void)|null=null;
     let active=true;
     subscribeIdCollection<LifePattern>(cloudUser.uid,'lifePatterns',(added,modified,removedIds)=>{
@@ -8793,14 +8806,14 @@ export default function App() {
     }).then(u=>{ if(active) unsub=u; else u(); });
     return ()=>{ active=false; unsub?.(); cloudLifePatternIdsRef.current=null; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[cloudUser?.uid]);
+  },[cloudUser?.uid,isPremium]);
 
   // tasks/shopItems/customTabs/shopNotifSettings/shopLocations/forgetAlerts/lifePatternsと全く同じpush/pullパターンをmoveHistoryにも適用する（9つ目の対象コレクション）
   const cloudMoveHistoryIdsRef=useRef<Set<string>|null>(null);
   const skipNextMoveHistoryPushRef=useRef(false);
 
   useEffect(()=>{
-    if(!cloudUser) return;
+    if(!cloudUser||!isPremium) return;
     if(skipNextMoveHistoryPushRef.current){ skipNextMoveHistoryPushRef.current=false; return; }
     const timer=setTimeout(()=>{
       const prevIds=cloudMoveHistoryIdsRef.current ?? new Set(moveHistory.map(h=>h.id));
@@ -8810,10 +8823,10 @@ export default function App() {
     },1500);
     return ()=>clearTimeout(timer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[moveHistory,cloudUser?.uid]);
+  },[moveHistory,cloudUser?.uid,isPremium]);
 
   useEffect(()=>{
-    if(!cloudUser) return;
+    if(!cloudUser||!isPremium) return;
     let unsub:(()=>void)|null=null;
     let active=true;
     subscribeIdCollection<MoveHistory>(cloudUser.uid,'moveHistory',(added,modified,removedIds)=>{
@@ -8830,14 +8843,14 @@ export default function App() {
     }).then(u=>{ if(active) unsub=u; else u(); });
     return ()=>{ active=false; unsub?.(); cloudMoveHistoryIdsRef.current=null; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[cloudUser?.uid]);
+  },[cloudUser?.uid,isPremium]);
 
   // tasks/shopItems/customTabs/shopNotifSettings/shopLocations/forgetAlerts/lifePatterns/moveHistoryと全く同じpush/pullパターンをbulkHistoryにも適用する（10つ目の対象コレクション）
   const cloudBulkHistoryIdsRef=useRef<Set<string>|null>(null);
   const skipNextBulkHistoryPushRef=useRef(false);
 
   useEffect(()=>{
-    if(!cloudUser) return;
+    if(!cloudUser||!isPremium) return;
     if(skipNextBulkHistoryPushRef.current){ skipNextBulkHistoryPushRef.current=false; return; }
     const timer=setTimeout(()=>{
       const prevIds=cloudBulkHistoryIdsRef.current ?? new Set(bulkHistory.map(h=>h.id));
@@ -8847,10 +8860,10 @@ export default function App() {
     },1500);
     return ()=>clearTimeout(timer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[bulkHistory,cloudUser?.uid]);
+  },[bulkHistory,cloudUser?.uid,isPremium]);
 
   useEffect(()=>{
-    if(!cloudUser) return;
+    if(!cloudUser||!isPremium) return;
     let unsub:(()=>void)|null=null;
     let active=true;
     subscribeIdCollection<BulkHistoryEntry>(cloudUser.uid,'bulkHistory',(added,modified,removedIds)=>{
@@ -8867,7 +8880,7 @@ export default function App() {
     }).then(u=>{ if(active) unsub=u; else u(); });
     return ()=>{ active=false; unsub?.(); cloudBulkHistoryIdsRef.current=null; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[cloudUser?.uid]);
+  },[cloudUser?.uid,isPremium]);
 
   // dayOverridesはidを持たず日付文字列がキーのため、tagsと同じ「合成id」パターン
   // （pushIdCollectionDiff/subscribeIdCollection呼び出し時だけid:dateを合成する）を適用する
@@ -8876,7 +8889,7 @@ export default function App() {
   const skipNextDayOverridePushRef=useRef(false);
 
   useEffect(()=>{
-    if(!cloudUser) return;
+    if(!cloudUser||!isPremium) return;
     if(skipNextDayOverridePushRef.current){ skipNextDayOverridePushRef.current=false; return; }
     const timer=setTimeout(()=>{
       const withId:CloudDayOverride[]=Object.entries(dayOverrides).map(([date,ov])=>({...ov,id:date}));
@@ -8887,10 +8900,10 @@ export default function App() {
     },1500);
     return ()=>clearTimeout(timer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[dayOverrides,cloudUser?.uid]);
+  },[dayOverrides,cloudUser?.uid,isPremium]);
 
   useEffect(()=>{
-    if(!cloudUser) return;
+    if(!cloudUser||!isPremium) return;
     let unsub:(()=>void)|null=null;
     let active=true;
     subscribeIdCollection<CloudDayOverride>(cloudUser.uid,'dayOverrides',(added,modified,removedIds)=>{
@@ -8908,7 +8921,7 @@ export default function App() {
     }).then(u=>{ if(active) unsub=u; else u(); });
     return ()=>{ active=false; unsub?.(); cloudDayOverrideIdsRef.current=null; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[cloudUser?.uid]);
+  },[cloudUser?.uid,isPremium]);
 
   // patternOverridesもdayOverridesと同じ「合成id」パターンだが、値が文字列（patternId）のため
   // Cloud.tsのwriteKeyedRecordが移行時に行う{value:string}ラップと同じ形で保存する
@@ -8917,7 +8930,7 @@ export default function App() {
   const skipNextPatternOverridePushRef=useRef(false);
 
   useEffect(()=>{
-    if(!cloudUser) return;
+    if(!cloudUser||!isPremium) return;
     if(skipNextPatternOverridePushRef.current){ skipNextPatternOverridePushRef.current=false; return; }
     const timer=setTimeout(()=>{
       const withId:CloudPatternOverride[]=Object.entries(patternOverrides).map(([date,patId])=>({id:date,value:patId}));
@@ -8928,10 +8941,10 @@ export default function App() {
     },1500);
     return ()=>clearTimeout(timer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[patternOverrides,cloudUser?.uid]);
+  },[patternOverrides,cloudUser?.uid,isPremium]);
 
   useEffect(()=>{
-    if(!cloudUser) return;
+    if(!cloudUser||!isPremium) return;
     let unsub:(()=>void)|null=null;
     let active=true;
     subscribeIdCollection<CloudPatternOverride>(cloudUser.uid,'patternOverrides',(added,modified,removedIds)=>{
@@ -8947,7 +8960,7 @@ export default function App() {
     }).then(u=>{ if(active) unsub=u; else u(); });
     return ()=>{ active=false; unsub?.(); cloudPatternOverrideIdsRef.current=null; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[cloudUser?.uid]);
+  },[cloudUser?.uid,isPremium]);
 
   // settingsは単一オブジェクトのため、id付き配列向けのpushIdCollectionDiff/subscribeIdCollection
   // ではなくpushSettings/subscribeSettings（最後に書いた方が勝つ方式）を使う。これで
@@ -8955,15 +8968,15 @@ export default function App() {
   const skipNextSettingsPushRef=useRef(false);
 
   useEffect(()=>{
-    if(!cloudUser) return;
+    if(!cloudUser||!isPremium) return;
     if(skipNextSettingsPushRef.current){ skipNextSettingsPushRef.current=false; return; }
     const timer=setTimeout(()=>{ pushSettings(cloudUser.uid,settings); },1500);
     return ()=>clearTimeout(timer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[settings,cloudUser?.uid]);
+  },[settings,cloudUser?.uid,isPremium]);
 
   useEffect(()=>{
-    if(!cloudUser) return;
+    if(!cloudUser||!isPremium) return;
     let unsub:(()=>void)|null=null;
     let active=true;
     subscribeSettings<Settings>(cloudUser.uid,(cloudSettings)=>{
@@ -8972,7 +8985,7 @@ export default function App() {
     }).then(u=>{ if(active) unsub=u; else u(); });
     return ()=>{ active=false; unsub?.(); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[cloudUser?.uid]);
+  },[cloudUser?.uid,isPremium]);
 
   const maybeShowProductTour=()=>{
     if(localStorage.getItem(TOUR_COMPLETED_KEY)){ maybeShowNotifPrompt(); return; }

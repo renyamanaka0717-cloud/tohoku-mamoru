@@ -2637,6 +2637,8 @@ users/{uid}/patternOverrides/{key}   … 生活パターンの日別上書き（
 
 ### 継続的なリアルタイム同期（Phase B、全13種類実装・実機確認済み）
 
+**Phase BはPRO限定機能（Phase Aのログイン＋初回バックアップは引き続き無料）。** 理由はコスト構造の違い——初回バックアップは端末ごとに1回きりの書き込みのみで実質無視できるコストだが、Phase Bは常時`onSnapshot`で13コレクション分を購読し続け、他端末の変更のたびに読み込みが発生するため、ユーザー数が増えるとFirestoreの読み書きコストが線形に積み上がる。ユーザーとのコスト試算の相談を経て「バックアップは無料のまま・複数端末でのリアルタイム同期だけPRO」という切り分けに決定した。実装は`page.tsx`の全26個（13コレクション×push/pull）のPhase B用`useEffect`の先頭ガードを`if(!cloudUser) return;`から`if(!cloudUser||!isPremium) return;`に変更し、依存配列にも`isPremium`を追加しただけ（`isPremium`がstaleなclosureのまま評価されないようにするため、ガード判定に使う値は必ず依存配列にも含めること）。設定画面のアカウント行には非PROユーザー向けに`proFeatureRealtimeSync`を使った案内行（タップで`ProGateSheet`相当のPROプロンプトを表示）を追加し、PRO比較表にも行を追加済み。
+
 Phase A（ログイン時1回だけのローカル→クラウド移行）に続き、ログイン中は他端末での変更もリアルタイムで取り込む仕組み。**ユーザーに「13種類ある同期対象データのうち、どこまで一度に対応するか」を確認したところ「まずtasksのみ」との回答だったため、最初は`tasks`コレクションだけに限定して実装・実機確認した。** その後「タスク以外も広げたい、ただし負担にならないよう一つずつ進めてほしい」という指示を受け、`shopItems`・`customTabs`・`tags`・`shopNotifSettings`・`shopLocations`・`forgetAlerts`・`lifePatterns`・`moveHistory`・`bulkHistory`・`dayOverrides`・`patternOverrides`・`settings`の順に1つずつ実装→ビルド確認→デプロイのサイクルで追加し、**全13種類が実装完了した。** `id`を持つ配列（`tasks`/`shopItems`/`customTabs`/`shopNotifSettings`/`shopLocations`/`forgetAlerts`/`lifePatterns`/`moveHistory`/`bulkHistory`の9種類）は下記の`pushIdCollectionDiff`/`subscribeIdCollection`をそのままコピーして使う。`tags`/`dayOverrides`/`patternOverrides`はidを持たずキー文字列がドキュメントIDになるため、呼び出し側で`id:キー`を合成する「合成idパターン」を使う（詳細は後述）。`settings`（単一オブジェクト）だけはid付き配列向けの仕組みが使えないため、`pushSettings`/`subscribeSettings`という専用の別実装（最後に書いた方が勝つ方式）を使う。**13種類すべてiPhone/PC実機2台での双方向同期を確認済み**（各コレクション1件ずつPC側で追加・編集し、iPhone側に反映されることを確認。逆方向も一部確認済み）。
 
 **`tags`/`dayOverrides`/`patternOverrides`は`id`を持たずキー文字列がドキュメントIDになる「合成idパターン」3種（以下の「id付き配列向け」という前提から外れる点に注意、新しくこのパターンを他のコレクションに適用する時の参考）:**
@@ -2654,9 +2656,10 @@ Phase A（ログイン時1回だけのローカル→クラウド移行）に続
 
 - `cloudTaskIdsRef`/`cloudShopItemIdsRef`（`Set<string>|null`）— 前回push時点でFirestoreに存在すると分かっているidの集合。pull側でマージした時もその時点のidで更新しておく（pushとpullの両方が「今Firestoreはこの状態のはず」という共通の台帳を更新する設計）
 - `skipNextTaskPushRef`/`skipNextShopItemPushRef`（boolean）— pull（他端末からの変更の取り込み）で該当stateを更新した直後、その変更をそのままpushし返すと無駄な書き込みになるため、次の1回だけpushをスキップするフラグ
-- **Push effect**: `[対象state, cloudUser?.uid]`に依存し、1.5秒デバウンスしてから`pushIdCollectionDiff`を呼ぶ（`TaskModal`の自動保存と同じ`setTimeout`+クリーンアップ`clearTimeout`のデバウンスパターン）。`skipNext*PushRef`が立っていれば何もせず消費するだけで終わる
-- **Pull effect**: `[cloudUser?.uid]`に依存し、ログイン中は`subscribeIdCollection`で対象サブコレクションを購読し続ける。届いた変更を`Map`経由でマージ（`added`/`modified`は`set`、`removedIds`は`delete`）してからsetterを呼ぶ。ログアウト・アンマウント時は購読解除＋idRefのリセットを行う
-- **新しいコレクションを追加する時はこの`tasks`/`shopItems`の2組をそのままコピーし、型・コレクション名・state名・2つのref名を機械的に置き換えるだけでよい。** 新しい設計判断は不要（`shopItems`追加時もこの方式でコピーしただけ）
+- **Push effect**: 先頭で`if(!cloudUser||!isPremium) return;`を評価し、`[対象state, cloudUser?.uid, isPremium]`に依存して1.5秒デバウンスしてから`pushIdCollectionDiff`を呼ぶ（`TaskModal`の自動保存と同じ`setTimeout`+クリーンアップ`clearTimeout`のデバウンスパターン）。`skipNext*PushRef`が立っていれば何もせず消費するだけで終わる
+- **Pull effect**: 同じく先頭で`if(!cloudUser||!isPremium) return;`、`[cloudUser?.uid, isPremium]`に依存し、ログイン中かつPROの間だけ`subscribeIdCollection`で対象サブコレクションを購読し続ける。届いた変更を`Map`経由でマージ（`added`/`modified`は`set`、`removedIds`は`delete`）してからsetterを呼ぶ。ログアウト・アンマウント時は購読解除＋idRefのリセットを行う
+- **`isPremium`を依存配列から外さない（重要）。** 外すと、ログイン中のユーザーがPRO購入/開発者モードのプラン切り替えでisPremiumが変化した瞬間、effectのクロージャが再生成されず古い`isPremium`値のまま判定され続けるstale closureになる（`autoIconRef`等と同種の罠）。既存の26個のeffectはpush側`[state, cloudUser?.uid, isPremium]`・pull側`[cloudUser?.uid, isPremium]`で統一してある
+- **新しいコレクションを追加する時はこの`tasks`/`shopItems`の2組をそのままコピーし、型・コレクション名・state名・2つのref名を機械的に置き換えるだけでよい（`isPremium`ガードもそのままコピーされる）。** 新しい設計判断は不要（`shopItems`追加時もこの方式でコピーしただけ）
 
 **データ損失を避けるための設計上のポイント（新しくコレクションを追加する時も踏襲すること）:**
 
