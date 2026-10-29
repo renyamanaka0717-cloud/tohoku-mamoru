@@ -8512,9 +8512,7 @@ export default function App() {
   };
 
   const handleGoogleSignIn=async():Promise<void>=>{
-    console.log('[DEBUG] handleGoogleSignIn: 開始');
     const u=await signInWithGoogle();
-    console.log('[DEBUG] handleGoogleSignIn: signInWithGoogle結果', u);
     if(u){ setCloudUser(u); await runMigrationIfNeeded(u.uid); }
   };
 

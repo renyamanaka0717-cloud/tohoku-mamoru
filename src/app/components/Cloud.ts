@@ -152,13 +152,9 @@ export async function signInWithGoogle(): Promise<CloudUser | null> {
   const { GoogleAuthProvider, signInWithCredential, signInWithPopup, signInWithRedirect } = await import('firebase/auth');
   try {
     if (isNative()) {
-      console.log('[DEBUG] signInWithGoogle: native plugin呼び出し開始');
       const { idToken, accessToken } = await GoogleAuthPlugin.signIn();
-      console.log('[DEBUG] signInWithGoogle: idToken取得完了', idToken?.length, accessToken?.length);
       const credential = GoogleAuthProvider.credential(idToken, accessToken);
-      console.log('[DEBUG] signInWithGoogle: credential作成完了、signInWithCredential呼び出し開始');
       const cred = await signInWithCredential(auth, credential);
-      console.log('[DEBUG] signInWithGoogle: signInWithCredential完了', cred.user.uid);
       return toCloudUser(cred.user);
     }
     const provider = new GoogleAuthProvider();
