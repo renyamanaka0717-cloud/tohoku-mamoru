@@ -110,11 +110,31 @@ async function getApp() {
   return appPromise;
 }
 
+// 【実機不具合】ネイティブ（Capacitor WKWebView）では、getAuth()が既定で選ぶ
+// indexedDBLocalPersistenceへの書き込みがこのWebView環境でハングし、
+// signInWithCredential()がネットワーク通信（accounts:signInWithIdp等）完了後も
+// 永久に解決しない不具合があった（Safari Web InspectorのNetworkタブでは通信自体は
+// 正常に完了しているのに、呼び出し元のPromiseだけが返ってこない形で発覚）。
+// ネイティブではinitializeAuth()でindexedDBLocalPersistenceを使わない永続化方式
+// （localStorage→sessionStorage→メモリの順にフォールバック）を明示することで回避する。
+// initializeAuth()は同じFirebase Appに対して1回しか呼べないため、2回目以降の呼び出し
+// （画面を開き直す・再ログインする等）はgetAuth()で既存のインスタンスを取得する
+let authPromise: Promise<import('firebase/auth').Auth | null> | null = null;
 async function getAuthInstance() {
   const app = await getApp();
   if (!app) return null;
-  const { getAuth } = await import('firebase/auth');
-  return getAuth(app);
+  if (!authPromise) {
+    authPromise = (async () => {
+      const { getAuth, initializeAuth, browserLocalPersistence, browserSessionPersistence, inMemoryPersistence } = await import('firebase/auth');
+      if (!isNative()) return getAuth(app);
+      try {
+        return initializeAuth(app, { persistence: [browserLocalPersistence, browserSessionPersistence, inMemoryPersistence] });
+      } catch {
+        return getAuth(app);
+      }
+    })();
+  }
+  return authPromise;
 }
 
 async function getDb() {
