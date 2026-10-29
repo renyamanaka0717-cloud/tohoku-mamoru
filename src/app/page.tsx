@@ -7434,7 +7434,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           </>
         ) : (
           <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-            <button onClick={onGoogleSignIn} className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50">
+            <button onClick={()=>{alert('[DEBUG-GLOGIN] button clicked');onGoogleSignIn();}} className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50">
               <AppIcons.link size={18} className="text-gray-400 shrink-0"/>
               <span className="flex-1 text-left text-sm font-semibold text-gray-800">{tr('accountSignInGoogle')}</span>
             </button>
