@@ -6027,6 +6027,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   isDesktop?:boolean;
 }) {
   const { tr, language, languagePref, setLanguage } = useI18n();
+  const [debugGLoginClicked,setDebugGLoginClicked] = useState(false); // 一時デバッグ用
   const [sub,setSubRaw]        = useState<string|null>(initialSub??null);
   // 戻る操作で常にメイン設定画面まで戻ってしまわないよう、遷移履歴をスタックで保持する。
   // setSub(次の画面) で現在地をスタックに積み、back() でスタックから1つ戻す
@@ -7434,7 +7435,10 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           </>
         ) : (
           <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-            <button onClick={()=>{alert('[DEBUG-GLOGIN] button clicked');onGoogleSignIn();}} className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50">
+            {debugGLoginClicked&&<p className="px-4 pt-3 text-sm font-bold text-red-600">[DEBUG] クリックされました</p>}
+            <button onClick={()=>{setDebugGLoginClicked(true);onGoogleSignIn();}}
+              className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50"
+              style={debugGLoginClicked?{background:'#ffe0e0'}:{}}>
               <AppIcons.link size={18} className="text-gray-400 shrink-0"/>
               <span className="flex-1 text-left text-sm font-semibold text-gray-800">{tr('accountSignInGoogle')}</span>
             </button>
