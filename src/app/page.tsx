@@ -7434,11 +7434,10 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             </button>
           </>
         ) : (
-          <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+          <div onClick={()=>setDebugGLoginClicked(v=>!v)} className="bg-white rounded-2xl shadow-sm overflow-hidden" style={debugGLoginClicked?{background:'#ffe0e0'}:{}}>
             {debugGLoginClicked&&<p className="px-4 pt-3 text-sm font-bold text-red-600">[DEBUG] クリックされました</p>}
-            <button onClick={()=>{setDebugGLoginClicked(true);onGoogleSignIn();}}
-              className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50"
-              style={debugGLoginClicked?{background:'#ffe0e0'}:{}}>
+            <button onClick={(e)=>{e.stopPropagation();setDebugGLoginClicked(true);onGoogleSignIn();}}
+              className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50">
               <AppIcons.link size={18} className="text-gray-400 shrink-0"/>
               <span className="flex-1 text-left text-sm font-semibold text-gray-800">{tr('accountSignInGoogle')}</span>
             </button>
