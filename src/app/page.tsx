@@ -6027,7 +6027,6 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   isDesktop?:boolean;
 }) {
   const { tr, language, languagePref, setLanguage } = useI18n();
-  const [debugGLoginClicked,setDebugGLoginClicked] = useState(false); // 一時デバッグ用
   const [sub,setSubRaw]        = useState<string|null>(initialSub??null);
   // 戻る操作で常にメイン設定画面まで戻ってしまわないよう、遷移履歴をスタックで保持する。
   // setSub(次の画面) で現在地をスタックに積み、back() でスタックから1つ戻す
@@ -7401,7 +7400,6 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto lg:max-w-none lg:w-full lg:[&>*:not(.fixed)]:max-w-[1000px] lg:[&>*:not(.fixed)]:mx-auto lg:[&>*:not(.fixed)]:w-full">
       {subHeader(tr('rowAccountTitle'))}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
-        <p className="text-sm font-bold text-white bg-red-600 px-3 py-2 rounded-lg mb-2 mt-4">[DEBUG BUILD 7]</p>
         <p className="text-xs text-gray-400 px-1 mb-4 mt-4 leading-relaxed">{tr('accountIntro')}</p>
 
         {cloudUser ? (
@@ -7435,9 +7433,8 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             </button>
           </>
         ) : (
-          <div onClick={()=>setDebugGLoginClicked(v=>!v)} className="bg-white rounded-2xl shadow-sm overflow-hidden" style={debugGLoginClicked?{background:'#ffe0e0'}:{}}>
-            {debugGLoginClicked&&<p className="px-4 pt-3 text-sm font-bold text-red-600">[DEBUG] クリックされました</p>}
-            <button onClick={(e)=>{e.stopPropagation();setDebugGLoginClicked(true);onGoogleSignIn();}}
+          <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+            <button onClick={onGoogleSignIn}
               className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50">
               <AppIcons.link size={18} className="text-gray-400 shrink-0"/>
               <span className="flex-1 text-left text-sm font-semibold text-gray-800">{tr('accountSignInGoogle')}</span>
