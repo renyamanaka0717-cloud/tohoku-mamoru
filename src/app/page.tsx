@@ -2362,14 +2362,24 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
   // 上限をそれに合わせて動的に縮めることで、ヘッダーが常に画面内に収まるようにする
   const headerRef = useRef<HTMLDivElement>(null);
   const [availH,setAvailH] = useState(()=>typeof window==='undefined'?800:(window.visualViewport?.height??window.innerHeight));
+  // キーボード表示中、position:fixedの背景オーバーレイは「レイアウトビューポート」（キーボード分
+  // 縮まない）基準のままになり、bottom:0アンカーのシート（このモーダル本体）がキーボードの裏に
+  // 回り込んで隠れる既知の不具合（ProductTourのキーボード対応と同じ原因）。visualViewportの
+  // 高さ・オフセットを追従し、オーバーレイ自体の高さ・位置を「今見えている範囲」に合わせる
+  const [vvTop,setVvTop] = useState(0);
   const [headerH,setHeaderH] = useState(0);
   useEffect(()=>{
-    const update=()=>setAvailH(window.visualViewport?.height??window.innerHeight);
+    const update=()=>{
+      setAvailH(window.visualViewport?.height??window.innerHeight);
+      setVvTop(window.visualViewport?.offsetTop??0);
+    };
     update();
     window.visualViewport?.addEventListener('resize',update);
+    window.visualViewport?.addEventListener('scroll',update);
     window.addEventListener('resize',update);
     return ()=>{
       window.visualViewport?.removeEventListener('resize',update);
+      window.visualViewport?.removeEventListener('scroll',update);
       window.removeEventListener('resize',update);
     };
   },[]);
@@ -2385,7 +2395,9 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
   const contentMaxH = Math.max(120, Math.min(availH*0.55, availH-headerH-8));
 
   return (
-    <div className={docked?"h-full w-full min-w-0 flex flex-col":editPanel?"fixed inset-0 z-[180] bg-black/20":"fixed inset-0 z-50 bg-black/60 lg:flex lg:items-center lg:justify-center"} onClick={docked?undefined:handleClose}>
+    <div className={docked?"h-full w-full min-w-0 flex flex-col":editPanel?"fixed inset-0 z-[180] bg-black/20":"fixed inset-0 z-50 bg-black/60 lg:flex lg:items-center lg:justify-center"}
+      style={docked||editPanel?undefined:{height:availH,transform:vvTop?`translateY(${vvTop}px)`:undefined}}
+      onClick={docked?undefined:handleClose}>
       <div className={docked?"h-full w-full min-w-0 flex flex-col":editPanel?"absolute right-0 top-0 bottom-0 w-full sm:w-[480px] max-w-full bg-white shadow-2xl flex flex-col":"absolute bottom-0 left-0 right-0 max-w-md mx-auto lg:static lg:max-h-[85vh]"} onClick={docked?undefined:(e=>e.stopPropagation())} data-tour={!task&&!docked?'modal-card':undefined}>
         {/* ── Dark header ── */}
         <div ref={headerRef} className={editPanel?"px-4 pt-4":"rounded-t-3xl px-4 pt-4"} style={{background:headerBg}}>
