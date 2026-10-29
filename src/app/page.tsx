@@ -7412,7 +7412,13 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto lg:max-w-none lg:w-full lg:[&>*:not(.fixed)]:max-w-[1000px] lg:[&>*:not(.fixed)]:mx-auto lg:[&>*:not(.fixed)]:w-full">
       {subHeader(tr('rowAccountTitle'))}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
-        <p className="text-xs text-gray-400 px-1 mb-4 mt-4 leading-relaxed">{tr('accountIntro')}</p>
+        <p className="text-xs text-gray-400 px-1 mb-2 mt-4 leading-relaxed">{tr('accountIntro')}</p>
+        {!isPremium&&(
+          <p className="text-xs text-gray-400 px-1 mb-4 flex items-center gap-1.5">
+            {tr('proFeatureRealtimeSync')}
+            <span className="inline-flex items-center gap-0.5 border border-gray-300 rounded px-1.5 py-0.5 text-[10px] font-bold text-gray-400 leading-none tracking-wide">★ PRO</span>
+          </p>
+        )}
 
         {cloudUser ? (
           <>
