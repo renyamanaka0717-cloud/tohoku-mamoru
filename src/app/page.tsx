@@ -7410,7 +7410,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-[11px] font-semibold text-[var(--c-primary)]">{tr('accountSignedInTitle')}</p>
-                <p className="text-sm font-medium text-gray-900 truncate">{cloudUser.displayName||cloudUser.email||cloudUser.uid}</p>
+                <p className="text-sm font-medium text-gray-900 truncate">{cloudUser.email||cloudUser.displayName||cloudUser.uid}</p>
               </div>
             </div>
 
