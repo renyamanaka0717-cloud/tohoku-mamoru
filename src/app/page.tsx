@@ -2392,13 +2392,24 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
     ro.observe(headerRef.current);
     return ()=>ro.disconnect();
   },[]);
-  const contentMaxH = Math.max(120, Math.min(availH*0.55, availH-headerH-8));
+  // 【キーボード表示中の不具合】headerHの実測が追いつかない一瞬や、端末の高さに対して
+  // キーボードが大きい場合に、固定120pxの最低確保分（白コンテンツ）が原因でカード全体の
+  // 自然な高さがavailHを超え、bottom:0アンカーのカードの上端が画面上端より外（ステータス
+  // バーの裏）にはみ出してしまう不具合があった。床を120pxに固定せず、空きが無ければ
+  // 0まで縮めてヘッダー（モード切替タブ等）を常に画面内に収める
+  const contentMaxH = Math.max(0, Math.min(availH*0.55, availH-headerH-8));
+  // 上記の計算だけに頼らず、カード自体にもavailH基準のmax-heightを掛けて二重に保険を
+  // かける（モバイルのみ。デスクトップのlg:max-h-[85vh]とは競合させないため除外）
+  const isNarrowScreen = typeof window!=='undefined' && window.innerWidth<1024;
+  const cardKeyboardClamp = !docked&&!editPanel&&isNarrowScreen ? {maxHeight:Math.max(200,availH-8),overflow:'hidden' as const} : undefined;
 
   return (
     <div className={docked?"h-full w-full min-w-0 flex flex-col":editPanel?"fixed inset-0 z-[180] bg-black/20":"fixed inset-0 z-50 bg-black/60 lg:flex lg:items-center lg:justify-center"}
       style={docked||editPanel?undefined:{height:availH,transform:vvTop?`translateY(${vvTop}px)`:undefined}}
       onClick={docked?undefined:handleClose}>
-      <div className={docked?"h-full w-full min-w-0 flex flex-col":editPanel?"absolute right-0 top-0 bottom-0 w-full sm:w-[480px] max-w-full bg-white shadow-2xl flex flex-col":"absolute bottom-0 left-0 right-0 max-w-md mx-auto lg:static lg:max-h-[85vh]"} onClick={docked?undefined:(e=>e.stopPropagation())} data-tour={!task&&!docked?'modal-card':undefined}>
+      <div className={docked?"h-full w-full min-w-0 flex flex-col":editPanel?"absolute right-0 top-0 bottom-0 w-full sm:w-[480px] max-w-full bg-white shadow-2xl flex flex-col":"absolute bottom-0 left-0 right-0 max-w-md mx-auto lg:static lg:max-h-[85vh]"}
+        style={cardKeyboardClamp}
+        onClick={docked?undefined:(e=>e.stopPropagation())} data-tour={!task&&!docked?'modal-card':undefined}>
         {/* ── Dark header ── */}
         <div ref={headerRef} className={editPanel?"px-4 pt-4":"rounded-t-3xl px-4 pt-4"} style={{background:headerBg}}>
         <div>
