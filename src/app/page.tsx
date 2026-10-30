@@ -2390,6 +2390,12 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
   // 上限をそれに合わせて動的に縮めることで、ヘッダーが常に画面内に収まるようにする
   const headerRef = useRef<HTMLDivElement>(null);
   const [availH,setAvailH] = useState(()=>typeof window==='undefined'?800:(window.visualViewport?.height??window.innerHeight));
+  // 白コンテンツの高さ計算には、availH（visualViewport基準・iOSではキーボード表示で縮む）ではなく
+  // こちらを使う。window.innerHeightはiOSではキーボード表示で変化しない（キーボードは画面の上に
+  // 重なるだけでレイアウトビューポート自体は縮まない）ため、キーボードの開閉のたびに白コンテンツの
+  // 高さがガタつく・キーボード手前で見た目上切れる、という不具合を避けられる。Android側で
+  // window.innerHeight自体が実際に縮むWebViewであれば、resizeイベント経由でこちらも追従する
+  const [winH,setWinH] = useState(()=>typeof window==='undefined'?800:window.innerHeight);
   // キーボード表示中、position:fixedの背景オーバーレイは「レイアウトビューポート」（キーボード分
   // 縮まない）基準のままになり、bottom:0アンカーのシート（このモーダル本体）がキーボードの裏に
   // 回り込んで隠れる既知の不具合（ProductTourのキーボード対応と同じ原因）。visualViewportの
@@ -2425,6 +2431,12 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
     };
   },[]);
   useEffect(()=>{
+    const update=()=>setWinH(window.innerHeight);
+    update();
+    window.addEventListener('resize',update);
+    return ()=>window.removeEventListener('resize',update);
+  },[]);
+  useEffect(()=>{
     if(!headerRef.current) return;
     const ro=new ResizeObserver(entries=>{
       const h=entries[0]?.contentRect.height;
@@ -2441,7 +2453,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
   // ノッチ・ステータスバー分を差し引いた「実際に使ってよい高さ」。これを基準に白コンテンツの
   // 上限・カード自体の上限を計算することで、カードの上端がsafe-area-inset-topより上（ノッチの
   // 裏）に入り込まないようにする
-  const effAvailH = Math.max(0, availH-safeTop);
+  const effAvailH = Math.max(0, winH-safeTop);
   const contentMaxH = Math.max(0, Math.min(effAvailH*0.55, effAvailH-headerH-8));
   // 【過去の不具合】カード自体にもeffAvailH基準のmax-height+overflow:hiddenを掛けて二重に
   // 保険をかけていたが、headerHの実測が追いつかない一瞬にこのハードクリップが先に効いてしまい、
