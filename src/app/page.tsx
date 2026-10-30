@@ -7873,6 +7873,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
       <SettingsRow icon={<AppIcons.book size={18}/>} iconBg="bg-gray-100" title={tr('rowTermsTitle')} onClick={()=>setSub('terms')}/>
       <SettingsRow icon={<AppIcons.question size={18}/>} iconBg="bg-gray-100" title={tr('rowFaqTitle')} onClick={()=>setSub('support')}/>
       <SettingsRow icon={<AppIcons.mail size={18}/>} iconBg="bg-gray-100" title={tr('rowContactTitle')} onClick={()=>setSub('contact')}/>
+      <SettingsRow icon={<AppIcons.link size={18}/>} iconBg="bg-gray-100" title={tr('rowWebVersionTitle')} onClick={()=>window.open('https://getbrainbox.app','_blank')}/>
       <button onClick={handleVersionTap} className="w-full flex items-center gap-3 px-4 py-3.5 text-left active:bg-gray-50">
         <div className="w-[30px] h-[30px] rounded-[8px] flex items-center justify-center shrink-0"
           style={{background:'color-mix(in srgb, var(--c-primary) 15%, white)', color:'var(--c-primary)'}}>
