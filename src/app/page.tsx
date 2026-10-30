@@ -2396,28 +2396,22 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
   // スクロールしてしまうことがあり、本来固定しているはずのオレンジのヘッダー部分も
   // 含めてモーダル全体が引きずられて動いて見える不具合があった
   // （Capacitorでネイティブ実行している時はWKWebViewなのでこの挙動自体が起きない）。
-  // body自体をposition:fixedにしてスクロール先を無くすことで、Safariのこの自動スクロールを
-  // 封じる（標準的なモーダルのbodyスクロールロック手法。閉じたら元のスクロール位置に戻す）。
-  // 右パネル常設フォーム（docked）は画面を覆うオーバーレイではないため対象外
+  // 一度body.style.positionを'fixed'にする一般的なモーダルロック手法を試したが、
+  // キーボードの開閉でSafariのツールバー表示状態が変わるタイミングと絡み、
+  // vh/%ベースで高さを決めているモーダルカードの下に不自然な余白ができる
+  // 回帰を引き起こしたため撤去した。position/top/widthを一切動かさない
+  // overflow:hidden のみのロックに変更し、ビューポート計算への副作用を避ける
   useEffect(()=>{
     if(docked) return;
-    const scrollY=window.scrollY;
+    const html=document.documentElement;
     const body=document.body;
-    const prev={position:body.style.position,top:body.style.top,left:body.style.left,right:body.style.right,width:body.style.width,overflow:body.style.overflow};
-    body.style.position='fixed';
-    body.style.top=`-${scrollY}px`;
-    body.style.left='0';
-    body.style.right='0';
-    body.style.width='100%';
+    const prevHtmlOverflow=html.style.overflow;
+    const prevBodyOverflow=body.style.overflow;
+    html.style.overflow='hidden';
     body.style.overflow='hidden';
     return ()=>{
-      body.style.position=prev.position;
-      body.style.top=prev.top;
-      body.style.left=prev.left;
-      body.style.right=prev.right;
-      body.style.width=prev.width;
-      body.style.overflow=prev.overflow;
-      window.scrollTo(0,scrollY);
+      html.style.overflow=prevHtmlOverflow;
+      body.style.overflow=prevBodyOverflow;
     };
   },[docked]);
 
