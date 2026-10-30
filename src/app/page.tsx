@@ -2397,7 +2397,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
       <div className={docked?"h-full w-full min-w-0 flex flex-col":editPanel?"absolute right-0 top-0 bottom-0 w-full sm:w-[480px] max-w-full bg-white shadow-2xl flex flex-col":"absolute bottom-0 left-0 right-0 max-w-md mx-auto h-[min(92vh,calc(100%_-_env(safe-area-inset-top)_-_12px))] flex flex-col lg:static lg:h-auto lg:max-h-[85vh]"}
         onClick={docked?undefined:(e=>e.stopPropagation())} data-tour={!task&&!docked?'modal-card':undefined}>
         {/* ── Dark header ── */}
-        <div ref={headerRef} className={editPanel?"px-4 pt-4":"rounded-t-3xl px-4 pt-4"} style={{background:headerBg}}>
+        <div ref={headerRef} className={editPanel?"px-4 pt-4 shrink-0":"rounded-t-3xl px-4 pt-4 shrink-0"} style={{background:headerBg}}>
         <div>
           {/* Buttons row */}
           <div className="flex items-center justify-between mb-4">
@@ -2500,7 +2500,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
             キーボード開閉では変化しないため「固定」の原則は崩さない。
             角丸はdockedだけ下側を付ける（embedされたカードらしく見せるため）、
             editPanelは画面端に張り付くので角丸無し */}
-        <div className={`bg-gray-50 overflow-y-auto flex-1 ${docked?'rounded-b-2xl':editPanel?'':'lg:rounded-b-3xl'}`}>
+        <div className={`bg-gray-50 overflow-y-auto flex-1 min-h-0 ${docked?'rounded-b-2xl':editPanel?'':'lg:rounded-b-3xl'}`}>
           {/* Recurring settings */}
           {mode==='recurring'&&(
             <>
