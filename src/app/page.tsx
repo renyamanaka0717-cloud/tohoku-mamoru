@@ -2452,7 +2452,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
   const cardKeyboardClamp = !docked&&!editPanel&&isNarrowScreen ? {maxHeight:Math.max(0,effAvailH-8),overflow:'hidden' as const} : undefined;
 
   return (
-    <div className={docked?"h-full w-full min-w-0 flex flex-col":editPanel?"fixed inset-0 z-[180] bg-black/20":"fixed inset-0 z-50 bg-black/60 lg:flex lg:items-center lg:justify-center"}
+    <div className={docked?"h-full w-full min-w-0 flex flex-col":editPanel?"fixed inset-0 z-[180] bg-black/20":"fixed inset-0 z-50 bg-black lg:flex lg:items-center lg:justify-center"}
       style={docked||editPanel?undefined:{height:availH,transform:vvTop?`translateY(${vvTop}px)`:undefined}}
       onClick={docked?undefined:handleClose}>
       <div className={docked?"h-full w-full min-w-0 flex flex-col":editPanel?"absolute right-0 top-0 bottom-0 w-full sm:w-[480px] max-w-full bg-white shadow-2xl flex flex-col":"absolute bottom-0 left-0 right-0 max-w-md mx-auto lg:static lg:max-h-[85vh]"}
