@@ -2391,6 +2391,36 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
   // キーボード手前で見た目上切れる、という不具合の原因になっていたため撤去した
   const headerRef = useRef<HTMLDivElement>(null);
 
+  // 【Web版のみの不具合】position:fixedのモーダル内の入力欄にフォーカスすると、
+  // iOS Safariが「フォーカスした要素を可視範囲に入れよう」としてdocument(body)自体を
+  // スクロールしてしまうことがあり、本来固定しているはずのオレンジのヘッダー部分も
+  // 含めてモーダル全体が引きずられて動いて見える不具合があった
+  // （Capacitorでネイティブ実行している時はWKWebViewなのでこの挙動自体が起きない）。
+  // body自体をposition:fixedにしてスクロール先を無くすことで、Safariのこの自動スクロールを
+  // 封じる（標準的なモーダルのbodyスクロールロック手法。閉じたら元のスクロール位置に戻す）。
+  // 右パネル常設フォーム（docked）は画面を覆うオーバーレイではないため対象外
+  useEffect(()=>{
+    if(docked) return;
+    const scrollY=window.scrollY;
+    const body=document.body;
+    const prev={position:body.style.position,top:body.style.top,left:body.style.left,right:body.style.right,width:body.style.width,overflow:body.style.overflow};
+    body.style.position='fixed';
+    body.style.top=`-${scrollY}px`;
+    body.style.left='0';
+    body.style.right='0';
+    body.style.width='100%';
+    body.style.overflow='hidden';
+    return ()=>{
+      body.style.position=prev.position;
+      body.style.top=prev.top;
+      body.style.left=prev.left;
+      body.style.right=prev.right;
+      body.style.width=prev.width;
+      body.style.overflow=prev.overflow;
+      window.scrollTo(0,scrollY);
+    };
+  },[docked]);
+
   return (
     <div className={docked?"h-full w-full min-w-0 flex flex-col":editPanel?"fixed inset-0 z-[180] bg-black/20":"fixed inset-0 z-50 bg-black/60 lg:flex lg:items-center lg:justify-center"}
       onClick={docked?undefined:handleClose}>
