@@ -2400,7 +2400,12 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
   // キーボードの開閉でSafariのツールバー表示状態が変わるタイミングと絡み、
   // vh/%ベースで高さを決めているモーダルカードの下に不自然な余白ができる
   // 回帰を引き起こしたため撤去した。position/top/widthを一切動かさない
-  // overflow:hidden のみのロックに変更し、ビューポート計算への副作用を避ける
+  // overflow:hidden のみのロックに変更し、ビューポート計算への副作用を避ける。
+  // それでもなお、WebKitが入力欄フォーカス時に内部的に行う自動スクロールは
+  // overflow:hidden/touch-actionといったCSSだけでは完全には防ぎきれず、
+  // window.scrollYが0以外に動いてしまうケースが実機で確認された。
+  // そのためscrollイベントを監視し、0以外になった瞬間に即座に0へ戻す
+  // （ユーザー操作由来ではなくWebKitの内部挙動のみを打ち消す防御策）
   useEffect(()=>{
     if(docked) return;
     const html=document.documentElement;
@@ -2409,9 +2414,15 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
     const prevBodyOverflow=body.style.overflow;
     html.style.overflow='hidden';
     body.style.overflow='hidden';
+    const resetScroll=()=>{
+      if(window.scrollX!==0||window.scrollY!==0) window.scrollTo(0,0);
+    };
+    window.addEventListener('scroll',resetScroll,{passive:true});
+    resetScroll();
     return ()=>{
       html.style.overflow=prevHtmlOverflow;
       body.style.overflow=prevBodyOverflow;
+      window.removeEventListener('scroll',resetScroll);
     };
   },[docked]);
 
