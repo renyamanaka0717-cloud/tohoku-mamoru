@@ -2382,91 +2382,19 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
     return `rgb(${Math.round(r*0.82)},${Math.round(g*0.82)},${Math.round(b*0.82)})`;
   })():'var(--c-primary-dark)';
 
-  // 【Android実機の不具合】キーボード表示時にヘッダー（×・保存ボタン）が画面上端の外に
-  // 押し出されて見えなくなることがあった。白コンテンツの高さが固定の`vh`値（55vh）で、
-  // Androidの一部WebViewはキーボード表示で実際の表示高さが縮んでもvh単位の再計算が
-  // 追従しないことがあるため（プロダクトツアーのvisualViewport対応と同種の不具合）。
-  // ヘッダーの実測高さを差し引いた「今見えている高さ」を都度計算し、白コンテンツの
-  // 上限をそれに合わせて動的に縮めることで、ヘッダーが常に画面内に収まるようにする
+  // タスクモーダルの高さ・位置はキーボードの開閉に一切反応させない方針（固定サイズ。
+  // キーボードは単純にモーダルの手前に重なるだけで、モーダル自体のサイズ・スクロール量は
+  // 変化しない）。vh単位は端末の実高さ基準で、iOS/Android問わずキーボード表示では
+  // 変化しない（キーボードは画面に重なるだけでレイアウトビューポート自体は縮まない）ため、
+  // 固定値として使って問題ない。過去にここをavailH（visualViewport、キーボードで縮む値）に
+  // 連動させていたことがあったが、キーボード開閉のたびに白コンテンツの高さがガタつく・
+  // キーボード手前で見た目上切れる、という不具合の原因になっていたため撤去した
   const headerRef = useRef<HTMLDivElement>(null);
-  const [availH,setAvailH] = useState(()=>typeof window==='undefined'?800:(window.visualViewport?.height??window.innerHeight));
-  // 白コンテンツの高さ計算には、availH（visualViewport基準・iOSではキーボード表示で縮む）ではなく
-  // こちらを使う。window.innerHeightはiOSではキーボード表示で変化しない（キーボードは画面の上に
-  // 重なるだけでレイアウトビューポート自体は縮まない）ため、キーボードの開閉のたびに白コンテンツの
-  // 高さがガタつく・キーボード手前で見た目上切れる、という不具合を避けられる。Android側で
-  // window.innerHeight自体が実際に縮むWebViewであれば、resizeイベント経由でこちらも追従する
-  const [winH,setWinH] = useState(()=>typeof window==='undefined'?800:window.innerHeight);
-  // キーボード表示中、position:fixedの背景オーバーレイは「レイアウトビューポート」（キーボード分
-  // 縮まない）基準のままになり、bottom:0アンカーのシート（このモーダル本体）がキーボードの裏に
-  // 回り込んで隠れる既知の不具合（ProductTourのキーボード対応と同じ原因）。visualViewportの
-  // 高さ・オフセットを追従し、オーバーレイ自体の高さ・位置を「今見えている範囲」に合わせる
-  const [vvTop,setVvTop] = useState(0);
-  const [headerH,setHeaderH] = useState(0);
-  // 【実機不具合】キーボード表示でavailHが縮んだ時、カードの上端がちょうど画面最上部
-  // （ノッチ・ステータスバーの裏）まで来てしまい、safe-area-inset-topを考慮していない
-  // ためそこにめり込んで見える不具合があった。env(safe-area-inset-top)はJSから直接
-  // 読めないため、一時的なdivのpadding-topに指定して実測px値を取得する定番の手法で
-  // 取得し、高さ計算から差し引く
-  const [safeTop,setSafeTop] = useState(0);
-  useEffect(()=>{
-    const el=document.createElement('div');
-    el.style.cssText='position:fixed;top:0;left:0;padding-top:env(safe-area-inset-top);visibility:hidden;pointer-events:none;';
-    document.body.appendChild(el);
-    setSafeTop(parseFloat(getComputedStyle(el).paddingTop)||0);
-    document.body.removeChild(el);
-  },[]);
-  useEffect(()=>{
-    const update=()=>{
-      setAvailH(window.visualViewport?.height??window.innerHeight);
-      setVvTop(window.visualViewport?.offsetTop??0);
-    };
-    update();
-    window.visualViewport?.addEventListener('resize',update);
-    window.visualViewport?.addEventListener('scroll',update);
-    window.addEventListener('resize',update);
-    return ()=>{
-      window.visualViewport?.removeEventListener('resize',update);
-      window.visualViewport?.removeEventListener('scroll',update);
-      window.removeEventListener('resize',update);
-    };
-  },[]);
-  useEffect(()=>{
-    const update=()=>setWinH(window.innerHeight);
-    update();
-    window.addEventListener('resize',update);
-    return ()=>window.removeEventListener('resize',update);
-  },[]);
-  useEffect(()=>{
-    if(!headerRef.current) return;
-    const ro=new ResizeObserver(entries=>{
-      const h=entries[0]?.contentRect.height;
-      if(h!==undefined) setHeaderH(h);
-    });
-    ro.observe(headerRef.current);
-    return ()=>ro.disconnect();
-  },[]);
-  // 【キーボード表示中の不具合】headerHの実測が追いつかない一瞬や、端末の高さに対して
-  // キーボードが大きい場合に、固定120pxの最低確保分（白コンテンツ）が原因でカード全体の
-  // 自然な高さがavailHを超え、bottom:0アンカーのカードの上端が画面上端より外（ステータス
-  // バーの裏）にはみ出してしまう不具合があった。床を120pxに固定せず、空きが無ければ
-  // 0まで縮めてヘッダー（モード切替タブ等）を常に画面内に収める
-  // ノッチ・ステータスバー分を差し引いた「実際に使ってよい高さ」。これを基準に白コンテンツの
-  // 上限・カード自体の上限を計算することで、カードの上端がsafe-area-inset-topより上（ノッチの
-  // 裏）に入り込まないようにする
-  const effAvailH = Math.max(0, winH-safeTop);
-  const contentMaxH = Math.max(0, Math.min(effAvailH*0.55, effAvailH-headerH-8));
-  // 【過去の不具合】カード自体にもeffAvailH基準のmax-height+overflow:hiddenを掛けて二重に
-  // 保険をかけていたが、headerHの実測が追いつかない一瞬にこのハードクリップが先に効いてしまい、
-  // 白コンテンツ（締切・場所・タグ等）がキーボードの少し手前でスクロールの余地なくガクッと
-  // 切れて見える不具合があった。白コンテンツ側は元々overflow-y-auto＋contentMaxHで内容に
-  // スクロールしてアクセスできる設計なので、このハードクリップ自体は削除し、ヘッダーの可視性は
-  // contentMaxHの計算（effAvailH-headerH-8）だけに委ねる
 
   return (
     <div className={docked?"h-full w-full min-w-0 flex flex-col":editPanel?"fixed inset-0 z-[180] bg-black/20":"fixed inset-0 z-50 bg-black/60 lg:flex lg:items-center lg:justify-center"}
-      style={docked||editPanel?undefined:{height:availH,transform:vvTop?`translateY(${vvTop}px)`:undefined}}
       onClick={docked?undefined:handleClose}>
-      <div className={docked?"h-full w-full min-w-0 flex flex-col":editPanel?"absolute right-0 top-0 bottom-0 w-full sm:w-[480px] max-w-full bg-white shadow-2xl flex flex-col":"absolute bottom-0 left-0 right-0 max-w-md mx-auto lg:static lg:max-h-[85vh]"}
+      <div className={docked?"h-full w-full min-w-0 flex flex-col":editPanel?"absolute right-0 top-0 bottom-0 w-full sm:w-[480px] max-w-full bg-white shadow-2xl flex flex-col":"absolute bottom-0 left-0 right-0 max-w-md mx-auto h-[85vh] flex flex-col lg:static lg:h-auto lg:max-h-[85vh]"}
         onClick={docked?undefined:(e=>e.stopPropagation())} data-tour={!task&&!docked?'modal-card':undefined}>
         {/* ── Dark header ── */}
         <div ref={headerRef} className={editPanel?"px-4 pt-4":"rounded-t-3xl px-4 pt-4"} style={{background:headerBg}}>
@@ -2565,13 +2493,11 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
         </div>
 
         {/* ── White content ── */}
-        {/* heightで固定する（maxHeightだと「あとで」のように項目が少ないモードだけ
-            シートが短くなり、モード切替のたびに高さがガタつくため、常に同じ高さで統一する）。
-            docked（右パネル常設フォーム）・editPanel（画面右端パネル）はどちらもポップアップ用の
-            window基準の高さ計算(contentMaxH)が無意味なため、flex-1で親の残り高さに自然に
-            合わせる。角丸はdockedだけ下側を付ける（embedされたカードらしく見せるため）、
-            editPanelは画面端に張り付くので角丸無し */}
-        <div className={`bg-gray-50 overflow-y-auto ${docked?'flex-1 rounded-b-2xl':editPanel?'flex-1':'lg:rounded-b-3xl'}`} style={docked||editPanel?undefined:{height:contentMaxH}}>
+        {/* カード自体がh-[85vh]固定（モバイル）/lg:max-h-[85vh]（PC）なので、
+            flex-1で親の残り高さにそのまま合わせるだけでよい（キーボード等への
+            追従計算は一切行わない）。角丸はdockedだけ下側を付ける（embedされた
+            カードらしく見せるため）、editPanelは画面端に張り付くので角丸無し */}
+        <div className={`bg-gray-50 overflow-y-auto flex-1 ${docked?'rounded-b-2xl':editPanel?'':'lg:rounded-b-3xl'}`}>
           {/* Recurring settings */}
           {mode==='recurring'&&(
             <>
