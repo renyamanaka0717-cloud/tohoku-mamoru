@@ -102,6 +102,30 @@ const RECOMMENDATION_DEFS: RecommendationDef[] = [
   { id:'locationReminder', usedKey:'locationReminderUsedAt', title:'recommendLocationTitle', body:'recommendLocationBody', cta:'recommendCta', requiresLocationPermission:true },
   { id:'repeatTask', usedKey:'repeatTaskUsedAt', title:'recommendRepeatTitle', body:'recommendRepeatBody', cta:'recommendCta' },
 ];
+
+// アップデート後、既存ユーザーが次にアプリを開いた時だけ1回出す「新機能のお知らせ」ポップアップ。
+// 新しいお知らせを追加する時はここに1件追記するだけでよい（表示順はこの並び順、1回の起動で
+// 1件だけ・まだ見ていない最初の1件を表示する。見た/閉じたidはANNOUNCEMENTS_SEEN_KEYに貯まる）
+type UpdateAnnouncementAction = 'account';
+interface UpdateAnnouncementDef {
+  id: string;
+  title: StringKey; body: StringKey; cta: StringKey;
+  action: UpdateAnnouncementAction;
+}
+const UPDATE_ANNOUNCEMENT_DEFS: UpdateAnnouncementDef[] = [
+  { id:'cloudSync', title:'syncAnnounceTitle', body:'syncAnnounceBody', cta:'syncAnnounceCta', action:'account' },
+];
+function getSeenAnnouncementIds(): string[] {
+  try { return JSON.parse(localStorage.getItem(ANNOUNCEMENTS_SEEN_KEY) ?? '[]') as string[]; } catch { return []; }
+}
+function markAnnouncementSeen(id: string) {
+  const seen = getSeenAnnouncementIds();
+  if (!seen.includes(id)) localStorage.setItem(ANNOUNCEMENTS_SEEN_KEY, JSON.stringify([...seen, id]));
+}
+function nextUnseenAnnouncement(): UpdateAnnouncementDef | null {
+  const seen = getSeenAnnouncementIds();
+  return UPDATE_ANNOUNCEMENT_DEFS.find(a => !seen.includes(a.id)) ?? null;
+}
 const daysBetween=(fromMs:number,toMs:number):number=>(toMs-fromMs)/86400000;
 interface FreeSlot  { start: string; end: string; min: number; }
 interface ShopItem  { id: string; name: string; checked: boolean; purchasedAt?: string; }
@@ -145,7 +169,10 @@ const WAKESLEEP_ASKED_KEY = 'tl-wakesleep-asked-v1';
 const FEATURE_USAGE_KEY = 'tl-feature-usage-v1';
 const RECOMMEND_STATE_KEY = 'tl-recommend-state-v1';
 const TOUR_COMPLETED_KEY = 'tl-product-tour-completed-v1';
-const SYNC_ANNOUNCE_SEEN_KEY = 'tl-sync-announce-seen-v1';
+// 新機能お知らせポップアップ（アップデート後に既存ユーザーへ1回だけ表示するもの）の
+// 「見た？」状態。IDの配列で保存し、新しいお知らせを追加するたびにUPDATE_ANNOUNCEMENT_DEFSへ
+// 1件追記するだけで対応できるようにしてある（キー自体は増やさない）
+const ANNOUNCEMENTS_SEEN_KEY = 'tl-announcements-seen-v1';
 const LATER_NOTIFIED_KEY = 'tl-later-notified-v1';
 const TASK_ALERT_FIRED_KEY = 'tl-task-alert-fired-v1';
 const DEADLINE_ALERT_FIRED_KEY = 'tl-deadline-alert-fired-v1';
@@ -6107,14 +6134,14 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   const [tourDone,setTourDone] = useState(true);
   const [notifGranted,setNotifGrantedState] = useState(true);
   const [locGranted,setLocGrantedState] = useState(true);
-  const [syncAnnounceSeen,setSyncAnnounceSeenState] = useState(true);
+  const [announcementsSeen,setAnnouncementsSeenState] = useState(true);
   useEffect(()=>{
     setDevPlanState(getDevPremiumOverride());
     setFirstLaunchDone(!!localStorage.getItem(WAKESLEEP_ASKED_KEY));
     setTourDone(!!localStorage.getItem(TOUR_COMPLETED_KEY));
     setNotifGrantedState(!isDevDenied(DEV_NOTIF_DENIED_KEY));
     setLocGrantedState(!isDevDenied(DEV_LOCATION_DENIED_KEY));
-    setSyncAnnounceSeenState(!!localStorage.getItem(SYNC_ANNOUNCE_SEEN_KEY));
+    setAnnouncementsSeenState(UPDATE_ANNOUNCEMENT_DEFS.every(a=>getSeenAnnouncementIds().includes(a.id)));
   },[]);
   const setDevPlan=(p:'free'|'premium'|null)=>{ setDevPlanState(p); setDevPremiumOverride(p); };
   const toggleFirstLaunch=()=>{
@@ -6138,10 +6165,10 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
     else localStorage.removeItem(TOUR_COMPLETED_KEY);
     window.location.reload();
   };
-  const toggleSyncAnnounceSeen=()=>{
-    const next=!syncAnnounceSeen;
-    if(next) localStorage.setItem(SYNC_ANNOUNCE_SEEN_KEY,'1');
-    else localStorage.removeItem(SYNC_ANNOUNCE_SEEN_KEY);
+  const toggleAnnouncementsSeen=()=>{
+    const next=!announcementsSeen;
+    if(next) localStorage.setItem(ANNOUNCEMENTS_SEEN_KEY,JSON.stringify(UPDATE_ANNOUNCEMENT_DEFS.map(a=>a.id)));
+    else localStorage.removeItem(ANNOUNCEMENTS_SEEN_KEY);
     window.location.reload();
   };
   const toggleNotifGranted=()=>{
@@ -7565,12 +7592,12 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           </div>
           <div className="flex items-center justify-between px-4 py-3.5">
             <div className="flex-1 min-w-0 pr-3">
-              <p className="text-sm font-medium text-gray-800">同期機能のお知らせ</p>
+              <p className="text-sm font-medium text-gray-800">新機能のお知らせ</p>
               <p className="text-xs text-gray-400 mt-0.5">OFFにするとアップデート後お知らせポップアップを再表示できます</p>
             </div>
-            <button onClick={toggleSyncAnnounceSeen}
-              className={`relative w-10 h-6 rounded-full transition-colors shrink-0 ${syncAnnounceSeen?'bg-[var(--c-primary)]':'bg-gray-200'}`}>
-              <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${syncAnnounceSeen?'left-[18px]':'left-0.5'}`}/>
+            <button onClick={toggleAnnouncementsSeen}
+              className={`relative w-10 h-6 rounded-full transition-colors shrink-0 ${announcementsSeen?'bg-[var(--c-primary)]':'bg-gray-200'}`}>
+              <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${announcementsSeen?'left-[18px]':'left-0.5'}`}/>
             </button>
           </div>
         </div>
@@ -8192,7 +8219,7 @@ export default function App() {
   const [migrationStatus,setMigrationStatus] = useState<'idle'|'syncing'|'done'|'error'>('idle');
   const [showTour,setShowTour] = useState(false);
   const [showWelcome,setShowWelcome] = useState(false);
-  const [showSyncAnnounce,setShowSyncAnnounce] = useState(false);
+  const [activeAnnouncement,setActiveAnnouncement] = useState<UpdateAnnouncementDef|null>(null);
   const [tourDragSignal,setTourDragSignal] = useState(0);
   const [tourTaskSavedSignal,setTourTaskSavedSignal] = useState(0);
   const [tourFocusNameSignal,setTourFocusNameSignal] = useState(0);
@@ -8300,10 +8327,11 @@ export default function App() {
       setTimeout(()=>maybeShowLocPrompt(),800);
     } else if(!localStorage.getItem(WAKESLEEP_ASKED_KEY)){
       maybeShowWakeSleepPrompt();
-    } else if(!localStorage.getItem(SYNC_ANNOUNCE_SEEN_KEY)){
+    } else {
       // 既存ユーザー（TOUR_COMPLETED_KEY等のオンボーディング関連キーが全て揃っている＝新規インストール
-      // ではない）がアップデート後に初めてアプリを開いた時だけ、クラウド同期機能の案内を1回だけ出す
-      setTimeout(()=>setShowSyncAnnounce(true),600);
+      // ではない）がアップデート後に初めてアプリを開いた時だけ、未読の新機能お知らせを1件だけ出す
+      const ann = nextUnseenAnnouncement();
+      if(ann) setTimeout(()=>setActiveAnnouncement(ann),600);
     }
   },[]);
 
@@ -9096,14 +9124,14 @@ export default function App() {
     dismissWakeSleepPrompt();
   };
 
-  const dismissSyncAnnounce=()=>{
-    localStorage.setItem(SYNC_ANNOUNCE_SEEN_KEY,'1');
-    setShowSyncAnnounce(false);
+  const dismissAnnouncement=()=>{
+    if(activeAnnouncement) markAnnouncementSeen(activeAnnouncement.id);
+    setActiveAnnouncement(null);
   };
-  const openSyncAnnounceAccount=()=>{
-    dismissSyncAnnounce();
-    setSettingsInitSub('account');
-    setSOp(true);
+  const handleAnnouncementCta=()=>{
+    const action=activeAnnouncement?.action;
+    dismissAnnouncement();
+    if(action==='account'){ setSettingsInitSub('account'); setSOp(true); }
   };
 
   const showRecommendation=(id:RecommendationId)=>{
@@ -10671,23 +10699,23 @@ export default function App() {
         </div>
       )}
 
-      {/* ── クラウド同期機能のお知らせ（既存ユーザーがアップデート後に初めて開いた時のみ1回） ── */}
-      {showSyncAnnounce&&(
+      {/* ── 新機能のお知らせ（既存ユーザーがアップデート後に初めて開いた時、未読の1件だけ表示） ── */}
+      {activeAnnouncement&&(
         <div className="fixed inset-0 z-[210] flex items-end justify-center lg:items-center">
-          <div className="absolute inset-0 bg-black/40" onClick={dismissSyncAnnounce}/>
+          <div className="absolute inset-0 bg-black/40" onClick={dismissAnnouncement}/>
           <div className="relative bg-white rounded-t-3xl lg:rounded-b-3xl w-full max-w-md px-6 pt-7 pb-10 shadow-2xl">
             <div className="flex justify-center mb-4">
               <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{background:'rgba(217,163,178,0.12)'}}>
-                <AppIcons.link size={32} className="text-[var(--c-primary)]"/>
+                <AppIcons.sparkle size={32} className="text-[var(--c-primary)]"/>
               </div>
             </div>
-            <p className="text-lg font-bold text-gray-900 text-center mb-2">{tr('syncAnnounceTitle')}</p>
-            <p className="text-sm text-gray-500 text-center mb-7 leading-relaxed">{tr('syncAnnounceBody')}</p>
-            <button onClick={openSyncAnnounceAccount}
+            <p className="text-lg font-bold text-gray-900 text-center mb-2">{tr(activeAnnouncement.title)}</p>
+            <p className="text-sm text-gray-500 text-center mb-7 leading-relaxed">{tr(activeAnnouncement.body)}</p>
+            <button onClick={handleAnnouncementCta}
               className="w-full py-3.5 rounded-2xl text-[15px] font-bold text-white mb-3"
-              style={{background:'var(--c-primary)'}}>{tr('syncAnnounceCta')}</button>
-            <button onClick={dismissSyncAnnounce}
-              className="w-full py-2.5 text-sm font-medium text-gray-400">{tr('syncAnnounceDismiss')}</button>
+              style={{background:'var(--c-primary)'}}>{tr(activeAnnouncement.cta)}</button>
+            <button onClick={dismissAnnouncement}
+              className="w-full py-2.5 text-sm font-medium text-gray-400">{tr('laterButton')}</button>
           </div>
         </div>
       )}
