@@ -2443,20 +2443,18 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
   // 裏）に入り込まないようにする
   const effAvailH = Math.max(0, availH-safeTop);
   const contentMaxH = Math.max(0, Math.min(effAvailH*0.55, effAvailH-headerH-8));
-  // 上記の計算だけに頼らず、カード自体にもeffAvailH基準のmax-heightを掛けて二重に保険を
-  // かける（モバイルのみ。デスクトップのlg:max-h-[85vh]とは競合させないため除外）
-  const isNarrowScreen = typeof window!=='undefined' && window.innerWidth<1024;
-  // 床は0（効くのはeffAvailHが小さい時だけ）。ここを固定値で床打ちすると「見える範囲に
-  // 収める」という目的そのものが無効化される（effAvailH-8がその固定値を下回る場面で
-  // ヘッダーがまた画面外に押し出される）
-  const cardKeyboardClamp = !docked&&!editPanel&&isNarrowScreen ? {maxHeight:Math.max(0,effAvailH-8),overflow:'hidden' as const} : undefined;
+  // 【過去の不具合】カード自体にもeffAvailH基準のmax-height+overflow:hiddenを掛けて二重に
+  // 保険をかけていたが、headerHの実測が追いつかない一瞬にこのハードクリップが先に効いてしまい、
+  // 白コンテンツ（締切・場所・タグ等）がキーボードの少し手前でスクロールの余地なくガクッと
+  // 切れて見える不具合があった。白コンテンツ側は元々overflow-y-auto＋contentMaxHで内容に
+  // スクロールしてアクセスできる設計なので、このハードクリップ自体は削除し、ヘッダーの可視性は
+  // contentMaxHの計算（effAvailH-headerH-8）だけに委ねる
 
   return (
     <div className={docked?"h-full w-full min-w-0 flex flex-col":editPanel?"fixed inset-0 z-[180] bg-black/20":"fixed inset-0 z-50 bg-black/60 lg:flex lg:items-center lg:justify-center"}
       style={docked||editPanel?undefined:{height:availH,transform:vvTop?`translateY(${vvTop}px)`:undefined}}
       onClick={docked?undefined:handleClose}>
       <div className={docked?"h-full w-full min-w-0 flex flex-col":editPanel?"absolute right-0 top-0 bottom-0 w-full sm:w-[480px] max-w-full bg-white shadow-2xl flex flex-col":"absolute bottom-0 left-0 right-0 max-w-md mx-auto lg:static lg:max-h-[85vh]"}
-        style={cardKeyboardClamp}
         onClick={docked?undefined:(e=>e.stopPropagation())} data-tour={!task&&!docked?'modal-card':undefined}>
         {/* ── Dark header ── */}
         <div ref={headerRef} className={editPanel?"px-4 pt-4":"rounded-t-3xl px-4 pt-4"} style={{background:headerBg}}>
