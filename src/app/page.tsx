@@ -2394,7 +2394,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
   return (
     <div className={docked?"h-full w-full min-w-0 flex flex-col":editPanel?"fixed inset-0 z-[180] bg-black/20":"fixed inset-0 z-50 bg-black/60 lg:flex lg:items-center lg:justify-center"}
       onClick={docked?undefined:handleClose}>
-      <div className={docked?"h-full w-full min-w-0 flex flex-col":editPanel?"absolute right-0 top-0 bottom-0 w-full sm:w-[480px] max-w-full bg-white shadow-2xl flex flex-col":"absolute bottom-0 left-0 right-0 max-w-md mx-auto h-[92vh] flex flex-col lg:static lg:h-auto lg:max-h-[85vh]"}
+      <div className={docked?"h-full w-full min-w-0 flex flex-col":editPanel?"absolute right-0 top-0 bottom-0 w-full sm:w-[480px] max-w-full bg-white shadow-2xl flex flex-col":"absolute bottom-0 left-0 right-0 max-w-md mx-auto h-[min(92vh,calc(100%_-_env(safe-area-inset-top)_-_12px))] flex flex-col lg:static lg:h-auto lg:max-h-[85vh]"}
         onClick={docked?undefined:(e=>e.stopPropagation())} data-tour={!task&&!docked?'modal-card':undefined}>
         {/* ── Dark header ── */}
         <div ref={headerRef} className={editPanel?"px-4 pt-4":"rounded-t-3xl px-4 pt-4"} style={{background:headerBg}}>
@@ -2493,10 +2493,13 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
         </div>
 
         {/* ── White content ── */}
-        {/* カード自体がh-[92vh]固定（モバイル）/lg:max-h-[85vh]（PC）なので、
-            flex-1で親の残り高さにそのまま合わせるだけでよい（キーボード等への
-            追従計算は一切行わない）。角丸はdockedだけ下側を付ける（embedされた
-            カードらしく見せるため）、editPanelは画面端に張り付くので角丸無し */}
+        {/* カード自体がmin(92vh, 画面高-safe-area-inset-top-12px)固定（モバイル）/
+            lg:max-h-[85vh]（PC）なので、flex-1で親の残り高さにそのまま合わせる
+            だけでよい（キーボード等への追従計算は一切行わない）。
+            safe-area-inset-topはノッチ/Dynamic Island対応の静的な値で、
+            キーボード開閉では変化しないため「固定」の原則は崩さない。
+            角丸はdockedだけ下側を付ける（embedされたカードらしく見せるため）、
+            editPanelは画面端に張り付くので角丸無し */}
         <div className={`bg-gray-50 overflow-y-auto flex-1 ${docked?'rounded-b-2xl':editPanel?'':'lg:rounded-b-3xl'}`}>
           {/* Recurring settings */}
           {mode==='recurring'&&(
