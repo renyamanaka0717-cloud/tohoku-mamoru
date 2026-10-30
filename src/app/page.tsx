@@ -6107,12 +6107,14 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   const [tourDone,setTourDone] = useState(true);
   const [notifGranted,setNotifGrantedState] = useState(true);
   const [locGranted,setLocGrantedState] = useState(true);
+  const [syncAnnounceSeen,setSyncAnnounceSeenState] = useState(true);
   useEffect(()=>{
     setDevPlanState(getDevPremiumOverride());
     setFirstLaunchDone(!!localStorage.getItem(WAKESLEEP_ASKED_KEY));
     setTourDone(!!localStorage.getItem(TOUR_COMPLETED_KEY));
     setNotifGrantedState(!isDevDenied(DEV_NOTIF_DENIED_KEY));
     setLocGrantedState(!isDevDenied(DEV_LOCATION_DENIED_KEY));
+    setSyncAnnounceSeenState(!!localStorage.getItem(SYNC_ANNOUNCE_SEEN_KEY));
   },[]);
   const setDevPlan=(p:'free'|'premium'|null)=>{ setDevPlanState(p); setDevPremiumOverride(p); };
   const toggleFirstLaunch=()=>{
@@ -6134,6 +6136,12 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
     const next=!tourDone;
     if(next) localStorage.setItem(TOUR_COMPLETED_KEY,'1');
     else localStorage.removeItem(TOUR_COMPLETED_KEY);
+    window.location.reload();
+  };
+  const toggleSyncAnnounceSeen=()=>{
+    const next=!syncAnnounceSeen;
+    if(next) localStorage.setItem(SYNC_ANNOUNCE_SEEN_KEY,'1');
+    else localStorage.removeItem(SYNC_ANNOUNCE_SEEN_KEY);
     window.location.reload();
   };
   const toggleNotifGranted=()=>{
@@ -7545,7 +7553,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
               <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${firstLaunchDone?'left-[18px]':'left-0.5'}`}/>
             </button>
           </div>
-          <div className="flex items-center justify-between px-4 py-3.5">
+          <div className="flex items-center justify-between px-4 py-3.5 border-b border-gray-100">
             <div className="flex-1 min-w-0 pr-3">
               <p className="text-sm font-medium text-gray-800">プロダクトツアー</p>
               <p className="text-xs text-gray-400 mt-0.5">OFFにするとツアーを再表示できます</p>
@@ -7553,6 +7561,16 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             <button onClick={toggleTour}
               className={`relative w-10 h-6 rounded-full transition-colors shrink-0 ${tourDone?'bg-[var(--c-primary)]':'bg-gray-200'}`}>
               <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${tourDone?'left-[18px]':'left-0.5'}`}/>
+            </button>
+          </div>
+          <div className="flex items-center justify-between px-4 py-3.5">
+            <div className="flex-1 min-w-0 pr-3">
+              <p className="text-sm font-medium text-gray-800">同期機能のお知らせ</p>
+              <p className="text-xs text-gray-400 mt-0.5">OFFにするとアップデート後お知らせポップアップを再表示できます</p>
+            </div>
+            <button onClick={toggleSyncAnnounceSeen}
+              className={`relative w-10 h-6 rounded-full transition-colors shrink-0 ${syncAnnounceSeen?'bg-[var(--c-primary)]':'bg-gray-200'}`}>
+              <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${syncAnnounceSeen?'left-[18px]':'left-0.5'}`}/>
             </button>
           </div>
         </div>
