@@ -2390,37 +2390,14 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
   // 上限をそれに合わせて動的に縮めることで、ヘッダーが常に画面内に収まるようにする
   const headerRef = useRef<HTMLDivElement>(null);
   const [availH,setAvailH] = useState(()=>typeof window==='undefined'?800:(window.visualViewport?.height??window.innerHeight));
-  // キーボード表示中、position:fixedの背景オーバーレイは「レイアウトビューポート」（キーボード分
-  // 縮まない）基準のままになり、bottom:0アンカーのシート（このモーダル本体）がキーボードの裏に
-  // 回り込んで隠れる既知の不具合（ProductTourのキーボード対応と同じ原因）。visualViewportの
-  // 高さ・オフセットを追従し、オーバーレイ自体の高さ・位置を「今見えている範囲」に合わせる
-  const [vvTop,setVvTop] = useState(0);
   const [headerH,setHeaderH] = useState(0);
-  // 【実機不具合】キーボード表示でavailHが縮んだ時、カードの上端がちょうど画面最上部
-  // （ノッチ・ステータスバーの裏）まで来てしまい、safe-area-inset-topを考慮していない
-  // ためそこにめり込んで見える不具合があった。env(safe-area-inset-top)はJSから直接
-  // 読めないため、一時的なdivのpadding-topに指定して実測px値を取得する定番の手法で
-  // 取得し、高さ計算から差し引く
-  const [safeTop,setSafeTop] = useState(0);
   useEffect(()=>{
-    const el=document.createElement('div');
-    el.style.cssText='position:fixed;top:0;left:0;padding-top:env(safe-area-inset-top);visibility:hidden;pointer-events:none;';
-    document.body.appendChild(el);
-    setSafeTop(parseFloat(getComputedStyle(el).paddingTop)||0);
-    document.body.removeChild(el);
-  },[]);
-  useEffect(()=>{
-    const update=()=>{
-      setAvailH(window.visualViewport?.height??window.innerHeight);
-      setVvTop(window.visualViewport?.offsetTop??0);
-    };
+    const update=()=>setAvailH(window.visualViewport?.height??window.innerHeight);
     update();
     window.visualViewport?.addEventListener('resize',update);
-    window.visualViewport?.addEventListener('scroll',update);
     window.addEventListener('resize',update);
     return ()=>{
       window.visualViewport?.removeEventListener('resize',update);
-      window.visualViewport?.removeEventListener('scroll',update);
       window.removeEventListener('resize',update);
     };
   },[]);
@@ -2433,30 +2410,15 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
     ro.observe(headerRef.current);
     return ()=>ro.disconnect();
   },[]);
-  // 【キーボード表示中の不具合】headerHの実測が追いつかない一瞬や、端末の高さに対して
-  // キーボードが大きい場合に、固定120pxの最低確保分（白コンテンツ）が原因でカード全体の
-  // 自然な高さがavailHを超え、bottom:0アンカーのカードの上端が画面上端より外（ステータス
-  // バーの裏）にはみ出してしまう不具合があった。床を120pxに固定せず、空きが無ければ
-  // 0まで縮めてヘッダー（モード切替タブ等）を常に画面内に収める
-  // ノッチ・ステータスバー分を差し引いた「実際に使ってよい高さ」。これを基準に白コンテンツの
-  // 上限・カード自体の上限を計算することで、カードの上端がsafe-area-inset-topより上（ノッチの
-  // 裏）に入り込まないようにする
-  const effAvailH = Math.max(0, availH-safeTop);
-  const contentMaxH = Math.max(0, Math.min(effAvailH*0.55, effAvailH-headerH-8));
-  // 上記の計算だけに頼らず、カード自体にもeffAvailH基準のmax-heightを掛けて二重に保険を
-  // かける（モバイルのみ。デスクトップのlg:max-h-[85vh]とは競合させないため除外）
-  const isNarrowScreen = typeof window!=='undefined' && window.innerWidth<1024;
-  // 床は0（効くのはeffAvailHが小さい時だけ）。ここを固定値で床打ちすると「見える範囲に
-  // 収める」という目的そのものが無効化される（effAvailH-8がその固定値を下回る場面で
-  // ヘッダーがまた画面外に押し出される）
-  const cardKeyboardClamp = !docked&&!editPanel&&isNarrowScreen ? {maxHeight:Math.max(0,effAvailH-8),overflow:'hidden' as const} : undefined;
+  // キーボード表示中もモーダルをキーボードの裏まで自然に伸ばし、見た目上「透ける」位置関係に
+  // する方針にしたため、見える範囲（availH/safe-area）に合わせてカード自体を縮める処理は
+  // 行わない。contentMaxHは白コンテンツ（スクロール領域）の高さの一般的な目安としてのみ使う
+  const contentMaxH = Math.max(0, Math.min(availH*0.55, availH-headerH-8));
 
   return (
     <div className={docked?"h-full w-full min-w-0 flex flex-col":editPanel?"fixed inset-0 z-[180] bg-black/20":"fixed inset-0 z-50 bg-black/60 lg:flex lg:items-center lg:justify-center"}
-      style={docked||editPanel?undefined:{height:availH,transform:vvTop?`translateY(${vvTop}px)`:undefined}}
       onClick={docked?undefined:handleClose}>
       <div className={docked?"h-full w-full min-w-0 flex flex-col":editPanel?"absolute right-0 top-0 bottom-0 w-full sm:w-[480px] max-w-full bg-white shadow-2xl flex flex-col":"absolute bottom-0 left-0 right-0 max-w-md mx-auto lg:static lg:max-h-[85vh]"}
-        style={cardKeyboardClamp}
         onClick={docked?undefined:(e=>e.stopPropagation())} data-tour={!task&&!docked?'modal-card':undefined}>
         {/* ── Dark header ── */}
         <div ref={headerRef} className={editPanel?"px-4 pt-4":"rounded-t-3xl px-4 pt-4"} style={{background:headerBg}}>
