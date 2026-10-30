@@ -2431,9 +2431,12 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
   // absoluteな要素はレイアウトビューポート基準で描画されるため、見た目上は
   // モーダルごと（ヘッダー含めて）ずれて「スクロールしたように」見えてしまう。
   // overflow:hidden/touch-action等のCSSだけではこのズレ自体は止められないため、
-  // visualViewport.offsetTop（ズレた量）を監視し、その分だけモーダルカード全体に
-  // 逆方向のtransformをかけて相殺する。白コンテンツ自身のoverflow-y-autoスクロール
-  // （descendantの内部スクロール）はこのtransformと独立しているため影響を受けない
+  // visualViewport.offsetTop（ズレた量）を監視し、その分だけモーダルカード全体を
+  // +translateY（下方向）させて相殺する（offsetTopが増えるとモーダルは見た目上
+  // 上に消えていくので、同じ量だけ下にずらして打ち消す。符号を逆にすると
+  // ズレが2倍になる不具合の実績があるので、符号を変える時は必ず実機で確認すること）。
+  // 白コンテンツ自身のoverflow-y-autoスクロール（descendantの内部スクロール）は
+  // このtransformと独立しているため影響を受けない
   const cardRef = useRef<HTMLDivElement>(null);
   useEffect(()=>{
     if(docked) return;
@@ -2442,7 +2445,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
     const sync=()=>{
       const el=cardRef.current;
       if(!el) return;
-      el.style.transform=vv.offsetTop?`translateY(${-vv.offsetTop}px)`:'';
+      el.style.transform=vv.offsetTop?`translateY(${vv.offsetTop}px)`:'';
     };
     vv.addEventListener('scroll',sync);
     vv.addEventListener('resize',sync);
