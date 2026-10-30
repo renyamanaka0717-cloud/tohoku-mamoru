@@ -8124,6 +8124,15 @@ export default function App() {
   const tasksRef = useRef<Task[]>(tasks);
   useEffect(()=>{tasksRef.current=tasks;},[tasks]);
   const mainRef = useRef<HTMLElement|null>(null);
+  useEffect(()=>{
+    const el=mainRef.current;
+    if(!el||!modal.open) return;
+    const prevOverflow=el.style.overflowY;
+    const prevTouch=el.style.touchAction;
+    el.style.overflowY='hidden';
+    el.style.touchAction='none';
+    return ()=>{el.style.overflowY=prevOverflow;el.style.touchAction=prevTouch;};
+  },[modal.open]);
   const mainSwX = useRef(0);
   const mainSwY = useRef(0);
   const weekSwX = useRef(0);
