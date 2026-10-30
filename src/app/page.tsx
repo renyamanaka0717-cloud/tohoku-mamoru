@@ -145,6 +145,7 @@ const WAKESLEEP_ASKED_KEY = 'tl-wakesleep-asked-v1';
 const FEATURE_USAGE_KEY = 'tl-feature-usage-v1';
 const RECOMMEND_STATE_KEY = 'tl-recommend-state-v1';
 const TOUR_COMPLETED_KEY = 'tl-product-tour-completed-v1';
+const SYNC_ANNOUNCE_SEEN_KEY = 'tl-sync-announce-seen-v1';
 const LATER_NOTIFIED_KEY = 'tl-later-notified-v1';
 const TASK_ALERT_FIRED_KEY = 'tl-task-alert-fired-v1';
 const DEADLINE_ALERT_FIRED_KEY = 'tl-deadline-alert-fired-v1';
@@ -8173,6 +8174,7 @@ export default function App() {
   const [migrationStatus,setMigrationStatus] = useState<'idle'|'syncing'|'done'|'error'>('idle');
   const [showTour,setShowTour] = useState(false);
   const [showWelcome,setShowWelcome] = useState(false);
+  const [showSyncAnnounce,setShowSyncAnnounce] = useState(false);
   const [tourDragSignal,setTourDragSignal] = useState(0);
   const [tourTaskSavedSignal,setTourTaskSavedSignal] = useState(0);
   const [tourFocusNameSignal,setTourFocusNameSignal] = useState(0);
@@ -8280,6 +8282,10 @@ export default function App() {
       setTimeout(()=>maybeShowLocPrompt(),800);
     } else if(!localStorage.getItem(WAKESLEEP_ASKED_KEY)){
       maybeShowWakeSleepPrompt();
+    } else if(!localStorage.getItem(SYNC_ANNOUNCE_SEEN_KEY)){
+      // 既存ユーザー（TOUR_COMPLETED_KEY等のオンボーディング関連キーが全て揃っている＝新規インストール
+      // ではない）がアップデート後に初めてアプリを開いた時だけ、クラウド同期機能の案内を1回だけ出す
+      setTimeout(()=>setShowSyncAnnounce(true),600);
     }
   },[]);
 
@@ -9070,6 +9076,16 @@ export default function App() {
   const confirmWakeSleepPrompt=()=>{
     setSettings(s=>({...s,wakeTime:wsPromptWake,sleepTime:wsPromptSleep}));
     dismissWakeSleepPrompt();
+  };
+
+  const dismissSyncAnnounce=()=>{
+    localStorage.setItem(SYNC_ANNOUNCE_SEEN_KEY,'1');
+    setShowSyncAnnounce(false);
+  };
+  const openSyncAnnounceAccount=()=>{
+    dismissSyncAnnounce();
+    setSettingsInitSub('account');
+    setSOp(true);
   };
 
   const showRecommendation=(id:RecommendationId)=>{
@@ -10633,6 +10649,27 @@ export default function App() {
               style={{background:'var(--c-primary)'}}>{tr('taskLocationConfirmButton')}</button>
             <button onClick={dismissWakeSleepPrompt}
               className="w-full py-2.5 text-sm font-medium text-gray-400">{tr('laterButton')}</button>
+          </div>
+        </div>
+      )}
+
+      {/* ── クラウド同期機能のお知らせ（既存ユーザーがアップデート後に初めて開いた時のみ1回） ── */}
+      {showSyncAnnounce&&(
+        <div className="fixed inset-0 z-[210] flex items-end justify-center lg:items-center">
+          <div className="absolute inset-0 bg-black/40" onClick={dismissSyncAnnounce}/>
+          <div className="relative bg-white rounded-t-3xl lg:rounded-b-3xl w-full max-w-md px-6 pt-7 pb-10 shadow-2xl">
+            <div className="flex justify-center mb-4">
+              <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{background:'rgba(217,163,178,0.12)'}}>
+                <AppIcons.link size={32} className="text-[var(--c-primary)]"/>
+              </div>
+            </div>
+            <p className="text-lg font-bold text-gray-900 text-center mb-2">{tr('syncAnnounceTitle')}</p>
+            <p className="text-sm text-gray-500 text-center mb-7 leading-relaxed">{tr('syncAnnounceBody')}</p>
+            <button onClick={openSyncAnnounceAccount}
+              className="w-full py-3.5 rounded-2xl text-[15px] font-bold text-white mb-3"
+              style={{background:'var(--c-primary)'}}>{tr('syncAnnounceCta')}</button>
+            <button onClick={dismissSyncAnnounce}
+              className="w-full py-2.5 text-sm font-medium text-gray-400">{tr('syncAnnounceDismiss')}</button>
           </div>
         </div>
       )}
