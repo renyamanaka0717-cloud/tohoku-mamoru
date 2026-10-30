@@ -2391,11 +2391,14 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
   // キーボード手前で見た目上切れる、という不具合の原因になっていたため撤去した
   const headerRef = useRef<HTMLDivElement>(null);
 
-  // 【Web版のみの不具合】position:fixedのモーダル内の入力欄にフォーカスすると、
-  // iOS Safariが「フォーカスした要素を可視範囲に入れよう」としてdocument(body)自体を
+  // position:fixedのモーダル内の入力欄にフォーカスすると、iOS(WebKit)が
+  // 「フォーカスした要素を可視範囲に入れよう」としてdocument(body)自体を
   // スクロールしてしまうことがあり、本来固定しているはずのオレンジのヘッダー部分も
-  // 含めてモーダル全体が引きずられて動いて見える不具合があった
-  // （Capacitorでネイティブ実行している時はWKWebViewなのでこの挙動自体が起きない）。
+  // 含めてモーダル全体が引きずられて動いて見える不具合があった。
+  // 【重要】当初「Capacitorネイティブ実行時はWKWebViewだから起きない」と誤って
+  // 想定していたが、実機（App Store版アプリ）でも同様に再現することが判明した
+  // （WKWebViewもSafariと同じWebKitエンジンなので、この種のviewport関連の
+  // 挙動は共有される。「新しい通知APIが使えない」等の機能差とは別の話）。
   // 一度body.style.positionを'fixed'にする一般的なモーダルロック手法を試したが、
   // キーボードの開閉でSafariのツールバー表示状態が変わるタイミングと絡み、
   // vh/%ベースで高さを決めているモーダルカードの下に不自然な余白ができる
@@ -2421,10 +2424,40 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
     };
   },[docked]);
 
+  // 【実機（WKWebView）でも発生する不具合】input要素にフォーカスした瞬間、
+  // iOS(WebKit)はフォーカスした要素を「可視範囲」に入れようとして、固定位置の
+  // 要素はそのままに「どこを見せているか」を示すvisualViewportだけをずらす
+  // （= レイアウトビューポートとvisualViewportがズレる）ことがある。position:fixed/
+  // absoluteな要素はレイアウトビューポート基準で描画されるため、見た目上は
+  // モーダルごと（ヘッダー含めて）ずれて「スクロールしたように」見えてしまう。
+  // overflow:hidden/touch-action等のCSSだけではこのズレ自体は止められないため、
+  // visualViewport.offsetTop（ズレた量）を監視し、その分だけモーダルカード全体に
+  // 逆方向のtransformをかけて相殺する。白コンテンツ自身のoverflow-y-autoスクロール
+  // （descendantの内部スクロール）はこのtransformと独立しているため影響を受けない
+  const cardRef = useRef<HTMLDivElement>(null);
+  useEffect(()=>{
+    if(docked) return;
+    const vv=window.visualViewport;
+    if(!vv) return;
+    const sync=()=>{
+      const el=cardRef.current;
+      if(!el) return;
+      el.style.transform=vv.offsetTop?`translateY(${-vv.offsetTop}px)`:'';
+    };
+    vv.addEventListener('scroll',sync);
+    vv.addEventListener('resize',sync);
+    sync();
+    return ()=>{
+      vv.removeEventListener('scroll',sync);
+      vv.removeEventListener('resize',sync);
+      if(cardRef.current) cardRef.current.style.transform='';
+    };
+  },[docked]);
+
   return (
     <div className={docked?"h-full w-full min-w-0 flex flex-col":editPanel?"fixed inset-0 z-[180] bg-black/20":"fixed inset-0 z-50 bg-black/60 lg:flex lg:items-center lg:justify-center"}
       onClick={docked?undefined:handleClose}>
-      <div className={docked?"h-full w-full min-w-0 flex flex-col":editPanel?"absolute right-0 top-0 bottom-0 w-full sm:w-[480px] max-w-full bg-white shadow-2xl flex flex-col":"absolute bottom-0 left-0 right-0 max-w-md mx-auto h-[min(92vh,calc(100%_-_env(safe-area-inset-top)_-_12px))] flex flex-col lg:static lg:h-auto lg:max-h-[85vh]"}
+      <div ref={cardRef} className={docked?"h-full w-full min-w-0 flex flex-col":editPanel?"absolute right-0 top-0 bottom-0 w-full sm:w-[480px] max-w-full bg-white shadow-2xl flex flex-col":"absolute bottom-0 left-0 right-0 max-w-md mx-auto h-[min(92vh,calc(100%_-_env(safe-area-inset-top)_-_12px))] flex flex-col lg:static lg:h-auto lg:max-h-[85vh]"}
         onClick={docked?undefined:(e=>e.stopPropagation())} data-tour={!task&&!docked?'modal-card':undefined}>
         {/* ── Dark header ── */}
         <div ref={headerRef} className={editPanel?"px-4 pt-4 shrink-0":"rounded-t-3xl px-4 pt-4 shrink-0"} style={{background:headerBg,touchAction:'pan-x'}}>
