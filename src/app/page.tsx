@@ -2460,7 +2460,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
   return (
     <div className={docked?"h-full w-full min-w-0 flex flex-col":editPanel?"fixed inset-0 z-[180] bg-black/20":"fixed inset-0 z-50 bg-black/60 lg:flex lg:items-center lg:justify-center"}
       onClick={docked?undefined:handleClose}>
-      <div ref={cardRef} className={docked?"h-full w-full min-w-0 flex flex-col":editPanel?"absolute right-0 top-0 bottom-0 w-full sm:w-[480px] max-w-full bg-white shadow-2xl flex flex-col":"absolute bottom-0 left-0 right-0 max-w-md mx-auto h-[min(92vh,calc(100%_-_env(safe-area-inset-top)_-_12px))] flex flex-col lg:static lg:h-auto lg:max-h-[85vh]"}
+      <div ref={cardRef} className={docked?"h-full w-full min-w-0 flex flex-col overflow-hidden":editPanel?"absolute right-0 top-0 bottom-0 w-full sm:w-[480px] max-w-full bg-white shadow-2xl flex flex-col overflow-hidden":"absolute bottom-0 left-0 right-0 max-w-md mx-auto h-[min(92vh,calc(100%_-_env(safe-area-inset-top)_-_12px))] flex flex-col overflow-hidden lg:static lg:h-auto lg:max-h-[85vh]"}
         onClick={docked?undefined:(e=>e.stopPropagation())} data-tour={!task&&!docked?'modal-card':undefined}>
         {/* ── Dark header ── */}
         <div ref={headerRef} className={editPanel?"px-4 pt-4 shrink-0":"rounded-t-3xl px-4 pt-4 shrink-0"} style={{background:headerBg,touchAction:'pan-x'}}>
