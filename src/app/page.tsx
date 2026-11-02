@@ -2391,6 +2391,13 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
   // キーボード手前で見た目上切れる、という不具合の原因になっていたため撤去した
   const headerRef = useRef<HTMLDivElement>(null);
 
+  // ⚠️⚠️⚠️ 調査用デバッグフラグ ⚠️⚠️⚠️ キーボード表示中に白い詳細設定エリアが
+  // タッチでスクロールできない不具合の原因切り分け専用。原因が特定でき次第、
+  // このフラグ・下のダミーコンテンツ用JSXブロック・診断用useEffectごと削除すること。
+  // trueの間だけ動作し、通常の画面・保存処理・デザインには一切影響しない
+  // （falseに戻せばこのブロック自体が描画・実行されなくなるだけで、他に何も変更しない）
+  const SCROLL_DEBUG=true;
+
   // position:fixedのモーダル内の入力欄にフォーカスすると、iOS(WebKit)が
   // 「フォーカスした要素を可視範囲に入れよう」としてdocument(body)自体を
   // スクロールしてしまうことがあり、本来固定しているはずのオレンジのヘッダー部分も
@@ -2510,6 +2517,57 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
       if(cardElAtMount) cardElAtMount.style.bottom='';
       if(contentElAtMount) contentElAtMount.style.maxHeight='';
       if(backdropElAtMount) backdropElAtMount.style.top='';
+    };
+  },[docked]);
+
+  // ⚠️ 調査用（原因特定後にこのuseEffectごと削除すること） ⚠️
+  // タッチスクロール不具合の切り分け用。白コンテンツ(contentEl)自身に
+  // touchstart/touchmove/touchend/scrollのリスナーを付け、イベントが実際に
+  // 届いているか・defaultPreventedになっていないかをコンソールに出す。
+  // あわせてwindow.__scrollDebugDump()をコンソールから手動実行できるようにし、
+  // scrollHeight/clientHeight/scrollTop/computed overflow-y/各要素のrect/
+  // visualViewportの値をまとめて出力する（Safari Web Inspectorで1回呼ぶだけで
+  // 必要な計測値が全部揃うようにする狙い）
+  useEffect(()=>{
+    if(!SCROLL_DEBUG||docked) return;
+    const contentEl=contentRef.current;
+    const cardEl=cardRef.current;
+    if(!contentEl) return;
+    const dump=(tag:string)=>{
+      const vv=window.visualViewport;
+      const contentRect=contentEl.getBoundingClientRect();
+      const cardRect=cardEl?cardEl.getBoundingClientRect():null;
+      const cs=window.getComputedStyle(contentEl);
+      console.log(`🩺[SCROLL_DEBUG:${tag}]`,{
+        scrollHeight:contentEl.scrollHeight,
+        clientHeight:contentEl.clientHeight,
+        scrollTop:contentEl.scrollTop,
+        computedOverflowY:cs.overflowY,
+        computedTransform:cs.transform,
+        computedTouchAction:cs.touchAction,
+        contentRect:{top:contentRect.top,bottom:contentRect.bottom,height:contentRect.height},
+        cardRect:cardRect?{top:cardRect.top,bottom:cardRect.bottom,height:cardRect.height}:null,
+        cardComputedOverflow:cardEl?window.getComputedStyle(cardEl).overflow:null,
+        vvHeight:vv?vv.height:null,
+        vvOffsetTop:vv?vv.offsetTop:null,
+        windowInnerHeight:window.innerHeight,
+      });
+    };
+    (window as unknown as {__scrollDebugDump?:(tag?:string)=>void}).__scrollDebugDump=(tag?:string)=>dump(tag??'manual');
+    const onTouchStart=(e:TouchEvent)=>{console.log('🩺[SCROLL_DEBUG:touchstart]',{defaultPrevented:e.defaultPrevented,touches:e.touches.length,target:(e.target as HTMLElement)?.className});dump('touchstart');};
+    const onTouchMove=(e:TouchEvent)=>{console.log('🩺[SCROLL_DEBUG:touchmove]',{defaultPrevented:e.defaultPrevented,touches:e.touches.length,target:(e.target as HTMLElement)?.className});};
+    const onTouchEnd=(e:TouchEvent)=>{console.log('🩺[SCROLL_DEBUG:touchend]',{defaultPrevented:e.defaultPrevented});dump('touchend');};
+    const onScroll=()=>{console.log('🩺[SCROLL_DEBUG:scroll]',{scrollTop:contentEl.scrollTop});};
+    contentEl.addEventListener('touchstart',onTouchStart,{passive:true});
+    contentEl.addEventListener('touchmove',onTouchMove,{passive:true});
+    contentEl.addEventListener('touchend',onTouchEnd,{passive:true});
+    contentEl.addEventListener('scroll',onScroll,{passive:true});
+    console.log('🩺[SCROLL_DEBUG] リスナー登録完了。コンソールで window.__scrollDebugDump() を呼ぶと計測値を出力します');
+    return ()=>{
+      contentEl.removeEventListener('touchstart',onTouchStart);
+      contentEl.removeEventListener('touchmove',onTouchMove);
+      contentEl.removeEventListener('touchend',onTouchEnd);
+      contentEl.removeEventListener('scroll',onScroll);
     };
   },[docked]);
 
@@ -3231,6 +3289,18 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
               className="w-full mt-3 mb-2 py-3 text-sm text-[#D97A7A] font-medium">
               {tr('deleteTaskButton')}
             </button>
+          )}
+          {/* ⚠️ 調査用ダミーコンテンツ（原因特定後にこのブロックごと削除すること）⚠️
+              メモの行数等に依存せず、キーボード表示中は必ずscrollHeight>clientHeightに
+              なる状態を強制的に作るための固定1200px高さのブロック。本番では絶対に
+              表示されないようSCROLL_DEBUGでガードしている */}
+          {SCROLL_DEBUG&&(
+            <div style={{height:'1200px',background:'repeating-linear-gradient(45deg,#fee2e2,#fee2e2 10px,#fecaca 10px,#fecaca 20px)',padding:'12px',margin:'12px'}}>
+              <p className="text-xs text-red-700 font-bold mb-2">⚠️ SCROLL_DEBUG: スクロール検証用ダミー（検証後削除）</p>
+              {Array.from({length:30}).map((_,i)=>(
+                <p key={i} className="text-xs text-red-900 py-2 border-b border-dashed border-red-400">debug row {i+1}</p>
+              ))}
+            </div>
           )}
           <div className="h-6"/>
         </div>
