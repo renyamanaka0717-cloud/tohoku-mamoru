@@ -1942,7 +1942,7 @@ function VoiceCapturePopup({isPremium,language,onProPrompt,onDone}:{isPremium:bo
 
 // ── TaskModal ─────────────────────────────────────────────────────────────────
 
-function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:initIconSheet,onSave,onUpdate,onRequestRecurringSave,onDelete,onClose,onBulkInput,globalTags,customTabs,notificationsEnabled,onEnableNotifications,isPremium=true,onOpenTagSettings,onOpenPro,atLocationLimit=false,suppressAutoFocus=false,focusNameSignal,fillTestNameSignal,docked=false,editPanel=false}:{
+function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:initIconSheet,onSave,onUpdate,onRequestRecurringSave,onDelete,onClose,onBulkInput,globalTags,customTabs,notificationsEnabled,onEnableNotifications,isPremium=true,onOpenTagSettings,onOpenPro,atLocationLimit=false,suppressAutoFocus=false,focusNameSignal,fillTestNameSignal,docked=false,editPanel=false,onRequestLocationPermission}:{
   task:Task|null; currentDate:string; prefillTime?:string; prefillCategory?:string; openIconSheet?:boolean;
   onSave:(tasks:Omit<Task,'id'>[])=>void; onUpdate?:(data:Omit<Task,'id'>)=>void;
   // 繰り返しタスクの既存インスタンスを編集して「完了」を押した時に呼ばれる。
@@ -1951,6 +1951,9 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
   onRequestRecurringSave?:(data:Omit<Task,'id'>)=>void;
   onDelete?:(scope:'one'|'all')=>void; onClose:()=>void; onBulkInput?:()=>void;
   isPremium?:boolean;
+  // バックグラウンド位置情報（場所で通知）のリクエスト。Appが提供するrequestLocationWithDisclosureを
+  // 渡す想定。渡されなければensureGeofencePermissionを直接呼ぶ（事前説明無しのフォールバック）
+  onRequestLocationPermission?:(source:string)=>Promise<boolean>;
   globalTags:TagDef[]; customTabs:CustomTab[];
   notificationsEnabled?:boolean; onEnableNotifications?:()=>void;
   onOpenTagSettings?:()=>void;
@@ -3118,7 +3121,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                             if(locationNotify){ setLocationNotify(false); return; }
                             if(!taskLocation){ setLocError(tr('taskLocationNeedsMapNote')); return; }
                             if(atLocationLimit){ setLocError(tr('taskLocationLimitReached')); return; }
-                            const ok=await ensureGeofencePermission('task_location');
+                            const ok=await (onRequestLocationPermission?onRequestLocationPermission('task_location'):ensureGeofencePermission('task_location'));
                             if(!ok){ setLocError(tr('taskLocationPermError')); return; }
                             setLocationNotify(true);
                             setLocError(null);
@@ -4822,11 +4825,12 @@ function ShopMapPicker({initialCenter,onConfirm,onCancel}:{
   );
 }
 
-function ShopLocationPanel({locations,onChange,isPremium,onProPrompt}:{
+function ShopLocationPanel({locations,onChange,isPremium,onProPrompt,onRequestLocationPermission}:{
   locations:ShopLocation[];
   onChange:(l:ShopLocation[])=>void;
   isPremium:boolean;
   onProPrompt:(feature:string)=>void;
+  onRequestLocationPermission?:(source:string)=>Promise<boolean>;
 }) {
   const {tr} = useI18n();
   const [adding,setAdding]=useState(false);
@@ -4890,7 +4894,7 @@ function ShopLocationPanel({locations,onChange,isPremium,onProPrompt}:{
     if(!isPremium){ onProPrompt(tr('proFeatureLocationNotify')); return; }
     if(confirmAddingRef.current) return;
     confirmAddingRef.current=true;
-    const ok=await ensureGeofencePermission('shop_location');
+    const ok=await (onRequestLocationPermission?onRequestLocationPermission('shop_location'):ensureGeofencePermission('shop_location'));
     const status=await checkGeofencePermissions();
     setPermStatus(status);
     if(!ok){ confirmAddingRef.current=false; return; }
@@ -5065,11 +5069,12 @@ function ShopLocationPanel({locations,onChange,isPremium,onProPrompt}:{
 
 type ForgetAlertDraft = Omit<ForgetAlert,'location'> & { location: {name:string;lat:number;lng:number}|null };
 
-function ForgetAlertsPanel({alerts,onChange,isPremium,onProPrompt}:{
+function ForgetAlertsPanel({alerts,onChange,isPremium,onProPrompt,onRequestLocationPermission}:{
   alerts:ForgetAlert[];
   onChange:(a:ForgetAlert[])=>void;
   isPremium:boolean;
   onProPrompt:(feature:string)=>void;
+  onRequestLocationPermission?:(source:string)=>Promise<boolean>;
 }) {
   const {tr,language} = useI18n();
   const DOW=language==='ja'?['日','月','火','水','木','金','土']:language==='ko'?DAY_NAMES_KO:language==='zh-TW'?DAY_NAMES_ZH_TW:language==='es'?DAY_NAMES_ES:language==='pt'?DAY_NAMES_PT:language==='vi'?DAY_NAMES_VI:language==='th'?DAY_NAMES_TH:language==='id'?DAY_NAMES_ID:DAY_NAMES_EN;
@@ -5185,7 +5190,7 @@ function ForgetAlertsPanel({alerts,onChange,isPremium,onProPrompt}:{
     if(adding&&!isPremium&&alerts.length>=1){ onProPrompt(tr('proFeatureForgetAlerts')); return; }
     if(savingEditingRef.current) return;
     savingEditingRef.current=true;
-    const ok=await ensureGeofencePermission('forget_alert');
+    const ok=await (onRequestLocationPermission?onRequestLocationPermission('forget_alert'):ensureGeofencePermission('forget_alert'));
     if(!ok){ savingEditingRef.current=false; setPermError(tr('forgetAlertLocationPermError')); return; }
     const toSave:ForgetAlert={...editing,name:editing.name.trim(),location:editing.location};
     if(adding){ onChange([...alerts,toSave]); logAnalyticsEvent('location_notification_created',{radius:toSave.radius}); }
@@ -5418,7 +5423,8 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
   onToggle,onEdit,onAddShop,onToggleShop,onDeleteShop,onEditShop,onReorderLater,shopNotifSettings,onShopNotifSettings,
   shopLocations,onShopLocations,isPremium,onOpenPro,
   notificationsEnabled,onEnableNotifications,isDesktop,customTabs,
-  currentDate,globalTags,onOpenTagSettings,atLocationLimit,onOpenBulkInput,onSaveDockedTask,dockedFormKey
+  currentDate,globalTags,onOpenTagSettings,atLocationLimit,onOpenBulkInput,onSaveDockedTask,dockedFormKey,
+  onRequestLocationPermission
 }:{
   activeTab:'later'|'shop'; onSwitchTab:(t:'later'|'shop')=>void; onClose:()=>void;
   tasks:Task[]; shopItems:ShopItem[]; pendingCount:number; shopPending:number;
@@ -5432,6 +5438,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
   isDesktop?:boolean; customTabs?:CustomTab[];
   currentDate?:string; globalTags?:TagDef[]; onOpenTagSettings?:()=>void; atLocationLimit?:boolean;
   onOpenBulkInput?:()=>void; onSaveDockedTask?:(data:Omit<Task,'id'>[])=>void; dockedFormKey?:number;
+  onRequestLocationPermission?:(source:string)=>Promise<boolean>;
 }) {
   const {tr,language} = useI18n();
   const [shopInput,setShopInput] = useState('');
@@ -5750,7 +5757,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
                 globalTags={globalTags??[]} customTabs={customTabs??[]}
                 notificationsEnabled={notificationsEnabled} onEnableNotifications={onEnableNotifications}
                 isPremium={isPremium} onOpenTagSettings={onOpenTagSettings} onOpenPro={onOpenPro}
-                atLocationLimit={atLocationLimit??false}/>
+                atLocationLimit={atLocationLimit??false} onRequestLocationPermission={onRequestLocationPermission}/>
             </div>
           )}
 
@@ -5787,7 +5794,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
               {showShopNotif?(
                 <>
                   <ShopNotifPanel settings={shopNotifSettings} onChange={onShopNotifSettings} notificationsEnabled={notificationsEnabled} onEnableNotifications={onEnableNotifications}/>
-                  <ShopLocationPanel locations={shopLocations} onChange={onShopLocations} isPremium={isPremium} onProPrompt={setLocProPrompt}/>
+                  <ShopLocationPanel locations={shopLocations} onChange={onShopLocations} isPremium={isPremium} onProPrompt={setLocProPrompt} onRequestLocationPermission={onRequestLocationPermission}/>
                   {locProPrompt&&<ProGateSheet feature={locProPrompt} onClose={()=>setLocProPrompt(null)} onView={()=>{setLocProPrompt(null);onOpenPro();}}/>}
                 </>
               ):shopItems.length===0?(
@@ -6202,7 +6209,8 @@ function SettingsRow({icon,iconBg,title,desc,onClick,isLast=false,pro=false,isPr
   );
 }
 
-function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,customTabs,onCustomTabs,onDeleteTabTasks,onDeleteTag,onRenameTag,shopNotifSettings,onShopNotifSettings,shopLocations,onShopLocations,forgetAlerts,onForgetAlerts,cloudUser,migrationStatus,isPremium,onGoogleSignIn,onAppleSignIn,onSignOut,onBulkAdd,bulkHistory,onBulkHistoryDelete,onBulkHistoryEdit,lifePatterns,onLifePatterns,patternOverrides,onApplyPattern,initialSub,tasks,onEditTask,isDesktop=false}:{
+function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,customTabs,onCustomTabs,onDeleteTabTasks,onDeleteTag,onRenameTag,shopNotifSettings,onShopNotifSettings,shopLocations,onShopLocations,forgetAlerts,onForgetAlerts,cloudUser,migrationStatus,isPremium,onGoogleSignIn,onAppleSignIn,onSignOut,onBulkAdd,bulkHistory,onBulkHistoryDelete,onBulkHistoryEdit,lifePatterns,onLifePatterns,patternOverrides,onApplyPattern,initialSub,tasks,onEditTask,isDesktop=false,onRequestLocationPermission}:{
+  onRequestLocationPermission?:(source:string)=>Promise<boolean>;
   settings:Settings; onSettings:(s:Settings)=>void; onClose:()=>void;
   globalTags:TagDef[]; onGlobalTags:(tags:TagDef[])=>void;
   customTabs:CustomTab[]; onCustomTabs:(tabs:CustomTab[])=>void; onDeleteTabTasks:(tabId:string)=>void;
@@ -6818,7 +6826,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto lg:max-w-none lg:w-full lg:[&>*:not(.fixed)]:max-w-[1000px] lg:[&>*:not(.fixed)]:mx-auto lg:[&>*:not(.fixed)]:w-full">
       {subHeader(tr('rowForgetAlertTitle'))}{proSheet}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
-        <ForgetAlertsPanel alerts={forgetAlerts} onChange={onForgetAlerts} isPremium={isPremium} onProPrompt={setProPrompt}/>
+        <ForgetAlertsPanel alerts={forgetAlerts} onChange={onForgetAlerts} isPremium={isPremium} onProPrompt={setProPrompt} onRequestLocationPermission={onRequestLocationPermission}/>
       </div>
     </div>
   );
@@ -7101,7 +7109,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           <ShopNotifPanel settings={shopNotifSettings} onChange={onShopNotifSettings}
             notificationsEnabled={settings.notificationsEnabled??true}
             onEnableNotifications={()=>onSettings({...settings,notificationsEnabled:true})}/>
-          <ShopLocationPanel locations={shopLocations} onChange={onShopLocations} isPremium={isPremium} onProPrompt={setProPrompt}/>
+          <ShopLocationPanel locations={shopLocations} onChange={onShopLocations} isPremium={isPremium} onProPrompt={setProPrompt} onRequestLocationPermission={onRequestLocationPermission}/>
         </div>
       </div>
     </div>
@@ -8379,6 +8387,16 @@ export default function App() {
   const [showWakeSleepPrompt,setShowWakeSleepPrompt] = useState(false);
   const [wsPromptWake,setWsPromptWake] = useState('07:00');
   const [wsPromptSleep,setWsPromptSleep] = useState('23:00');
+  // バックグラウンド位置情報（常に許可）をリクエストする全箇所（オンボーディング・
+  // タスクの場所通知・買い物リストの場所通知・忘れ物防止アラート）共通の事前説明。
+  // Google Playの「目立つ開示」要件対応——OSの許可ダイアログより前に、アプリ独自の
+  // 画面で「アプリを閉じていても位置情報を取得すること」を明示してから許可を求める。
+  // ensureGeofencePermission()を直接呼ばず、必ずこのrequestLocationWithDisclosure()
+  // 経由にすること（戻り値の形・sourceの意味はensureGeofencePermissionと同じ）
+  const [locationDisclosure,setLocationDisclosure] = useState<{source:string;resolve:(ok:boolean)=>void}|null>(null);
+  const requestLocationWithDisclosure = useCallback((source:string):Promise<boolean> => {
+    return new Promise(resolve=>{ setLocationDisclosure({source,resolve}); });
+  },[]);
   const [appProPrompt,setAppProPrompt] = useState(false);
   const [featureUsage,setFeatureUsage] = useState<FeatureUsage|null>(null);
   const [recommendState,setRecommendState] = useState<Partial<Record<RecommendationId,RecommendationState>>>({});
@@ -9277,7 +9295,7 @@ export default function App() {
   const maybeShowLocPrompt=()=>{
     if(localStorage.getItem(LOCATION_ASKED_KEY)){ maybeShowWakeSleepPrompt(); return; }
     localStorage.setItem(LOCATION_ASKED_KEY,'1');
-    ensureGeofencePermission('onboarding').finally(()=>maybeShowWakeSleepPrompt());
+    requestLocationWithDisclosure('onboarding').finally(()=>maybeShowWakeSleepPrompt());
   };
   const dismissWakeSleepPrompt=()=>{
     localStorage.setItem(WAKESLEEP_ASKED_KEY,'1');
@@ -10570,7 +10588,8 @@ export default function App() {
           onOpenTagSettings={()=>{setSettingsInitSub('tags');setSOp(true);}}
           atLocationLimit={activeLocationRegionCount>=MAX_MONITORED_REGIONS}
           onOpenBulkInput={()=>{setSettingsInitSub('bulkInput');setSOp(true);}}
-          onSaveDockedTask={saveDockedLaterTask} dockedFormKey={dockedFormKey}/>
+          onSaveDockedTask={saveDockedLaterTask} dockedFormKey={dockedFormKey}
+          onRequestLocationPermission={requestLocationWithDisclosure}/>
       )}
 
       {/* ── 右パネルの開閉トグル（PC版のみ） ── */}
@@ -10718,6 +10737,7 @@ export default function App() {
           notificationsEnabled={settings.notificationsEnabled??true}
           onEnableNotifications={()=>setSettings(s=>({...s,notificationsEnabled:true}))}
           isPremium={isPremium} atLocationLimit={activeLocationRegionCount>=MAX_MONITORED_REGIONS}
+          onRequestLocationPermission={requestLocationWithDisclosure}
           suppressAutoFocus={showTour&&!modal.task}
           focusNameSignal={showTour&&!modal.task?tourFocusNameSignal:undefined}
           fillTestNameSignal={showTour&&!modal.task?tourFillTestNameSignal:undefined}
@@ -10732,9 +10752,37 @@ export default function App() {
           }}/>
       )}
 
+      {/* ── 位置情報の事前説明（バックグラウンド位置情報をリクエストする全箇所で共通） ── */}
+      {locationDisclosure&&(
+        <div className="fixed inset-0 z-[210] bg-black/40 flex items-end justify-center lg:items-center"
+          onClick={()=>{ const d=locationDisclosure; setLocationDisclosure(null); d.resolve(false); }}>
+          <div className="bg-white w-full max-w-md rounded-t-3xl lg:rounded-b-3xl px-5 pt-6 pb-8 shadow-2xl" onClick={e=>e.stopPropagation()}>
+            <div className="flex justify-center mb-4">
+              <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center">
+                <AppIcons.location size={26} className="text-[var(--c-primary)]"/>
+              </div>
+            </div>
+            <p className="text-center text-[17px] font-bold text-gray-900 mb-2">{tr('locationDisclosureTitle')}</p>
+            <p className="text-center text-sm text-gray-500 mb-6 leading-relaxed">{tr('locationDisclosureBody')}</p>
+            <button onClick={async()=>{
+                const d=locationDisclosure; setLocationDisclosure(null);
+                const ok=await ensureGeofencePermission(d.source);
+                d.resolve(ok);
+              }}
+              className="w-full py-3.5 rounded-2xl bg-[var(--c-primary)] text-white text-[15px] font-semibold mb-2">
+              {tr('locationDisclosureAgree')}
+            </button>
+            <button onClick={()=>{ const d=locationDisclosure; setLocationDisclosure(null); d.resolve(false); }}
+              className="w-full py-3 text-sm text-gray-400 font-semibold">
+              {tr('cancelButton')}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ── Settings Screen ── */}
       {settingsOpen&&(
-        <SettingsScreen settings={settings} onSettings={setSettings} onClose={()=>setSOp(false)} globalTags={globalTags} onGlobalTags={setGlobalTags} customTabs={customTabs} onCustomTabs={setCustomTabs} onDeleteTabTasks={(tabId)=>setTasks(prev=>prev.filter(t=>t.category!==tabId))} onDeleteTag={(tagName)=>{setGlobalTags(prev=>prev.filter(t=>t.name!==tagName));setTasks(prev=>prev.map(t=>({...t,tags:(t.tags??[]).filter(n=>n!==tagName)})));}} onRenameTag={(oldName,newName,newColor)=>{setGlobalTags(prev=>prev.map(t=>t.name===oldName?{name:newName,color:newColor}:t));setTasks(prev=>prev.map(t=>({...t,tags:(t.tags??[]).map(n=>n===oldName?newName:n)})));}} shopNotifSettings={shopNotifSettings} onShopNotifSettings={setShopNotifSettings} shopLocations={shopLocations} onShopLocations={setShopLocations} forgetAlerts={forgetAlerts} onForgetAlerts={setForgetAlerts} cloudUser={cloudUser} migrationStatus={migrationStatus} isPremium={isPremium} onGoogleSignIn={handleGoogleSignIn} onAppleSignIn={handleAppleSignIn} onSignOut={handleSignOut} onBulkAdd={bulkAddTasks} bulkHistory={bulkHistory} onBulkHistoryDelete={bulkHistoryDelete} onBulkHistoryEdit={bulkHistoryEdit} lifePatterns={lifePatterns} onLifePatterns={setLifePatterns} patternOverrides={patternOverrides} onApplyPattern={applyPattern} initialSub={settingsInitSub} tasks={tasks} onEditTask={(t)=>{setSOp(false);openEdit(t);}} isDesktop={isDesktop}/>
+        <SettingsScreen settings={settings} onSettings={setSettings} onClose={()=>setSOp(false)} globalTags={globalTags} onGlobalTags={setGlobalTags} customTabs={customTabs} onCustomTabs={setCustomTabs} onDeleteTabTasks={(tabId)=>setTasks(prev=>prev.filter(t=>t.category!==tabId))} onDeleteTag={(tagName)=>{setGlobalTags(prev=>prev.filter(t=>t.name!==tagName));setTasks(prev=>prev.map(t=>({...t,tags:(t.tags??[]).filter(n=>n!==tagName)})));}} onRenameTag={(oldName,newName,newColor)=>{setGlobalTags(prev=>prev.map(t=>t.name===oldName?{name:newName,color:newColor}:t));setTasks(prev=>prev.map(t=>({...t,tags:(t.tags??[]).map(n=>n===oldName?newName:n)})));}} shopNotifSettings={shopNotifSettings} onShopNotifSettings={setShopNotifSettings} shopLocations={shopLocations} onShopLocations={setShopLocations} forgetAlerts={forgetAlerts} onForgetAlerts={setForgetAlerts} cloudUser={cloudUser} migrationStatus={migrationStatus} isPremium={isPremium} onGoogleSignIn={handleGoogleSignIn} onAppleSignIn={handleAppleSignIn} onSignOut={handleSignOut} onBulkAdd={bulkAddTasks} bulkHistory={bulkHistory} onBulkHistoryDelete={bulkHistoryDelete} onBulkHistoryEdit={bulkHistoryEdit} lifePatterns={lifePatterns} onLifePatterns={setLifePatterns} patternOverrides={patternOverrides} onApplyPattern={applyPattern} initialSub={settingsInitSub} tasks={tasks} onEditTask={(t)=>{setSOp(false);openEdit(t);}} isDesktop={isDesktop} onRequestLocationPermission={requestLocationWithDisclosure}/>
       )}
 
       {/* ── Tab filter bottom sheet ── */}
