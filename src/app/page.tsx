@@ -2426,9 +2426,17 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
   // モーダルごと（ヘッダー含めて）ずれて「スクロールしたように」見えてしまう。
   // overflow:hidden/touch-action等のCSSだけではこのズレ自体は止められないため、
   // visualViewport.offsetTop（ズレた量）を監視し、その分だけモーダルカード全体を
-  // +translateY（下方向）させて相殺する（offsetTopが増えるとモーダルは見た目上
-  // 上に消えていくので、同じ量だけ下にずらして打ち消す。符号を逆にすると
-  // ズレが2倍になる不具合の実績があるので、符号を変える時は必ず実機で確認すること）。
+  // 下方向にずらして相殺する（offsetTopが増えるとモーダルは見た目上上に消えていく
+  // ので、同じ量だけ下にずらして打ち消す。符号を逆にするとズレが2倍になる不具合の
+  // 実績があるので、符号を変える時は必ず実機で確認すること）。
+  // 【重要】この「下にずらす」処理は当初transform:translateYで実装していたが、
+  // WebKitには「祖先要素にtransformが掛かっていると子孫のoverflow-y:autoな要素が
+  // タッチでスクロールできなくなる」既知の癖があり、キーボード表示中に白コンテンツが
+  // スワイプで一切スクロールできなくなる不具合の原因になっていた（el.scrollTopを
+  // JSで直接動かすと効く＝スクロール機構自体は正常、という切り分けで実機確認済み）。
+  // transformを使わず、実レイアウトを動かすbottom/topプロパティに置き換えて
+  // この癖を回避している。新しくこの位置補正ロジックを触る時は、絶対に
+  // transform/translateは使わないこと（この問題が再発する）。
   //
   // これとは別に、キーボード表示中は白コンテンツ（詳細設定エリア）自体の
   // 「スクロールして見える範囲」もキーボードの上端までに制限したい（要望）。
@@ -2437,21 +2445,21 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
   // （＝モーダルの外枠は常に同じ・白コンテンツの「見える窓」の高さだけが
   // キーボードぶん縮む）。キーボードを閉じればmax-heightを解除し、
   // 元のflex-1（カードの残り高さいっぱい）に自然に戻る。
-  // ヘッダーの実測位置(getBoundingClientRect)を毎回測ることで、上のtransform
+  // ヘッダーの実測位置(getBoundingClientRect)を毎回測ることで、上のbottom
   // 補正が効いた「実際の見た目の位置」を基準に計算するため、2つの処理が
   // ズレて競合しないよう必ず同じ関数内でまとめて計算する
   // バックドロップ（画面全体を覆う黒い半透明オーバーレイ）はカードの「背後」に
-  // あり、カードと同じfixed/absoluteの祖先関係だが、カードだけにtransformを
-  // 掛けるとカードとバックドロップの間にズレが生じる（カードが下にずれる分、
-  // 本来カードに隠れているはずのバックドロップの帯がキーボードの角丸の隙間から
-  // 覗いて見えてしまう＝キーボード周辺に黒っぽい帯が見える不具合の原因）。
-  // バックドロップにも同じtranslateYを掛けて常に一体で動くようにする。
-  // ただしバックドロップの上端も一緒に下へずれると、今度は画面の本当の上端に
-  // バックドロップで覆われない隙間ができてしまうため、普段は`inset-0`（上端0）の
-  // ままにしておき、キーボード表示でズレ補正が必要な時だけ上端を大きく
-  // （-50vh、現実的などのoffsetTopの値よりも十分大きい余白）引き上げてから
-  // 同じ量だけ下にずらすことで、どんなズレ量でも画面の本当の上端を割らない
-  // 安全マージンを確保する
+  // あり、カードと同じfixed/absoluteの祖先関係だが、カードだけを動かすと
+  // カードとバックドロップの間にズレが生じる（カードが下にずれる分、本来カードに
+  // 隠れているはずのバックドロップの帯がキーボードの角丸の隙間から覗いて見えて
+  // しまう＝キーボード周辺に黒っぽい帯が見える不具合の原因）。バックドロップにも
+  // 同じ量だけ下にずらす補正を掛けて常に一体で動くようにする。ただしバックドロップの
+  // 上端も一緒に下へずれると、今度は画面の本当の上端にバックドロップで覆われない
+  // 隙間ができてしまうため、普段は`inset-0`（上端0）のままにしておき、キーボード
+  // 表示でズレ補正が必要な時だけ上端を大きく（-50vh、現実的などのoffsetTopの値
+  // よりも十分大きい余白）引き上げてから同じ量だけ下にずらすことで、どんなズレ量
+  // でも画面の本当の上端を割らない安全マージンを確保する（これもtransformではなく
+  // topプロパティで行う）
   const backdropRef = useRef<HTMLDivElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -2465,15 +2473,17 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
       if(!cardEl) return;
       const isDesktopNow=window.innerWidth>=1024;
       const offset=isDesktopNow?0:vv.offsetTop;
-      cardEl.style.transform=offset?`translateY(${offset}px)`:'';
+      // transformではなくbottom/top（実レイアウト位置）を直接動かす。
+      // 以前はtransform:translateYで補正していたが、WebKitには「祖先要素に
+      // transformが掛かっていると子孫のoverflow-y:autoな要素がタッチで
+      // スクロールできなくなる」という既知の癖があり、白コンテンツが
+      // スワイプで動かせなくなる不具合の原因だった（JSでscrollTopを直接
+      // 動かすと効く＝スクロール機構自体は正常、という切り分けで実機確認済み）。
+      // position指定（bottom/top）はpaint専用のtransformと違い実際に
+      // レイアウトし直すプロパティなので、この癖を踏まない
+      cardEl.style.bottom=offset?`${-offset}px`:'';
       if(backdropEl){
-        if(offset){
-          backdropEl.style.top='-50vh';
-          backdropEl.style.transform=`translateY(${offset}px)`;
-        } else {
-          backdropEl.style.top='';
-          backdropEl.style.transform='';
-        }
+        backdropEl.style.top=offset?`calc(-50vh + ${offset}px)`:'';
       }
       const contentEl=contentRef.current;
       const headerEl=headerRef.current;
@@ -2497,9 +2507,9 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
       vv.removeEventListener('scroll',sync);
       vv.removeEventListener('resize',sync);
       window.removeEventListener('resize',sync);
-      if(cardElAtMount) cardElAtMount.style.transform='';
+      if(cardElAtMount) cardElAtMount.style.bottom='';
       if(contentElAtMount) contentElAtMount.style.maxHeight='';
-      if(backdropElAtMount){ backdropElAtMount.style.top=''; backdropElAtMount.style.transform=''; }
+      if(backdropElAtMount) backdropElAtMount.style.top='';
     };
   },[docked]);
 
