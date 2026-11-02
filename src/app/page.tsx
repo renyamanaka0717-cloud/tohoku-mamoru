@@ -2402,27 +2402,21 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
   // 一度body.style.positionを'fixed'にする一般的なモーダルロック手法を試したが、
   // キーボードの開閉でSafariのツールバー表示状態が変わるタイミングと絡み、
   // vh/%ベースで高さを決めているモーダルカードの下に不自然な余白ができる
-  // 回帰を引き起こしたため撤去した。position/top/widthを一切動かさない
-  // overflow:hidden のみのロックに変更し、ビューポート計算への副作用を避ける。
-  // 一度window.scrollを監視して0以外になったら即座に0へ戻す対策も試したが、
-  // 白コンテンツ（overflow-y-auto）を内部スクロールさせた時もwindowのscroll
-  // イベントが発火し、ユーザーの正当な内部スクロールまで巻き込んで打ち消して
-  // しまっていたため撤去した。ヘッダー側のtouch-action:'pan-x'と白コンテンツの
-  // overscroll-containだけで、ヘッダーを動かす操作は発生させず・白コンテンツの
-  // 内部スクロールは妨げない、という両立を狙う
-  useEffect(()=>{
-    if(docked) return;
-    const html=document.documentElement;
-    const body=document.body;
-    const prevHtmlOverflow=html.style.overflow;
-    const prevBodyOverflow=body.style.overflow;
-    html.style.overflow='hidden';
-    body.style.overflow='hidden';
-    return ()=>{
-      html.style.overflow=prevHtmlOverflow;
-      body.style.overflow=prevBodyOverflow;
-    };
-  },[docked]);
+  // 回帰を引き起こしたため撤去した。window.scrollを監視して0以外になったら
+  // 即座に0へ戻す対策も試したが、白コンテンツ（overflow-y-auto）を内部
+  // スクロールさせた時もwindowのscrollイベントが発火し、ユーザーの正当な
+  // 内部スクロールまで巻き込んで打ち消してしまっていたため撤去した。
+  // html/body自体にoverflow:hiddenを掛けるロックも試したが、
+  // resize:'none'（WKWebViewを常にフルスクリーンのまま維持する設定）が
+  // 正しく効いている状態では、WKWebViewのネイティブscrollViewが
+  // html/bodyのoverflow:hiddenに連動して無効化され、その結果**白コンテンツ
+  // 自身の内部スクロール（overflow-y-auto）までタッチで動かせなくなる**という
+  // 重大な副作用があったため撤去した。背景のタイムライン自体のスクロール固定は
+  // mainRef側（Appコンポーネント、modal.open中にoverflowY:hidden+
+  // touchAction:noneを適用する別のuseEffect）で既に独立して行っているため、
+  // ここでhtml/bodyまでロックする必要は無かった。ヘッダー側のtouch-action:'pan-x'
+  // と白コンテンツのoverscroll-containだけで、ヘッダーを動かす操作は発生させず・
+  // 白コンテンツの内部スクロールは妨げない、という両立を狙う
 
   // 【実機（WKWebView）でも発生する不具合】input要素にフォーカスした瞬間、
   // iOS(WebKit)はフォーカスした要素を「可視範囲」に入れようとして、固定位置の
