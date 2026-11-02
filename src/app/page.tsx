@@ -2446,6 +2446,19 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
   // ヘッダーの実測位置(getBoundingClientRect)を毎回測ることで、上のtransform
   // 補正が効いた「実際の見た目の位置」を基準に計算するため、2つの処理が
   // ズレて競合しないよう必ず同じ関数内でまとめて計算する
+  // バックドロップ（画面全体を覆う黒い半透明オーバーレイ）はカードの「背後」に
+  // あり、カードと同じfixed/absoluteの祖先関係だが、カードだけにtransformを
+  // 掛けるとカードとバックドロップの間にズレが生じる（カードが下にずれる分、
+  // 本来カードに隠れているはずのバックドロップの帯がキーボードの角丸の隙間から
+  // 覗いて見えてしまう＝キーボード周辺に黒っぽい帯が見える不具合の原因）。
+  // バックドロップにも同じtranslateYを掛けて常に一体で動くようにする。
+  // ただしバックドロップの上端も一緒に下へずれると、今度は画面の本当の上端に
+  // バックドロップで覆われない隙間ができてしまうため、普段は`inset-0`（上端0）の
+  // ままにしておき、キーボード表示でズレ補正が必要な時だけ上端を大きく
+  // （-50vh、現実的などのoffsetTopの値よりも十分大きい余白）引き上げてから
+  // 同じ量だけ下にずらすことで、どんなズレ量でも画面の本当の上端を割らない
+  // 安全マージンを確保する
+  const backdropRef = useRef<HTMLDivElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   useEffect(()=>{
@@ -2454,12 +2467,24 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
     if(!vv) return;
     const sync=()=>{
       const cardEl=cardRef.current;
+      const backdropEl=backdropRef.current;
       if(!cardEl) return;
-      cardEl.style.transform=vv.offsetTop?`translateY(${vv.offsetTop}px)`:'';
+      const isDesktopNow=window.innerWidth>=1024;
+      const offset=isDesktopNow?0:vv.offsetTop;
+      cardEl.style.transform=offset?`translateY(${offset}px)`:'';
+      if(backdropEl){
+        if(offset){
+          backdropEl.style.top='-50vh';
+          backdropEl.style.transform=`translateY(${offset}px)`;
+        } else {
+          backdropEl.style.top='';
+          backdropEl.style.transform='';
+        }
+      }
       const contentEl=contentRef.current;
       const headerEl=headerRef.current;
       if(!contentEl||!headerEl) return;
-      if(window.innerWidth>=1024){
+      if(isDesktopNow){
         contentEl.style.maxHeight='';
         return;
       }
@@ -2473,17 +2498,19 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
     sync();
     const cardElAtMount=cardRef.current;
     const contentElAtMount=contentRef.current;
+    const backdropElAtMount=backdropRef.current;
     return ()=>{
       vv.removeEventListener('scroll',sync);
       vv.removeEventListener('resize',sync);
       window.removeEventListener('resize',sync);
       if(cardElAtMount) cardElAtMount.style.transform='';
       if(contentElAtMount) contentElAtMount.style.maxHeight='';
+      if(backdropElAtMount){ backdropElAtMount.style.top=''; backdropElAtMount.style.transform=''; }
     };
   },[docked]);
 
   return (
-    <div className={docked?"h-full w-full min-w-0 flex flex-col":editPanel?"fixed inset-0 z-[180] bg-black/20":"fixed inset-0 z-50 bg-black/60 lg:flex lg:items-center lg:justify-center"}
+    <div ref={docked?undefined:backdropRef} className={docked?"h-full w-full min-w-0 flex flex-col":editPanel?"fixed inset-0 z-[180] bg-black/20":"fixed inset-0 z-50 bg-black/60 lg:flex lg:items-center lg:justify-center"}
       onClick={docked?undefined:handleClose}>
       <div ref={cardRef} className={docked?"h-full w-full min-w-0 flex flex-col overflow-hidden":editPanel?"absolute right-0 top-0 bottom-0 w-full sm:w-[480px] max-w-full bg-white shadow-2xl flex flex-col overflow-hidden":"absolute bottom-0 left-0 right-0 max-w-md mx-auto h-[min(92vh,calc(100%_-_env(safe-area-inset-top)_-_12px))] flex flex-col overflow-hidden rounded-t-3xl bg-gray-50 lg:static lg:h-auto lg:max-h-[85vh]"}
         onClick={docked?undefined:(e=>e.stopPropagation())} data-tour={!task&&!docked?'modal-card':undefined}>
