@@ -13,7 +13,7 @@ import { voiceInputSupported, ensureVoiceInputPermission, startVoiceInput, stopV
 import { getAppVersion } from './components/AppVersion';
 import { logAnalyticsEvent } from './components/Analytics';
 import { isDevModeUnlocked, DEV_MODE_UNLOCKED_KEY, getDevPremiumOverride, setDevPremiumOverride, isDevDenied, DEV_LOCATION_DENIED_KEY, DEV_NOTIF_DENIED_KEY } from './components/DevMode';
-import { signInWithGoogle, signInWithApple, signOutCloud, onCloudAuthChange, consumeRedirectResult, migrateLocalDataToCloud, hasMigratedThisDevice, pushIdCollectionDiff, subscribeIdCollection, pushSettings, subscribeSettings, type CloudUser, type LocalDataForMigration } from './components/Cloud';
+import { signInWithGoogle, signInWithApple, signOutCloud, onCloudAuthChange, consumeRedirectResult, migrateLocalDataToCloud, hasMigratedThisDevice, pushIdCollectionDiff, subscribeIdCollection, pushSettings, subscribeSettings, deleteAccountAndData, type CloudUser, type LocalDataForMigration } from './components/Cloud';
 import { App as CapApp } from '@capacitor/app';
 import ProductTour from './components/ProductTour';
 import Welcome from './components/Welcome';
@@ -6211,7 +6211,7 @@ function SettingsRow({icon,iconBg,title,desc,onClick,isLast=false,pro=false,isPr
   );
 }
 
-function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,customTabs,onCustomTabs,onDeleteTabTasks,onDeleteTag,onRenameTag,shopNotifSettings,onShopNotifSettings,shopLocations,onShopLocations,forgetAlerts,onForgetAlerts,cloudUser,migrationStatus,isPremium,onGoogleSignIn,onAppleSignIn,onSignOut,onBulkAdd,bulkHistory,onBulkHistoryDelete,onBulkHistoryEdit,lifePatterns,onLifePatterns,patternOverrides,onApplyPattern,initialSub,tasks,onEditTask,isDesktop=false,onRequestLocationPermission}:{
+function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,customTabs,onCustomTabs,onDeleteTabTasks,onDeleteTag,onRenameTag,shopNotifSettings,onShopNotifSettings,shopLocations,onShopLocations,forgetAlerts,onForgetAlerts,cloudUser,migrationStatus,isPremium,onGoogleSignIn,onAppleSignIn,onSignOut,onDeleteAccount,onBulkAdd,bulkHistory,onBulkHistoryDelete,onBulkHistoryEdit,lifePatterns,onLifePatterns,patternOverrides,onApplyPattern,initialSub,tasks,onEditTask,isDesktop=false,onRequestLocationPermission}:{
   onRequestLocationPermission?:(source:string)=>Promise<boolean>;
   settings:Settings; onSettings:(s:Settings)=>void; onClose:()=>void;
   globalTags:TagDef[]; onGlobalTags:(tags:TagDef[])=>void;
@@ -6222,6 +6222,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   forgetAlerts:ForgetAlert[]; onForgetAlerts:(a:ForgetAlert[])=>void;
   cloudUser:CloudUser|null; migrationStatus:'idle'|'syncing'|'done'|'error'; isPremium:boolean;
   onGoogleSignIn:()=>Promise<void>; onAppleSignIn:()=>Promise<void>; onSignOut:()=>void;
+  onDeleteAccount:()=>Promise<boolean>;
   onBulkAdd:(tasks:Omit<Task,'id'>[],endTime:string)=>void;
   bulkHistory:BulkHistoryEntry[];
   onBulkHistoryDelete:(entryId:string)=>void;
@@ -6249,6 +6250,18 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   // 開発者モード（アプリバージョン行を7回タップで解放。一般ユーザーには表示しない）
   const [devModeUnlocked,setDevModeUnlocked] = useState(false);
   useEffect(()=>{ setDevModeUnlocked(isDevModeUnlocked()); },[]);
+  // アカウント削除（設定→アカウント画面）。確認ポップアップ→処理中→成功/失敗、の3状態
+  const [deleteAccountConfirm,setDeleteAccountConfirm] = useState(false);
+  const [deletingAccount,setDeletingAccount] = useState(false);
+  const [deleteAccountError,setDeleteAccountError] = useState(false);
+  const runDeleteAccount = async () => {
+    setDeletingAccount(true);
+    setDeleteAccountError(false);
+    const ok = await onDeleteAccount();
+    setDeletingAccount(false);
+    if(ok){ setDeleteAccountConfirm(false); }
+    else { setDeleteAccountError(true); }
+  };
   const versionTapCountRef = useRef(0);
   const versionTapTimerRef = useRef<ReturnType<typeof setTimeout>|null>(null);
   const handleVersionTap = () => {
@@ -7660,6 +7673,11 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
               className="w-full bg-white rounded-2xl shadow-sm px-4 py-3.5 mt-3 text-sm font-semibold text-[#D97A7A] active:bg-gray-50">
               {tr('accountSignOutButton')}
             </button>
+
+            <button onClick={()=>{setDeleteAccountError(false);setDeleteAccountConfirm(true);}}
+              className="w-full mt-3 py-3 text-sm text-gray-400 font-medium active:bg-gray-50 rounded-2xl">
+              {tr('deleteAccountButton')}
+            </button>
           </>
         ) : (
           <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
@@ -7681,6 +7699,23 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           </div>
         )}
       </div>
+      {deleteAccountConfirm&&(
+        <div className="fixed inset-0 z-[100] bg-black/40 flex items-end justify-center lg:items-center" onClick={()=>{if(!deletingAccount) setDeleteAccountConfirm(false);}}>
+          <div className="bg-white w-full max-w-md rounded-t-3xl lg:rounded-b-3xl px-5 pt-5 pb-10 shadow-2xl" onClick={e=>e.stopPropagation()}>
+            <p className="text-center text-[17px] font-semibold text-gray-900 mb-1">{tr('deleteAccountConfirmTitle')}</p>
+            <p className="text-center text-sm text-gray-500 mb-6 leading-relaxed">{tr('deleteAccountConfirmBody')}</p>
+            {deleteAccountError&&<p className="text-center text-sm text-[#D97A7A] mb-4">{tr('deleteAccountError')}</p>}
+            <div className="grid grid-cols-2 gap-3">
+              <button onClick={()=>setDeleteAccountConfirm(false)} disabled={deletingAccount}
+                className="py-2.5 bg-gray-100 text-gray-900 rounded-xl text-sm font-semibold disabled:opacity-50">{tr('cancelButton')}</button>
+              <button onClick={runDeleteAccount} disabled={deletingAccount}
+                className="py-2.5 bg-[#D97A7A] text-white rounded-xl text-sm font-semibold disabled:opacity-50">
+                {deletingAccount?tr('deleteAccountInProgress'):tr('deleteAccountButton')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 
@@ -8765,6 +8800,23 @@ export default function App() {
     await signOutCloud();
     setCloudUser(null);
     setMigrationStatus('idle');
+  };
+
+  // Googleログイン等でアカウント作成できるアプリに対するストアポリシー対応
+  // （アプリ内からアカウント＋関連データを削除できる手段が必須）。deleteAccountAndData()が
+  // 'requires-recent-login'を返した場合（最後のログインから時間が経っている）、
+  // Googleの再ログインで最近のサインイン状態に更新してからもう一度削除を試みる。
+  // Apple経由でログインしたユーザーの再認証は現状未対応（アカウント画面のApple
+  // ログインボタン自体をfalse&&で無効化済みのため実質発生しない）
+  const handleDeleteAccount=async():Promise<boolean>=>{
+    let result=await deleteAccountAndData();
+    if(result==='requires-recent-login'){
+      const u=await signInWithGoogle();
+      if(!u) return false;
+      result=await deleteAccountAndData();
+    }
+    if(result==='ok'){ setCloudUser(null); setMigrationStatus('idle'); return true; }
+    return false;
   };
 
   // アプリ起動時、Firebaseが保持しているログインセッションを復元する。
@@ -10785,7 +10837,7 @@ export default function App() {
 
       {/* ── Settings Screen ── */}
       {settingsOpen&&(
-        <SettingsScreen settings={settings} onSettings={setSettings} onClose={()=>setSOp(false)} globalTags={globalTags} onGlobalTags={setGlobalTags} customTabs={customTabs} onCustomTabs={setCustomTabs} onDeleteTabTasks={(tabId)=>setTasks(prev=>prev.filter(t=>t.category!==tabId))} onDeleteTag={(tagName)=>{setGlobalTags(prev=>prev.filter(t=>t.name!==tagName));setTasks(prev=>prev.map(t=>({...t,tags:(t.tags??[]).filter(n=>n!==tagName)})));}} onRenameTag={(oldName,newName,newColor)=>{setGlobalTags(prev=>prev.map(t=>t.name===oldName?{name:newName,color:newColor}:t));setTasks(prev=>prev.map(t=>({...t,tags:(t.tags??[]).map(n=>n===oldName?newName:n)})));}} shopNotifSettings={shopNotifSettings} onShopNotifSettings={setShopNotifSettings} shopLocations={shopLocations} onShopLocations={setShopLocations} forgetAlerts={forgetAlerts} onForgetAlerts={setForgetAlerts} cloudUser={cloudUser} migrationStatus={migrationStatus} isPremium={isPremium} onGoogleSignIn={handleGoogleSignIn} onAppleSignIn={handleAppleSignIn} onSignOut={handleSignOut} onBulkAdd={bulkAddTasks} bulkHistory={bulkHistory} onBulkHistoryDelete={bulkHistoryDelete} onBulkHistoryEdit={bulkHistoryEdit} lifePatterns={lifePatterns} onLifePatterns={setLifePatterns} patternOverrides={patternOverrides} onApplyPattern={applyPattern} initialSub={settingsInitSub} tasks={tasks} onEditTask={(t)=>{setSOp(false);openEdit(t);}} isDesktop={isDesktop} onRequestLocationPermission={requestLocationWithDisclosure}/>
+        <SettingsScreen settings={settings} onSettings={setSettings} onClose={()=>setSOp(false)} globalTags={globalTags} onGlobalTags={setGlobalTags} customTabs={customTabs} onCustomTabs={setCustomTabs} onDeleteTabTasks={(tabId)=>setTasks(prev=>prev.filter(t=>t.category!==tabId))} onDeleteTag={(tagName)=>{setGlobalTags(prev=>prev.filter(t=>t.name!==tagName));setTasks(prev=>prev.map(t=>({...t,tags:(t.tags??[]).filter(n=>n!==tagName)})));}} onRenameTag={(oldName,newName,newColor)=>{setGlobalTags(prev=>prev.map(t=>t.name===oldName?{name:newName,color:newColor}:t));setTasks(prev=>prev.map(t=>({...t,tags:(t.tags??[]).map(n=>n===oldName?newName:n)})));}} shopNotifSettings={shopNotifSettings} onShopNotifSettings={setShopNotifSettings} shopLocations={shopLocations} onShopLocations={setShopLocations} forgetAlerts={forgetAlerts} onForgetAlerts={setForgetAlerts} cloudUser={cloudUser} migrationStatus={migrationStatus} isPremium={isPremium} onGoogleSignIn={handleGoogleSignIn} onAppleSignIn={handleAppleSignIn} onSignOut={handleSignOut} onDeleteAccount={handleDeleteAccount} onBulkAdd={bulkAddTasks} bulkHistory={bulkHistory} onBulkHistoryDelete={bulkHistoryDelete} onBulkHistoryEdit={bulkHistoryEdit} lifePatterns={lifePatterns} onLifePatterns={setLifePatterns} patternOverrides={patternOverrides} onApplyPattern={applyPattern} initialSub={settingsInitSub} tasks={tasks} onEditTask={(t)=>{setSOp(false);openEdit(t);}} isDesktop={isDesktop} onRequestLocationPermission={requestLocationWithDisclosure}/>
       )}
 
       {/* ── Tab filter bottom sheet ── */}

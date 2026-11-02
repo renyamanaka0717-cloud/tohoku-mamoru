@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Delete Account & Data - BrainBox</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', sans-serif; background: #F9FAFB; color: #1F2937; line-height: 1.7; font-size: 16px; }
+  header { background: #fff; border-bottom: 1px solid #F3F4F6; padding: 16px 24px; display: flex; align-items: center; gap: 12px; position: sticky; top: 0; z-index: 10; }
+  .logo { width: 36px; height: 36px; background: #D9A3B2; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .logo svg { width: 20px; height: 20px; fill: white; }
+  header h1 { font-size: 17px; font-weight: 700; color: #1F2937; }
+  header nav { margin-left: auto; display: flex; gap: 16px; }
+  header a { font-size: 14px; color: #D9A3B2; text-decoration: none; font-weight: 600; }
+  main { max-width: 720px; margin: 0 auto; padding: 40px 24px 80px; }
+  .page-title { font-size: 28px; font-weight: 800; color: #1F2937; margin-bottom: 6px; }
+  .subtitle { font-size: 15px; color: #6B7280; margin-bottom: 40px; }
+  section { background: #fff; border-radius: 16px; padding: 24px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+  h2 { font-size: 17px; font-weight: 700; color: #1F2937; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+  h2::before { content: ''; width: 4px; height: 18px; background: #D9A3B2; border-radius: 2px; display: inline-block; flex-shrink: 0; }
+  p { font-size: 15px; color: #374151; margin-bottom: 10px; }
+  p:last-child { margin-bottom: 0; }
+  ol, ul { padding-left: 20px; margin: 10px 0; }
+  li { font-size: 15px; color: #374151; margin-bottom: 6px; }
+  .contact-btn { display: inline-flex; align-items: center; gap: 8px; background: #D9A3B2; color: #fff; font-weight: 700; font-size: 15px; padding: 12px 28px; border-radius: 12px; text-decoration: none; margin-top: 8px; margin-right: 10px; }
+  .contact-btn.line { background: #06C755; }
+  .contact-btn.email { background: #fff; color: #1F2937; border: 1px solid #E5E7EB; }
+  .contact-btn:hover { opacity: 0.9; }
+  a { color: #D9A3B2; }
+  .keep-badge { display: inline-block; font-size: 12px; font-weight: 700; color: #16A34A; background: #F0FDF4; border-radius: 6px; padding: 2px 8px; margin-left: 6px; }
+  .delete-badge { display: inline-block; font-size: 12px; font-weight: 700; color: #D97A7A; background: #FEF2F2; border-radius: 6px; padding: 2px 8px; margin-left: 6px; }
+  footer { text-align: center; padding: 24px; font-size: 13px; color: #9CA3AF; }
+  footer a { color: #D9A3B2; text-decoration: none; }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">
+    <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg>
+  </div>
+  <h1>BrainBox</h1>
+  <nav>
+    <a href="privacy-en.html">Privacy Policy</a>
+    <a href="support-en.html">Support</a>
+  </nav>
+</header>
+
+<main>
+  <div class="page-title">Delete Account &amp; Data</div>
+  <div class="subtitle">For users who have signed in with Google or Apple</div>
+
+  <section>
+    <h2>Who this applies to</h2>
+    <p>BrainBox stores your data locally on your device by default and does not send it to any server.</p>
+    <p>If you have signed in via the Settings screen (e.g. with Google), your tasks and settings are also saved to the cloud (Firebase/Cloud Firestore) for backup and multi-device sync. This page explains how to delete that account and its cloud data.</p>
+  </section>
+
+  <section>
+    <h2>Delete from within the app (recommended)</h2>
+    <p>This is the fastest and most reliable method, if you still have access to the app.</p>
+    <ol>
+      <li>Open the BrainBox app</li>
+      <li>Go to Settings → Account</li>
+      <li>Tap "Delete Account" near the bottom of the screen</li>
+      <li>Review the details and tap "Delete Account" again to confirm</li>
+    </ol>
+    <p>Your account and the cloud data listed below will be permanently deleted immediately.</p>
+  </section>
+
+  <section>
+    <h2>What gets deleted vs. what stays</h2>
+    <p>Deleting your account permanently removes the following cloud data. <span class="delete-badge">Deleted</span></p>
+    <ul>
+      <li>Tasks, shopping list, file tabs, and tags</li>
+      <li>Notification settings (time-based, location-based, and don't-forget alerts)</li>
+      <li>Life patterns, move history, and bulk-input history</li>
+      <li>App settings (wake/sleep times, theme color, etc.)</li>
+      <li>Your sign-in account itself (email and other auth credentials)</li>
+    </ul>
+    <p>Data stored locally on your device is <span class="keep-badge">not deleted</span> when you delete your account. BrainBox continues to work fully using only local data when you're signed out. If you'd also like to remove the data on your device, simply uninstall the app.</p>
+  </section>
+
+  <section>
+    <h2>If you can't access the app</h2>
+    <p>If you've switched devices or otherwise can't access the app, please contact us using one of the methods below, including the email address you signed in with. We'll verify your identity and delete your data within 3–5 business days.</p>
+    <a class="contact-btn line" href="https://lin.ee/TeaJYTJ">Contact via LINE</a>
+    <a class="contact-btn email" href="mailto:support.brainbox.jp@gmail.com">Contact via Email</a>
+  </section>
+
+  <section>
+    <h2>Privacy Policy</h2>
+    <p>For more details on how your data is handled, please see our Privacy Policy.</p>
+    <p><a href="privacy-en.html">Read the Privacy Policy →</a></p>
+  </section>
+</main>
+
+<footer>
+  &copy; 2026 BrainBox. All rights reserved. &nbsp;|&nbsp; <a href="privacy-en.html">Privacy Policy</a> &nbsp;|&nbsp; <a href="terms-en.html">Terms of Service</a>
+</footer>
+</body>
+</html>

@@ -431,6 +431,66 @@ export async function subscribeIdCollection<T extends { id: string }>(
   });
 }
 
+// ── アカウント・データの削除（Google Playポリシー対応） ──────────────────────
+//
+// Googleログイン等でアカウントを作成できるアプリは、アプリ内からアカウントと
+// 関連データを削除できる手段を用意することがポリシー上必須。削除対象は
+// Firestoreに保存されたクラウドデータ（下記の全サブコレクション＋usersルート
+// ドキュメントのsettingsフィールド）とFirebase Authのユーザー本体。
+// ローカル端末のデータ（localStorage）はアカウントに紐づくものではなく、
+// 削除後も引き続きローカル完結のアプリとして使えるべきなので、意図的に
+// このファイルの削除処理の対象には含めない（呼び出し側page.tsxでも触らないこと）。
+const DELETABLE_COLLECTIONS = [
+  'tasks', 'shopItems', 'customTabs', 'moveHistory', 'bulkHistory',
+  'shopNotifSettings', 'shopLocations', 'forgetAlerts', 'lifePatterns',
+  'tags', 'dayOverrides', 'patternOverrides',
+];
+
+async function deleteCollectionAll(uid: string, name: string): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  const { collection, getDocs, writeBatch } = await import('firebase/firestore');
+  const snap = await getDocs(collection(db, 'users', uid, name));
+  const docs = snap.docs;
+  // writeBatchは1回最大500件のためチャンクに分ける
+  for (let i = 0; i < docs.length; i += 400) {
+    const batch = writeBatch(db);
+    for (const d of docs.slice(i, i + 400)) batch.delete(d.ref);
+    await batch.commit();
+  }
+}
+
+// Firestoreのデータを先に消してからFirebase Authのユーザーを削除する順序を守ること
+// （逆順にすると、deleteUser()成功の時点でクライアントの認証状態が即座に失われ、
+// Firestoreのセキュリティルール（request.auth.uid==uid）がその後の削除書き込みを
+// 拒否してしまう）。deleteUser()は最近のログインを要求するAPIのため、ログインから
+// 時間が経っていると'auth/requires-recent-login'エラーになることがある——その場合
+// Firestoreデータは既に削除済みで安全な状態のまま、呼び出し側が再ログインを促してから
+// もう一度このファンクションを呼び直せばよい（Firestore側は空になっているだけで
+// 再実行しても害はない）
+export async function deleteAccountAndData(): Promise<'ok' | 'requires-recent-login' | 'error'> {
+  const auth = await getAuthInstance();
+  if (!auth || !auth.currentUser) return 'error';
+  const uid = auth.currentUser.uid;
+  try {
+    const db = await getDb();
+    if (db) {
+      await Promise.all(DELETABLE_COLLECTIONS.map((name) => deleteCollectionAll(uid, name)));
+      const { doc, deleteDoc } = await import('firebase/firestore');
+      await deleteDoc(doc(db, 'users', uid)).catch(() => {});
+    }
+    const { deleteUser } = await import('firebase/auth');
+    await deleteUser(auth.currentUser);
+    localStorage.removeItem(CLOUD_MIGRATED_KEY);
+    return 'ok';
+  } catch (e) {
+    const code = (e as { code?: string } | null)?.code;
+    if (code === 'auth/requires-recent-login') return 'requires-recent-login';
+    console.error('Account deletion failed:', e);
+    return 'error';
+  }
+}
+
 // 設定（Settings）は単一オブジェクトのため、id付き配列向けのpushIdCollectionDiff/
 // subscribeIdCollectionは使えない。Phase A（writeSettingsIfAbsent）は「クラウドにまだ
 // 設定が無ければ書く」という初回移行専用の安全策だったが、継続同期（Phase B）はログイン中の

@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>アカウント・データの削除 - BrainBox</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', sans-serif; background: #F9FAFB; color: #1F2937; line-height: 1.7; font-size: 16px; }
+  header { background: #fff; border-bottom: 1px solid #F3F4F6; padding: 16px 24px; display: flex; align-items: center; gap: 12px; position: sticky; top: 0; z-index: 10; }
+  .logo { width: 36px; height: 36px; background: #D9A3B2; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .logo svg { width: 20px; height: 20px; fill: white; }
+  header h1 { font-size: 17px; font-weight: 700; color: #1F2937; }
+  header nav { margin-left: auto; display: flex; gap: 16px; }
+  header a { font-size: 14px; color: #D9A3B2; text-decoration: none; font-weight: 600; }
+  main { max-width: 720px; margin: 0 auto; padding: 40px 24px 80px; }
+  .page-title { font-size: 28px; font-weight: 800; color: #1F2937; margin-bottom: 6px; }
+  .subtitle { font-size: 15px; color: #6B7280; margin-bottom: 40px; }
+  section { background: #fff; border-radius: 16px; padding: 24px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+  h2 { font-size: 17px; font-weight: 700; color: #1F2937; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+  h2::before { content: ''; width: 4px; height: 18px; background: #D9A3B2; border-radius: 2px; display: inline-block; flex-shrink: 0; }
+  p { font-size: 15px; color: #374151; margin-bottom: 10px; }
+  p:last-child { margin-bottom: 0; }
+  ol, ul { padding-left: 20px; margin: 10px 0; }
+  li { font-size: 15px; color: #374151; margin-bottom: 6px; }
+  .contact-btn { display: inline-flex; align-items: center; gap: 8px; background: #D9A3B2; color: #fff; font-weight: 700; font-size: 15px; padding: 12px 28px; border-radius: 12px; text-decoration: none; margin-top: 8px; margin-right: 10px; }
+  .contact-btn.line { background: #06C755; }
+  .contact-btn.email { background: #fff; color: #1F2937; border: 1px solid #E5E7EB; }
+  .contact-btn:hover { opacity: 0.9; }
+  a { color: #D9A3B2; }
+  .keep-badge { display: inline-block; font-size: 12px; font-weight: 700; color: #16A34A; background: #F0FDF4; border-radius: 6px; padding: 2px 8px; margin-left: 6px; }
+  .delete-badge { display: inline-block; font-size: 12px; font-weight: 700; color: #D97A7A; background: #FEF2F2; border-radius: 6px; padding: 2px 8px; margin-left: 6px; }
+  footer { text-align: center; padding: 24px; font-size: 13px; color: #9CA3AF; }
+  footer a { color: #D9A3B2; text-decoration: none; }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">
+    <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg>
+  </div>
+  <h1>BrainBox</h1>
+  <nav>
+    <a href="privacy.html">プライバシーポリシー</a>
+    <a href="support.html">サポート</a>
+  </nav>
+</header>
+
+<main>
+  <div class="page-title">アカウント・データの削除</div>
+  <div class="subtitle">Google/Appleログインをご利用の方向けのご案内です</div>
+
+  <section>
+    <h2>対象について</h2>
+    <p>BrainBoxは基本的にお使いの端末内（ローカルストレージ）だけでデータを管理しており、サーバーへのデータ送信は行いません。</p>
+    <p>ただし、設定画面からGoogleログイン等でアカウントにサインインしている場合のみ、バックアップ・複数端末同期のためにタスクや設定などのデータをクラウド（Firebase/Cloud Firestore）に保存しています。このページは、そのアカウントとクラウド上のデータを削除する方法のご案内です。</p>
+  </section>
+
+  <section>
+    <h2>アプリ内から削除する（推奨）</h2>
+    <p>最も早く確実な方法です。アプリをお持ちの場合はこちらをご利用ください。</p>
+    <ol>
+      <li>BrainBoxアプリを開く</li>
+      <li>設定 → アカウント を開く</li>
+      <li>画面下部の「アカウントを削除」をタップ</li>
+      <li>内容を確認のうえ「アカウントを削除」をタップして確定</li>
+    </ol>
+    <p>削除すると、クラウドに保存されていたアカウントとデータ（下記「削除されるデータ」を参照）が即座に完全に削除されます。</p>
+  </section>
+
+  <section>
+    <h2>削除されるデータ・残るデータ</h2>
+    <p>アカウントを削除すると、以下のクラウド上のデータが完全に削除されます。<span class="delete-badge">削除される</span></p>
+    <ul>
+      <li>タスク・買い物リスト・ファイルタブ・タグ</li>
+      <li>通知設定（時間指定・場所通知・忘れ物防止アラート）</li>
+      <li>生活パターン・移動履歴・一括入力履歴</li>
+      <li>アプリ設定（起床・就寝時刻、テーマカラー等）</li>
+      <li>ログインアカウント本体（メールアドレス等の認証情報）</li>
+    </ul>
+    <p>一方、お使いの端末内（ローカルストレージ）に保存されているデータは、アカウント削除後も<span class="keep-badge">削除されません</span>。BrainBoxはログインしていない状態でも、端末内のデータだけで引き続きご利用いただけます。端末内のデータも削除したい場合は、アプリ自体をアンインストールしてください。</p>
+  </section>
+
+  <section>
+    <h2>アプリを使えない場合</h2>
+    <p>機種変更等でアプリにアクセスできない場合は、登録時にお使いのメールアドレスを添えて、以下のいずれかの方法でご連絡ください。本人確認のうえ、3〜5営業日以内に削除いたします。</p>
+    <a class="contact-btn line" href="https://lin.ee/TeaJYTJ">LINEで問い合わせる</a>
+    <a class="contact-btn email" href="mailto:support.brainbox.jp@gmail.com">メールで問い合わせる</a>
+  </section>
+
+  <section>
+    <h2>プライバシーポリシー</h2>
+    <p>データの取り扱いについて詳しくはプライバシーポリシーをご確認ください。</p>
+    <p><a href="privacy.html">プライバシーポリシーを読む →</a></p>
+  </section>
+</main>
+
+<footer>
+  &copy; 2026 BrainBox. All rights reserved. &nbsp;|&nbsp; <a href="privacy.html">プライバシーポリシー</a> &nbsp;|&nbsp; <a href="terms.html">利用規約</a>
+</footer>
+</body>
+</html>
