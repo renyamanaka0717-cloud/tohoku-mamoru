@@ -2613,7 +2613,16 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
             キーボードを閉じるとmax-heightは解除され、flex-1の挙動にそのまま戻る。
             角丸はdockedだけ下側を付ける（embedされたカードらしく見せるため）、
             editPanelは画面端に張り付くので角丸無し */}
-        <div ref={contentRef} className={`bg-gray-50 overflow-y-auto overscroll-contain flex-1 min-h-0 ${docked?'rounded-b-2xl':editPanel?'':'lg:rounded-b-3xl'}`}>
+        {/* WebKitの既知の癖: 祖先要素（カード）にCSS transformが掛かっていると、
+            子孫のoverflow-y:autoな要素がタッチ操作でスクロールできなくなることがある
+            （JSからscrollTopを直接動かすと効く＝スクロール機構自体は正常、という
+            症状で発覚。実機のSafari Web Inspectorで確認済み）。カード側には
+            キーボード表示中のズレ補正のためtranslateYを掛ける必要があるため、
+            この白コンテンツ側にtransform:translateZ(0)を指定して独立した
+            コンポジットレイヤーに乗せ、祖先のtransformの影響からタッチスクロールを
+            切り離す（見た目には一切影響しない） */}
+        <div ref={contentRef} className={`bg-gray-50 overflow-y-auto overscroll-contain flex-1 min-h-0 ${docked?'rounded-b-2xl':editPanel?'':'lg:rounded-b-3xl'}`}
+          style={{transform:'translateZ(0)',WebkitOverflowScrolling:'touch'}}>
           {/* Recurring settings */}
           {mode==='recurring'&&(
             <>
