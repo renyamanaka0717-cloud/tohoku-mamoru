@@ -19,6 +19,26 @@ import ProductTour from './components/ProductTour';
 import Welcome from './components/Welcome';
 import { useI18n, type Language, type LanguagePref, type StringKey } from './components/I18n';
 
+// ── キーボード高さの共有トラッカー ───────────────────────────────────────────────
+// TaskModalが開くたびに@capacitor/keyboardの動的importを個別に行うと、タスクモーダルは
+// 開いた瞬間にタスク名欄へ自動フォーカスしキーボードがほぼ即座に開くため、「JS側の
+// 動的importが解決してkeyboardWillShowリスナーを登録し終える」より先に「ネイティブの
+// キーボード表示アニメーションが開始してkeyboardWillShowイベントが発火する」方が早く
+// なることがあり、最初の1回のイベントを取りこぼす実機不具合があった（取りこぼすと
+// キーボード高さが0のまま＝モーダルの白コンテンツの高さ計算にキーボード分が
+// 反映されず、メモ・削除ボタン等がキーボードの裏に隠れて見えなくなる。タスク名を
+// 入力すると直る＝入力時に偶然発生する別のkeyboardWillShow/DidShow相当のイベントで
+// 初めて正しく捕捉できていたため、と判明）。この競合を構造的に無くすため、
+// アプリ起動時に一度だけリスナーを登録し、常に最新のキーボード高さを保持する
+// モジュールスコープの共有変数にした。TaskModal側は動的importをせず、この値を
+// 直接読むだけにする（読む時点で登録済みなので取りこぼしようがない）
+let sharedKeyboardHeight = 0;
+const keyboardHeightListeners = new Set<()=>void>();
+function setSharedKeyboardHeight(h:number){
+  sharedKeyboardHeight = h;
+  keyboardHeightListeners.forEach(fn=>fn());
+}
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface CustomRec {
@@ -2478,7 +2498,16 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
     // 不具合だった）。resize:'none'下でも常に発火するCapacitor Keyboardプラグインの
     // keyboardWillShow/keyboardWillHideイベント（ネイティブ側から実際のキーボード
     // 高さが届く、resizeモードに依存しない）を使い、キーボード高さを直接差し引く。
-    let kbHeight=0;
+    // 【取りこぼし不具合・修正済み】当初このuseEffect内で毎回@capacitor/keyboardを
+    // 動的importしてリスナー登録していたが、タスクモーダルは開いた瞬間にタスク名欄へ
+    // 自動フォーカスしキーボードがほぼ即座に開くため、動的importの解決（非同期）より
+    // 先にネイティブのkeyboardWillShowが発火してしまい最初の1回を取りこぼす実機不具合
+    // があった（タスク名を入力すると直って見えたのは、入力時に偶然発生する別の
+    // キーボード関連イベントで初めて捕捉できていたため）。アプリ起動時に一度だけ
+    // 登録する共有トラッカー（sharedKeyboardHeight、ファイル冒頭）に一本化し、
+    // ここでは動的importをせずその値を直接読むだけにした（読む時点で登録済みなので
+    // 取りこぼしようがない）。新しくキーボード高さが必要な箇所を追加する時も、
+    // 個別に@capacitor/keyboardを動的importせず、この共有トラッカーを使うこと
     const sync=()=>{
       const cardEl=cardRef.current;
       const backdropEl=backdropRef.current;
@@ -2505,39 +2534,27 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
         return;
       }
       const headerBottomOnScreen=headerEl.getBoundingClientRect().bottom-vv.offsetTop;
-      // vv.heightベースの見積りとwindow.innerHeight-kbHeightベースの見積りの
-      // 小さい方（＝より厳しい制約）を採用する。Web/開発環境等、visualViewportが
-      // 正しくキーボードを反映する環境ではvv.heightが効き、resize:'none'下の
-      // 実機ネイティブではwindow.innerHeight-kbHeightが効く
-      const effectiveViewportBottom=Math.min(vv.height,window.innerHeight-kbHeight);
+      // vv.heightベースの見積りとwindow.innerHeight-sharedKeyboardHeightベースの
+      // 見積りの小さい方（＝より厳しい制約）を採用する。Web/開発環境等、
+      // visualViewportが正しくキーボードを反映する環境ではvv.heightが効き、
+      // resize:'none'下の実機ネイティブではwindow.innerHeight-sharedKeyboardHeightが効く
+      const effectiveViewportBottom=Math.min(vv.height,window.innerHeight-sharedKeyboardHeight);
       const availableForContent=effectiveViewportBottom-headerBottomOnScreen;
       contentEl.style.maxHeight=availableForContent>0?`${availableForContent}px`:'';
     };
     vv.addEventListener('scroll',sync);
     vv.addEventListener('resize',sync);
     window.addEventListener('resize',sync);
+    keyboardHeightListeners.add(sync);
     sync();
-    type KeyboardListenerHandle={remove:()=>void};
-    let kbShowHandle:KeyboardListenerHandle|null=null;
-    let kbHideHandle:KeyboardListenerHandle|null=null;
-    let cancelled=false;
-    if(isNative()){
-      import('@capacitor/keyboard').then(({Keyboard})=>{
-        if(cancelled) return;
-        Keyboard.addListener('keyboardWillShow',(info)=>{kbHeight=info.keyboardHeight;sync();}).then(h=>{if(cancelled){h.remove();}else{kbShowHandle=h;}});
-        Keyboard.addListener('keyboardWillHide',()=>{kbHeight=0;sync();}).then(h=>{if(cancelled){h.remove();}else{kbHideHandle=h;}});
-      }).catch(()=>{});
-    }
     const cardElAtMount=cardRef.current;
     const contentElAtMount=contentRef.current;
     const backdropElAtMount=backdropRef.current;
     return ()=>{
-      cancelled=true;
       vv.removeEventListener('scroll',sync);
       vv.removeEventListener('resize',sync);
       window.removeEventListener('resize',sync);
-      kbShowHandle?.remove();
-      kbHideHandle?.remove();
+      keyboardHeightListeners.delete(sync);
       if(cardElAtMount) cardElAtMount.style.bottom='';
       if(contentElAtMount) contentElAtMount.style.maxHeight='';
       if(backdropElAtMount) backdropElAtMount.style.top='';
@@ -8534,6 +8551,21 @@ export default function App() {
     import('@capacitor/keyboard').then(({Keyboard})=>{
       Keyboard.setAccessoryBarVisible({isVisible:false}).catch(()=>{});
     }).catch(()=>{});
+  },[loaded]);
+  useEffect(()=>{
+    if(!loaded||!isNative()) return;
+    // アプリ起動時に一度だけ登録する共有キーボード高さトラッカー（モジュール
+    // スコープのsharedKeyboardHeight/keyboardHeightListeners参照）。TaskModalが
+    // 開くたびに個別にリスナー登録すると、オートフォーカスでキーボードが即座に
+    // 開く場合に最初のイベントを取りこぼす競合があったため、この1回限りの
+    // 登録に一本化した
+    let cancelled=false;
+    import('@capacitor/keyboard').then(({Keyboard})=>{
+      if(cancelled) return;
+      Keyboard.addListener('keyboardWillShow',(info)=>setSharedKeyboardHeight(info.keyboardHeight));
+      Keyboard.addListener('keyboardWillHide',()=>setSharedKeyboardHeight(0));
+    }).catch(()=>{});
+    return ()=>{ cancelled=true; };
   },[loaded]);
   useEffect(()=>{
     if(!loaded||!isNative()) return;
