@@ -2467,6 +2467,18 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
     if(docked) return;
     const vv=window.visualViewport;
     if(!vv) return;
+    // 【実機検証で判明した根本原因】Keyboard.resize:'none'（キーボード黒背景対策で
+    // 導入済み、変更不可）が有効な状態では、WKWebViewのvisualViewportがキーボード
+    // 表示を一切反映しない（vv.height===window.innerHeight・vv.offsetTop===0の
+    // まま固定）ことをSafari Web Inspectorで確認した。この状態でvv.height基準で
+    // 白コンテンツのmax-heightを計算すると、キーボード分を一切差し引かない
+    // 高すぎる値になり、メモ・削除ボタン等がDOM上は「はみ出していない」のに
+    // 画面上ではキーボードの裏に隠れて見えなくなる（スクロール自体は正常に動作する
+    // ため、タッチスクロール不可ではなく「割り当てた高さの見積りが誤っている」
+    // 不具合だった）。resize:'none'下でも常に発火するCapacitor Keyboardプラグインの
+    // keyboardWillShow/keyboardWillHideイベント（ネイティブ側から実際のキーボード
+    // 高さが届く、resizeモードに依存しない）を使い、キーボード高さを直接差し引く。
+    let kbHeight=0;
     const sync=()=>{
       const cardEl=cardRef.current;
       const backdropEl=backdropRef.current;
@@ -2493,20 +2505,39 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
         return;
       }
       const headerBottomOnScreen=headerEl.getBoundingClientRect().bottom-vv.offsetTop;
-      const availableForContent=vv.height-headerBottomOnScreen;
+      // vv.heightベースの見積りとwindow.innerHeight-kbHeightベースの見積りの
+      // 小さい方（＝より厳しい制約）を採用する。Web/開発環境等、visualViewportが
+      // 正しくキーボードを反映する環境ではvv.heightが効き、resize:'none'下の
+      // 実機ネイティブではwindow.innerHeight-kbHeightが効く
+      const effectiveViewportBottom=Math.min(vv.height,window.innerHeight-kbHeight);
+      const availableForContent=effectiveViewportBottom-headerBottomOnScreen;
       contentEl.style.maxHeight=availableForContent>0?`${availableForContent}px`:'';
     };
     vv.addEventListener('scroll',sync);
     vv.addEventListener('resize',sync);
     window.addEventListener('resize',sync);
     sync();
+    type KeyboardListenerHandle={remove:()=>void};
+    let kbShowHandle:KeyboardListenerHandle|null=null;
+    let kbHideHandle:KeyboardListenerHandle|null=null;
+    let cancelled=false;
+    if(isNative()){
+      import('@capacitor/keyboard').then(({Keyboard})=>{
+        if(cancelled) return;
+        Keyboard.addListener('keyboardWillShow',(info)=>{kbHeight=info.keyboardHeight;sync();}).then(h=>{if(cancelled){h.remove();}else{kbShowHandle=h;}});
+        Keyboard.addListener('keyboardWillHide',()=>{kbHeight=0;sync();}).then(h=>{if(cancelled){h.remove();}else{kbHideHandle=h;}});
+      }).catch(()=>{});
+    }
     const cardElAtMount=cardRef.current;
     const contentElAtMount=contentRef.current;
     const backdropElAtMount=backdropRef.current;
     return ()=>{
+      cancelled=true;
       vv.removeEventListener('scroll',sync);
       vv.removeEventListener('resize',sync);
       window.removeEventListener('resize',sync);
+      kbShowHandle?.remove();
+      kbHideHandle?.remove();
       if(cardElAtMount) cardElAtMount.style.bottom='';
       if(contentElAtMount) contentElAtMount.style.maxHeight='';
       if(backdropElAtMount) backdropElAtMount.style.top='';
