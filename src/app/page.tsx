@@ -8446,6 +8446,20 @@ export default function App() {
   },[loaded]);
   useEffect(()=>{
     if(!loaded||!isNative()) return;
+    // iOS実機で、入力欄タップ時に表示される「↑↓✓」の入力補助ツールバー
+    // （WKWebViewのUITextInputAssistantItem由来、ネイティブ標準機能）を消す。
+    // capacitor.config.jsのKeyboard.hideFormAccessoryBar設定（@capacitor/keyboard）は
+    // プラグインのload()時に一度だけ効くはずだが、実機で消えないケースが報告されたため、
+    // 念のためJS側からも明示的にsetAccessoryBarVisible(false)を呼ぶ（config頼みだけに
+    // せず、プラグイン自体が正しくネイティブ側にリンクされているかの確認にもなる——
+    // プラグインが未リンクならこの呼び出し自体が失敗しcatchに入るはずなので、
+    // Safari Web Inspectorのコンソールでエラーが出ていないか確認すること）
+    import('@capacitor/keyboard').then(({Keyboard})=>{
+      Keyboard.setAccessoryBarVisible({isVisible:false}).catch(()=>{});
+    }).catch(()=>{});
+  },[loaded]);
+  useEffect(()=>{
+    if(!loaded||!isNative()) return;
     // ウィジェットの「あとでやるを追加」/「音声でタスク追加」ボタン（brainbox://addLater・
     // brainbox://addLaterVoice というLink）からアプリが開かれた時の導線。addLaterの方は
     // 通常通りあとでやるタブ＋新規作成モーダルを開く。addLaterVoiceの方はTaskModal自体は開かず
