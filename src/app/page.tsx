@@ -2435,32 +2435,57 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
   // +translateY（下方向）させて相殺する（offsetTopが増えるとモーダルは見た目上
   // 上に消えていくので、同じ量だけ下にずらして打ち消す。符号を逆にすると
   // ズレが2倍になる不具合の実績があるので、符号を変える時は必ず実機で確認すること）。
-  // 白コンテンツ自身のoverflow-y-autoスクロール（descendantの内部スクロール）は
-  // このtransformと独立しているため影響を受けない
+  //
+  // これとは別に、キーボード表示中は白コンテンツ（詳細設定エリア）自体の
+  // 「スクロールして見える範囲」もキーボードの上端までに制限したい（要望）。
+  // カード自体のCSS宣言サイズ（h-[...]）は一切変更せず、白コンテンツの
+  // max-heightだけをvisualViewport.height基準で動的に設定することで実現する
+  // （＝モーダルの外枠は常に同じ・白コンテンツの「見える窓」の高さだけが
+  // キーボードぶん縮む）。キーボードを閉じればmax-heightを解除し、
+  // 元のflex-1（カードの残り高さいっぱい）に自然に戻る。
+  // ヘッダーの実測位置(getBoundingClientRect)を毎回測ることで、上のtransform
+  // 補正が効いた「実際の見た目の位置」を基準に計算するため、2つの処理が
+  // ズレて競合しないよう必ず同じ関数内でまとめて計算する
   const cardRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
   useEffect(()=>{
     if(docked) return;
     const vv=window.visualViewport;
     if(!vv) return;
     const sync=()=>{
-      const el=cardRef.current;
-      if(!el) return;
-      el.style.transform=vv.offsetTop?`translateY(${vv.offsetTop}px)`:'';
+      const cardEl=cardRef.current;
+      if(!cardEl) return;
+      cardEl.style.transform=vv.offsetTop?`translateY(${vv.offsetTop}px)`:'';
+      const contentEl=contentRef.current;
+      const headerEl=headerRef.current;
+      if(!contentEl||!headerEl) return;
+      if(window.innerWidth>=1024){
+        contentEl.style.maxHeight='';
+        return;
+      }
+      const headerBottomOnScreen=headerEl.getBoundingClientRect().bottom-vv.offsetTop;
+      const availableForContent=vv.height-headerBottomOnScreen;
+      contentEl.style.maxHeight=availableForContent>0?`${availableForContent}px`:'';
     };
     vv.addEventListener('scroll',sync);
     vv.addEventListener('resize',sync);
+    window.addEventListener('resize',sync);
     sync();
+    const cardElAtMount=cardRef.current;
+    const contentElAtMount=contentRef.current;
     return ()=>{
       vv.removeEventListener('scroll',sync);
       vv.removeEventListener('resize',sync);
-      if(cardRef.current) cardRef.current.style.transform='';
+      window.removeEventListener('resize',sync);
+      if(cardElAtMount) cardElAtMount.style.transform='';
+      if(contentElAtMount) contentElAtMount.style.maxHeight='';
     };
   },[docked]);
 
   return (
     <div className={docked?"h-full w-full min-w-0 flex flex-col":editPanel?"fixed inset-0 z-[180] bg-black/20":"fixed inset-0 z-50 bg-black/60 lg:flex lg:items-center lg:justify-center"}
       onClick={docked?undefined:handleClose}>
-      <div ref={cardRef} className={docked?"h-full w-full min-w-0 flex flex-col overflow-hidden":editPanel?"absolute right-0 top-0 bottom-0 w-full sm:w-[480px] max-w-full bg-white shadow-2xl flex flex-col overflow-hidden":"absolute bottom-0 left-0 right-0 max-w-md mx-auto h-[min(92vh,calc(100%_-_env(safe-area-inset-top)_-_12px))] flex flex-col overflow-hidden lg:static lg:h-auto lg:max-h-[85vh]"}
+      <div ref={cardRef} className={docked?"h-full w-full min-w-0 flex flex-col overflow-hidden":editPanel?"absolute right-0 top-0 bottom-0 w-full sm:w-[480px] max-w-full bg-white shadow-2xl flex flex-col overflow-hidden":"absolute bottom-0 left-0 right-0 max-w-md mx-auto h-[min(92vh,calc(100%_-_env(safe-area-inset-top)_-_12px))] flex flex-col overflow-hidden bg-gray-50 lg:static lg:h-auto lg:max-h-[85vh]"}
         onClick={docked?undefined:(e=>e.stopPropagation())} data-tour={!task&&!docked?'modal-card':undefined}>
         {/* ── Dark header ── */}
         <div ref={headerRef} className={editPanel?"px-4 pt-4 shrink-0":"rounded-t-3xl px-4 pt-4 shrink-0"} style={{background:headerBg,touchAction:'pan-x'}}>
@@ -2559,14 +2584,15 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
         </div>
 
         {/* ── White content ── */}
-        {/* カード自体がmin(92vh, 画面高-safe-area-inset-top-12px)固定（モバイル）/
-            lg:max-h-[85vh]（PC）なので、flex-1で親の残り高さにそのまま合わせる
-            だけでよい（キーボード等への追従計算は一切行わない）。
-            safe-area-inset-topはノッチ/Dynamic Island対応の静的な値で、
-            キーボード開閉では変化しないため「固定」の原則は崩さない。
+        {/* カード自体のCSS宣言サイズ（h-[...]）はキーボードの有無に関わらず常に同じ。
+            通常時はflex-1でカードの残り高さにそのまま合わせる。
+            キーボード表示中だけ、上のuseEffectがvisualViewport基準でmax-heightを
+            インラインstyleとして設定し、「見える窓」をキーボード上端までに制限する
+            （＝スクロールして最後までたどり着けば必ずキーボードの上に表示される）。
+            キーボードを閉じるとmax-heightは解除され、flex-1の挙動にそのまま戻る。
             角丸はdockedだけ下側を付ける（embedされたカードらしく見せるため）、
             editPanelは画面端に張り付くので角丸無し */}
-        <div className={`bg-gray-50 overflow-y-auto overscroll-contain flex-1 min-h-0 ${docked?'rounded-b-2xl':editPanel?'':'lg:rounded-b-3xl'}`}>
+        <div ref={contentRef} className={`bg-gray-50 overflow-y-auto overscroll-contain flex-1 min-h-0 ${docked?'rounded-b-2xl':editPanel?'':'lg:rounded-b-3xl'}`}>
           {/* Recurring settings */}
           {mode==='recurring'&&(
             <>
