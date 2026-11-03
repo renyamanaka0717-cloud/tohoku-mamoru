@@ -347,10 +347,31 @@ class GeofencePlugin : Plugin() {
     }
 
     // navigator.geolocationはWKWebView同様WebViewでも不安定なケースがあるため、
-    // ネイティブのFusedLocationProviderClientで現在地を一度だけ取得する
+    // ネイティブのFusedLocationProviderClientで現在地を一度だけ取得する。
+    // iOS版（GeofencePlugin.swift）のgetCurrentLocationはstatusが.notDeterminedの時に
+    // requestWhenInUseAuthorization()でその場で許可を求めるが、Android版は元々
+    // hasFineLocation()がfalseなら即rejectするだけで一切リクエストしていなかった
+    // （「現在地から登録」等を未許可の状態で押すと、許可ダイアログが一度も出ないまま
+    // 「現在地を取得できませんでした」の失敗ダイアログだけが出る不具合だった）。
+    // iOSと揃え、前景位置情報（fine/coarse）が無ければここでリクエストしてから取得を続ける
+    // （バックグラウンド位置情報の「常に許可」はensureGeofencePermission()側の責務なので、
+    // ここでは求めない）
     @PluginMethod
     fun getCurrentLocation(call: PluginCall) {
+        if (!hasFineLocation()) {
+            requestPermissionForAlias("location", call, "getCurrentLocationCallback")
+            return
+        }
+        fetchCurrentLocation(call)
+    }
+
+    @PermissionCallback
+    private fun getCurrentLocationCallback(call: PluginCall) {
         if (!hasFineLocation()) { call.reject("location permission not granted"); return }
+        fetchCurrentLocation(call)
+    }
+
+    private fun fetchCurrentLocation(call: PluginCall) {
         val fusedClient = LocationServices.getFusedLocationProviderClient(context)
         try {
             val request = CurrentLocationRequest.Builder().setPriority(Priority.PRIORITY_BALANCED_POWER_ACCURACY).build()

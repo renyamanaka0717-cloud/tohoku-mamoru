@@ -792,6 +792,8 @@ const SHOP_LOC_KEY = 'tl-shop-loc-v1';
 
 **Androidの位置情報許可はiOSより手順が多い。** iOSの`requestAlwaysAuthorization()`は1回で完結するが、Android 10+では前景位置情報（`ACCESS_FINE_LOCATION`）→バックグラウンド位置情報（`ACCESS_BACKGROUND_LOCATION`）を別々のダイアログで順にリクエストする必要がある（同時にリクエストするとシステムに拒否される）。`GeofencePlugin.kt`の`requestPermissions()`は`location`→`backgroundLocation`→`notifications`の順に`@PermissionCallback`を連鎖させて実装している。
 
+**過去の不具合（実機Androidで発覚・修正済み）: 位置情報を一切許可していない状態で「現在地から登録」を押すと、許可ダイアログが一度も出ないまま「現在地を取得できませんでした」の失敗ダイアログだけが出ていた。** `GeofencePlugin.kt`の`getCurrentLocation()`は元々`hasFineLocation()`がfalseなら即座に`call.reject()`するだけで、権限を一切リクエストしていなかった。iOS版（`GeofencePlugin.swift`）の`getCurrentLocation()`は`authorizationStatus`が`.notDetermined`の時に`requestWhenInUseAuthorization()`をその場で呼んでから取得を続行するのに対し、Android版だけこの「未許可ならその場でリクエストする」分岐が欠けていた。修正: `getCurrentLocation()`で`hasFineLocation()`がfalseなら`requestPermissionForAlias("location",...)`で前景位置情報（fine/coarse）をその場でリクエストし、`@PermissionCallback`経由で許可結果を受けてから位置取得を続ける（`fetchCurrentLocation()`に処理を分離）。**バックグラウンド位置情報（「常に許可」）はここでは求めない**——それは`ensureGeofencePermission()`（場所通知の登録時）の責務のまま。新しくAndroid側で位置情報を使う`@PluginMethod`を追加する時は、`hasFineLocation()`が false の場合に即rejectするだけで終わらせず、その場で前景位置情報をリクエストする分岐を入れ忘れていないか確認すること。
+
 ### Android Studioでの手動セットアップ（`android/`はgitignore対象なので毎回必要）
 
 1. `native-android/GeofencePlugin.kt` / `GeofenceReceiver.kt` を `android/app/src/main/java/jp/brainbox/app/` にコピー
