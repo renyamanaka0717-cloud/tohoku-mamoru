@@ -1271,17 +1271,21 @@ Wear OSはApple WatchのWatchConnectivityとは全く異なる仕組み（Google
 
 `Welcome`の「あとで見る」・`ProductTour`の`onFinish`（どちらも`TOUR_COMPLETED_KEY`をセットする箇所）から`maybeShowNotifPrompt()`を呼ぶ——**ツアーを「スキップ」した場合も「あとで見る」を選んだ場合も同じ連鎖に入る**。ツアーが既に完了しているユーザーの入口である`maybeShowProductTour()`も、`TOUR_COMPLETED_KEY`があれば同様に`maybeShowNotifPrompt()`を呼び、無ければウェルカム画面を表示する。
 
-**通知・位置情報の許可（ツアー完了直後）:** BrainBox独自の説明ポップアップ（`showNotifPrompt`/`showLocPrompt`、旧実装）は撤去済み。**Apple純正の許可ダイアログをそのまま順番に出す**（`maybeShowNotifPrompt()`→`requestNotifyPermission('onboarding')`→（完了後）`maybeShowLocPrompt()`→`ensureGeofencePermission('onboarding')`→（完了後）`maybeShowWakeSleepPrompt()`）。
-- `requestNotifyPermission()`/`ensureGeofencePermission()`はどちらもPromiseを返す。`.finally()`で次のステップに繋ぐことで、前のダイアログの選択が終わってから次のダイアログを要求する順序を保証している（同期的に両方叩くと、iOS側のダイアログ表示順が呼び出し順と一致する保証がなくなる）
-- `NOTIF_ASKED_KEY`/`LOCATION_ASKED_KEY`は各ステップに入った時点（ダイアログの結果を待たず）で即座にセットする（「一度尋ねたら二度と出さない」管理用。拒否されても再度は聞かない）
+**通知の許可（ツアー完了直後）:** BrainBox独自の説明ポップアップ（`showNotifPrompt`、旧実装）は撤去済み。**Apple純正の許可ダイアログをそのまま出す**（`maybeShowNotifPrompt()`→`requestNotifyPermission('onboarding')`→（完了後）`maybeShowWakeSleepPrompt()`）。
+- `requestNotifyPermission()`はPromiseを返す。`.finally()`で次のステップ（起床・就寝プロンプト）に繋ぐ
+- `NOTIF_ASKED_KEY`はステップに入った時点（ダイアログの結果を待たず）で即座にセットする（「一度尋ねたら二度と出さない」管理用。拒否されても再度は聞かない）
 - `maybeShowNotifPrompt()`は`settings.notificationsEnabled`をtrueにしてからリクエストする（旧実装の「オンにする」ボタン相当の副作用を維持）
-- `maybeShowLocPrompt()`は`LOCATION_ASKED_KEY`が既にあれば`maybeShowWakeSleepPrompt()`を呼ぶ（両ステップとも「既に済んでいれば次へ」を関数内に持つ）
+
+**位置情報の「常に許可」はオンボーディングの連鎖から意図的に外してある（過去の実装から変更済み）。** 以前は`maybeShowNotifPrompt()`→（完了後）`maybeShowLocPrompt()`→`ensureGeofencePermission('onboarding')`→（完了後）`maybeShowWakeSleepPrompt()`という順で、通知の直後に位置情報の「常に許可」も求めていたが、以下の理由で撤去した。
+- 買い物リストの場所通知・タスクの場所通知・忘れ物防止アラートはいずれもPRO限定機能で、オンボーディング時点ではユーザーはまだ一つも設定していない。何も設定していない状態で「常に許可」を求めるのは、Appleの審査ガイドライン（5.1.1、Alwaysの位置情報は明確な必要性が伝わるタイミングで求める）上グレーになりやすい
+- iOSは一度拒否すると二度とOS側のダイアログを出せない（設定アプリでの手動変更が必要）。価値が伝わっていない段階で聞くほど、意味も分からず反射的に拒否されるリスクが高く、この後戻りコストが大きい
+- 修正: 位置情報の許可は各機能を実際に使おうとしたタイミングに移した（`requestLocationWithDisclosure(source)`経由、`ShopLocationPanel.confirmAdd()`/`TaskModal`の場所で通知トグル/`ForgetAlertsPanel.saveEditing()`からそれぞれ`'shop_location'`/`'task_location'`/`'forget_alert'`を渡して呼ぶ。この経路自体はPhase 1から既存で、位置情報の事前説明ポップアップ＝`locationDisclosure`も既存のまま流用している）。`maybeShowLocPrompt()`・`LOCATION_ASKED_KEY`は削除済み——**新しいセッションでオンボーディングに位置情報の許可ステップを復活させないこと**
 
 **起床・就寝プロンプト（連鎖の最後）:** `maybeShowWakeSleepPrompt()`は`WAKESLEEP_ASKED_KEY`が既にあれば何もせず終了する（＝この連鎖はここで終わり、次のプロンプトへは繋がらない）。`dismissWakeSleepPrompt()`（`confirmWakeSleepPrompt()`もこれを呼ぶ）は`WAKESLEEP_ASKED_KEY`をセットして閉じるだけで、以降何も呼ばない。
 
 **【重要・実機不具合】上記の連鎖より前に、アプリ起動直後にOSの通知許可ダイアログが勝手に出てしまう不具合があった。** 原因はJS側ではなくネイティブ側（`LocalNotifyPlugin.swift`/`InactivityPlugin.swift`）。`syncWakeCheckins`（起床時チェックイン）等のバックグラウンド事前予約系関数は、デフォルトの起床時刻設定だけで発火条件を満たすため、初回起動直後・ツアーより前に`tasks`/`settings`のuseEffectから呼ばれてしまう。これらネイティブ側の`scheduleAlerts()`/`scheduleReminder()`が`UNUserNotificationCenter.requestAuthorization()`を無条件に呼んでいたため、オンボーディングの「通知プロンプト」（意図的に許可を求めるタイミング）より先にOSダイアログが表示されてしまっていた。**修正: `requestAuthorization`ではなく`getNotificationSettings`で現在の許可状態を確認し、既に許可済みの場合のみ予約する（未確定/拒否なら何もせず静かに終了）よう変更した。** これにより、OSダイアログを実際に出すのは`requestPermission()`経由のオンボーディングフロー（意図的なタイミング）だけになる。新しくバックグラウンド事前予約系のネイティブ関数を追加する時は、`requestAuthorization`を直接呼ばず必ずこのパターン（`getNotificationSettings`で確認してから予約）に倣うこと。
 
-**既存ユーザー（この導線変更前からのユーザー）向けフォールバック:** 初回ロードの`useEffect`は`TOUR_COMPLETED_KEY`→`NOTIF_ASKED_KEY`→`LOCATION_ASKED_KEY`→`WAKESLEEP_ASKED_KEY`の順で「まだ済んでいない最初の段階」を判定し、そこから連鎖を再開する（各段階の関数が「次の段階が済んでいなければ呼ぶ」を内包しているため、この判定は開始地点を決めるだけでよい）。
+**既存ユーザー向けフォールバック:** 初回ロードの`useEffect`は`TOUR_COMPLETED_KEY`→`NOTIF_ASKED_KEY`→`WAKESLEEP_ASKED_KEY`の順で「まだ済んでいない最初の段階」を判定し、そこから連鎖を再開する（各段階の関数が「次の段階が済んでいなければ呼ぶ」を内包しているため、この判定は開始地点を決めるだけでよい）。
 
 ### プロダクトツアー（`src/app/components/ProductTour.tsx`）
 
@@ -1341,8 +1345,10 @@ interface RecommendationDef { id:RecommendationId; usedKey:keyof Omit<FeatureUsa
 - おすすめ機能とプロダクトツアーを同時に表示しない（おすすめ機能の表示条件が`!showTour`でガードしている）
 - 削除済みの`Onboarding.tsx`・`ONBOARDING_KEY`・`showOnboarding`（複数ページのスワイプ式イントロ）を新しいセッションで復活させない。単一画面の「ウェルカム画面」（`Welcome.tsx`）は別物として存在するので混同しない
 - ウェルカム画面・プロダクトツアーの表示可否判定に新しいlocalStorageキーを追加しない（`TOUR_COMPLETED_KEY`1つだけで両方を判定する設計。「あとで見る」もツアーの「スキップ」も同じくこのキーをセットする）
-- プロダクトツアー→通知許可→位置情報許可→起床・就寝プロンプトの順序を変えない（アプリに触る前に許可や設定を求めると離脱されやすいため、意図的に起床・就寝設定を最後に回している）
-- 通知・位置情報の許可にBrainBox独自の説明ポップアップ（`showNotifPrompt`/`showLocPrompt`）を復活させない。意図的にApple純正の許可ダイアログへ直接進む設計に変更済み。`requestNotifyPermission()`/`ensureGeofencePermission()`を同期的に連続で呼ばない（順序が保証されなくなる。必ず`.finally()`で前のダイアログの完了を待ってから次を呼ぶこと）
+- プロダクトツアー→通知許可→起床・就寝プロンプトの順序を変えない（アプリに触る前に許可や設定を求めると離脱されやすいため、意図的に起床・就寝設定を最後に回している）
+- 通知の許可にBrainBox独自の説明ポップアップ（`showNotifPrompt`）を復活させない。意図的にApple純正の許可ダイアログへ直接進む設計に変更済み
+- **位置情報の「常に許可」をオンボーディングの連鎖（通知許可→起床・就寝プロンプト）に戻さない。** 場所通知系の機能（買い物リストの場所通知・タスクの場所通知・忘れ物防止アラート）がすべてPRO限定で、オンボーディング時点では何も設定していない状態のユーザーに「常に許可」を求めるのはApple審査ガイドライン上グレーになりやすく、iOSは一度拒否すると二度とOSダイアログを出せないため拒否された時の後戻りコストも大きい。位置情報の許可は各機能を実際に使おうとしたタイミング（`requestLocationWithDisclosure(source)`経由）で求める設計に統一済み。`maybeShowLocPrompt()`/`LOCATION_ASKED_KEY`は削除済みのため復活させない
+- `requestNotifyPermission()`やフォーム機能の`ensureGeofencePermission()`を同期的に連続で呼ばない（順序が保証されなくなる。必ず`.finally()`で前のダイアログの完了を待ってから次を呼ぶこと）
 - プロダクトツアーの対象要素に`data-tour`属性を付け忘れない（`ProductTour`は`querySelector`でこれらを探すため、対象のJSXを変更する時は属性ごと移動させること）
 - `data-tour="tour-draggable"`をタイムライン上の通常のスケジュール済みTaskCardに付けない（`FreeTimeCard`内の「あとでやる」タスクのピルにのみ付与する設計。`querySelector`は最初にDOM順で見つかった要素を使うため、両方に付けるとスケジュール済みタスクの方が先にヒットしてしまい、あとでやるタスクがスポットライトされなくなる不具合の実績あり）
 - 吹き出しの矢印の水平位置を固定値（`left:24`等）に戻さない（対象が画面右側にある場合に矢印が対象と無関係な位置を指してしまう不具合の実績あり。`arrowRect`（`arrowSelector`が指す要素、省略時はスポットライト対象）の中心座標に動的に追従させる設計を維持すること）
@@ -2295,7 +2301,7 @@ native-ios/BridgeViewController.swift … capacitorDidLoad() 内で FirebaseApp.
 | `subscription_started` | `Premium.tsx`の`purchase()`（購入成功で`ENTITLEMENT_ID`がアクティブになった時のみ） | |
 | `location_reminder_triggered` | `App`の`applyPending()`（`getFiredTaskLocationIds()`で「あとでやる」タスクの場所通知が発火済みと分かった時） | `params.type:'task'`固定。`didEnterRegion`（到着）時点でネイティブ側にfiredフラグが立つ設計のため、通知をタップしたかどうかに関わらず実際に発火したタイミングを計測できる。**買い物リストの場所通知・忘れ物防止アラートは対象外**（ネイティブ側が「タップされたか」しか記録しておらず、「発火したか」自体を読み取るAPIが無いため。追加するにはGeofencePlugin.swiftへのネイティブ変更が必要） |
 | `notification_permission_granted` | `Geofence.ts`の`ensureGeofencePermission(source)`・`LocalNotify.ts`の`requestNotifyPermission(source)`が許可結果を確認した時 | `params.source`: `'onboarding'\|'settings'\|'shop_location'\|'task_location'\|'forget_alert'`。`logPermissionGrantedOnce()`によりインストールごとに1回だけ計測（同じ許可を何度もリクエストするたびに加算されると許可率の指標として意味を持たないため） |
-| `location_permission_granted` | `Geofence.ts`の`ensureGeofencePermission(source)`が位置情報「常に」許可を確認した時 | `params.source`: `'onboarding'\|'shop_location'\|'task_location'\|'forget_alert'`。`notification_permission_granted`と同じく`logPermissionGrantedOnce()`でインストールごとに1回のみ |
+| `location_permission_granted` | `Geofence.ts`の`ensureGeofencePermission(source)`が位置情報「常に」許可を確認した時 | `params.source`: `'shop_location'\|'task_location'\|'forget_alert'`（位置情報はオンボーディングでは求めないため`'onboarding'`は発生しない。各機能を実際に使おうとしたタイミングのみ）。`notification_permission_granted`と同じく`logPermissionGrantedOnce()`でインストールごとに1回のみ |
 
 **意図的に計測していないもの（スコープ外）:** 繰り返しタスクの一括編集（`editScope==='all'`）保存、「あとでやる」の朝の一括完了（`handleMorningAction`）、繰り返しタスクのドラッグ確認ポップアップ経由の移動。これらは単一操作の裏で複数タスクが変化するバルク処理で、単純な1イベント=1操作の対応にならないため初回実装では対象外にした。買い物リストの場所通知・忘れ物防止アラートの`location_reminder_triggered`も同様の理由（ネイティブ側の記録が「タップされたか」止まり）で未対応。
 

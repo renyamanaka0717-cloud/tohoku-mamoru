@@ -184,7 +184,6 @@ const SHOP_NOTIF_KEY    = 'tl-shop-notif-v1';
 const SHOP_LOC_KEY      = 'tl-shop-loc-v1';
 const FORGET_ALERTS_KEY = 'tl-forget-alerts-v1';
 const NOTIF_ASKED_KEY   = 'tl-notif-asked-v1';
-const LOCATION_ASKED_KEY = 'tl-location-asked-v1';
 const WAKESLEEP_ASKED_KEY = 'tl-wakesleep-asked-v1';
 const FEATURE_USAGE_KEY = 'tl-feature-usage-v1';
 const RECOMMEND_STATE_KEY = 'tl-recommend-state-v1';
@@ -6298,12 +6297,10 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
       localStorage.setItem(WAKESLEEP_ASKED_KEY,'1');
       localStorage.setItem(TOUR_COMPLETED_KEY,'1');
       localStorage.setItem(NOTIF_ASKED_KEY,'1');
-      localStorage.setItem(LOCATION_ASKED_KEY,'1');
     }else{
       localStorage.removeItem(WAKESLEEP_ASKED_KEY);
       localStorage.removeItem(TOUR_COMPLETED_KEY);
       localStorage.removeItem(NOTIF_ASKED_KEY);
-      localStorage.removeItem(LOCATION_ASKED_KEY);
     }
     window.location.reload();
   };
@@ -8514,8 +8511,6 @@ export default function App() {
       setShowWelcome(true);
     } else if(!localStorage.getItem(NOTIF_ASKED_KEY)){
       setTimeout(()=>maybeShowNotifPrompt(),800);
-    } else if(!localStorage.getItem(LOCATION_ASKED_KEY)){
-      setTimeout(()=>maybeShowLocPrompt(),800);
     } else if(!localStorage.getItem(WAKESLEEP_ASKED_KEY)){
       maybeShowWakeSleepPrompt();
     } else {
@@ -9336,21 +9331,23 @@ export default function App() {
     setWsPromptSleep(settings.sleepTime);
     setShowWakeSleepPrompt(true);
   };
-  // 通知・位置情報の許可は、プロダクトツアーを体験して価値が伝わった後に求める
+  // 通知の許可は、プロダクトツアーを体験して価値が伝わった後に求める
   // （アプリに触る前だと拒否されやすいため。ツアー完了時に呼ばれる）。
-  // BrainBox独自の説明ポップアップは挟まず、Apple純正の許可ダイアログをそのまま順番に出す。
-  // requestNotifyPermission/ensureGeofencePermissionの完了を待ってから次に進むことで、
-  // 「通知許可→位置情報許可」の順序をダイアログの表示タイミングレベルで保証している
+  // BrainBox独自の説明ポップアップは挟まず、Apple純正の許可ダイアログをそのまま出す。
+  // 位置情報の「常に許可」はオンボーディングでは求めない（意図的な変更）。
+  // 場所通知系の機能（買い物リストの場所通知・タスクの場所通知・忘れ物防止アラート）は
+  // いずれもPRO限定で、オンボーディング時点ではユーザーはまだ何も設定していない。
+  // その状態で常時位置情報を求めると①Appleの審査ガイドライン(5.1.1)上グレーになりやすく
+  // ②意味も分からず反射的に拒否されやすい（iOSは一度拒否すると二度とOSダイアログを
+  // 出せず設定アプリでの手動変更が必要になるため、ここで失う後戻りコストが大きい）。
+  // 位置情報の許可は各機能を実際に使おうとしたタイミング（requestLocationWithDisclosure
+  // 経由、ShopLocationPanel/TaskModal/ForgetAlertsPanelの各confirmAdd/saveEditing等）で
+  // 求める設計に統一した。
   const maybeShowNotifPrompt=()=>{
-    if(localStorage.getItem(NOTIF_ASKED_KEY)){ maybeShowLocPrompt(); return; }
+    if(localStorage.getItem(NOTIF_ASKED_KEY)){ maybeShowWakeSleepPrompt(); return; }
     localStorage.setItem(NOTIF_ASKED_KEY,'1');
     setSettings(s=>({...s,notificationsEnabled:true}));
-    requestNotifyPermission('onboarding').finally(()=>maybeShowLocPrompt());
-  };
-  const maybeShowLocPrompt=()=>{
-    if(localStorage.getItem(LOCATION_ASKED_KEY)){ maybeShowWakeSleepPrompt(); return; }
-    localStorage.setItem(LOCATION_ASKED_KEY,'1');
-    requestLocationWithDisclosure('onboarding').finally(()=>maybeShowWakeSleepPrompt());
+    requestNotifyPermission('onboarding').finally(()=>maybeShowWakeSleepPrompt());
   };
   const dismissWakeSleepPrompt=()=>{
     localStorage.setItem(WAKESLEEP_ASKED_KEY,'1');
