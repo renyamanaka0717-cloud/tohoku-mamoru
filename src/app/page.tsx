@@ -4893,9 +4893,7 @@ function ShopLocationPanel({locations,onChange,isPremium,onProPrompt,onRequestLo
     if(!isPremium){ onProPrompt(tr('proFeatureLocationNotify')); return; }
     if(confirmAddingRef.current) return;
     confirmAddingRef.current=true;
-    console.log('🩺[LOC_DEBUG] confirmAdd start, onRequestLocationPermission is', typeof onRequestLocationPermission);
     const ok=await (onRequestLocationPermission?onRequestLocationPermission('shop_location'):ensureGeofencePermission('shop_location'));
-    console.log('🩺[LOC_DEBUG] confirmAdd after permission request, ok=',ok);
     const status=await checkGeofencePermissions();
     setPermStatus(status);
     if(!ok){ confirmAddingRef.current=false; return; }
@@ -8429,7 +8427,6 @@ export default function App() {
   // 経由にすること（戻り値の形・sourceの意味はensureGeofencePermissionと同じ）
   const [locationDisclosure,setLocationDisclosure] = useState<{source:string;resolve:(ok:boolean)=>void}|null>(null);
   const requestLocationWithDisclosure = useCallback((source:string):Promise<boolean> => {
-    console.log('🩺[LOC_DEBUG] requestLocationWithDisclosure called, source=',source);
     return new Promise(resolve=>{ setLocationDisclosure({source,resolve}); });
   },[]);
   const [appProPrompt,setAppProPrompt] = useState(false);
