@@ -4695,11 +4695,17 @@ function ShopMapPicker({initialCenter,onConfirm,onCancel}:{
     setConfirming(true);
     let name=tr('mapPickedPlaceFallback');
     try{
-      const res=await fetch(`https://mreversegeocoder.gsi.go.jp/reverse-geocoder/LonLatToAddress?lon=${center.lng}&lat=${center.lat}`);
+      // fetch自体にタイムアウトが無いと、APIの応答が返ってこない場合に
+      // ボタンが「取得中...」のまま永久に固まる不具合があった（getCurrentCoords
+      // と同じく、必ずどこかでフォールバックに抜けるようにする）
+      const res=await Promise.race([
+        fetch(`https://mreversegeocoder.gsi.go.jp/reverse-geocoder/LonLatToAddress?lon=${center.lng}&lat=${center.lat}`),
+        new Promise<never>((_,reject)=>setTimeout(()=>reject(new Error('timeout')),6000)),
+      ]);
       const data=await res.json() as {results?:{lv01Nm?:string;muniCd?:string}};
       if(data.results?.lv01Nm) name=data.results.lv01Nm;
     }catch{
-      // 逆ジオコーディングに失敗しても座標だけで登録を続行
+      // 逆ジオコーディングに失敗・タイムアウトしても座標だけで登録を続行
     }
     onConfirm({name,lat:center.lat,lng:center.lng});
     setConfirming(false);
