@@ -7853,6 +7853,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
                 <p className="text-xs text-gray-400 mb-1">{tr('proTrialAfter')}</p>
                 <p className="text-2xl font-bold" style={{color:'var(--c-primary)'}}>{priceString??'¥200'}</p>
                 <p className="text-xs text-gray-400 mt-1">{tr('proTrialCancelNote')}</p>
+                <p className="text-xs text-gray-400">{tr('proTrialNewUsersNote')}</p>
               </div>
             </div>
             <button
