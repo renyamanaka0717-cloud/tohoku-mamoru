@@ -6379,7 +6379,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   const [lpEditColor,setLpEditColor] = useState('');
   const [lpEditConfirmId,setLpEditConfirmId] = useState<string|null>(null);
   const [colorPicking,setColorPicking] = useState<'wake'|'sleep'|null>(null);
-  const { purchase, restore, isPurchasing, priceString } = usePremium();
+  const { purchase, restore, isPurchasing, priceString, trialEligible } = usePremium();
   const [proPrompt,setProPrompt] = useState<string|null>(null);
   const proSheet = proPrompt ? <ProGateSheet feature={proPrompt} onClose={()=>setProPrompt(null)} onView={()=>{setProPrompt(null);setSub('premium');}}/> : null;
 
@@ -7849,11 +7849,21 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             <div className="bg-white rounded-2xl px-4 py-5 shadow-sm mb-3">
               <p className="text-[13px] font-semibold text-gray-400 text-center mb-3">{tr('proPricingLabel')}</p>
               <div className="rounded-xl px-4 py-4 text-center border border-gray-100" style={{background:'color-mix(in srgb, var(--c-primary) 8%, white)'}}>
-                <p className="text-sm font-bold mb-1" style={{color:'var(--c-primary)'}}>{tr('proTrialTitle')}</p>
-                <p className="text-xs text-gray-400 mb-1">{tr('proTrialAfter')}</p>
-                <p className="text-2xl font-bold" style={{color:'var(--c-primary)'}}>{priceString??'¥200'}</p>
-                <p className="text-xs text-gray-400 mt-1">{tr('proTrialCancelNote')}</p>
-                <p className="text-xs text-gray-400">{tr('proTrialNewUsersNote')}</p>
+                {trialEligible ? (
+                  <>
+                    <p className="text-sm font-bold mb-1" style={{color:'var(--c-primary)'}}>{tr('proTrialTitle')}</p>
+                    <p className="text-xs text-gray-400 mb-1">{tr('proTrialAfter')}</p>
+                    <p className="text-2xl font-bold" style={{color:'var(--c-primary)'}}>{priceString??'¥200'}</p>
+                    <p className="text-xs text-gray-400 mt-1">{tr('proTrialCancelNote')}</p>
+                    <p className="text-xs text-gray-400">{tr('proTrialNewUsersNote')}</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-xs text-gray-400 mb-1">{tr('proMonthlyPriceLabel')}</p>
+                    <p className="text-2xl font-bold" style={{color:'var(--c-primary)'}}>{priceString??'¥200'}</p>
+                    <p className="text-xs text-gray-400 mt-1">{tr('proTrialCancelNote')}</p>
+                  </>
+                )}
               </div>
             </div>
             <button
@@ -7862,7 +7872,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
               className="w-full py-4 rounded-2xl text-[15px] font-bold text-white mb-2 active:opacity-80 disabled:opacity-50"
               style={{background:'var(--c-primary)'}}
             >
-              {isPurchasing?tr('proProcessingLabel'):tr('proStartTrialButton')}
+              {isPurchasing?tr('proProcessingLabel'):trialEligible?tr('proStartTrialButton'):tr('proSubscribeButton')}
             </button>
             <button
               onClick={async()=>{const ok=await restore();if(!ok)alert(tr('proRestoreNotFoundAlert'));}}

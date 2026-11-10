@@ -20,6 +20,9 @@ interface PremiumContextValue {
   // App Storeのストアフロントに応じてRevenueCatがローカライズ済みの価格文字列（例: "$1.99"）。
   // ネイティブでofferingsが取得できるまではnull（PRO画面側でフォールバック表示する）
   priceString: string | null;
+  // 無料トライアルの利用資格があるか（過去にトライアル済みのユーザーにはfalseになる）。
+  // 資格確認が終わるまではtrue固定（既存の「常にトライアル表示」挙動のまま）
+  trialEligible: boolean;
 }
 
 const PremiumContext = createContext<PremiumContextValue>({
@@ -29,6 +32,7 @@ const PremiumContext = createContext<PremiumContextValue>({
   purchase: async () => {},
   restore: async () => false,
   priceString: null,
+  trialEligible: true,
 });
 
 function isNative(): boolean {
@@ -55,6 +59,7 @@ export function PremiumProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [priceString, setPriceString] = useState<string | null>(null);
+  const [trialEligible, setTrialEligible] = useState(true);
   // 開発者モードのプラン上書き。RevenueCatの実際の状態は変えず、表示だけを差し替える
   const [devOverride, setDevOverride] = useState<'free' | 'premium' | null>(null);
 
@@ -99,7 +104,26 @@ export function PremiumProvider({ children }: { children: React.ReactNode }) {
         // ストアフロントに応じてRevenueCatがローカライズした価格文字列を取得する
         try {
           const offerings = await Purchases.getOfferings();
-          setPriceString(offerings.current?.monthly?.product.priceString ?? null);
+          const product = offerings.current?.monthly?.product;
+          setPriceString(product?.priceString ?? null);
+          if (product) {
+            if (isAndroidNative()) {
+              // Androidは対象外のユーザーにはGoogle Play側がそもそもfreePhase付きの
+              // オファーを返さないため、defaultOptionにfreePhaseがあるかどうかで判定できる
+              // （checkTrialOrIntroductoryPriceEligibilityはAndroidでは常にUNKNOWNを返すため使えない）
+              setTrialEligible(!!product.defaultOption?.freePhase);
+            } else {
+              // iOS: 専用の資格確認APIを呼ぶ。2 === INTRO_ELIGIBILITY_STATUS_ELIGIBLE
+              // （このSDKのJS側エクスポートに列挙型が無いため数値で判定する）。
+              // UNKNOWNや取得失敗時はRevenueCatの推奨通りtrialなし表示にフォールバックする
+              try {
+                const elig = await Purchases.checkTrialOrIntroductoryPriceEligibility({ productIdentifiers: [product.identifier] });
+                setTrialEligible(elig[product.identifier]?.status === 2);
+              } catch {
+                setTrialEligible(false);
+              }
+            }
+          }
         } catch {
           setPriceString(null);
         }
@@ -149,7 +173,7 @@ export function PremiumProvider({ children }: { children: React.ReactNode }) {
   const effectiveIsPremium = devOverride ? devOverride === 'premium' : isPremium;
 
   return (
-    <PremiumContext.Provider value={{ isPremium: effectiveIsPremium, isLoading, isPurchasing, purchase, restore, priceString }}>
+    <PremiumContext.Provider value={{ isPremium: effectiveIsPremium, isLoading, isPurchasing, purchase, restore, priceString, trialEligible }}>
       {children}
     </PremiumContext.Provider>
   );
