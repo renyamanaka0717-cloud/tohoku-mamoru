@@ -888,6 +888,86 @@ Android版も同様に`GeofencePlugin.kt`/`GeofenceReceiver.kt`は買い物リ�
 
 ---
 
+## 経過確認フォローアップ（TaskModal、「あとでやる」限定）
+
+「タスクを完了して終わりではなく、その後の経過・進捗も追いたい」というケース向けの機能（例: 「メガネを注文した」を完了した後、数日後に「メガネの進捗を確認」というタスクを自動で作ってほしい）。**毎回の完了時に確認ダイアログを出す設計ではなく、タスク作成時にあらかじめ「このタスクは完了したらフォローアップする」と設定しておく方式**（完了操作そのものに割り込まない。ADHD傾向のユーザーを前提に、完了時の追加の意思決定・入力ステップを増やさない狙い）。
+
+### 型・保存
+
+```typescript
+followUpEnabled?: boolean;        // タスク作成時に設定。完了時にフォローアップタスクを自動生成するか
+followUpNote?: string;            // フォローアップの内容（自由入力・任意）。未入力ならfollowUpDefaultName
+followUpDays?: 1|3|7;             // プリセットのタイミング（完了日からの日数）。followUpCustomDate優先
+followUpCustomDate?: string;      // カスタム指定時の日時。設定時はfollowUpDaysより優先
+followUpSourceId?: string;        // このタスク自身が生成されたフォローアップタスクである場合、元タスクのID
+followUpRevealAt?: string;        // フォローアップタスクが「あとでやる」に表示され始める日時（ISO文字列）
+```
+
+既存の`seriesId`（繰り返しタスクのシリーズ識別子）と同じ「スナップショットではなくIDで元タスクに紐づける」設計にしてある（生成時に元タスク名をコピーするのではなく、`followUpSourceId`で毎回ライブに現在の名前を参照する）。
+
+### TaskModal（`mode==='later'`限定）
+
+住所欄・場所で通知と同様、「あとでやる」モードの時だけ表示するトグル。ONにすると以下が展開する:
+- フォローアップの内容（自由入力、任意。未入力なら`followUpDefaultName`＝「{name}の経過を確認」）
+- タイミング: 「1日後」「3日後」「1週間後」のプリセット3択＋「カスタム」（`<input type="date">`で任意の日付を指定、`min`は今日）
+- カスタム日付を指定した場合はプリセット（`followUpDays`）より優先される（`buildData()`/`save()`の両方で`followUpCustomDate`があればそちらをセットし`followUpDays`は`undefined`にする）
+
+### フォローアップタスクの生成（`toggle()`、App コンポーネント）
+
+対象タスクが未完了→完了になった瞬間（`becameComplete`）、`target.followUpEnabled`なら新しい「あとでやる」タスクを1件生成して`tasks`に追加する。
+
+```typescript
+const revealMs = target.followUpCustomDate
+  ? new Date(target.followUpCustomDate).getTime()
+  : now+(target.followUpDays??3)*24*60*60*1000;
+const followUpTask:Task = {
+  id:uid(), name:(target.followUpNote?.trim())||tr('followUpDefaultName').replace('{name}',()=>target.name),
+  startTime:null, duration:0, memo:'', icon:target.icon, completed:false, date:todayStr(), isLater:true,
+  laterSince:new Date().toISOString(), followUpSourceId:target.id, followUpRevealAt:new Date(revealMs).toISOString(),
+};
+```
+
+生成されたフォローアップタスクは`isLater:true`で即座に`tasks`配列に入るが、`followUpRevealAt`（表示開始時刻）が未来の間は「あとでやる」一覧に表示しない（後述の`followUpPending()`）。元タスクのアイコンを引き継ぐ（`icon:target.icon`）。
+
+### 「あとでやる」一覧での表示開始制御（`followUpPending()`）
+
+```typescript
+// モジュール共通ヘルパー（todayStr等と同じ場所に定義）
+const followUpPending = (t:Task) => !!t.followUpRevealAt && new Date(t.followUpRevealAt).getTime()>Date.now();
+```
+
+「あとでやる」タスクを列挙する主要な2つの箇所（Appコンポーネントの`laterTasks`＝Timelineの空き時間カード・バッジ件数に使う／BottomTabsコンポーネントの`laterPending`＝「あとでやる」タブ本体）の両方で、`t.isLater`に加えて`!followUpPending(t)`を条件に加えている。表示されるまでの間、ユーザーには一切見えない（生成されたことを意識させない設計）。
+
+**放置タスク通知（`laterReminderHours`）・空き時間提案通知も同様に`followUpPending(t)`で除外している。** 表示開始前のフォローアップタスクについて「あとでやるタスクが放置されています」のような通知が先に届くと、ユーザーがまだ見たことも無いタスクについて催促される不自然な体験になるため。
+
+### 通知（`syncFollowUpAlerts`、表示開始タイミングでの事前予約）
+
+既存の`syncDeadlineAlerts`等と全く同じ「ネイティブに事前予約・ネイティブでは`isNative()`で早期returnするWeb/開発環境向けフォールバックを併設」というパターンを踏襲している。
+
+- `src/app/components/LocalNotify.ts`の`syncFollowUpAlerts(alerts)` — ネイティブでのみ動作
+- `src/app/page.tsx`の App コンポーネントに、`tasks`が変わるたびに`followUpSourceId`を持つ未完了タスクの`followUpRevealAt`を発火時刻として直近60件を`syncFollowUpAlerts()`に渡す`useEffect`がある。識別子は`follow-up-${taskId}`。通知本文はフォローアップタスク自身の`name`（ユーザー入力の自由文言、またはデフォルトの「{元タスク名}の経過を確認」）をそのまま使う——締切通知等と違い本文組み立てロジックは不要（タスク名そのものが本文として意味を持つ文言になっているため）
+- `native-ios/LocalNotifyPlugin.swift`に`followUpPrefix = "follow-up-"`と`syncFollowUpAlerts`メソッドを追加（既存の`scheduleAlerts(prefix:call:)`を呼ぶだけ）
+- `native-android/LocalNotifyPlugin.kt`に`syncFollowUpAlerts`メソッドを追加、`PREFIXES`リストに`"follow-up-"`を追加（`BootReceiver.kt`の再起動後の再予約もこのリスト経由で自動的にカバーされる）
+- Web/開発環境専用フォールバック（`now`ポーリング＋即時`notify()`、`FOLLOW_UP_ALERT_FIRED_KEY`使用）も用意済み
+
+### 「あとでやる」一覧での表示（元タスクへのリンク）
+
+`renderLaterRowContent()`（BottomTabs）で、`t.followUpSourceId`があるタスク行にのみ`tr('followUpSourceLabel')`（「元: {name}」）を表示する。**元タスク名はスナップショットではなく`tasks.find(x=>x.id===t.followUpSourceId)`でその場でライブに検索する**——元タスクが後から改名されても追従する。タップで`onEdit(src)`（元タスクの編集モーダルを開く）、行全体のタップ（フォローアップタスク自身の編集）とは別の要素に分離している（`e.stopPropagation()`で親のクリックに伝播させない）。元タスクが既に削除されている場合は何も表示しない。
+
+### Xcode/Android Studioでの手動セットアップ
+
+`native-ios/LocalNotifyPlugin.swift`・`native-android/LocalNotifyPlugin.kt`はいずれも新規ファイルではなく**既存ファイルの更新**（`syncFollowUpAlerts`メソッドの追加）なので、Xcode/Android Studio上の同名ファイルの中身をこの変更後の内容に差し替える（`ios/`/`android/`はgitignore対象のため`git pull`では自動反映されない）。App Group・Info.plist・Background Modes等の追加設定は不要（既存の`scheduleAlerts(prefix:call:)`に新しいprefixを1つ渡すだけのため）。
+
+### 避けるパターン
+
+- 完了操作のたびに「経過確認しますか？」という確認ダイアログを割り込ませない（タスク作成時に`followUpEnabled`をあらかじめ設定しておく方式。完了は完了のまま、追加の意思決定を挟まない）
+- フォローアップタスクの元タスク名をスナップショットとしてコピーしない（`followUpSourceId`でライブに参照する。元タスクが改名されても追従させる設計）
+- `followUpPending()`な（表示開始前の）フォローアップタスクを、放置タスク通知・空き時間提案通知・バッジ件数等、ユーザーに見える箇所に含めない。新しく「あとでやる」タスクを列挙する箇所を追加する時は`t.isLater`だけでなく`!followUpPending(t)`も確認すること
+- `mode==='later'`以外（時間指定・繰り返し）のタスクにフォローアップのトグルを表示しない（完了時刻が不確定な「あとでやる」タスク特有の機能として実装している）
+- フォローアップ通知の本文を締切通知のような専用の文言組み立て関数で作らない（フォローアップタスク自身の`name`がそのまま意味のある本文になるよう生成時に設計してあるため、`t.name`をそのまま使えばよい）
+
+---
+
 ## 忘れ物防止アラート（設定 → 忘れ物防止アラート、PRO機能）
 
 「あとでやる」とは完全に独立した機能。「何をするか」ではなく「何を持っていくか」を管理する（例: 自宅を出るときに財布・鍵・社員証を確認）。買い物リスト・タスクの場所通知と同じ`GeofencePlugin`/`CLLocationManager`を共有するが、`"forget-"` prefixで別管理する。**到着(Enter)・退出(Exit)のどちらをトリガーにするかをアラートごとに選べる**（初回実装ではExit固定だったが、後に`trigger`フィールドを追加してEnterも選択可能にした）。

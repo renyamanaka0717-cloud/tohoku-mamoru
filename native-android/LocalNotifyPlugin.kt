@@ -32,7 +32,7 @@ class LocalNotifyPlugin : Plugin() {
         // 登録し直す（iOS版のgetPendingNotificationRequests+removePendingと同じ全解除→再登録方式）。
         // AndroidのAlarmManagerには「登録済み一覧を取得するAPI」が無いため、SharedPreferencesに
         // prefixごとの全アラートJSONをそのまま保存して自前で管理する（BootReceiverの再予約にも使う）
-        val PREFIXES = listOf("task-alert-", "free-slot-", "shop-notif-", "later-stale-", "wake-checkin-", "deadline-")
+        val PREFIXES = listOf("task-alert-", "free-slot-", "shop-notif-", "later-stale-", "wake-checkin-", "deadline-", "follow-up-")
     }
 
     private fun hasNotificationPermission(): Boolean {
@@ -85,6 +85,7 @@ class LocalNotifyPlugin : Plugin() {
     @PluginMethod fun syncLaterStaleAlerts(call: PluginCall) { scheduleAlerts("later-stale-", call) }
     @PluginMethod fun syncWakeCheckins(call: PluginCall) { scheduleAlerts("wake-checkin-", call) }
     @PluginMethod fun syncDeadlineAlerts(call: PluginCall) { scheduleAlerts("deadline-", call) }
+    @PluginMethod fun syncFollowUpAlerts(call: PluginCall) { scheduleAlerts("follow-up-", call) }
 
     private fun scheduleAlerts(prefix: String, call: PluginCall) {
         val json = call.getString("alertsJson") ?: "[]"

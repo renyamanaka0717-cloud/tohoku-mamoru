@@ -8,7 +8,7 @@ import { updateWidgetData, getPendingWidgetActions } from './components/WidgetDa
 import { getPendingWatchTasks, updateWatchThemeColor } from './components/WatchBridge';
 import { setShopGeofences, setTaskLocationGeofences, setForgetAlertGeofences, checkGeofencePermissions, ensureGeofencePermission, getPendingGeofenceAction, getFiredTaskLocationIds, getNativeCurrentLocation, openAppSettings } from './components/Geofence';
 import { scheduleInactivityReminder, cancelInactivityReminder } from './components/Inactivity';
-import { notify, requestNotifyPermission, syncTaskAlerts, syncFreeSlotAlerts, syncShopNotifs, syncLaterStaleAlerts, syncWakeCheckins, syncDeadlineAlerts, isNative, isAndroid } from './components/LocalNotify';
+import { notify, requestNotifyPermission, syncTaskAlerts, syncFreeSlotAlerts, syncShopNotifs, syncLaterStaleAlerts, syncWakeCheckins, syncDeadlineAlerts, syncFollowUpAlerts, isNative, isAndroid } from './components/LocalNotify';
 import { voiceInputSupported, ensureVoiceInputPermission, startVoiceInput, stopVoiceInput, onVoiceInputFinished, onVoiceLevelUpdate } from './components/VoiceInput';
 import { getAppVersion } from './components/AppVersion';
 import { logAnalyticsEvent } from './components/Analytics';
@@ -91,6 +91,13 @@ interface Task {
                        // レガシーデータとして 名前+繰り返し設定+開始時刻 で判定する
   noComplete?: boolean;  // true: 完了チェックを持たない記録専用の項目（起床・出勤等）。
                           // 時間が過ぎても未完了扱いにしない・放置通知/朝の未完了移動の対象外
+  // 経過確認フォローアップ（完了したタスクについて、後日様子を確認したいケース向け）
+  followUpEnabled?: boolean;        // タスク作成時に設定。完了時にフォローアップタスクを自動生成するか
+  followUpNote?: string;            // フォローアップの内容（自由入力・任意）。未入力ならfollowUpDefaultName
+  followUpDays?: 1|3|7;             // プリセットのタイミング（完了日からの日数）。followUpCustomDate優先
+  followUpCustomDate?: string;      // カスタム指定時の日時（ISO文字列）。設定時はfollowUpDaysより優先
+  followUpSourceId?: string;        // このタスク自身が生成されたフォローアップタスクである場合、元タスクのID
+  followUpRevealAt?: string;        // フォローアップタスクが「あとでやる」に表示され始める日時（ISO文字列）
 }
 
 type FontSize = 'small'|'standard'|'large'|'xlarge';
@@ -195,6 +202,7 @@ const ANNOUNCEMENTS_SEEN_KEY = 'tl-announcements-seen-v1';
 const LATER_NOTIFIED_KEY = 'tl-later-notified-v1';
 const TASK_ALERT_FIRED_KEY = 'tl-task-alert-fired-v1';
 const DEADLINE_ALERT_FIRED_KEY = 'tl-deadline-alert-fired-v1';
+const FOLLOW_UP_ALERT_FIRED_KEY = 'tl-followup-alert-fired-v1';
 const WAKE_CHECKIN_NOTIF_KEY = 'tl-wake-checkin-notif-v1';
 const LATER_REMINDER_OPTS = [{v:0,l:'オフ'},{v:1,l:'1時間'},{v:3,l:'3時間'},{v:6,l:'6時間'},{v:12,l:'12時間'},{v:24,l:'1日'},{v:48,l:'2日'},{v:72,l:'3日'}];
 const LATER_REMINDER_OPTS_EN = [{v:0,l:'Off'},{v:1,l:'1h'},{v:3,l:'3h'},{v:6,l:'6h'},{v:12,l:'12h'},{v:24,l:'1d'},{v:48,l:'2d'},{v:72,l:'3d'}];
@@ -548,6 +556,9 @@ const shiftDate   = (s: string, n: number) => { const d=new Date(s+'T12:00:00');
 const shiftMonthBy= (s: string, n: number) => { const d=new Date(s+'T12:00:00'); d.setMonth(d.getMonth()+n); return dateToStr(d); };
 const shiftYearBy = (s: string, n: number) => { const d=new Date(s+'T12:00:00'); d.setFullYear(d.getFullYear()+n); return dateToStr(d); };
 const uid         = () => `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+// 経過確認フォローアップで生成されたタスクが、まだ指定時刻に達していない間は
+// 「あとでやる」一覧に表示しない（表示開始前）
+const followUpPending = (t:Task) => !!t.followUpRevealAt && new Date(t.followUpRevealAt).getTime()>Date.now();
 // 繰り返しタスクの「同じ回」判定。seriesId（作成時に割り当てる、以後不変のシリーズ識別子）が
 // あればそれだけで判定する。無い場合（この仕組みを導入する前に作られたレガシーデータ）は
 // 従来通り 名前+繰り返し設定+開始時刻 の一致で判定するが、相手が既にseriesIdを持つ場合
@@ -2076,6 +2087,11 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
   const [deadlineTime,setDeadlineTime] = useState(task?.deadlineAt?task.deadlineAt.slice(11,16):'18:00');
   const [deadlineNotify,setDeadlineNotify] = useState<DeadlineNotifyOpt>(task?.deadlineNotify??'dayBefore');
   const [deadlineOpen,setDeadlineOpen] = useState(false);
+  const [followUpEnabled,setFollowUpEnabled] = useState(task?.followUpEnabled??false);
+  const [followUpNote,setFollowUpNote] = useState(task?.followUpNote??'');
+  const [followUpDays,setFollowUpDays] = useState<1|3|7>(task?.followUpDays??3);
+  const [followUpCustomDate,setFollowUpCustomDate] = useState(task?.followUpCustomDate?task.followUpCustomDate.slice(0,10):'');
+  const [followUpCustomOpen,setFollowUpCustomOpen] = useState(!!task?.followUpCustomDate);
   const [locationNotify,setLocationNotify] = useState(task?.locationNotify??false);
   const [taskLocation,setTaskLocation] = useState(task?.location??null);
   // 場所通知を設定した後に位置情報/通知の許可を取り消された場合に気づけるよう、
@@ -2195,6 +2211,10 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
     seriesId:task?.seriesId,
     address:address.trim()||undefined,
     noComplete:mode!=='later'?noComplete:false,
+    followUpEnabled:mode==='later'?followUpEnabled:false,
+    followUpNote:(mode==='later'&&followUpEnabled)?(followUpNote.trim()||undefined):undefined,
+    followUpDays:(mode==='later'&&followUpEnabled&&!followUpCustomDate)?followUpDays:undefined,
+    followUpCustomDate:(mode==='later'&&followUpEnabled&&followUpCustomDate)?followUpCustomDate:undefined,
   });
 
   // 編集開始時点のスナップショット。繰り返しタスクで「完了」を押した時、何も変更していなければ
@@ -2230,7 +2250,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
     },400);
     return ()=>{if(autoSaveTimer.current) clearTimeout(autoSaveTimer.current);};
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[name,taskDate,startTime,duration,mode,recur,customRec,tags,subtasks,memo,category,notifications,incompleteRem,icon,color,deadlineDate,deadlineTime,deadlineNotify,locationNotify,taskLocation,address,noComplete]);
+  },[name,taskDate,startTime,duration,mode,recur,customRec,tags,subtasks,memo,category,notifications,incompleteRem,icon,color,deadlineDate,deadlineTime,deadlineNotify,locationNotify,taskLocation,address,noComplete,followUpEnabled,followUpNote,followUpDays,followUpCustomDate]);
 
   const flushAndClose = () => {
     if(autoSaveTimer.current){
@@ -2335,6 +2355,10 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
       address:address.trim()||undefined,
       seriesId,
       noComplete:mode!=='later'?noComplete:false,
+      followUpEnabled:mode==='later'?followUpEnabled:false,
+      followUpNote:(mode==='later'&&followUpEnabled)?(followUpNote.trim()||undefined):undefined,
+      followUpDays:(mode==='later'&&followUpEnabled&&!followUpCustomDate)?followUpDays:undefined,
+      followUpCustomDate:(mode==='later'&&followUpEnabled&&followUpCustomDate)?followUpCustomDate:undefined,
     };
     if(becomingRecurring){
       const instances:Omit<Task,'id'>[]=[];
@@ -3172,6 +3196,43 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                 )}
               </div>
             )}
+
+            {/* 経過確認フォローアップ（「あとでやる」限定）。完了後に様子を確認したいタスク向け */}
+            {mode==='later'&&(<>
+              <div className="h-px bg-gray-100 mx-4"/>
+              <button className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50"
+                onClick={()=>setFollowUpEnabled(v=>!v)}>
+                <AppIcons.clock size={18} className="text-gray-400 shrink-0"/>
+                <span className="flex-1 text-left text-sm font-medium text-gray-800">{tr('fieldFollowUp')}</span>
+                <span className={`relative w-10 h-6 rounded-full transition-colors shrink-0 ${followUpEnabled?'bg-[var(--c-primary)]':'bg-gray-200'}`}>
+                  <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${followUpEnabled?'left-[18px]':'left-0.5'}`}/>
+                </span>
+              </button>
+              {followUpEnabled&&(
+                <div className="px-4 pb-4">
+                  <input value={followUpNote} onChange={e=>setFollowUpNote(e.target.value)}
+                    placeholder={tr('followUpNotePlaceholder')}
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50 mb-3"/>
+                  <div className="flex gap-2">
+                    {([1,3,7] as const).map(d=>(
+                      <button key={d} onClick={()=>{setFollowUpDays(d);setFollowUpCustomDate('');setFollowUpCustomOpen(false);}}
+                        className={`flex-1 py-2 rounded-xl text-xs font-semibold ${!followUpCustomDate&&followUpDays===d?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-700'}`}>
+                        {d===1?tr('followUpTiming1Day'):d===3?tr('followUpTiming3Days'):tr('followUpTiming1Week')}
+                      </button>
+                    ))}
+                    <button onClick={()=>setFollowUpCustomOpen(o=>!o)}
+                      className={`flex-1 py-2 rounded-xl text-xs font-semibold ${followUpCustomDate?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-700'}`}>
+                      {tr('followUpTimingCustom')}
+                    </button>
+                  </div>
+                  {followUpCustomOpen&&(
+                    <input type="date" value={followUpCustomDate} min={todayStr()}
+                      onChange={e=>setFollowUpCustomDate(e.target.value)}
+                      className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50 mt-2"/>
+                  )}
+                </div>
+              )}
+            </>)}
 
             {/* タグ */}
             <div className="h-px bg-gray-100 mx-4"/>
@@ -5478,7 +5539,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
   const addShop = () => { const v=shopInput.trim(); if(!v) return; onAddShop(v); setShopInput(''); };
 
   const laterTasks  = tasks.filter(t=>t.isLater);
-  const laterPending= laterTasks.filter(t=>!t.completed);
+  const laterPending= laterTasks.filter(t=>!t.completed&&!followUpPending(t));
   // 時間指定・繰り返しタスクも今日完了した分はここに含める（完了にしても
   // どこにも表示されなくなる不具合の修正。「あとでやる」以外は日付で絞り込む）
   const otherDoneToday = tasks.filter(t=>!t.isLater&&t.startTime&&t.completed&&t.date===todayStr());
@@ -5530,6 +5591,15 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
           {t.recurrence&&t.date&&<p className="text-xs text-gray-400">{laterRecDateLabel(t.date)}</p>}
           {!t.recurrence&&(t.duration??0)>0&&<p className="text-xs text-gray-400">{durLabel(t.duration??0,language)}</p>}
           <p className="text-sm font-semibold text-gray-900">{t.name}</p>
+          {t.followUpSourceId&&(()=>{
+            const src=tasks.find(x=>x.id===t.followUpSourceId);
+            return src?(
+              <button onClick={e=>{e.stopPropagation();onEdit(src);}}
+                className="text-[11px] text-gray-400 mt-0.5 underline underline-offset-2 truncate max-w-full text-left">
+                {tr('followUpSourceLabel').replace('{name}',()=>src.name)}
+              </button>
+            ):null;
+          })()}
           {t.deadlineAt&&(
             <p className={`text-[11px] font-semibold mt-0.5 flex items-center gap-1 ${deadlineLabelColor(t.deadlineAt)}`}>
               <AppIcons.deadline size={10}/>{deadlineRemainLabel(t.deadlineAt,language)}
@@ -9651,6 +9721,44 @@ export default function App() {
     syncDeadlineAlerts(alerts.slice(0,60));
   },[loaded,now,tasks,settings.notificationsEnabled,tr]);
 
+  // 経過確認フォローアップ（タスク完了時に設定した、後日様子を確認する通知）— ネイティブでは
+  // syncFollowUpAlerts の事前予約が発火を担うため、ここは常時フォアグラウンドが前提のWeb/開発環境向け
+  // フォールバックとしてのみ動作する
+  useEffect(()=>{
+    if(!loaded||!(settings.notificationsEnabled??true)||isNative()) return;
+    const nowMs=Date.now();
+    let firedKeys:string[]=[];
+    try{ firedKeys=JSON.parse(localStorage.getItem(FOLLOW_UP_ALERT_FIRED_KEY)||'[]'); }catch{}
+    const newFired:string[]=[];
+    const toFire:Task[]=[];
+    tasks.forEach(t=>{
+      if(t.completed||!t.followUpSourceId||!t.followUpRevealAt) return;
+      const fireMs=new Date(t.followUpRevealAt).getTime();
+      if(fireMs>nowMs||firedKeys.includes(t.id)) return;
+      toFire.push(t);
+      newFired.push(t.id);
+    });
+    if(toFire.length===0) return;
+    localStorage.setItem(FOLLOW_UP_ALERT_FIRED_KEY,JSON.stringify([...firedKeys,...newFired].slice(-500)));
+    toFire.forEach(t=>notify(tr('followUpNotifTitle'),t.name));
+  },[loaded,now,tasks,settings.notificationsEnabled,tr]);
+
+  // 経過確認フォローアップの通知をネイティブに事前スケジュール（バックグラウンド/未起動でも発火させるため）
+  useEffect(()=>{
+    if(!loaded||!isNative()) return;
+    if(!(settings.notificationsEnabled??true)){ syncFollowUpAlerts([]); return; }
+    const nowMs=Date.now();
+    const alerts:{id:string;title:string;body:string;timestamp:number}[]=[];
+    tasks.forEach(t=>{
+      if(t.completed||!t.followUpSourceId||!t.followUpRevealAt) return;
+      const fireMs=new Date(t.followUpRevealAt).getTime();
+      if(fireMs<=nowMs) return;
+      alerts.push({id:`follow-up-${t.id}`,title:tr('followUpNotifTitle'),body:t.name,timestamp:Math.floor(fireMs/1000)});
+    });
+    alerts.sort((a,b)=>a.timestamp-b.timestamp);
+    syncFollowUpAlerts(alerts.slice(0,60));
+  },[loaded,now,tasks,settings.notificationsEnabled,tr]);
+
   // 「あとでやる」に長時間放置されているタスクの通知 — ネイティブでは syncLaterStaleAlerts の
   // 事前予約が発火を担うため、ここは常時フォアグラウンドが前提のWeb/開発環境向けフォールバックとしてのみ動作する
   useEffect(()=>{
@@ -9662,7 +9770,7 @@ export default function App() {
     const nowTs=Date.now();
     let notifiedKeys:string[]=[];
     try{ notifiedKeys=JSON.parse(localStorage.getItem(LATER_NOTIFIED_KEY)||'[]'); }catch{}
-    const stale=tasks.filter(t=>t.isLater&&!t.completed&&t.laterSince
+    const stale=tasks.filter(t=>t.isLater&&!t.completed&&t.laterSince&&!followUpPending(t)
       &&(nowTs-new Date(t.laterSince).getTime())>=thresholdMs
       &&!notifiedKeys.includes(`${t.id}:${t.laterSince}`));
     if(stale.length===0) return;
@@ -9681,7 +9789,7 @@ export default function App() {
     const nowMs=Date.now();
     const alerts:{id:string;title:string;body:string;timestamp:number}[]=[];
     tasks.forEach(t=>{
-      if(!t.isLater||t.completed||!t.laterSince) return;
+      if(!t.isLater||t.completed||!t.laterSince||followUpPending(t)) return;
       const baseMs=new Date(t.laterSince).getTime()+hours*3600*1000;
       let lastFireMs=-1;
       for(let i=0;i<STALE_MAX_REPEATS;i++){
@@ -9703,7 +9811,7 @@ export default function App() {
   // ここは常時フォアグラウンドが前提のWeb/開発環境向けフォールバックとしてのみ動作する
   useEffect(()=>{
     if(!loaded||!(settings.notificationsEnabled??true)||isNative()) return;
-    const laterPool=tasks.filter(t=>t.isLater&&!t.completed);
+    const laterPool=tasks.filter(t=>t.isLater&&!t.completed&&!followUpPending(t));
     if(laterPool.length===0) return;
     const today=todayStr();
     const nowM=toMin(now);
@@ -9722,7 +9830,7 @@ export default function App() {
   useEffect(()=>{
     if(!loaded||!isNative()) return;
     if(!(settings.notificationsEnabled??true)){ syncFreeSlotAlerts([]); return; }
-    const laterPool=tasks.filter(t=>t.isLater&&!t.completed);
+    const laterPool=tasks.filter(t=>t.isLater&&!t.completed&&!followUpPending(t));
     if(laterPool.length===0){ syncFreeSlotAlerts([]); return; }
     const first=laterPool[0];
     const body=laterPool.length>1?tr('notifFreeTimeBodyMulti').replace('{name}',()=>first.name).replace('{n}',()=>String(laterPool.length)):tr('notifFreeTimeBodySingle').replace('{name}',()=>first.name);
@@ -9749,7 +9857,8 @@ export default function App() {
         :source.filter(t=>!t.category||customTabs.find(ct=>ct.id===t.category)?.showInAll!==false);
     return base.filter(t=>!t.allDay);
   },[tasks,activeCategory,customTabs,tabFilter,showTour,tourSampleTasks]);
-  const laterTasks    = useMemo(()=>filteredTasks.filter(t=>t.isLater),[filteredTasks]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const laterTasks    = useMemo(()=>filteredTasks.filter(t=>t.isLater&&!followUpPending(t)),[filteredTasks,now]);
   const pendingCount  = useMemo(()=>laterTasks.filter(t=>!t.completed).length,[laterTasks]);
   const shopPending   = useMemo(()=>shopItems.filter(i=>!i.checked).length,[shopItems]);
   const activeLocationRegionCount = useMemo(()=>
@@ -10224,11 +10333,24 @@ export default function App() {
   };
   const toggle   = (id:string) => setTasks(prev=>{
     const target=prev.find(t=>t.id===id);
-    if(target&&!target.completed) logAnalyticsEvent('task_completed');
+    const becameComplete=!!(target&&!target.completed);
+    if(becameComplete) logAnalyticsEvent('task_completed');
     const now=Date.now();
-    return prev
+    const base = prev
       .map(t=>t.id===id?{...t,completed:!t.completed,completedAt:!t.completed?new Date().toISOString():t.completedAt}:t)
       .filter(t=>!(t.isLater&&t.completed&&t.completedAt&&now-new Date(t.completedAt).getTime()>=7*24*60*60*1000));
+    if(becameComplete&&target&&target.followUpEnabled){
+      const revealMs = target.followUpCustomDate
+        ? new Date(target.followUpCustomDate).getTime()
+        : now+(target.followUpDays??3)*24*60*60*1000;
+      const followUpTask:Task = {
+        id:uid(), name:(target.followUpNote?.trim())||tr('followUpDefaultName').replace('{name}',()=>target.name),
+        startTime:null, duration:0, memo:'', icon:target.icon, completed:false, date:todayStr(), isLater:true,
+        laterSince:new Date().toISOString(), followUpSourceId:target.id, followUpRevealAt:new Date(revealMs).toISOString(),
+      };
+      return [...base, followUpTask];
+    }
+    return base;
   });
   // 「あとでやる」一覧のドラッグ並び替え確定時に1回だけ呼ばれる。tasks配列内での
   // 該当タスク群のスロット位置はそのままに、中身の並び順だけorderedIdsの順序に差し替える

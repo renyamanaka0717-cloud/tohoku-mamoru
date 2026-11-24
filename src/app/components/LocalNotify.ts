@@ -14,6 +14,7 @@ interface LocalNotifyPluginType {
   syncLaterStaleAlerts(options: { alertsJson: string }): Promise<void>;
   syncWakeCheckins(options: { alertsJson: string }): Promise<void>;
   syncDeadlineAlerts(options: { alertsJson: string }): Promise<void>;
+  syncFollowUpAlerts(options: { alertsJson: string }): Promise<void>;
 }
 
 const LocalNotifyPlugin = registerPlugin<LocalNotifyPluginType>('LocalNotifyPlugin');
@@ -118,6 +119,15 @@ export function syncWakeCheckins(alerts: ScheduledAlert[]): void {
 export function syncDeadlineAlerts(alerts: ScheduledAlert[]): void {
   if (!isNative()) return;
   LocalNotifyPlugin.syncDeadlineAlerts({ alertsJson: JSON.stringify(alerts) }).catch(() => {
+    // ネイティブ側プラグイン未導入時はスキップ
+  });
+}
+
+// 経過確認フォローアップ（タスク完了時に設定した、後日様子を確認する通知）をネイティブに事前予約する
+// （syncTaskAlertsと同じ方式）。Web/開発環境では何もしない（ネイティブ専用機能）。
+export function syncFollowUpAlerts(alerts: ScheduledAlert[]): void {
+  if (!isNative()) return;
+  LocalNotifyPlugin.syncFollowUpAlerts({ alertsJson: JSON.stringify(alerts) }).catch(() => {
     // ネイティブ側プラグイン未導入時はスキップ
   });
 }
