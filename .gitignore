@@ -25,6 +25,9 @@ yarn-error.log*
 .DS_Store
 *.pem
 
+# お知らせ配信スクリプト用のFirebaseサービスアカウント鍵（絶対にコミットしない）
+scripts/serviceAccountKey*.json
+
 # Vercel
 .vercel
 

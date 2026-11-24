@@ -504,6 +504,33 @@ export async function pushSettings(uid: string, settings: object): Promise<void>
   await setDoc(doc(db, 'users', uid), { settings: stripUndefined(settings) }, { merge: true });
 }
 
+// ── お知らせ（新機能・アップデート告知、認証不要の公開コレクション） ──────────────
+//
+// 他の全コレクションと違い users/{uid} 配下ではなく、トップレベルの announcements/{id} に
+// 置く（ログインの有無に関わらず誰でも読めるようにするため）。書き込みはアプリから一切行わず
+// （セキュリティルールで write:false にする）、Firebase Console または開発者が手元で
+// firebase-admin経由で直接ドキュメントを追加する運用。これにより、アプリ本体の審査を
+// 待たずに既存ユーザー全員へ告知を配信できる（ハードコードだとアプリ更新した人にしか届かない）。
+export interface CloudAnnouncement {
+  id: string;
+  date: string; // ISO文字列。並び替え・既読比較の両方に使う
+  title: Record<string, string>; // 言語コード → 文言（例: {ja:'...', en:'...'}）
+  body: Record<string, string>;
+}
+
+export async function fetchAnnouncements(limitCount = 20): Promise<CloudAnnouncement[]> {
+  const db = await getDb();
+  if (!db) return [];
+  try {
+    const { collection, query, orderBy, limit, getDocs } = await import('firebase/firestore');
+    const snap = await getDocs(query(collection(db, 'announcements'), orderBy('date', 'desc'), limit(limitCount)));
+    return snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<CloudAnnouncement, 'id'>) }));
+  } catch (e) {
+    console.error('fetchAnnouncements failed:', e);
+    return [];
+  }
+}
+
 // users/{uid}ドキュメントのsettingsフィールドをリアルタイム購読する。hasPendingWritesの
 // チェックはsubscribeIdCollectionと同じ理由（自分自身のpushSettingsによる楽観的echoを
 // 無視し、サーバーから確定した変更だけを反映対象にする）。

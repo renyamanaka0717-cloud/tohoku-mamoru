@@ -13,7 +13,8 @@ import { voiceInputSupported, ensureVoiceInputPermission, startVoiceInput, stopV
 import { getAppVersion } from './components/AppVersion';
 import { logAnalyticsEvent } from './components/Analytics';
 import { isDevModeUnlocked, DEV_MODE_UNLOCKED_KEY, getDevPremiumOverride, setDevPremiumOverride, isDevDenied, DEV_LOCATION_DENIED_KEY, DEV_NOTIF_DENIED_KEY } from './components/DevMode';
-import { signInWithGoogle, signInWithApple, signOutCloud, onCloudAuthChange, consumeRedirectResult, migrateLocalDataToCloud, hasMigratedThisDevice, pushIdCollectionDiff, subscribeIdCollection, pushSettings, subscribeSettings, deleteAccountAndData, type CloudUser, type LocalDataForMigration } from './components/Cloud';
+import { signInWithGoogle, signInWithApple, signOutCloud, onCloudAuthChange, consumeRedirectResult, migrateLocalDataToCloud, hasMigratedThisDevice, pushIdCollectionDiff, subscribeIdCollection, pushSettings, subscribeSettings, deleteAccountAndData, type CloudUser, type LocalDataForMigration, type CloudAnnouncement } from './components/Cloud';
+import { loadAnnouncements, pickAnnouncementText, getLastSeenAnnouncementDate, markAnnouncementsSeen, hasUnreadAnnouncements as computeHasUnreadAnnouncements, initAnnouncementsSeenIfFirstRun } from './components/Announcements';
 import { App as CapApp } from '@capacitor/app';
 import ProductTour from './components/ProductTour';
 import Welcome from './components/Welcome';
@@ -6284,7 +6285,7 @@ function SettingsRow({icon,iconBg,title,desc,onClick,isLast=false,pro=false,isPr
   );
 }
 
-function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,customTabs,onCustomTabs,onDeleteTabTasks,onDeleteTag,onRenameTag,shopNotifSettings,onShopNotifSettings,shopLocations,onShopLocations,forgetAlerts,onForgetAlerts,cloudUser,migrationStatus,isPremium,onGoogleSignIn,onAppleSignIn,onSignOut,onDeleteAccount,onBulkAdd,bulkHistory,onBulkHistoryDelete,onBulkHistoryEdit,lifePatterns,onLifePatterns,patternOverrides,onApplyPattern,initialSub,tasks,onEditTask,isDesktop=false,onRequestLocationPermission}:{
+function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,customTabs,onCustomTabs,onDeleteTabTasks,onDeleteTag,onRenameTag,shopNotifSettings,onShopNotifSettings,shopLocations,onShopLocations,forgetAlerts,onForgetAlerts,cloudUser,migrationStatus,isPremium,onGoogleSignIn,onAppleSignIn,onSignOut,onDeleteAccount,onBulkAdd,bulkHistory,onBulkHistoryDelete,onBulkHistoryEdit,lifePatterns,onLifePatterns,patternOverrides,onApplyPattern,initialSub,tasks,onEditTask,isDesktop=false,onRequestLocationPermission,announcements,hasUnreadAnnouncements,onViewAnnouncements}:{
   onRequestLocationPermission?:(source:string)=>Promise<boolean>;
   settings:Settings; onSettings:(s:Settings)=>void; onClose:()=>void;
   globalTags:TagDef[]; onGlobalTags:(tags:TagDef[])=>void;
@@ -6305,6 +6306,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   initialSub?:string;
   tasks:Task[]; onEditTask:(t:Task)=>void;
   isDesktop?:boolean;
+  announcements:CloudAnnouncement[]; hasUnreadAnnouncements:boolean; onViewAnnouncements:()=>void;
 }) {
   const { tr, language, languagePref, setLanguage } = useI18n();
   const [sub,setSubRaw]        = useState<string|null>(initialSub??null);
@@ -6318,6 +6320,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   // PC版の設定画面（独立ページ・左カテゴリナビ＋右コンテンツの2カラム）でのみ使う、選択中カテゴリ
   const [activeSettingsCat,setActiveSettingsCat] = useState<'basic'|'notifications'|'general'|'integration'|'subscription'|'info'>('basic');
   useEffect(()=>{ if(sub==='premium') logAnalyticsEvent('paywall_viewed'); },[sub]);
+  useEffect(()=>{ if(sub==='announcements') onViewAnnouncements(); },[sub,onViewAnnouncements]);
   const [appVersion,setAppVersion] = useState<string|null>(null);
   useEffect(()=>{ getAppVersion().then(setAppVersion); },[]);
   // 開発者モード（アプリバージョン行を7回タップで解放。一般ユーザーには表示しない）
@@ -7083,6 +7086,27 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
       </div>
     );
   }
+
+  if(sub==='announcements') return (
+    <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto lg:max-w-none lg:w-full lg:[&>*:not(.fixed)]:max-w-[1000px] lg:[&>*:not(.fixed)]:mx-auto lg:[&>*:not(.fixed)]:w-full">
+      {subHeader(tr('announcementsTitle'))}
+      <div className="flex-1 overflow-y-auto px-4 pb-8">
+        {announcements.length===0?(
+          <p className="text-sm text-gray-400 text-center py-10">{tr('announcementsEmptyLabel')}</p>
+        ):(
+          <div className="space-y-3 mt-4">
+            {announcements.map(a=>(
+              <div key={a.id} className="bg-white rounded-2xl shadow-sm px-4 py-4">
+                <p className="text-xs text-gray-400 mb-1">{a.date.slice(0,10)}</p>
+                <p className="text-sm font-bold text-gray-900 mb-1">{pickAnnouncementText(a.title,language)}</p>
+                <p className="text-sm text-gray-600 whitespace-pre-wrap leading-relaxed">{pickAnnouncementText(a.body,language)}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
 
   if(sub==='notifications') return (
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto lg:max-w-none lg:w-full lg:[&>*:not(.fixed)]:max-w-[1000px] lg:[&>*:not(.fixed)]:mx-auto lg:[&>*:not(.fixed)]:w-full">
@@ -8161,7 +8185,12 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             <span className="text-[15px] font-medium">{tr('backButton')}</span>
           </button>
           <h1 className="flex-1 text-center text-[24px] font-bold text-gray-900">{tr('settingsTitle')}</h1>
-          <div style={{width:'70px'}}/>
+          <div className="flex items-center justify-end" style={{width:'70px'}}>
+            <button onClick={()=>setSub('announcements')} className="relative w-9 h-9 flex items-center justify-center text-gray-500">
+              <AppIcons.bell size={20}/>
+              {hasUnreadAnnouncements&&<span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[var(--c-primary)]"/>}
+            </button>
+          </div>
         </div>
         <div className="flex-1 min-h-0 flex justify-center">
           <div className="w-full flex" style={{maxWidth:'1000px'}}>
@@ -8192,6 +8221,10 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           <AppIcons.caretLeft size={20}/>
         </button>
         <h1 className="text-[20px] font-bold text-gray-900">{tr('settingsTitle')}</h1>
+        <button onClick={()=>setSub('announcements')} className="absolute right-4 flex items-center justify-center w-9 h-9 text-gray-500">
+          <AppIcons.bell size={20}/>
+          {hasUnreadAnnouncements&&<span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[var(--c-primary)]"/>}
+        </button>
       </div>
       <div className="flex-1 overflow-y-auto px-4 pb-10">
 
@@ -8479,6 +8512,24 @@ export default function App() {
   const [patternOverrides,setPatternOverrides] = useState<Record<string,string>>({});
   const [cloudUser,setCloudUser] = useState<CloudUser|null>(null);
   const [migrationStatus,setMigrationStatus] = useState<'idle'|'syncing'|'done'|'error'>('idle');
+  // お知らせ（新機能・アップデート告知）。ログイン不要の公開コレクションなのでcloudUserとは無関係に取得する
+  const [announcements,setAnnouncements] = useState<CloudAnnouncement[]>([]);
+  const [announcementsUnread,setAnnouncementsUnread] = useState(false);
+  useEffect(()=>{
+    if(!loaded) return;
+    loadAnnouncements().then(list=>{
+      setAnnouncements(list);
+      if(list.length>0){
+        initAnnouncementsSeenIfFirstRun(list[0].date);
+        setAnnouncementsUnread(computeHasUnreadAnnouncements(list));
+      }
+    });
+  },[loaded]);
+  const markAnnouncementsRead = () => {
+    if(announcements.length===0) return;
+    markAnnouncementsSeen(announcements[0].date);
+    setAnnouncementsUnread(false);
+  };
   const [showTour,setShowTour] = useState(false);
   const [showWelcome,setShowWelcome] = useState(false);
   const [activeAnnouncement,setActiveAnnouncement] = useState<UpdateAnnouncementDef|null>(null);
@@ -10449,7 +10500,7 @@ export default function App() {
               <button onClick={()=>setShowShortcutsHelp(true)} className="w-8 h-8 flex items-center justify-center text-gray-400"><AppIcons.question size={20}/></button>
               <button onClick={()=>setCalOp(true)} className="w-8 h-8 flex items-center justify-center text-gray-400"><AppIcons.calendar size={20}/></button>
               <button onClick={()=>setSearchOpen(true)} className="w-8 h-8 flex items-center justify-center text-gray-400"><AppIcons.search size={20}/></button>
-              <button onClick={()=>{setSettingsInitSub(undefined);setSOp(true);}} className="w-8 h-8 flex items-center justify-center text-gray-400"><AppIcons.settings size={20}/></button>
+              <button onClick={()=>{setSettingsInitSub(undefined);setSOp(true);}} className="relative w-8 h-8 flex items-center justify-center text-gray-400"><AppIcons.settings size={20}/>{announcementsUnread&&<span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-[var(--c-primary)]"/>}</button>
             </div>
           </div>
           ):(
@@ -10466,7 +10517,7 @@ export default function App() {
               </button>
               <button onClick={()=>setCalOp(true)} className="w-8 h-8 flex items-center justify-center text-gray-400"><AppIcons.calendar size={24}/></button>
               <button onClick={()=>setSearchOpen(true)} className="w-8 h-8 flex items-center justify-center text-gray-400"><AppIcons.search size={24}/></button>
-              <button onClick={()=>{setSettingsInitSub(undefined);setSOp(true);}} className="w-8 h-8 flex items-center justify-center text-gray-400"><AppIcons.settings size={24}/></button>
+              <button onClick={()=>{setSettingsInitSub(undefined);setSOp(true);}} className="relative w-8 h-8 flex items-center justify-center text-gray-400"><AppIcons.settings size={24}/>{announcementsUnread&&<span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-[var(--c-primary)]"/>}</button>
             </div>
           </div>
           )}
@@ -10970,7 +11021,7 @@ export default function App() {
 
       {/* ── Settings Screen ── */}
       {settingsOpen&&(
-        <SettingsScreen settings={settings} onSettings={setSettings} onClose={()=>setSOp(false)} globalTags={globalTags} onGlobalTags={setGlobalTags} customTabs={customTabs} onCustomTabs={setCustomTabs} onDeleteTabTasks={(tabId)=>setTasks(prev=>prev.filter(t=>t.category!==tabId))} onDeleteTag={(tagName)=>{setGlobalTags(prev=>prev.filter(t=>t.name!==tagName));setTasks(prev=>prev.map(t=>({...t,tags:(t.tags??[]).filter(n=>n!==tagName)})));}} onRenameTag={(oldName,newName,newColor)=>{setGlobalTags(prev=>prev.map(t=>t.name===oldName?{name:newName,color:newColor}:t));setTasks(prev=>prev.map(t=>({...t,tags:(t.tags??[]).map(n=>n===oldName?newName:n)})));}} shopNotifSettings={shopNotifSettings} onShopNotifSettings={setShopNotifSettings} shopLocations={shopLocations} onShopLocations={setShopLocations} forgetAlerts={forgetAlerts} onForgetAlerts={setForgetAlerts} cloudUser={cloudUser} migrationStatus={migrationStatus} isPremium={isPremium} onGoogleSignIn={handleGoogleSignIn} onAppleSignIn={handleAppleSignIn} onSignOut={handleSignOut} onDeleteAccount={handleDeleteAccount} onBulkAdd={bulkAddTasks} bulkHistory={bulkHistory} onBulkHistoryDelete={bulkHistoryDelete} onBulkHistoryEdit={bulkHistoryEdit} lifePatterns={lifePatterns} onLifePatterns={setLifePatterns} patternOverrides={patternOverrides} onApplyPattern={applyPattern} initialSub={settingsInitSub} tasks={tasks} onEditTask={(t)=>{setSOp(false);openEdit(t);}} isDesktop={isDesktop} onRequestLocationPermission={requestLocationWithDisclosure}/>
+        <SettingsScreen settings={settings} onSettings={setSettings} onClose={()=>setSOp(false)} globalTags={globalTags} onGlobalTags={setGlobalTags} customTabs={customTabs} onCustomTabs={setCustomTabs} onDeleteTabTasks={(tabId)=>setTasks(prev=>prev.filter(t=>t.category!==tabId))} onDeleteTag={(tagName)=>{setGlobalTags(prev=>prev.filter(t=>t.name!==tagName));setTasks(prev=>prev.map(t=>({...t,tags:(t.tags??[]).filter(n=>n!==tagName)})));}} onRenameTag={(oldName,newName,newColor)=>{setGlobalTags(prev=>prev.map(t=>t.name===oldName?{name:newName,color:newColor}:t));setTasks(prev=>prev.map(t=>({...t,tags:(t.tags??[]).map(n=>n===oldName?newName:n)})));}} shopNotifSettings={shopNotifSettings} onShopNotifSettings={setShopNotifSettings} shopLocations={shopLocations} onShopLocations={setShopLocations} forgetAlerts={forgetAlerts} onForgetAlerts={setForgetAlerts} cloudUser={cloudUser} migrationStatus={migrationStatus} isPremium={isPremium} onGoogleSignIn={handleGoogleSignIn} onAppleSignIn={handleAppleSignIn} onSignOut={handleSignOut} onDeleteAccount={handleDeleteAccount} onBulkAdd={bulkAddTasks} bulkHistory={bulkHistory} onBulkHistoryDelete={bulkHistoryDelete} onBulkHistoryEdit={bulkHistoryEdit} lifePatterns={lifePatterns} onLifePatterns={setLifePatterns} patternOverrides={patternOverrides} onApplyPattern={applyPattern} initialSub={settingsInitSub} tasks={tasks} onEditTask={(t)=>{setSOp(false);openEdit(t);}} isDesktop={isDesktop} onRequestLocationPermission={requestLocationWithDisclosure} announcements={announcements} hasUnreadAnnouncements={announcementsUnread} onViewAnnouncements={markAnnouncementsRead}/>
       )}
 
       {/* ── Tab filter bottom sheet ── */}

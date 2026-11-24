@@ -2841,6 +2841,77 @@ Web版の`signInWithPopup`はネイティブのWKWebView/WebView（`capacitor://
 
 ---
 
+## お知らせ（新機能・アップデート告知）
+
+既存ユーザーに新機能やアップデートを知らせる機能。設定画面トップのベルアイコン・タイムラインヘッダーの設定（歯車）アイコンの2箇所に、未読のお知らせがあれば小さいドットバッジを表示する。
+
+### 配信方式をハードコードではなくFirestoreにした理由
+
+当初はアプリ本体にお知らせ内容を配列で書く案（他の選択肢配列と同じ方式）も検討したが、**App Storeの過去バージョンをそのまま使い続けているユーザーが相当数いる**ため、ハードコード方式だと「そのお知らせを含むバージョンに更新した人」にしか届かない（審査を待つ必要もある）。Cloud Firestoreの**認証不要の公開コレクション**に置くことで、アプリの審査・更新を待たずに既存ユーザー全員（この機能自体は入っているバージョン以降）へ配信できるようにした。
+
+### データモデル・アクセス（`Cloud.ts`）
+
+```
+announcements/{id}       … 認証不要の公開コレクション（users/{uid}配下ではなくトップレベル）
+  date:  string           // ISO文字列。並び替え・既読比較の両方に使う
+  title: Record<lang,string>
+  body:  Record<lang,string>
+```
+
+- `Cloud.ts`の`fetchAnnouncements(limitCount=20)` — `orderBy('date','desc')`で新しい順に取得するだけの読み取り専用関数。他の全コレクション（`users/{uid}/...`）と違い認証状態に関係なく呼べる
+- **セキュリティルールに`match /announcements/{id} { allow read: if true; allow write: if false; }`を追加すること（Firebase Console側の手動作業・未適用）。** 読み取りは誰でも可、書き込みはアプリから一切できないようにし、後述の`push-announcement.js`スクリプト（Admin SDK、ルールの影響を受けない）経由でのみ追加する運用にする
+
+### クライアント側（`src/app/components/Announcements.ts`）
+
+Cloud.tsの`fetchAnnouncements()`を薄くラップし、**既読管理**と**新規インストール判定**をこのファイルに集約している。
+
+- `loadAnnouncements()` — 取得するだけ（多言語オブジェクトのまま返す。言語切り替え時に再フェッチしなくて済むよう、表示時に`pickAnnouncementText(map,language)`で言語を選ぶ設計）
+- `getLastSeenAnnouncementDate()`/`markAnnouncementsSeen(date)` — `localStorage`の`tl-announcement-seen-date-v1`に「最後に見たお知らせの`date`」を保存。ISO日付文字列は辞書式比較で新旧判定できるため、配列の0件目（最新）の`date`とだけ比較すればよい
+- `hasUnreadAnnouncements(list)` — `list[0].date`が既読日時より新しければtrue
+
+**新規インストールには既読のお知らせが無い状態からではなく、取得時点の最新お知らせまで既読扱いにして迎える（重要・ユーザーからの明示的な要望）。** `initAnnouncementsSeenIfFirstRun(latestDate)`が、既読キー自体が未設定（＝このお知らせ機能を初めて迎えるタイミング）の時だけ判定する。この時、`hasExistingLocalData()`（`tl-tasks-v2`/`tl-settings-v2`のどちらかがlocalStorageに存在するか）で「本当に新規インストールか、既にアプリを使っていた人か」を区別する：
+- **新規インストール**（どちらも存在しない）→ 取得時点の最新`date`をそのまま既読にセットする（＝バッジが出ない状態でスタート）
+- **既存ユーザー**（アプリ利用履歴あり）→ 何もしない＝未見扱いのまま。今ある全お知らせを「初めて見るお知らせ」としてバッジ付きで迎える（この機能より前からアプリを使っていた人にとっては、過去のお知らせも実際に見たことが無い内容のため）
+
+`page.tsx`はdefault exportのみでTASKS_KEY/SETTINGS_KEYをimportできないため、`hasExistingLocalData()`は同じ文字列リテラルを独自に持っている（他の機能ファイルと同じ前提。値を変更する時はpage.tsx側のキーとズレないよう両方直すこと）。
+
+### App側の状態・表示
+
+- `App`コンポーネントに`announcements`/`announcementsUnread` stateがあり、`loaded`後の`useEffect`で一度だけ`loadAnnouncements()`を呼ぶ（ログイン状態・`cloudUser`とは無関係——誰でも読めるお知らせのため）
+- `markAnnouncementsRead()` — `announcements[0].date`を既読にし`announcementsUnread`をfalseにする。`SettingsScreen`に`onViewAnnouncements`として渡し、`sub==='announcements'`になった瞬間（`useEffect([sub,onViewAnnouncements])`）に呼ばれる
+- バッジは`announcementsUnread`を見るだけの単純な赤ドット（`bg-[var(--c-primary)]`、CLAUDE.mdの色表で「バッジ」用途として定義済みの色をそのまま使う）。設置箇所は2つ：
+  1. `SettingsScreen`トップ画面（`sub===null`）のヘッダー、戻るボタンの反対側（モバイル版は`absolute right-4`、PC版は右側の`width:70px`バランサー枠内）
+  2. タイムラインヘッダーの設定（歯車）アイコン button（`isDesktop`分岐・モバイル分岐の両方）
+- タップ先は`SettingsScreen`内の新しい`sub==='announcements'`画面（他の約30個のsub画面と全く同じ`subHeader()`＋`fixed inset-y-0...`ラッパーのパターン）。お知らせを新しい順にカード一覧表示するだけのシンプルな画面
+
+### 配信スクリプト（`scripts/push-announcement.js`、開発者がローカルで実行）
+
+アプリから書き込めない設計のため、新しいお知らせは**あなたの手元（Mac）でこのスクリプトを実行して**Firestoreに直接追加する。Firebase Admin SDK（`firebase-admin`、devDependency）を使う、ビルド成果物には含まれない開発者専用ツール。
+
+```bash
+# 1. あなたが日本語でお知らせ内容を考える
+# 2. Claudeに頼んで残り8言語の翻訳を埋めたJSONファイルを作ってもらう
+# 3. Firebase Console → プロジェクトの設定 → サービスアカウント → 「新しい秘密鍵の生成」で
+#    鍵を取得し、scripts/serviceAccountKey.json として保存（.gitignore済み・絶対にコミットしない）
+npm run push-announcement -- ./announcement.json
+```
+
+- 入力JSONは`{date, title:{9言語}, body:{9言語}}`。9言語のどれか1つでも欠けているとスクリプト側でエラーになり登録されない（`LANGUAGES`配列で検証）
+- 鍵のパスは`--key`で変更可能（省略時は`scripts/serviceAccountKey.json`を探す）
+- ドキュメントIDは自動生成（`collection('announcements').add()`）。クライアント側は`date`でソート・比較するため、ID自体に意味を持たせる必要は無い
+- **このスクリプト・鍵は絶対にこのクラウドセッション（Claude Code）に渡さず、あなたのローカル環境でのみ実行すること。** Claudeが担当するのは翻訳とJSON作成まで（翻訳済みJSONファイルをここで一緒に作ることはできるが、実際の登録コマンド実行と鍵の管理はユーザー側の作業）
+
+### 避けるパターン
+
+- お知らせの内容をコード側にハードコードする設計に戻さない（過去バージョンのまま使っているユーザーに届かないため、意図的にFirestore方式を選んだ）
+- `announcements`コレクションのセキュリティルールを`allow write: if true`にしない（アプリから誰でも書き込めてしまう。書き込みは`push-announcement.js`経由の管理者操作のみに限定する設計）
+- `hasExistingLocalData()`のキー文字列（`'tl-tasks-v2'`/`'tl-settings-v2'`）をpage.tsx側の`TASKS_KEY`/`SETTINGS_KEY`の値とズレたまま放置しない（page.tsxはdefault exportのみでimportできないため、両方を手で合わせる必要がある）
+- 新規インストールにも「既読日時=null」のまま既存のお知らせを未読表示しない（`initAnnouncementsSeenIfFirstRun`で新規インストール時だけ最新の`date`を既読として初期化する設計を維持すること）
+- `firebase-admin`をアプリ本体の`dependencies`に追加しない（`scripts/`専用の`devDependency`。Next.jsのビルド・バンドルには含めない）
+- `scripts/serviceAccountKey*.json`を`.gitignore`から外さない、またはこのファイルの中身をチャット上に貼り付けさせない（Firestoreへの書き込み権限を持つ秘密鍵のため）
+
+---
+
 ## 独自ドメイン（`getbrainbox.app`）
 
 **ドメインは`getbrainbox.app`、Cloudflare Registrarで購入済み。** Cloudflareへのログインは**Appleアカウント（Sign in with Apple）**を使っている——新しいセッションでCloudflare側の作業（DNSレコード追加等）が必要になった時は、ユーザーにこのログイン方法を案内すること（パスワード認証ではない）。

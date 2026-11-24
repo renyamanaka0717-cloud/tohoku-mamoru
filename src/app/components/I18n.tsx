@@ -172,6 +172,8 @@ export const STRINGS = {
 
   // SettingsScreen（トップレベルのメニュー一覧）
   settingsTitle:             { ja: '設定',                        en: 'Settings', es: 'Configuración', pt: 'Configurações', vi: 'Cài đặt', th: 'การตั้งค่า', id: 'Pengaturan',                      ko: '설정',                        'zh-TW': '設定' },
+  announcementsTitle:        { ja: 'お知らせ',                     en: 'Announcements', es: 'Novedades', pt: 'Novidades', vi: 'Thông báo', th: 'ประกาศ', id: 'Pengumuman',                    ko: '공지사항',                     'zh-TW': '公告' },
+  announcementsEmptyLabel:   { ja: 'お知らせはまだありません',          en: 'No announcements yet', es: 'Aún no hay novedades', pt: 'Ainda não há novidades', vi: 'Chưa có thông báo nào', th: 'ยังไม่มีประกาศ', id: 'Belum ada pengumuman', ko: '아직 공지사항이 없습니다',        'zh-TW': '目前沒有公告' },
   sectionFeatures:           { ja: '基本機能',                     en: 'Basic features', es: 'Funciones básicas', pt: 'Funções básicas', vi: 'Tính năng cơ bản', th: 'ฟีเจอร์พื้นฐาน', id: 'Fitur dasar',                ko: '기본 기능',                     'zh-TW': '基本功能' },
   sectionNotifications:      { ja: '通知',                        en: 'Notifications', es: 'Notificaciones', pt: 'Notificações', vi: 'Thông báo', th: 'การแจ้งเตือน', id: 'Notifikasi',                 ko: '알림',                        'zh-TW': '通知' },
   sectionGeneral:            { ja: '一般',                        en: 'General', es: 'General', pt: 'Geral', vi: 'Chung', th: 'ทั่วไป', id: 'Umum',                       ko: '일반',                        'zh-TW': '一般' },

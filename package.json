@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "push-announcement": "node scripts/push-announcement.js"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.2",
@@ -30,6 +31,7 @@
     "autoprefixer": "^10.0.1",
     "eslint": "^8",
     "eslint-config-next": "^15.3.3",
+    "firebase-admin": "^12.7.0",
     "postcss": "^8",
     "tailwindcss": "^3.3.0",
     "typescript": "^5"
