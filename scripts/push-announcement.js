@@ -26,7 +26,7 @@ function parseArgs(argv) {
   const args = argv.slice(2);
   const keyFlagIndex = args.indexOf('--key');
   const keyPath = keyFlagIndex >= 0 ? args[keyFlagIndex + 1] : null;
-  const positional = args.filter((a, i) => a !== '--key' && i !== keyFlagIndex + 1);
+  const positional = args.filter((a, i) => a !== '--key' && (keyFlagIndex < 0 || i !== keyFlagIndex + 1));
   return { inputPath: positional[0], keyPath };
 }
 
