@@ -61,11 +61,22 @@ async function main() {
   // firebase-adminはこのスクリプト専用のdevDependency（アプリ本体のビルドには含まれない）
   const admin = require('firebase-admin');
   admin.initializeApp({ credential: admin.credential.cert(require(resolvedKeyPath)) });
+  // 既定のgRPC接続はネットワーク環境（VPN・一部のWi-Fiルーター・ファイアウォール等）によって
+  // 応答が返らず無反応のまま固まることがあるため、REST(HTTP)経由に切り替えて回避する
+  admin.firestore().settings({ preferRest: true });
 
-  const ref = await admin.firestore().collection('announcements').add({
+  const write = admin.firestore().collection('announcements').add({
     date: data.date,
     title: data.title,
     body: data.body,
+  });
+  const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 20000));
+  const ref = await Promise.race([write, timeout]).catch((e) => {
+    if (e.message === 'timeout') {
+      console.error('20秒経っても応答がありませんでした。ネットワーク環境（VPN・ファイアウォール等）が原因の可能性があります。接続を変えて（別のWi-Fi、VPNをオフにする等）もう一度試してください。');
+      process.exit(1);
+    }
+    throw e;
   });
 
   console.log(`お知らせを登録しました: announcements/${ref.id}`);
