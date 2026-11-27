@@ -3224,7 +3224,7 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                         {d===1?tr('followUpTiming1Day'):d===3?tr('followUpTiming3Days'):tr('followUpTiming1Week')}
                       </button>
                     ))}
-                    <button onClick={()=>setFollowUpCustomOpen(o=>!o)}
+                    <button onClick={()=>{setFollowUpCustomOpen(o=>!o);if(!followUpCustomDate) setFollowUpCustomDate(shiftDate(todayStr(),7));}}
                       className={`flex-1 py-2 rounded-xl text-xs font-semibold ${followUpCustomDate?'bg-[var(--c-primary)] text-white':'bg-gray-100 text-gray-700'}`}>
                       {tr('followUpTimingCustom')}
                     </button>
