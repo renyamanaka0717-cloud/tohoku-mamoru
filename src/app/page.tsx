@@ -5551,10 +5551,18 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
   const otherDoneToday = tasks.filter(t=>!t.isLater&&t.startTime&&t.completed&&t.date===todayStr());
   const laterDone   = [...laterTasks.filter(t=>t.completed),...otherDoneToday];
 
+  // 経過確認フォローアップで自動生成されたタスクは、通常の「あとでやる」とは別の専用セクションに表示する
+  const followUpLater = laterPending.filter(t=>t.followUpSourceId);
+  const regularLaterPending = laterPending.filter(t=>!t.followUpSourceId);
+  const followUpLaterSorted = [...followUpLater].sort((a,b)=>{
+    const cmp=(a.followUpRevealAt??'').localeCompare(b.followUpRevealAt??'');
+    return sortDir!=='desc'?cmp:-cmp;
+  });
+
   // Pinned tasks always appear first, then sorted by sortDir within the group
   const normalLater = (() => {
-    const pinned  = laterPending.filter(t=>t.pinned);
-    const normal  = laterPending.filter(t=>!t.pinned);
+    const pinned  = regularLaterPending.filter(t=>t.pinned);
+    const normal  = regularLaterPending.filter(t=>!t.pinned);
     const ordered = sortDir!=='desc' ? normal : [...normal].reverse();
     return [...pinned,...ordered];
   })();
@@ -5742,6 +5750,23 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
                     </div>
                   );
                 })}
+              </div>
+            )}
+
+            {/* 経過確認 section（経過確認フォローアップで自動生成されたタスク専用） */}
+            {followUpLaterSorted.length>0&&(
+              <div className="mt-3">
+                <div className="flex items-center gap-1.5 mb-2">
+                  <span className="text-xs text-gray-400">↻</span>
+                  <span className="text-xs text-gray-400 font-medium">{tr('followUpSectionLabel').replace('{n}',String(followUpLaterSorted.length))}</span>
+                </div>
+                <div className="space-y-2">
+                  {followUpLaterSorted.map(t=>(
+                    <div key={t.id} className="flex items-center gap-2.5 bg-white border border-gray-100 rounded-2xl shadow-sm px-3 py-3">
+                      {renderLaterRowContent(t)}
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 

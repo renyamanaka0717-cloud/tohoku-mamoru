@@ -954,9 +954,11 @@ const followUpPending = (t:Task) => !!t.followUpRevealAt && new Date(t.followUpR
 - `native-android/LocalNotifyPlugin.kt`に`syncFollowUpAlerts`メソッドを追加、`PREFIXES`リストに`"follow-up-"`を追加（`BootReceiver.kt`の再起動後の再予約もこのリスト経由で自動的にカバーされる）
 - Web/開発環境専用フォールバック（`now`ポーリング＋即時`notify()`、`FOLLOW_UP_ALERT_FIRED_KEY`使用）も用意済み
 
-### 「あとでやる」一覧での表示（元タスクへのリンク）
+### 「あとでやる」一覧での表示（専用セクション分離・元タスクへのリンク）
 
-`renderLaterRowContent()`（BottomTabs）で、`t.followUpSourceId`があるタスク行にのみ`tr('followUpSourceLabel')`（「元: {name}」）を表示する。**元タスク名はスナップショットではなく`tasks.find(x=>x.id===t.followUpSourceId)`でその場でライブに検索する**——元タスクが後から改名されても追従する。タップで`onEdit(src)`（元タスクの編集モーダルを開く）、行全体のタップ（フォローアップタスク自身の編集）とは別の要素に分離している（`e.stopPropagation()`で親のクリックに伝播させない）。元タスクが既に削除されている場合は何も表示しない。
+**フォローアップタスク（`t.followUpSourceId`があるもの）は、通常の「あとでやる」タスクと混在させず、`BottomTabs`内の専用セクション「経過確認」に分離して表示する。** `laterPending`を`followUpLater`（`t.followUpSourceId`あり）と`regularLaterPending`（無し）に分割し、ピン留め・並び替え・ファイルタブ別グループ分け（`normalLater`/`nonPinnedLater`/`laterGroups`）は`regularLaterPending`のみを対象にする。`followUpLaterSorted`は`followUpRevealAt`（表示開始時刻）順に`sortDir`で並べ、通常の「あとでやる」セクションの直後・「時間指定」セクションの前に、同じカードスタイルで表示する（見出しは`tr('followUpSectionLabel')`）。**フォローアップタスクはピン留め・並び替えポップアップ（`ReorderLaterPopup`）・ファイルタブ別グループ分けの対象外**——専用セクションに固定表示するという設計のため。
+
+`renderLaterRowContent()`（BottomTabs）で、`t.followUpSourceId`があるタスク行にのみ`tr('followUpSourceLabel')`（「元: {name}」）を表示する（経過確認セクション内の行にもそのまま適用される）。**元タスク名はスナップショットではなく`tasks.find(x=>x.id===t.followUpSourceId)`でその場でライブに検索する**——元タスクが後から改名されても追従する。タップで`onEdit(src)`（元タスクの編集モーダルを開く）、行全体のタップ（フォローアップタスク自身の編集）とは別の要素に分離している（`e.stopPropagation()`で親のクリックに伝播させない）。元タスクが既に削除されている場合は何も表示しない。
 
 ### Xcode/Android Studioでの手動セットアップ
 
@@ -967,6 +969,7 @@ const followUpPending = (t:Task) => !!t.followUpRevealAt && new Date(t.followUpR
 - 完了操作のたびに「経過確認しますか？」という確認ダイアログを割り込ませない（タスク作成時に`followUpEnabled`をあらかじめ設定しておく方式。完了は完了のまま、追加の意思決定を挟まない）
 - フォローアップタスクの元タスク名をスナップショットとしてコピーしない（`followUpSourceId`でライブに参照する。元タスクが改名されても追従させる設計）
 - `followUpPending()`な（表示開始前の）フォローアップタスクを、放置タスク通知・空き時間提案通知・バッジ件数等、ユーザーに見える箇所に含めない。新しく「あとでやる」タスクを列挙する箇所を追加する時は`t.isLater`だけでなく`!followUpPending(t)`も確認すること
+- 表示開始後のフォローアップタスクを通常の「あとでやる」セクション（`normalLater`）に混在させない。`regularLaterPending`/`followUpLater`の分割を崩さず、専用の「経過確認」セクション（`followUpLaterSorted`）にのみ表示すること
 - 繰り返し（`mode==='recurring'`）のタスクにフォローアップのトグルを表示しない（同じシリーズのインスタンスが完了するたびに際限なく生成されてしまう。ユーザーからの要望も無いため意図的にスコープ外）。`mode==='later'`/`'scheduled'`両方への対応は`followUpModeOk`という1つの変数にまとめてあるので、新しく対象モードを増減する時もこの変数の定義だけを変えること（複数箇所に`mode==='later'`をベタ書きし直さない）
 - フォローアップ通知の本文を締切通知のような専用の文言組み立て関数で作らない（フォローアップタスク自身の`name`がそのまま意味のある本文になるよう生成時に設計してあるため、`t.name`をそのまま使えばよい）
 
