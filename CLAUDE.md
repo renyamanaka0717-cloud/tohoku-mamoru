@@ -949,7 +949,7 @@ const followUpTask:Task = {
 
 **フォローアップタスク（`t.followUpSourceId`があるもの）は、通常の「あとでやる」タスクと混在させず、`BottomTabs`内の専用セクション「経過確認」に分離して表示する。** `laterPending`を`followUpLater`（`t.followUpSourceId`あり）と`regularLaterPending`（無し）に分割し、ピン留め・並び替え・ファイルタブ別グループ分け（`normalLater`/`nonPinnedLater`/`laterGroups`）は`regularLaterPending`のみを対象にする。`followUpLaterSorted`は`followUpRevealAt`（目安の確認日時）順に`sortDir`で並べ、通常の「あとでやる」セクションの直後・「時間指定」セクションの前に、同じカードスタイルで表示する（見出しは`tr('followUpSectionLabel')`）。**フォローアップタスクはピン留め・並び替えポップアップ（`ReorderLaterPopup`）・ファイルタブ別グループ分けの対象外**——専用セクションに固定表示するという設計のため。
 
-`renderLaterRowContent()`（BottomTabs）で、`t.followUpSourceId`があるタスク行にのみ`tr('followUpSourceLabel')`（「元: {name}」）を表示する（経過確認セクション内の行にもそのまま適用される）。**元タスク名はスナップショットではなく`tasks.find(x=>x.id===t.followUpSourceId)`でその場でライブに検索する**——元タスクが後から改名されても追従する。タップで`onEdit(src)`（元タスクの編集モーダルを開く）、行全体のタップ（フォローアップタスク自身の編集）とは別の要素に分離している（`e.stopPropagation()`で親のクリックに伝播させない）。元タスクが既に削除されている場合は何も表示しない。
+`renderLaterRowContent()`（BottomTabs）で、`t.followUpSourceId`があるタスク行にのみ元タスク名へのリンクを表示する（経過確認セクション内の行にもそのまま適用される）。**当初`tr('followUpSourceLabel')`で「元: {name}」という文字列をそのまま表示していたが、「微妙」というフィードバックを受け、`AppIcons.link`（鎖アイコン）＋元タスク名のみ（接頭辞の文言なし）という、`deadlineAt`/`locationNotify`の行（アイコン＋`text-[11px] text-gray-400 font-semibold`）と統一感のあるスタイルに変更した。** `followUpSourceLabel`のi18nキーは削除済み——新しく似た「アイコン＋ラベル」行を追加する時は、この既存パターン（`<Icon size={10}/><span className="truncate">...</span>`）に倣い、「○○: 」のようなコロン付き接頭辞文字列を新設しないこと。**元タスク名はスナップショットではなく`tasks.find(x=>x.id===t.followUpSourceId)`でその場でライブに検索する**——元タスクが後から改名されても追従する。タップで`onEdit(src)`（元タスクの編集モーダルを開く）、行全体のタップ（フォローアップタスク自身の編集）とは別の要素に分離している（`e.stopPropagation()`で親のクリックに伝播させない）。元タスクが既に削除されている場合は何も表示しない。
 
 ### Xcode/Android Studioでの手動セットアップ
 

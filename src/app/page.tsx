@@ -5606,8 +5606,8 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
             const src=tasks.find(x=>x.id===t.followUpSourceId);
             return src?(
               <button onClick={e=>{e.stopPropagation();onEdit(src);}}
-                className="text-[11px] text-gray-400 mt-0.5 underline underline-offset-2 truncate max-w-full text-left">
-                {tr('followUpSourceLabel').replace('{name}',()=>src.name)}
+                className="text-[11px] text-gray-400 font-semibold mt-0.5 flex items-center gap-1 max-w-full text-left active:text-gray-600">
+                <AppIcons.link size={10} className="shrink-0"/><span className="truncate">{src.name}</span>
               </button>
             ):null;
           })()}
