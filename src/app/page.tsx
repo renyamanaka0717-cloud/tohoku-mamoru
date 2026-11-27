@@ -98,7 +98,7 @@ interface Task {
   followUpDays?: 1|3|7;             // プリセットのタイミング（完了日からの日数）。followUpCustomDate優先
   followUpCustomDate?: string;      // カスタム指定時の日時（ISO文字列）。設定時はfollowUpDaysより優先
   followUpSourceId?: string;        // このタスク自身が生成されたフォローアップタスクである場合、元タスクのID
-  followUpRevealAt?: string;        // フォローアップタスクが「あとでやる」に表示され始める日時（ISO文字列）
+  followUpRevealAt?: string;        // フォローアップタスクの目安の確認日時（ISO文字列）。「経過確認」リマインダー通知の発火時刻にのみ使う（一覧への表示は完了と同時）
 }
 
 type FontSize = 'small'|'standard'|'large'|'xlarge';
@@ -557,9 +557,6 @@ const shiftDate   = (s: string, n: number) => { const d=new Date(s+'T12:00:00');
 const shiftMonthBy= (s: string, n: number) => { const d=new Date(s+'T12:00:00'); d.setMonth(d.getMonth()+n); return dateToStr(d); };
 const shiftYearBy = (s: string, n: number) => { const d=new Date(s+'T12:00:00'); d.setFullYear(d.getFullYear()+n); return dateToStr(d); };
 const uid         = () => `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-// 経過確認フォローアップで生成されたタスクが、まだ指定時刻に達していない間は
-// 「あとでやる」一覧に表示しない（表示開始前）
-const followUpPending = (t:Task) => !!t.followUpRevealAt && new Date(t.followUpRevealAt).getTime()>Date.now();
 // 繰り返しタスクの「同じ回」判定。seriesId（作成時に割り当てる、以後不変のシリーズ識別子）が
 // あればそれだけで判定する。無い場合（この仕組みを導入する前に作られたレガシーデータ）は
 // 従来通り 名前+繰り返し設定+開始時刻 の一致で判定するが、相手が既にseriesIdを持つ場合
@@ -5545,7 +5542,7 @@ function BottomTabs({activeTab,onSwitchTab,onClose,tasks,shopItems,pendingCount,
   const addShop = () => { const v=shopInput.trim(); if(!v) return; onAddShop(v); setShopInput(''); };
 
   const laterTasks  = tasks.filter(t=>t.isLater);
-  const laterPending= laterTasks.filter(t=>!t.completed&&!followUpPending(t));
+  const laterPending= laterTasks.filter(t=>!t.completed);
   // 時間指定・繰り返しタスクも今日完了した分はここに含める（完了にしても
   // どこにも表示されなくなる不具合の修正。「あとでやる」以外は日付で絞り込む）
   const otherDoneToday = tasks.filter(t=>!t.isLater&&t.startTime&&t.completed&&t.date===todayStr());
@@ -9875,7 +9872,7 @@ export default function App() {
     const nowTs=Date.now();
     let notifiedKeys:string[]=[];
     try{ notifiedKeys=JSON.parse(localStorage.getItem(LATER_NOTIFIED_KEY)||'[]'); }catch{}
-    const stale=tasks.filter(t=>t.isLater&&!t.completed&&t.laterSince&&!followUpPending(t)
+    const stale=tasks.filter(t=>t.isLater&&!t.completed&&t.laterSince
       &&(nowTs-new Date(t.laterSince).getTime())>=thresholdMs
       &&!notifiedKeys.includes(`${t.id}:${t.laterSince}`));
     if(stale.length===0) return;
@@ -9894,7 +9891,7 @@ export default function App() {
     const nowMs=Date.now();
     const alerts:{id:string;title:string;body:string;timestamp:number}[]=[];
     tasks.forEach(t=>{
-      if(!t.isLater||t.completed||!t.laterSince||followUpPending(t)) return;
+      if(!t.isLater||t.completed||!t.laterSince) return;
       const baseMs=new Date(t.laterSince).getTime()+hours*3600*1000;
       let lastFireMs=-1;
       for(let i=0;i<STALE_MAX_REPEATS;i++){
@@ -9916,7 +9913,7 @@ export default function App() {
   // ここは常時フォアグラウンドが前提のWeb/開発環境向けフォールバックとしてのみ動作する
   useEffect(()=>{
     if(!loaded||!(settings.notificationsEnabled??true)||!(settings.freeSlotNotifyEnabled??true)||isNative()) return;
-    const laterPool=tasks.filter(t=>t.isLater&&!t.completed&&!followUpPending(t));
+    const laterPool=tasks.filter(t=>t.isLater&&!t.completed);
     if(laterPool.length===0) return;
     const today=todayStr();
     const nowM=toMin(now);
@@ -9935,7 +9932,7 @@ export default function App() {
   useEffect(()=>{
     if(!loaded||!isNative()) return;
     if(!(settings.notificationsEnabled??true)||!(settings.freeSlotNotifyEnabled??true)){ syncFreeSlotAlerts([]); return; }
-    const laterPool=tasks.filter(t=>t.isLater&&!t.completed&&!followUpPending(t));
+    const laterPool=tasks.filter(t=>t.isLater&&!t.completed);
     if(laterPool.length===0){ syncFreeSlotAlerts([]); return; }
     const first=laterPool[0];
     const body=laterPool.length>1?tr('notifFreeTimeBodyMulti').replace('{name}',()=>first.name).replace('{n}',()=>String(laterPool.length)):tr('notifFreeTimeBodySingle').replace('{name}',()=>first.name);
@@ -9962,8 +9959,7 @@ export default function App() {
         :source.filter(t=>!t.category||customTabs.find(ct=>ct.id===t.category)?.showInAll!==false);
     return base.filter(t=>!t.allDay);
   },[tasks,activeCategory,customTabs,tabFilter,showTour,tourSampleTasks]);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const laterTasks    = useMemo(()=>filteredTasks.filter(t=>t.isLater&&!followUpPending(t)),[filteredTasks,now]);
+  const laterTasks    = useMemo(()=>filteredTasks.filter(t=>t.isLater),[filteredTasks]);
   const pendingCount  = useMemo(()=>laterTasks.filter(t=>!t.completed).length,[laterTasks]);
   const shopPending   = useMemo(()=>shopItems.filter(i=>!i.checked).length,[shopItems]);
   const activeLocationRegionCount = useMemo(()=>

@@ -902,7 +902,7 @@ followUpNote?: string;            // フォローアップの内容（自由入�
 followUpDays?: 1|3|7;             // プリセットのタイミング（完了日からの日数）。followUpCustomDate優先
 followUpCustomDate?: string;      // カスタム指定時の日時。設定時はfollowUpDaysより優先
 followUpSourceId?: string;        // このタスク自身が生成されたフォローアップタスクである場合、元タスクのID
-followUpRevealAt?: string;        // フォローアップタスクが「あとでやる」に表示され始める日時（ISO文字列）
+followUpRevealAt?: string;        // フォローアップタスクの目安の確認日時（ISO文字列）。「経過確認」リマインダー通知の発火時刻にのみ使う（一覧への表示は完了と同時、後述）
 ```
 
 既存の`seriesId`（繰り返しタスクのシリーズ識別子）と同じ「スナップショットではなくIDで元タスクに紐づける」設計にしてある（生成時に元タスク名をコピーするのではなく、`followUpSourceId`で毎回ライブに現在の名前を参照する）。
@@ -931,20 +931,11 @@ const followUpTask:Task = {
 };
 ```
 
-生成されたフォローアップタスクは`isLater:true`で即座に`tasks`配列に入るが、`followUpRevealAt`（表示開始時刻）が未来の間は「あとでやる」一覧に表示しない（後述の`followUpPending()`）。元タスクのアイコンを引き継ぐ（`icon:target.icon`）。
+生成されたフォローアップタスクは`isLater:true`で即座に`tasks`配列に入り、**生成と同時に「あとでやる」一覧（経過確認セクション）に表示される**。元タスクのアイコンを引き継ぐ（`icon:target.icon`）。
 
-### 「あとでやる」一覧での表示開始制御（`followUpPending()`）
+**過去の実装では`followUpRevealAt`が未来の間は一覧から隠す設計（`followUpPending()`というヘルパーで`laterTasks`/`laterPending`/放置タスク通知/空き時間提案通知の対象から除外）だったが、ユーザーからの明示的な要望（「対象のタスクを完了にした時点であとでやるタブに表示させたい」）により撤回した。** `followUpPending()`ヘルパーおよびその呼び出し箇所はすべて削除済み——**新しいセッションでこの「表示を遅らせる」設計を復活させないこと。** `followUpRevealAt`フィールド自体は削除していない。一覧への表示タイミングとは完全に切り離し、後述の「経過確認」リマインダー通知の発火時刻としてのみ使う。
 
-```typescript
-// モジュール共通ヘルパー（todayStr等と同じ場所に定義）
-const followUpPending = (t:Task) => !!t.followUpRevealAt && new Date(t.followUpRevealAt).getTime()>Date.now();
-```
-
-「あとでやる」タスクを列挙する主要な2つの箇所（Appコンポーネントの`laterTasks`＝Timelineの空き時間カード・バッジ件数に使う／BottomTabsコンポーネントの`laterPending`＝「あとでやる」タブ本体）の両方で、`t.isLater`に加えて`!followUpPending(t)`を条件に加えている。表示されるまでの間、ユーザーには一切見えない（生成されたことを意識させない設計）。
-
-**放置タスク通知（`laterReminderHours`）・空き時間提案通知も同様に`followUpPending(t)`で除外している。** 表示開始前のフォローアップタスクについて「あとでやるタスクが放置されています」のような通知が先に届くと、ユーザーがまだ見たことも無いタスクについて催促される不自然な体験になるため。
-
-### 通知（`syncFollowUpAlerts`、表示開始タイミングでの事前予約）
+### 通知（`syncFollowUpAlerts`、`followUpRevealAt`時刻での事前予約）
 
 既存の`syncDeadlineAlerts`等と全く同じ「ネイティブに事前予約・ネイティブでは`isNative()`で早期returnするWeb/開発環境向けフォールバックを併設」というパターンを踏襲している。
 
@@ -956,7 +947,7 @@ const followUpPending = (t:Task) => !!t.followUpRevealAt && new Date(t.followUpR
 
 ### 「あとでやる」一覧での表示（専用セクション分離・元タスクへのリンク）
 
-**フォローアップタスク（`t.followUpSourceId`があるもの）は、通常の「あとでやる」タスクと混在させず、`BottomTabs`内の専用セクション「経過確認」に分離して表示する。** `laterPending`を`followUpLater`（`t.followUpSourceId`あり）と`regularLaterPending`（無し）に分割し、ピン留め・並び替え・ファイルタブ別グループ分け（`normalLater`/`nonPinnedLater`/`laterGroups`）は`regularLaterPending`のみを対象にする。`followUpLaterSorted`は`followUpRevealAt`（表示開始時刻）順に`sortDir`で並べ、通常の「あとでやる」セクションの直後・「時間指定」セクションの前に、同じカードスタイルで表示する（見出しは`tr('followUpSectionLabel')`）。**フォローアップタスクはピン留め・並び替えポップアップ（`ReorderLaterPopup`）・ファイルタブ別グループ分けの対象外**——専用セクションに固定表示するという設計のため。
+**フォローアップタスク（`t.followUpSourceId`があるもの）は、通常の「あとでやる」タスクと混在させず、`BottomTabs`内の専用セクション「経過確認」に分離して表示する。** `laterPending`を`followUpLater`（`t.followUpSourceId`あり）と`regularLaterPending`（無し）に分割し、ピン留め・並び替え・ファイルタブ別グループ分け（`normalLater`/`nonPinnedLater`/`laterGroups`）は`regularLaterPending`のみを対象にする。`followUpLaterSorted`は`followUpRevealAt`（目安の確認日時）順に`sortDir`で並べ、通常の「あとでやる」セクションの直後・「時間指定」セクションの前に、同じカードスタイルで表示する（見出しは`tr('followUpSectionLabel')`）。**フォローアップタスクはピン留め・並び替えポップアップ（`ReorderLaterPopup`）・ファイルタブ別グループ分けの対象外**——専用セクションに固定表示するという設計のため。
 
 `renderLaterRowContent()`（BottomTabs）で、`t.followUpSourceId`があるタスク行にのみ`tr('followUpSourceLabel')`（「元: {name}」）を表示する（経過確認セクション内の行にもそのまま適用される）。**元タスク名はスナップショットではなく`tasks.find(x=>x.id===t.followUpSourceId)`でその場でライブに検索する**——元タスクが後から改名されても追従する。タップで`onEdit(src)`（元タスクの編集モーダルを開く）、行全体のタップ（フォローアップタスク自身の編集）とは別の要素に分離している（`e.stopPropagation()`で親のクリックに伝播させない）。元タスクが既に削除されている場合は何も表示しない。
 
@@ -968,8 +959,8 @@ const followUpPending = (t:Task) => !!t.followUpRevealAt && new Date(t.followUpR
 
 - 完了操作のたびに「経過確認しますか？」という確認ダイアログを割り込ませない（タスク作成時に`followUpEnabled`をあらかじめ設定しておく方式。完了は完了のまま、追加の意思決定を挟まない）
 - フォローアップタスクの元タスク名をスナップショットとしてコピーしない（`followUpSourceId`でライブに参照する。元タスクが改名されても追従させる設計）
-- `followUpPending()`な（表示開始前の）フォローアップタスクを、放置タスク通知・空き時間提案通知・バッジ件数等、ユーザーに見える箇所に含めない。新しく「あとでやる」タスクを列挙する箇所を追加する時は`t.isLater`だけでなく`!followUpPending(t)`も確認すること
-- 表示開始後のフォローアップタスクを通常の「あとでやる」セクション（`normalLater`）に混在させない。`regularLaterPending`/`followUpLater`の分割を崩さず、専用の「経過確認」セクション（`followUpLaterSorted`）にのみ表示すること
+- フォローアップタスクの一覧表示を`followUpRevealAt`が来るまで遅らせる設計（`followUpPending()`）を復活させない。生成（＝元タスクの完了）と同時に一覧へ表示するのが現在の仕様
+- フォローアップタスクを通常の「あとでやる」セクション（`normalLater`）に混在させない。`regularLaterPending`/`followUpLater`の分割を崩さず、専用の「経過確認」セクション（`followUpLaterSorted`）にのみ表示すること
 - 繰り返し（`mode==='recurring'`）のタスクにフォローアップのトグルを表示しない（同じシリーズのインスタンスが完了するたびに際限なく生成されてしまう。ユーザーからの要望も無いため意図的にスコープ外）。`mode==='later'`/`'scheduled'`両方への対応は`followUpModeOk`という1つの変数にまとめてあるので、新しく対象モードを増減する時もこの変数の定義だけを変えること（複数箇所に`mode==='later'`をベタ書きし直さない）
 - フォローアップ通知の本文を締切通知のような専用の文言組み立て関数で作らない（フォローアップタスク自身の`name`がそのまま意味のある本文になるよう生成時に設計してあるため、`t.name`をそのまま使えばよい）
 
