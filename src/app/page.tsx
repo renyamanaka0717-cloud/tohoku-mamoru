@@ -3227,9 +3227,11 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
                     </button>
                   </div>
                   {followUpCustomOpen&&(
-                    <input type="date" value={followUpCustomDate} min={todayStr()}
-                      onChange={e=>setFollowUpCustomDate(e.target.value)}
-                      className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50 mt-2"/>
+                    <div className="overflow-hidden rounded-xl border border-gray-200 mt-2">
+                      <input type="date" value={followUpCustomDate} min={todayStr()}
+                        onChange={e=>setFollowUpCustomDate(e.target.value)}
+                        className="w-full px-3 py-2 text-sm bg-gray-50"/>
+                    </div>
                   )}
                 </div>
               )}
