@@ -8236,10 +8236,9 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           </button>
           <h1 className="flex-1 text-center text-[24px] font-bold text-gray-900">{tr('settingsTitle')}</h1>
           <div className="flex items-center justify-end" style={{width:'70px'}}>
-            <button onClick={()=>setSub('announcements')} className="relative w-9 h-9 rounded-xl flex items-center justify-center"
-              style={{background:'color-mix(in srgb, var(--c-primary) 15%, white)', color:'var(--c-primary)'}}>
-              <AppIcons.bell size={20}/>
-              {hasUnreadAnnouncements&&<span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-[var(--c-primary)] ring-2 ring-white"/>}
+            <button onClick={()=>setSub('announcements')} className="relative w-9 h-9 flex items-center justify-center text-gray-500">
+              <AppIcons.bell size={26}/>
+              {hasUnreadAnnouncements&&<span className="absolute top-1 right-1.5 w-2 h-2 rounded-full bg-[var(--c-primary)]"/>}
             </button>
           </div>
         </div>
@@ -8272,10 +8271,9 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           <AppIcons.caretLeft size={20}/>
         </button>
         <h1 className="text-[20px] font-bold text-gray-900">{tr('settingsTitle')}</h1>
-        <button onClick={()=>setSub('announcements')} className="absolute right-4 flex items-center justify-center w-9 h-9 rounded-xl"
-          style={{background:'color-mix(in srgb, var(--c-primary) 15%, white)', color:'var(--c-primary)'}}>
-          <AppIcons.bell size={20}/>
-          {hasUnreadAnnouncements&&<span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-[var(--c-primary)] ring-2 ring-white"/>}
+        <button onClick={()=>setSub('announcements')} className="absolute right-4 flex items-center justify-center w-9 h-9 text-gray-500">
+          <AppIcons.bell size={26}/>
+          {hasUnreadAnnouncements&&<span className="absolute top-1 right-1.5 w-2 h-2 rounded-full bg-[var(--c-primary)]"/>}
         </button>
       </div>
       <div className="flex-1 overflow-y-auto px-4 pb-10">
