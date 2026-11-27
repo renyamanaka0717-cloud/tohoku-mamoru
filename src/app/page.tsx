@@ -7124,9 +7124,8 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           <div className="space-y-3 mt-4">
             {announcements.map(a=>(
               <div key={a.id} className="bg-white rounded-2xl shadow-sm px-4 py-4">
-                <p className="text-xs text-gray-400 mb-1">{a.date.slice(0,10)}</p>
                 <p className="text-sm font-bold text-gray-900 mb-1">{pickAnnouncementText(a.title,language)}</p>
-                <p className="text-sm text-gray-600 whitespace-pre-wrap leading-relaxed">{pickAnnouncementText(a.body,language)}</p>
+                <p className="text-xs text-gray-400">{a.date.slice(0,10)}</p>
               </div>
             ))}
           </div>
