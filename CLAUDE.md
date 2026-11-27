@@ -431,6 +431,7 @@ notify('おはようございます', body);
 - `LocalNotifyPlugin.swift` は `syncTaskAlerts`/`syncFreeSlotAlerts` 共通の `scheduleAlerts(prefix:call:)` を内部で使い、`free-slot-` prefixで全解除→再登録する。識別子は `free-slot-${date}-${slot.start}`
 - 通知本文はスケジュール計算時点の「あとでやる」件数から組み立てるため、実際に発火するまでの間にタスクが完了して中身が古くなる可能性はあるが、`tasks`変更のたびに再計算されるため大きくずれることはない
 - 旧来の `now` ポーリング＋即時 `notify()` の `useEffect`（`tl-freeslot-notif-`キー使用）はWeb/開発環境専用フォールバックとして残っており、ネイティブでは `isNative()` で早期returnする
+- **個別ON/OFF（`Settings.freeSlotNotifyEnabled`、デフォルトtrue）: `設定→通知→通知`画面に専用トグルがある。** マスタースイッチ（`notificationsEnabled`）とは独立して、この通知だけをオフにできる。Web fallback・ネイティブ事前予約どちらのuseEffectも`!(settings.freeSlotNotifyEnabled??true)`でガードしている
 
 ### 買い物リスト時間指定通知のネイティブ事前予約（`syncShopNotifs`）
 
@@ -462,6 +463,7 @@ notify('おはようございます', body);
 - `src/app/page.tsx` の App コンポーネントに、**直近7日分**の起床時刻をまとめて予約する `useEffect` がある。識別子は `wake-checkin-${日数オフセット}`
 - 当日分（オフセット0）のみ「昨日の未完了タスク件数」を本文に反映する。翌日以降は未来の状態が分からないため一般的な文言（「今日の予定をチェックしましょう」）にする
 - 旧来の `now` ポーリング＋即時 `notify()` の `useEffect`（`WAKE_CHECKIN_NOTIF_KEY`使用）はWeb/開発環境専用フォールバックとして残っており、ネイティブでは `isNative()` で早期returnする
+- **個別ON/OFF（`Settings.wakeCheckinEnabled`、デフォルトtrue）: `設定→通知→通知`画面に専用トグルがある。** マスタースイッチ（`notificationsEnabled`）とは独立して、この通知だけをオフにできる。Web fallback・ネイティブ事前予約どちらのuseEffectも`!(settings.wakeCheckinEnabled??true)`でガードしている
 
 ### 締切管理のネイティブ事前予約（`syncDeadlineAlerts`、PRO機能）
 

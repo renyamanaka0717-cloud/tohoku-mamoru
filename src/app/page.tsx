@@ -107,7 +107,7 @@ type FontSize = 'small'|'standard'|'large'|'xlarge';
 // セットで読まれるため、文字サイズ設定に合わせて一緒に拡大しないと隣のテキストだけ大きくなり
 // 相対的にアイコンが小さすぎて見える不具合があった。ナビゲーション等の固定アイコンには使わない。
 const FONT_SIZE_ICON_DELTA:Record<FontSize,number> = {small:-1,standard:0,large:2,xlarge:4};
-interface Settings { wakeTime: string; sleepTime: string; keepIncomplete?: boolean; showFreeCard?: boolean; freeCardMinMin?: number; wakeColor?:string; sleepColor?:string; theme?:string; appIcon?:string; notificationsEnabled?:boolean; laterReminderHours?: number; appInactivityHours?: number; weekStartsOn?: 0|1; fontSize?: FontSize; }
+interface Settings { wakeTime: string; sleepTime: string; keepIncomplete?: boolean; showFreeCard?: boolean; freeCardMinMin?: number; wakeColor?:string; sleepColor?:string; theme?:string; appIcon?:string; notificationsEnabled?:boolean; laterReminderHours?: number; appInactivityHours?: number; weekStartsOn?: 0|1; fontSize?: FontSize; freeSlotNotifyEnabled?:boolean; wakeCheckinEnabled?:boolean; }
 // 「おすすめ機能」表示の判定に使う端末内の利用履歴（未使用の機能を段階的に紹介するため）
 interface FeatureUsage {
   installedAt: string;
@@ -7201,6 +7201,30 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
           </div>
         </div>
         <p className="text-xs text-gray-400 px-1 mt-2 leading-relaxed">{tr('notificationsPermissionHint')}</p>
+
+        <div className="bg-white rounded-2xl overflow-hidden shadow-sm mt-4">
+          <div className="px-4 py-3.5 flex items-center justify-between">
+            <div className="flex-1 min-w-0">
+              <p className="text-[15px] font-medium text-gray-900">{tr('freeSlotNotifyTitle')}</p>
+              <p className="text-xs text-gray-400 mt-0.5">{tr('freeSlotNotifyDesc')}</p>
+            </div>
+            <button onClick={()=>onSettings({...settings,freeSlotNotifyEnabled:!(settings.freeSlotNotifyEnabled??true)})}
+              className={`relative w-10 h-6 rounded-full transition-colors shrink-0 ${(settings.freeSlotNotifyEnabled??true)?'bg-[var(--c-primary)]':'bg-gray-200'}`}>
+              <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${(settings.freeSlotNotifyEnabled??true)?'left-[18px]':'left-0.5'}`}/>
+            </button>
+          </div>
+          <div className="h-px bg-gray-100 mx-4"/>
+          <div className="px-4 py-3.5 flex items-center justify-between">
+            <div className="flex-1 min-w-0">
+              <p className="text-[15px] font-medium text-gray-900">{tr('wakeCheckinNotifyTitle')}</p>
+              <p className="text-xs text-gray-400 mt-0.5">{tr('wakeCheckinNotifyDesc')}</p>
+            </div>
+            <button onClick={()=>onSettings({...settings,wakeCheckinEnabled:!(settings.wakeCheckinEnabled??true)})}
+              className={`relative w-10 h-6 rounded-full transition-colors shrink-0 ${(settings.wakeCheckinEnabled??true)?'bg-[var(--c-primary)]':'bg-gray-200'}`}>
+              <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${(settings.wakeCheckinEnabled??true)?'left-[18px]':'left-0.5'}`}/>
+            </button>
+          </div>
+        </div>
         {isAndroid()&&(
           <div className="bg-white rounded-2xl shadow-sm px-4 py-3.5 mt-4">
             <p className="text-[15px] font-medium text-gray-900 mb-1">{tr('androidBatteryOptTitle')}</p>
@@ -9634,7 +9658,7 @@ export default function App() {
   // 起床時間にアプリを開くよう促す通知（前日の未完了タスクがあれば1つにまとめる）— ネイティブでは
   // syncWakeCheckins の事前予約が発火を担うため、ここは常時フォアグラウンドが前提のWeb/開発環境向けフォールバックとしてのみ動作する
   useEffect(()=>{
-    if(!loaded||!(settings.notificationsEnabled??true)||isNative()) return;
+    if(!loaded||!(settings.notificationsEnabled??true)||!(settings.wakeCheckinEnabled??true)||isNative()) return;
     const today=todayStr();
     if(toMin(now)!==toMin(settings.wakeTime)) return;
     if(localStorage.getItem(WAKE_CHECKIN_NOTIF_KEY)===today) return;
@@ -9642,14 +9666,14 @@ export default function App() {
     const past=tasks.filter(t=>!t.completed&&!t.isLater&&!t.noComplete&&!!t.startTime&&!t.recurrence&&t.date===shiftDate(today,-1));
     const body=past.length>0?tr('notifWakeCheckinBodyPast').replace('{n}',()=>String(past.length)):tr('notifWakeCheckinBody');
     notify(tr('notifWakeCheckinTitle'),body);
-  },[loaded,now,tasks,settings.wakeTime,settings.notificationsEnabled,tr]);
+  },[loaded,now,tasks,settings.wakeTime,settings.notificationsEnabled,settings.wakeCheckinEnabled,tr]);
 
   // 起床時チェックイン通知をネイティブに事前スケジュール（バックグラウンド/未起動でも発火させるため）。
   // 直近7日分の起床時刻をまとめて予約する。当日分のみ「昨日の未完了タスク件数」を反映し、
   // それ以降の日は未来の状態が分からないため一般的な文言にする
   useEffect(()=>{
     if(!loaded||!isNative()) return;
-    if(!(settings.notificationsEnabled??true)){ syncWakeCheckins([]); return; }
+    if(!(settings.notificationsEnabled??true)||!(settings.wakeCheckinEnabled??true)){ syncWakeCheckins([]); return; }
     const wakeM=toMin(settings.wakeTime);
     const nowMs=Date.now();
     const alerts:{id:string;title:string;body:string;timestamp:number}[]=[];
@@ -9667,7 +9691,7 @@ export default function App() {
       alerts.push({id:`wake-checkin-${d}`,title:tr('notifWakeCheckinTitle'),body,timestamp:Math.floor(dt.getTime()/1000)});
     }
     syncWakeCheckins(alerts);
-  },[loaded,now,tasks,settings.wakeTime,settings.notificationsEnabled,tr]);
+  },[loaded,now,tasks,settings.wakeTime,settings.notificationsEnabled,settings.wakeCheckinEnabled,tr]);
 
   // タスクごとのアラート（開始時・何分前・前日）— ネイティブでは syncTaskAlerts の事前予約が発火を担うため、
   // ここは常時フォアグラウンドが前提のWeb/開発環境向けフォールバックとしてのみ動作する
@@ -9861,7 +9885,7 @@ export default function App() {
   // ネイティブでは syncFreeSlotAlerts の事前予約が発火を担うため、
   // ここは常時フォアグラウンドが前提のWeb/開発環境向けフォールバックとしてのみ動作する
   useEffect(()=>{
-    if(!loaded||!(settings.notificationsEnabled??true)||isNative()) return;
+    if(!loaded||!(settings.notificationsEnabled??true)||!(settings.freeSlotNotifyEnabled??true)||isNative()) return;
     const laterPool=tasks.filter(t=>t.isLater&&!t.completed&&!followUpPending(t));
     if(laterPool.length===0) return;
     const today=todayStr();
@@ -9880,7 +9904,7 @@ export default function App() {
   // 空き時間の開始5分後をネイティブに事前スケジュール（バックグラウンド/未起動でも発火させるため）
   useEffect(()=>{
     if(!loaded||!isNative()) return;
-    if(!(settings.notificationsEnabled??true)){ syncFreeSlotAlerts([]); return; }
+    if(!(settings.notificationsEnabled??true)||!(settings.freeSlotNotifyEnabled??true)){ syncFreeSlotAlerts([]); return; }
     const laterPool=tasks.filter(t=>t.isLater&&!t.completed&&!followUpPending(t));
     if(laterPool.length===0){ syncFreeSlotAlerts([]); return; }
     const first=laterPool[0];
