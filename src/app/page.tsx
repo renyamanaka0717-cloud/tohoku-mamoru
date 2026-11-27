@@ -6386,6 +6386,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   const [notifGranted,setNotifGrantedState] = useState(true);
   const [locGranted,setLocGrantedState] = useState(true);
   const [announcementsSeen,setAnnouncementsSeenState] = useState(true);
+  const [expandedAnnouncementId,setExpandedAnnouncementId] = useState<string|null>(null);
   useEffect(()=>{
     setDevPlanState(getDevPremiumOverride());
     setFirstLaunchDone(!!localStorage.getItem(WAKESLEEP_ASKED_KEY));
@@ -7123,10 +7124,14 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
         ):(
           <div className="space-y-3 mt-4">
             {announcements.map(a=>(
-              <div key={a.id} className="bg-white rounded-2xl shadow-sm px-4 py-4">
+              <button key={a.id} onClick={()=>setExpandedAnnouncementId(id=>id===a.id?null:a.id)}
+                className="w-full text-left bg-white rounded-2xl shadow-sm px-4 py-4 active:bg-gray-50">
                 <p className="text-sm font-bold text-gray-900 mb-1">{pickAnnouncementText(a.title,language)}</p>
                 <p className="text-xs text-gray-400">{a.date.slice(0,10)}</p>
-              </div>
+                {expandedAnnouncementId===a.id&&(
+                  <p className="text-sm text-gray-600 whitespace-pre-wrap leading-relaxed mt-3 pt-3 border-t border-gray-100">{pickAnnouncementText(a.body,language)}</p>
+                )}
+              </button>
             ))}
           </div>
         )}
