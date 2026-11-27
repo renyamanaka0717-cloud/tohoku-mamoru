@@ -2093,6 +2093,9 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
   const [followUpDays,setFollowUpDays] = useState<1|3|7>(task?.followUpDays??3);
   const [followUpCustomDate,setFollowUpCustomDate] = useState(task?.followUpCustomDate?task.followUpCustomDate.slice(0,10):'');
   const [followUpCustomOpen,setFollowUpCustomOpen] = useState(!!task?.followUpCustomDate);
+  // 経過確認フォローアップは「あとでやる」限定で始めたが、時間指定タスクにも付けられるようにした
+  // （完了タイミングが読めない繰り返しタスクは対象外のまま）
+  const followUpModeOk = mode==='later'||mode==='scheduled';
   const [locationNotify,setLocationNotify] = useState(task?.locationNotify??false);
   const [taskLocation,setTaskLocation] = useState(task?.location??null);
   // 場所通知を設定した後に位置情報/通知の許可を取り消された場合に気づけるよう、
@@ -2212,10 +2215,10 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
     seriesId:task?.seriesId,
     address:address.trim()||undefined,
     noComplete:mode!=='later'?noComplete:false,
-    followUpEnabled:mode==='later'?followUpEnabled:false,
-    followUpNote:(mode==='later'&&followUpEnabled)?(followUpNote.trim()||undefined):undefined,
-    followUpDays:(mode==='later'&&followUpEnabled&&!followUpCustomDate)?followUpDays:undefined,
-    followUpCustomDate:(mode==='later'&&followUpEnabled&&followUpCustomDate)?followUpCustomDate:undefined,
+    followUpEnabled:followUpModeOk?followUpEnabled:false,
+    followUpNote:(followUpModeOk&&followUpEnabled)?(followUpNote.trim()||undefined):undefined,
+    followUpDays:(followUpModeOk&&followUpEnabled&&!followUpCustomDate)?followUpDays:undefined,
+    followUpCustomDate:(followUpModeOk&&followUpEnabled&&followUpCustomDate)?followUpCustomDate:undefined,
   });
 
   // 編集開始時点のスナップショット。繰り返しタスクで「完了」を押した時、何も変更していなければ
@@ -2356,10 +2359,10 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
       address:address.trim()||undefined,
       seriesId,
       noComplete:mode!=='later'?noComplete:false,
-      followUpEnabled:mode==='later'?followUpEnabled:false,
-      followUpNote:(mode==='later'&&followUpEnabled)?(followUpNote.trim()||undefined):undefined,
-      followUpDays:(mode==='later'&&followUpEnabled&&!followUpCustomDate)?followUpDays:undefined,
-      followUpCustomDate:(mode==='later'&&followUpEnabled&&followUpCustomDate)?followUpCustomDate:undefined,
+      followUpEnabled:followUpModeOk?followUpEnabled:false,
+      followUpNote:(followUpModeOk&&followUpEnabled)?(followUpNote.trim()||undefined):undefined,
+      followUpDays:(followUpModeOk&&followUpEnabled&&!followUpCustomDate)?followUpDays:undefined,
+      followUpCustomDate:(followUpModeOk&&followUpEnabled&&followUpCustomDate)?followUpCustomDate:undefined,
     };
     if(becomingRecurring){
       const instances:Omit<Task,'id'>[]=[];
@@ -3198,8 +3201,8 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
               </div>
             )}
 
-            {/* 経過確認フォローアップ（「あとでやる」限定）。完了後に様子を確認したいタスク向け */}
-            {mode==='later'&&(<>
+            {/* 経過確認フォローアップ（あとでやる・時間指定限定）。完了後に様子を確認したいタスク向け */}
+            {followUpModeOk&&(<>
               <div className="h-px bg-gray-100 mx-4"/>
               <button className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50"
                 onClick={()=>setFollowUpEnabled(v=>!v)}>
