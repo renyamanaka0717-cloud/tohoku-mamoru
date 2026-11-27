@@ -6386,7 +6386,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
   const [notifGranted,setNotifGrantedState] = useState(true);
   const [locGranted,setLocGrantedState] = useState(true);
   const [announcementsSeen,setAnnouncementsSeenState] = useState(true);
-  const [expandedAnnouncementId,setExpandedAnnouncementId] = useState<string|null>(null);
+  const [selectedAnnouncementId,setSelectedAnnouncementId] = useState<string|null>(null);
   useEffect(()=>{
     setDevPlanState(getDevPremiumOverride());
     setFirstLaunchDone(!!localStorage.getItem(WAKESLEEP_ASKED_KEY));
@@ -7124,13 +7124,10 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
         ):(
           <div className="space-y-3 mt-4">
             {announcements.map(a=>(
-              <button key={a.id} onClick={()=>setExpandedAnnouncementId(id=>id===a.id?null:a.id)}
+              <button key={a.id} onClick={()=>{setSelectedAnnouncementId(a.id);setSub('announcementDetail');}}
                 className="w-full text-left bg-white rounded-2xl shadow-sm px-4 py-4 active:bg-gray-50">
                 <p className="text-sm font-bold text-gray-900 mb-1">{pickAnnouncementText(a.title,language)}</p>
                 <p className="text-xs text-gray-400">{a.date.slice(0,10)}</p>
-                {expandedAnnouncementId===a.id&&(
-                  <p className="text-sm text-gray-600 whitespace-pre-wrap leading-relaxed mt-3 pt-3 border-t border-gray-100">{pickAnnouncementText(a.body,language)}</p>
-                )}
               </button>
             ))}
           </div>
@@ -7138,6 +7135,24 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
       </div>
     </div>
   );
+
+  if(sub==='announcementDetail') {
+    const a = announcements.find(x=>x.id===selectedAnnouncementId);
+    return (
+      <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto lg:max-w-none lg:w-full lg:[&>*:not(.fixed)]:max-w-[1000px] lg:[&>*:not(.fixed)]:mx-auto lg:[&>*:not(.fixed)]:w-full">
+        {subHeader(tr('announcementsTitle'))}
+        <div className="flex-1 overflow-y-auto px-4 pb-8">
+          {a&&(
+            <div className="bg-white rounded-2xl shadow-sm px-4 py-4 mt-4">
+              <p className="text-sm font-bold text-gray-900 mb-1">{pickAnnouncementText(a.title,language)}</p>
+              <p className="text-xs text-gray-400 mb-3">{a.date.slice(0,10)}</p>
+              <p className="text-sm text-gray-600 whitespace-pre-wrap leading-relaxed">{pickAnnouncementText(a.body,language)}</p>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   if(sub==='notifications') return (
     <div className="fixed inset-y-0 inset-x-0 z-[80] bg-[#F2F2F7] flex flex-col max-w-md mx-auto lg:max-w-none lg:w-full lg:[&>*:not(.fixed)]:max-w-[1000px] lg:[&>*:not(.fixed)]:mx-auto lg:[&>*:not(.fixed)]:w-full">
