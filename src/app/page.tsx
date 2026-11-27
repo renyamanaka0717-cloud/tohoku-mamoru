@@ -3202,9 +3202,12 @@ function TaskModal({task,currentDate,prefillTime,prefillCategory,openIconSheet:i
             {followUpModeOk&&(<>
               <div className="h-px bg-gray-100 mx-4"/>
               <button className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50"
-                onClick={()=>setFollowUpEnabled(v=>!v)}>
+                onClick={()=>{ if(!followUpEnabled&&!isPremium){ setModalProPrompt(tr('proFeatureFollowUp')); return; } setFollowUpEnabled(v=>!v); }}>
                 <AppIcons.clock size={18} className="text-gray-400 shrink-0"/>
-                <span className="flex-1 text-left text-sm font-medium text-gray-800">{tr('fieldFollowUp')}</span>
+                <span className="flex-1 text-left text-sm font-medium text-gray-800 flex items-center gap-1.5">
+                  {tr('fieldFollowUp')}
+                  {!isPremium&&<AppIcons.lock size={11} className="text-gray-300"/>}
+                </span>
                 <span className={`relative w-10 h-6 rounded-full transition-colors shrink-0 ${followUpEnabled?'bg-[var(--c-primary)]':'bg-gray-200'}`}>
                   <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${followUpEnabled?'left-[18px]':'left-0.5'}`}/>
                 </span>
@@ -7993,6 +7996,7 @@ function SettingsScreen({settings,onSettings,onClose,globalTags,onGlobalTags,cus
             {label:tr('proFeatureLaterLocationNotify'), free:'×',                 pro:tr('proValSupported')},
             {label:tr('rowForgetAlertTitle'),       free:'×',                     pro:tr('proValSupported')},
             {label:tr('proFeatureVoiceInput'),      free:'×',                     pro:tr('proValSupported')},
+            {label:tr('proFeatureFollowUp'),        free:'×',                     pro:tr('proValSupported')},
             {label:tr('proFeatureRealtimeSync'),    free:'×',                     pro:tr('proValSupported')},
           ].map(({label,free,pro},i,arr)=>(
             <div key={i} className={`grid items-center px-4 py-3${i<arr.length-1?' border-b border-gray-100':''}`} style={{gridTemplateColumns:'1fr 80px 80px'}}>
